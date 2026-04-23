@@ -19,6 +19,14 @@ const GAMES = [
     bg: "#1a1a2e",
     border: true,
   },
+  {
+    name: "Codenames",
+    description: "Give one-word clues to reveal your team's cards.",
+    players: "4+ players",
+    url: "https://codenames.jackbrannen.com",
+    bg: "#1C1305",
+    border: true,
+  },
 ]
 
 export default function Home() {

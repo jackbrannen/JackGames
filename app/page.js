@@ -7,12 +7,14 @@ const GAMES = [
   {
     name: "Fishbowl",
     description: "Teams guess clues from a bowl",
+    players: "4+ players",
     url: "https://fishbowl.jackbrannen.com",
     bg: "#3378FF",
   },
   {
     name: "The Game of What",
-    description: "Questions, answers, votes",
+    description: "Like Quiplash but with DIY Questions.",
+    players: "4+ players",
     url: "https://gameofwhat.jackbrannen.com",
     bg: "#1a1a2e",
     border: true,
@@ -59,8 +61,11 @@ export default function Home() {
             <div style={{ fontSize: 26, fontWeight: 900, marginBottom: 6 }}>
               {game.name}
             </div>
-            <div style={{ fontSize: 14, fontWeight: 600, opacity: 0.55 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, opacity: 0.55, marginBottom: 4 }}>
               {game.description}
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.35, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+              {game.players}
             </div>
           </a>
         ))}

@@ -27,6 +27,14 @@ const GAMES = [
     bg: "#1C1305",
     border: true,
   },
+  {
+    name: "Avalon",
+    description: "Hidden roles — find the traitors before they sabotage the quests.",
+    players: "5–10 players",
+    url: "https://avalon.jackbrannen.com",
+    bg: "#0F1923",
+    border: true,
+  },
 ]
 
 export default function Home() {

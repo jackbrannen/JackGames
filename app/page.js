@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { supabase } from "../lib/supabase"
 
 const BG = "#111118"
 const YELLOW = "#FBDF54"
@@ -56,6 +57,12 @@ function saveProfile(profile) {
   document.cookie = `jackgames_profile=${encodeURIComponent(json)}; domain=.jackbrannen.com; max-age=31536000; path=/; SameSite=Lax`
 }
 
+function formatDate(ts) {
+  const d = new Date(ts)
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) +
+    " " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+}
+
 const inputStyle = {
   background: "rgba(255,255,255,0.1)",
   color: "white",
@@ -70,11 +77,14 @@ const inputStyle = {
 
 export default function Home() {
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [logsOpen, setLogsOpen] = useState(false)
   const [profile, setProfile] = useState(null)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [username, setUsername] = useState("")
   const [saved, setSaved] = useState(false)
+  const [logs, setLogs] = useState([])
+  const [logsLoading, setLogsLoading] = useState(false)
 
   useEffect(() => {
     const p = loadProfile()
@@ -107,6 +117,45 @@ export default function Home() {
     setTimeout(() => setSettingsOpen(false), 700)
   }
 
+  async function openLogs() {
+    setLogsOpen(true)
+    setLogsLoading(true)
+    try {
+      const [fishbowl, gow, codenames, avalon] = await Promise.all([
+        supabase.from("players").select("first_name,last_name,game_code,created_at").order("created_at", { ascending: false }).limit(500),
+        supabase.from("gow_players").select("first_name,last_name,game_code,created_at").order("created_at", { ascending: false }).limit(500),
+        supabase.from("codenames_players").select("first_name,last_name,game_code,created_at").order("created_at", { ascending: false }).limit(500),
+        supabase.from("avalon_players").select("first_name,last_name,game_code,created_at").order("created_at", { ascending: false }).limit(500),
+      ])
+
+      // Group by game_code and track who played each session
+      const sessions = {}
+
+      function addRows(rows, gameName) {
+        for (const row of (rows ?? [])) {
+          if (!row.first_name || !row.last_name) continue
+          const key = `${gameName}::${row.game_code}`
+          if (!sessions[key]) sessions[key] = { game: gameName, code: row.game_code, players: [], earliest: row.created_at }
+          sessions[key].players.push(`${row.first_name} ${row.last_name}`)
+          if (row.created_at < sessions[key].earliest) sessions[key].earliest = row.created_at
+        }
+      }
+
+      addRows(fishbowl.data, "Fishbowl")
+      addRows(gow.data, "Game of What")
+      addRows(codenames.data, "Codenames")
+      addRows(avalon.data, "Avalon")
+
+      const sorted = Object.values(sessions).sort((a, b) => b.earliest > a.earliest ? 1 : -1)
+      setLogs(sorted)
+    } finally {
+      setLogsLoading(false)
+    }
+  }
+
+  const isJack = profile?.firstName?.trim().toLowerCase() === "jack" &&
+    profile?.lastName?.trim().toLowerCase() === "brannen"
+
   return (
     <div style={{
       minHeight: "100dvh",
@@ -118,14 +167,14 @@ export default function Home() {
       padding: "40px 24px",
     }}>
 
-      {/* Cog button */}
+      {/* Cog button — top right */}
       <button
         onClick={openSettings}
         aria-label="Settings"
         style={{
           position: "fixed",
           top: 16,
-          left: 16,
+          right: 16,
           background: "rgba(255,255,255,0.08)",
           border: "none",
           color: "rgba(255,255,255,0.45)",
@@ -204,6 +253,59 @@ export default function Home() {
         </div>
       )}
 
+      {/* Logs overlay */}
+      {logsOpen && (
+        <div
+          onClick={e => { if (e.target === e.currentTarget) setLogsOpen(false) }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.85)",
+            overflowY: "auto",
+            zIndex: 100,
+            padding: "24px 16px 60px",
+          }}
+        >
+          <div style={{ maxWidth: 500, margin: "0 auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "rgba(255,255,255,0.4)" }}>
+                Game Logs
+              </div>
+              <button
+                onClick={() => setLogsOpen(false)}
+                style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 22, cursor: "pointer", padding: "4px 8px" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {logsLoading && (
+              <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 16, fontWeight: 600, textAlign: "center", paddingTop: 40 }}>
+                Loading…
+              </div>
+            )}
+
+            {!logsLoading && logs.length === 0 && (
+              <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 16, fontWeight: 600, textAlign: "center", paddingTop: 40 }}>
+                No sessions found.
+              </div>
+            )}
+
+            {!logsLoading && logs.map((s, i) => (
+              <div key={i} style={{ borderTop: "1px solid rgba(255,255,255,0.1)", padding: "14px 0" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginBottom: 6 }}>
+                  <span style={{ fontSize: 16, fontWeight: 800, color: "white" }}>{s.game}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.35)", whiteSpace: "nowrap" }}>{formatDate(s.earliest)}</span>
+                </div>
+                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", fontWeight: 600, lineHeight: 1.6 }}>
+                  {s.players.join(", ")}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <h1 style={{
         fontSize: "clamp(48px, 14vw, 88px)",
         fontWeight: 900,
@@ -240,6 +342,26 @@ export default function Home() {
             </div>
           </a>
         ))}
+
+        {isJack && (
+          <button
+            onClick={openLogs}
+            style={{
+              background: "none",
+              border: "none",
+              color: "rgba(255,255,255,0.3)",
+              fontSize: 13,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.12em",
+              cursor: "pointer",
+              paddingTop: 14,
+              textAlign: "center",
+            }}
+          >
+            View Logs
+          </button>
+        )}
       </div>
     </div>
   )

@@ -312,11 +312,19 @@ export default function Home() {
                   const dateStr = sameDay
                     ? shortDate(g.first)
                     : `${shortDate(g.first)} – ${shortDate(g.last)}`
+                  const gameColor = GAMES.find(x => x.name === g.game || x.name.includes(g.game) || g.game.includes(x.name.replace("The ", "")))
+                  const bg = gameColor?.bg ?? "rgba(255,255,255,0.15)"
+                  const fg = gameColor?.color ?? "white"
                   return (
-                    <div key={g.game} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, paddingBottom: 5 }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.65)" }}>{g.game}</span>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.35)", whiteSpace: "nowrap" }}>
-                        {g.count}× &nbsp;{dateStr}
+                    <div key={g.game} style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 8, flexWrap: "wrap" }}>
+                      <span style={{ background: bg, color: fg, fontSize: 12, fontWeight: 800, padding: "3px 8px", whiteSpace: "nowrap" }}>
+                        {g.game}
+                      </span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "white", whiteSpace: "nowrap" }}>
+                        {g.count}×
+                      </span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.4)", whiteSpace: "nowrap" }}>
+                        {dateStr}
                       </span>
                     </div>
                   )

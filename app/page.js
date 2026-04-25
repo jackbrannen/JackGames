@@ -81,7 +81,7 @@ export default function Home() {
   const [lastName, setLastName] = useState("")
   const [username, setUsername] = useState("")
   const [saved, setSaved] = useState(false)
-  const [logs, setLogs] = useState([])
+  const [logs, setLogs] = useState({ real: [], test: [] })
   const [logsLoading, setLogsLoading] = useState(false)
 
   useEffect(() => {
@@ -147,8 +147,7 @@ export default function Home() {
       addRows(codenames.data, "Codenames")
       addRows(avalon.data, "Avalon")
 
-      // Sort people by total games played descending
-      const sorted = Object.entries(people)
+      const toRows = entries => entries
         .map(([name, games]) => ({
           name,
           games: Object.entries(games)
@@ -158,7 +157,11 @@ export default function Home() {
         }))
         .sort((a, b) => b.total - a.total)
 
-      setLogs(sorted)
+      const isTest = ([name]) => name.split(" ").pop().toLowerCase() === "test"
+      const real = toRows(Object.entries(people).filter(e => !isTest(e)))
+      const test = toRows(Object.entries(people).filter(e => isTest(e)))
+
+      setLogs({ real, test })
     } finally {
       setLogsLoading(false)
     }
@@ -296,13 +299,13 @@ export default function Home() {
               </div>
             )}
 
-            {!logsLoading && logs.length === 0 && (
+            {!logsLoading && logs.real.length === 0 && logs.test.length === 0 && (
               <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 16, fontWeight: 600, textAlign: "center", paddingTop: 40 }}>
                 No sessions found.
               </div>
             )}
 
-            {!logsLoading && logs.map((person, i) => (
+            {!logsLoading && logs.real.map((person, i) => (
               <div key={i} style={{ borderTop: "1px solid rgba(255,255,255,0.1)", padding: "16px 0" }}>
                 <div style={{ fontSize: 17, fontWeight: 800, color: "white", marginBottom: 10 }}>
                   {person.name}
@@ -331,6 +334,44 @@ export default function Home() {
                 })}
               </div>
             ))}
+            {!logsLoading && logs.test.length > 0 && (
+              <>
+                <div style={{ margin: "24px 0 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ flex: 1, height: 2, background: "rgba(255,255,255,0.15)" }} />
+                  <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "rgba(255,255,255,0.3)" }}>
+                    Test Agents
+                  </span>
+                  <div style={{ flex: 1, height: 2, background: "rgba(255,255,255,0.15)" }} />
+                </div>
+                {logs.test.map((person, i) => (
+                  <div key={i} style={{ borderTop: "1px solid rgba(255,255,255,0.07)", padding: "16px 0", opacity: 0.5 }}>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: "white", marginBottom: 10 }}>
+                      {person.name}
+                    </div>
+                    {person.games.map(g => {
+                      const sameDay = g.first.slice(0, 10) === g.last.slice(0, 10)
+                      const dateStr = sameDay ? shortDate(g.first) : `${shortDate(g.first)} – ${shortDate(g.last)}`
+                      const gameColor = GAMES.find(x => x.name === g.game || x.name.includes(g.game) || g.game.includes(x.name.replace("The ", "")))
+                      const bg = gameColor?.bg ?? "rgba(255,255,255,0.15)"
+                      const fg = gameColor?.color ?? "white"
+                      return (
+                        <div key={g.game} style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 8, flexWrap: "wrap" }}>
+                          <span style={{ background: bg, color: fg, fontSize: 12, fontWeight: 800, padding: "3px 8px", whiteSpace: "nowrap" }}>
+                            {g.game}
+                          </span>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: "white", whiteSpace: "nowrap" }}>
+                            {g.count}×
+                          </span>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.4)", whiteSpace: "nowrap" }}>
+                            {dateStr}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         </div>
       )}

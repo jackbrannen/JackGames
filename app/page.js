@@ -57,10 +57,8 @@ function saveProfile(profile) {
   document.cookie = `jackgames_profile=${encodeURIComponent(json)}; domain=.jackbrannen.com; max-age=31536000; path=/; SameSite=Lax`
 }
 
-function formatDate(ts) {
-  const d = new Date(ts)
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) +
-    " " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+function shortDate(ts) {
+  return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
 }
 
 const inputStyle = {
@@ -122,22 +120,25 @@ export default function Home() {
     setLogsLoading(true)
     try {
       const [fishbowl, gow, codenames, avalon] = await Promise.all([
-        supabase.from("players").select("first_name,last_name,game_code,created_at").order("created_at", { ascending: false }).limit(500),
-        supabase.from("gow_players").select("first_name,last_name,game_code,created_at").order("created_at", { ascending: false }).limit(500),
-        supabase.from("codenames_players").select("first_name,last_name,game_code,created_at").order("created_at", { ascending: false }).limit(500),
-        supabase.from("avalon_players").select("first_name,last_name,game_code,created_at").order("created_at", { ascending: false }).limit(500),
+        supabase.from("players").select("first_name,last_name,game_code,created_at").limit(2000),
+        supabase.from("gow_players").select("first_name,last_name,game_code,created_at").limit(2000),
+        supabase.from("codenames_players").select("first_name,last_name,game_code,created_at").limit(2000),
+        supabase.from("avalon_players").select("first_name,last_name,game_code,created_at").limit(2000),
       ])
 
-      // Group by game_code and track who played each session
-      const sessions = {}
+      // people[fullName][gameName] = { count, first, last }
+      const people = {}
 
       function addRows(rows, gameName) {
         for (const row of (rows ?? [])) {
           if (!row.first_name || !row.last_name) continue
-          const key = `${gameName}::${row.game_code}`
-          if (!sessions[key]) sessions[key] = { game: gameName, code: row.game_code, players: [], earliest: row.created_at }
-          sessions[key].players.push(`${row.first_name} ${row.last_name}`)
-          if (row.created_at < sessions[key].earliest) sessions[key].earliest = row.created_at
+          const name = `${row.first_name} ${row.last_name}`
+          if (!people[name]) people[name] = {}
+          if (!people[name][gameName]) people[name][gameName] = { count: 0, first: row.created_at, last: row.created_at }
+          const g = people[name][gameName]
+          g.count++
+          if (row.created_at < g.first) g.first = row.created_at
+          if (row.created_at > g.last) g.last = row.created_at
         }
       }
 
@@ -146,7 +147,17 @@ export default function Home() {
       addRows(codenames.data, "Codenames")
       addRows(avalon.data, "Avalon")
 
-      const sorted = Object.values(sessions).sort((a, b) => b.earliest > a.earliest ? 1 : -1)
+      // Sort people by total games played descending
+      const sorted = Object.entries(people)
+        .map(([name, games]) => ({
+          name,
+          games: Object.entries(games)
+            .map(([game, s]) => ({ game, ...s }))
+            .sort((a, b) => a.game.localeCompare(b.game)),
+          total: Object.values(games).reduce((sum, g) => sum + g.count, 0),
+        }))
+        .sort((a, b) => b.total - a.total)
+
       setLogs(sorted)
     } finally {
       setLogsLoading(false)
@@ -291,15 +302,25 @@ export default function Home() {
               </div>
             )}
 
-            {!logsLoading && logs.map((s, i) => (
-              <div key={i} style={{ borderTop: "1px solid rgba(255,255,255,0.1)", padding: "14px 0" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginBottom: 6 }}>
-                  <span style={{ fontSize: 16, fontWeight: 800, color: "white" }}>{s.game}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.35)", whiteSpace: "nowrap" }}>{formatDate(s.earliest)}</span>
+            {!logsLoading && logs.map((person, i) => (
+              <div key={i} style={{ borderTop: "1px solid rgba(255,255,255,0.1)", padding: "16px 0" }}>
+                <div style={{ fontSize: 17, fontWeight: 800, color: "white", marginBottom: 10 }}>
+                  {person.name}
                 </div>
-                <div style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", fontWeight: 600, lineHeight: 1.6 }}>
-                  {s.players.join(", ")}
-                </div>
+                {person.games.map(g => {
+                  const sameDay = g.first.slice(0, 10) === g.last.slice(0, 10)
+                  const dateStr = sameDay
+                    ? shortDate(g.first)
+                    : `${shortDate(g.first)} – ${shortDate(g.last)}`
+                  return (
+                    <div key={g.game} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, paddingBottom: 5 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.65)" }}>{g.game}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.35)", whiteSpace: "nowrap" }}>
+                        {g.count}× &nbsp;{dateStr}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             ))}
           </div>

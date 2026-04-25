@@ -10,30 +10,31 @@ const GAMES = [
     players: "4+ players",
     url: "https://fishbowl.jackbrannen.com",
     bg: "#3378FF",
+    color: "white",
   },
   {
     name: "The Game of What",
     description: "Like Quiplash but with DIY Questions.",
     players: "4+ players",
     url: "https://gameofwhat.jackbrannen.com",
-    bg: "#1a1a2e",
-    border: true,
+    bg: "#A02866",
+    color: "white",
   },
   {
     name: "Codenames",
     description: "Give one-word clues to reveal your team's cards.",
     players: "4+ players",
     url: "https://codenames.jackbrannen.com",
-    bg: "#1C1305",
-    border: true,
+    bg: "#C0B298",
+    color: "#2C1A0A",
   },
   {
     name: "Avalon",
     description: "Hidden roles — find the traitors before they sabotage the quests.",
     players: "5–10 players",
     url: "https://avalon.jackbrannen.com",
-    bg: "#0F1923",
-    border: true,
+    bg: "#C9A84C",
+    color: "#2A1800",
   },
 ]
 
@@ -68,10 +69,9 @@ export default function Home() {
             style={{
               display: "block",
               background: game.bg,
-              color: "white",
+              color: game.color,
               padding: "28px 28px",
               textDecoration: "none",
-              outline: game.border ? "1px solid rgba(255,255,255,0.15)" : "none",
             }}
           >
             <div style={{ fontSize: 26, fontWeight: 900, marginBottom: 6 }}>

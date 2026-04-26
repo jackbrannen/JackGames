@@ -31,6 +31,22 @@ const GAMES = [
     bg: "#C9A84C",
     color: "#2A1800",
   },
+  {
+    name: "First to Worst",
+    description: "Submit 5 things, rank them secretly, then the group guesses your order.",
+    players: "4+ players",
+    url: "https://firsttoworst.jackbrannen.com",
+    bg: "#1A3C34",
+    color: "white",
+  },
+  {
+    name: "Codenames",
+    description: "Two teams race to find their secret agents using one-word clues.",
+    players: "4+ players",
+    url: "https://codenames.jackbrannen.com",
+    bg: "#C0B298",
+    color: "#2C1A0A",
+  },
 ]
 
 const EXTERNAL_GAMES = [
@@ -40,13 +56,6 @@ const EXTERNAL_GAMES = [
     url: "https://secret-hitler.online",
     bg: "#C73B32",
     color: "white",
-  },
-  {
-    name: "Codenames",
-    players: "4+ players",
-    url: "https://codenames.game/r/mitud-gagin",
-    bg: "#C0B298",
-    color: "#2C1A0A",
   },
 ]
 
@@ -128,11 +137,12 @@ export default function Home() {
     setLogsOpen(true)
     setLogsLoading(true)
     try {
-      const [fishbowl, gow, codenames, avalon] = await Promise.all([
+      const [fishbowl, gow, codenames, avalon, ftw] = await Promise.all([
         supabase.from("players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("gow_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("codenames_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("avalon_players").select("first_name,last_name,game_code,created_at").limit(2000),
+        supabase.from("ftw_players").select("first_name,last_name,game_code,created_at").limit(2000),
       ])
 
       // people[fullName][gameName] = { count, first, last }
@@ -155,6 +165,7 @@ export default function Home() {
       addRows(gow.data, "Game of What")
       addRows(codenames.data, "Codenames")
       addRows(avalon.data, "Avalon")
+      addRows(ftw.data, "First to Worst")
 
       const toRows = entries => entries
         .map(([name, games]) => ({

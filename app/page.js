@@ -24,20 +24,29 @@ const GAMES = [
     color: "white",
   },
   {
-    name: "Codenames",
-    description: "Give one-word clues to reveal your team's cards.",
-    players: "4+ players",
-    url: "https://codenames.jackbrannen.com",
-    bg: "#C0B298",
-    color: "#2C1A0A",
-  },
-  {
     name: "Avalon",
     description: "Hidden roles — find the traitors before they sabotage the quests.",
     players: "5–10 players",
     url: "https://avalon.jackbrannen.com",
     bg: "#C9A84C",
     color: "#2A1800",
+  },
+]
+
+const EXTERNAL_GAMES = [
+  {
+    name: "Secret Hitler",
+    players: "5–10 players",
+    url: "https://secret-hitler.online",
+    bg: "#C73B32",
+    color: "white",
+  },
+  {
+    name: "Codenames",
+    players: "4+ players",
+    url: "https://codenames.game/r/mitud-gagin",
+    bg: "#C0B298",
+    color: "#2C1A0A",
   },
 ]
 
@@ -406,6 +415,35 @@ export default function Home() {
             </div>
             <div style={{ fontSize: 14, fontWeight: 600, opacity: 0.55, marginBottom: 4 }}>
               {game.description}
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.35, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+              {game.players}
+            </div>
+          </a>
+        ))}
+
+        <div style={{ marginTop: 32, marginBottom: 4 }}>
+          <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "rgba(255,255,255,0.35)" }}>
+            Free games elsewhere
+          </div>
+        </div>
+
+        {EXTERNAL_GAMES.map(game => (
+          <a
+            key={game.name}
+            href={game.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "block",
+              background: game.bg,
+              color: game.color,
+              padding: "28px 28px",
+              textDecoration: "none",
+            }}
+          >
+            <div style={{ fontSize: 26, fontWeight: 900, marginBottom: 6 }}>
+              {game.name}
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.35, textTransform: "uppercase", letterSpacing: "0.1em" }}>
               {game.players}

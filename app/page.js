@@ -423,7 +423,7 @@ export default function Home() {
         ))}
 
         <div style={{ marginTop: 32, marginBottom: 4 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "rgba(255,255,255,0.35)" }}>
+          <div style={{ fontSize: 22, fontWeight: 900, color: "rgba(255,255,255,0.6)" }}>
             Free games elsewhere
           </div>
         </div>

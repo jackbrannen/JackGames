@@ -47,6 +47,14 @@ const GAMES = [
     bg: "#C0B298",
     color: "#2C1A0A",
   },
+  {
+    name: "Telestrations",
+    description: "Write a sentence, draw it, guess the drawing — watch it fall apart.",
+    players: "5+ players",
+    url: "https://telestrations.jackbrannen.com",
+    bg: "#2B0F6B",
+    color: "white",
+  },
 ]
 
 const EXTERNAL_GAMES = [
@@ -137,12 +145,13 @@ export default function Home() {
     setLogsOpen(true)
     setLogsLoading(true)
     try {
-      const [fishbowl, gow, codenames, avalon, ftw] = await Promise.all([
+      const [fishbowl, gow, codenames, avalon, ftw, tel] = await Promise.all([
         supabase.from("players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("gow_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("codenames_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("avalon_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("ftw_players").select("first_name,last_name,game_code,created_at").limit(2000),
+        supabase.from("tel_players").select("first_name,last_name,game_code,created_at").eq("is_bot", false).limit(2000),
       ])
 
       // people[fullName][gameName] = { count, first, last }
@@ -166,6 +175,7 @@ export default function Home() {
       addRows(codenames.data, "Codenames")
       addRows(avalon.data, "Avalon")
       addRows(ftw.data, "First to Worst")
+      addRows(tel.data, "Telestrations")
 
       const toRows = entries => entries
         .map(([name, games]) => ({

@@ -36,7 +36,7 @@ const GAMES = [
     description: "Submit 5 things, rank them secretly, then the group guesses your order.",
     players: "4+ players",
     url: "https://firsttoworst.jackbrannen.com",
-    bg: "#1A3C34",
+    bg: "#004F45",
     color: "white",
   },
   {

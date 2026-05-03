@@ -16,7 +16,9 @@
     "coworker", "stranger", "tourist", "volunteer", "mentor", "therapist",
     "coach", "referee", "cashier", "waiter", "librarian", "janitor", "pilot",
     "conductor", "mechanic", "firefighter", "detective", "judge", "mayor",
-    "professor", "student", "retiree", "newlywed", "teenager"
+    "professor", "student", "retiree", "newlywed", "teenager",
+    "actor", "president", "inventor", "model", "action star", "dictator",
+    "cult leader", "athlete", "whistleblower"
   ],
   "places": [
     "basement", "petting zoo", "rooftop", "storage unit", "cemetery", "DMV",
@@ -88,7 +90,7 @@
     "orientation", "interview", "presentation", "performance", "recital",
     "tournament", "tryout", "audition", "election", "debate", "summit",
     "conference", "workshop", "seminar", "retreat", "staycation", "honeymoon",
-    "anniversary"
+    "anniversary", "crawfish boil", "quinceañera"
   ],
   "church & faith": [
     "sermon", "small group", "church discipline", "baptism", "communion",
@@ -109,7 +111,9 @@
     "late fee", "overdue library book", "banned", "blacklisted", "caught",
     "confession", "apology", "consequence", "hall pass", "tattletale", "snitch",
     "locker search", "principal's office", "community service", "house arrest",
-    "bail", "fine", "mugshot", "rap sheet", "escape"
+    "bail", "fine", "mugshot", "rap sheet", "escape",
+    "deposition", "restraining order", "background check",
+    "liability", "lawsuit", "HIPAA", "TSA"
   ],
   "hobbies": [
     "knitting", "woodworking", "painting", "sketching", "photography", "hiking",
@@ -121,7 +125,9 @@
     "video games", "podcasting", "blogging", "vlogging", "genealogy",
     "stargazing", "metal detecting", "coin collecting", "stamp collecting",
     "antiquing", "thrifting", "volunteering", "fostering", "beekeeping",
-    "composting", "foraging", "geocaching"
+    "composting", "foraging", "geocaching",
+    "WWE", "dumpster diving", "Dungeons & Dragons", "anime", "couponing",
+    "ghost-hunting", "stand-up comedy"
   ],
   "ailments & injuries": [
     "sunburn", "blister", "sprain", "black eye", "broken bone", "stitches",
@@ -133,7 +139,7 @@
     "poison ivy", "bee sting", "kidney stone", "migraine", "laryngitis",
     "vertigo", "nosebleed", "earache", "toothache", "cold sore", "canker sore",
     "heartburn", "back pain", "neck pain", "growing pains", "hypochondria",
-    "hypoglycemia", "dehydration", "fatigue", "burnout"
+    "hypoglycemia", "dehydration", "fatigue", "burnout", "hemorrhoids"
   ],
   "fictional scenarios": [
     "haunted house", "ghost", "serial killer", "zombie", "monster under the bed",
@@ -148,5 +154,44 @@
     "sea monster", "runaway train", "ticking bomb", "double cross", "hidden door",
     "secret passage", "unrequited love", "rival families", "star-crossed lovers",
     "fake death", "surprise heir"
+  ],
+  "PG spicy": [
+    "make-out session", "mooning", "streaking", "naked", "underwear", "wedgie",
+    "passion", "romantic rendezvous", "love letter", "Brazilian butt lift",
+    "tramp stamp", "mullet"
+  ],
+  "body parts & biology": [
+    "elbow", "belly button", "gut biome", "adrenaline", "fight or flight",
+    "chicken legs", "nostril", "umbilical cord", "knuckle"
+  ],
+  "stereotypes": [
+    "conservative", "liberal", "doomsday prepper", "Buddhist", "Methodist",
+    "Earth mother", "redneck", "granola", "communist", "socialist",
+    "fraternity", "sorority", "bad customer", "vegan", "nerd", "gym rat",
+    "nomad", "hoarder", "linebacker", "white people", "cult"
+  ],
+  "soap opera tropes": [
+    "amnesia", "coma", "paternity test", "poison", "slap", "stalker"
+  ],
+  "gross things": [
+    "diarrhea", "roadkill", "puke", "tapeworm", "dog poop", "placenta",
+    "dirty diaper"
+  ],
+  "action & fantasy tropes": [
+    "magic spell", "wizard", "princess", "castle",
+    "bomb", "disguise", "revenge", "zipline", "plane crash"
+  ],
+  "fears & phobias": [
+    "clown", "public speaking"
+  ],
+  "behaviors & outbursts": [
+    "road rage", "sleepwalking", "meltdown", "fist fight", "mudwrestling",
+    "swearing", "tickle", "Tourette's"
+  ],
+  "news & scandals": [
+    "Ponzi scheme", "epidemic", "fraud"
+  ],
+  "adjectives": [
+    "droopy", "saggy", "sticky", "stinky", "slippery"
   ]
 }

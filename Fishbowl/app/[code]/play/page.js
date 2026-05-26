@@ -1,0 +1,1065 @@
+"use client"
+
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
+import { supabase } from "../../../lib/supabase"
+import PokeSystem, { FOOTER_H } from "../../../components/PokeSystem"
+import GameModal from "../../../components/GameModal"
+
+const T1         = "#3378FF"  // page background blue
+const WARM_LIGHT = "#3399FF"
+const BOYS   = "#F97316"  // boys team orange
+const GIRLS  = "#C026D3"  // girls team fuchsia
+const YELLOW = "#FBDF54"
+const TEAL   = "#12BAAA"
+const RED    = "#F04F52"
+
+function _tone(ctx, freq, dur, vol = 0.06, type = "sine", delay = 0) {
+  const osc = ctx.createOscillator()
+  const g = ctx.createGain()
+  const t0 = ctx.currentTime + delay
+  osc.type = type; osc.frequency.value = freq
+  g.gain.setValueAtTime(vol, t0)
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + dur)
+  osc.connect(g); g.connect(ctx.destination)
+  osc.start(t0); osc.stop(t0 + dur)
+}
+function _sfx(fn) {
+  try { const c = new (window.AudioContext || window.webkitAudioContext)(); fn(c); setTimeout(() => c.close(), 600) } catch {}
+}
+function sfxCorrect()    { _sfx(c => { _tone(c, 660, 0.10, 0.07); _tone(c, 880, 0.18, 0.08, "sine", 0.09) }) }
+function sfxSkip()       { _sfx(c => { _tone(c, 370, 0.18, 0.05) }) }
+function sfxPause()      { _sfx(c => { _tone(c, 523, 0.08, 0.06); _tone(c, 392, 0.22, 0.05, "sine", 0.07) }) }
+function sfxResume()     { _sfx(c => { _tone(c, 392, 0.08, 0.05); _tone(c, 523, 0.18, 0.06, "sine", 0.07) }) }
+function sfxStartRound() { _sfx(c => { _tone(c, 440, 0.12, 0.06); _tone(c, 660, 0.20, 0.07, "sine", 0.11) }) }
+function sfxEndRound()   { _sfx(c => { _tone(c, 660, 0.12, 0.07); _tone(c, 440, 0.28, 0.06, "sine", 0.11) }) }
+function sfxEndTurn()    { _sfx(c => { _tone(c, 880, 0.22, 0.05, "square") }) }
+
+function CogIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+  )
+}
+
+function buildOnDeck(players, game, count = 4) {
+  const team1 = players.filter((p) => p.team === 1)
+  const team2 = players.filter((p) => p.team === 2)
+  let idx1 = game?.turn_index_team1 ?? 0
+  let idx2 = game?.turn_index_team2 ?? 0
+  const currentPlayer = players.find((p) => p.id === game?.turn_player_id)
+  let nextTeam = currentPlayer?.team ?? game?.turn_team ?? 1
+  const deck = []
+
+  for (let i = 0; i < count; i += 1) {
+    if (!team1.length && !team2.length) break
+    if (!team1.length) nextTeam = 2
+    if (!team2.length) nextTeam = 1
+
+    if (nextTeam === 1) {
+      const player = team1[idx1 % team1.length]
+      if (player) deck.push(player)
+      idx1 += 1
+      nextTeam = team2.length ? 2 : 1
+    } else {
+      const player = team2[idx2 % team2.length]
+      if (player) deck.push(player)
+      idx2 += 1
+      nextTeam = team1.length ? 1 : 2
+    }
+  }
+
+  return deck
+}
+
+function playChirp() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.frequency.setValueAtTime(523, ctx.currentTime)
+    osc.frequency.setValueAtTime(659, ctx.currentTime + 0.08)
+    gain.gain.setValueAtTime(0.25, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25)
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 0.25)
+  } catch {}
+}
+
+function clueTextSize(text) {
+  const len = text?.length ?? 0
+  if (len < 8) return 72
+  if (len < 14) return 58
+  if (len < 22) return 46
+  if (len < 32) return 36
+  return 28
+}
+
+
+const POKE_COLORS = { dark: "#0C47E9", mid: "#2357E7", wl: "#3399FF", yellow: "#FBDF54", notifBg: "#071A6B" }
+const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
+
+
+export default function Play({ params }) {
+  const router = useRouter()
+  const code = useMemo(() => params.code.toUpperCase(), [params.code])
+  const [myPlayerId, setMyPlayerId] = useState(null)
+  const [game, setGame] = useState(null)
+  const [playAgainError, setPlayAgainError] = useState(null)
+  const [players, setPlayers] = useState([])
+  const [activeClue, setActiveClue] = useState(null)
+  const [nextClue, setNextClue] = useState(null)
+  const [cluesInBowl, setCluesInBowl] = useState(0)
+  const [allClues, setAllClues] = useState([])
+  const [nowMs, setNowMs] = useState(Date.now())
+  const [manualT1, setManualT1] = useState("0")
+  const [manualT2, setManualT2] = useState("0")
+  const [roundsTotal, setRoundsTotal] = useState("3")
+  const [showGameSettings, setShowGameSettings] = useState(false)
+  const [showGameModal, setShowGameModal] = useState(false)
+  const [instructions, setInstructions] = useState("")
+  const showGameSettingsRef = useRef(false)
+  const endingRef = useRef(false)
+  const prevRunningRef = useRef(false)
+  const [dragX, setDragX] = useState(0)
+  const [dragging, setDragging] = useState(false)
+  const [flying, setFlying] = useState(null) // null | 'correct' | 'skip' | 'enter-from-left' | 'enter-from-right'
+  const dragStartX = useRef(0)
+  const dragStartY = useRef(0)
+  const dragDirection = useRef(null) // 'h' | 'v' | null
+  const dragXRef = useRef(0) // live drag position, readable in handleTouchEnd without stale closure
+  const cardRef = useRef(null) // imperative handle to card DOM node for Web Animations API
+  const correctPanelRef = useRef(null)
+  const skipPanelRef = useRef(null)
+  const animatingRef = useRef(false) // true during swipe animation — prevents stale loadState from clobbering prefetched clue
+  const loadEpochRef = useRef(0)     // incremented on every loadState call; stale completions are discarded
+  const soundTriggerRef = useRef(null)
+
+  useEffect(() => {
+    if (!game || !myPlayerId) return
+    const prev = soundTriggerRef.current
+    soundTriggerRef.current = game.phase
+    if (!prev) return
+    if (prev !== game.phase) playChirp()
+  }, [game?.phase])
+
+  useEffect(() => {
+    supabase.from("game_instructions").select("body").eq("game_key", "fishbowl").single()
+      .then(({ data }) => { if (data) setInstructions(data.body) })
+  }, [])
+
+  useEffect(() => {
+    const existing = localStorage.getItem(`fishbowl:${code}:playerId`)
+    if (existing) setMyPlayerId(existing)
+  }, [code])
+
+  async function loadState() {
+    const epoch = ++loadEpochRef.current
+
+    // ── 1. Fetch all data before touching any state ──────────────────────────
+    const { data: gameData } = await supabase
+      .from("games")
+      .select(
+        "code,phase,locked,round_index,rounds_total,turn_team,turn_player_id,turn_running,turn_started_at,turn_duration_seconds,turn_seconds_remaining,turn_index_team1,turn_index_team2,team1_score,team2_score,skip_mode,skip_limit,skip_penalty,turn_skips_used,turn_skipped_clue_ids,active_clue_id,turn_new_round_continuation,turn_paused,next_game"
+      )
+      .eq("code", code)
+      .single()
+
+    if (!gameData) return
+
+    const { data: playerData } = await supabase
+      .from("players")
+      .select("id,name,team,ready,created_at,time_bank_seconds")
+      .eq("game_code", code)
+      .order("created_at", { ascending: true })
+
+    let clueData = null
+    let nextData = null
+    if (gameData.active_clue_id && !animatingRef.current) {
+      const { data: cd } = await supabase
+        .from("clues")
+        .select("id,text")
+        .eq("id", gameData.active_clue_id)
+        .single()
+      clueData = cd ?? null
+
+      if (gameData.turn_running) {
+        const { data: nd } = await supabase
+          .from("clues")
+          .select("id,text")
+          .eq("game_code", code)
+          .eq("status", "in_bowl")
+          .neq("id", gameData.active_clue_id)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle()
+        nextData = nd ?? null
+      }
+    }
+
+    let clueCount = null
+    if (gameData.phase === "play") {
+      const { count } = await supabase
+        .from("clues")
+        .select("id", { count: "exact", head: true })
+        .eq("game_code", code)
+        .eq("status", "in_bowl")
+      clueCount = count ?? 0
+    }
+
+    let allCluesData = null
+    if (gameData.phase === "finished") {
+      const { data: clues } = await supabase
+        .from("clues")
+        .select("id,text,player_id,status,used_in_round")
+        .eq("game_code", code)
+        .order("created_at", { ascending: true })
+      allCluesData = clues ?? []
+    }
+
+    // ── 2. Discard if a newer loadState has started ──────────────────────────
+    if (loadEpochRef.current !== epoch) return
+
+    // ── 3. Apply all state updates together (React batches into one render) ──
+    setGame(gameData)
+    setPlayers(playerData ?? [])
+    if (!showGameSettingsRef.current) {
+      setManualT1(String(gameData.team1_score ?? 0))
+      setManualT2(String(gameData.team2_score ?? 0))
+      setRoundsTotal(String(gameData.rounds_total ?? 3))
+    }
+
+    if (!animatingRef.current) {
+      if (gameData.active_clue_id) {
+        setActiveClue(clueData)
+        setNextClue(nextData)
+      } else {
+        setActiveClue(null)
+        setNextClue(null)
+      }
+    }
+
+    if (clueCount !== null) setCluesInBowl(clueCount)
+    if (allCluesData !== null) setAllClues(allCluesData)
+
+    if (prevRunningRef.current && !gameData.turn_running) sfxEndTurn()
+    prevRunningRef.current = !!gameData.turn_running
+  }
+
+  useEffect(() => {
+    loadState()
+    let poll = setInterval(loadState, 1500)
+    function handleVisibility() { clearInterval(poll); if (!document.hidden) { loadState(); poll = setInterval(loadState, 1500) } }
+    document.addEventListener("visibilitychange", handleVisibility)
+    const ticker = setInterval(() => setNowMs(Date.now()), 300)
+    return () => { clearInterval(poll); clearInterval(ticker); document.removeEventListener("visibilitychange", handleVisibility) }
+  }, [code])
+
+  // Redirect everyone back to lobby when a Play Again reset happens (detected via poll)
+  useEffect(() => {
+    if (game?.phase === "lobby") router.replace(`/${code}`)
+  }, [game?.phase])
+
+  useEffect(() => {
+    if (!game?.next_game) return
+    window.location.href = `https://${game.next_game}.jackbrannen.com/`
+  }, [game?.next_game])
+
+  useEffect(() => {
+    if (!game?.turn_running) {
+      if (cardRef.current) cardRef.current.style.transform = ""
+      setDragX(0)
+      setDragging(false)
+      setFlying(null)
+      dragDirection.current = null
+      dragXRef.current = 0
+    }
+  }, [game?.turn_running])
+
+  const me = players.find((p) => p.id === myPlayerId)
+
+  // ── PokeSystem (always mounted for notifications) ──────────────────────────
+  const pokeSystemNode = me ? (
+    <PokeSystem
+      colors={POKE_COLORS}
+      roomCode={code}
+      currentPlayer={me.name}
+      allPlayers={players.map(p => p.name)}
+      playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, team: p.team, teamColor: p.team === 1 ? BOYS : p.team === 2 ? GIRLS : undefined, teamLabel: p.team === 1 ? "Team 1" : p.team === 2 ? "Team 2" : undefined }))}
+      gamePhase={game?.phase}
+      timerRunning={!!game?.turn_running}
+      rules={instructions ? [["How to Play", instructions]] : null}
+      onResetToLobby={async () => { await supabase.rpc("reset_game_for_replay", { p_code: code }) }}
+    />
+  ) : null
+
+  const currentActor = players.find((p) => p.id === game?.turn_player_id)
+  const isMyTurn = !!me && !!game?.turn_player_id && game.turn_player_id === me.id
+  const isPaused = !!game && !!game.turn_paused
+
+  const secondsRemaining = useMemo(() => {
+    if (!game) return 0
+    if (!game.turn_running || !game.turn_started_at) return game.turn_seconds_remaining ?? 0
+    const elapsed = Math.floor((nowMs - new Date(game.turn_started_at).getTime()) / 1000)
+    return Math.max(0, (game.turn_seconds_remaining ?? 0) - elapsed)
+  }, [game, nowMs])
+
+  useEffect(() => {
+    if (!game?.turn_running || !isMyTurn || secondsRemaining > 0 || !game.active_clue_id || endingRef.current) return
+    endingRef.current = true
+    ;(async () => {
+      try {
+        await supabase.rpc("end_turn", { p_code: code, p_reason: "time" })
+        await loadState()
+      } finally { endingRef.current = false }
+    })()
+  }, [code, game?.turn_running, isMyTurn, secondsRemaining])
+
+  useEffect(() => {
+    if (!game?.turn_running || !isMyTurn || game?.active_clue_id || endingRef.current) return
+    endingRef.current = true
+    ;(async () => {
+      try {
+        if (secondsRemaining >= 3) {
+          await supabase.rpc("pause_for_new_round", { p_code: code, p_player_id: me.id })
+        } else {
+          await supabase.rpc("end_turn_new_round", { p_code: code })
+        }
+        await loadState()
+      } finally { endingRef.current = false }
+    })()
+  }, [code, game?.turn_running, isMyTurn, game?.active_clue_id, secondsRemaining])
+
+  const onDeck = useMemo(() => buildOnDeck(players, game), [players, game])
+
+  async function saveScoreAndSettings() {
+    await supabase
+      .from("games")
+      .update({
+        team1_score: Number(manualT1) || 0,
+        team2_score: Number(manualT2) || 0,
+        rounds_total: Math.max(1, Number(roundsTotal) || 1),
+      })
+      .eq("code", code)
+    await loadState()
+  }
+
+  async function doStartRound() {
+    sfxStartRound()
+    await supabase.rpc("start_round", { p_code: code })
+    await loadState()
+  }
+
+  async function doStartTurn() {
+    if (!me) return
+    if (isPaused) {
+      sfxResume()
+      await supabase.rpc("resume_turn", { p_code: code, p_player_id: me.id })
+    } else {
+      await supabase.rpc("start_turn", { p_code: code, p_player_id: me.id })
+    }
+    await loadState()
+  }
+
+  async function doCorrect() {
+    if (!activeClue || !me) return null
+    sfxCorrect()
+    const { data } = await supabase.rpc("score_correct", { p_code: code, p_clue_id: activeClue.id, p_team: me.team })
+    return data?.[0] ? { id: data[0].new_clue_id, text: data[0].new_clue_text } : null
+  }
+
+  async function doSkip() {
+    if (!activeClue) return null
+    sfxSkip()
+    const { data } = await supabase.rpc("skip_clue", { p_code: code, p_clue_id: activeClue.id })
+    return data?.[0] ? { id: data[0].new_clue_id, text: data[0].new_clue_text } : null
+  }
+
+  async function doEndTurn(reason = "manual") {
+    await supabase.rpc("end_turn", { p_code: code, p_reason: reason })
+    await loadState()
+  }
+
+  async function doPassTurn() {
+    if (!me) return
+    await supabase.rpc("pass_turn", { p_code: code, p_player_id: me.id })
+    await loadState()
+  }
+
+  async function doEndRound() {
+    sfxEndRound()
+    await supabase.rpc("end_round", { p_code: code })
+    await loadState()
+  }
+
+  async function doPause() {
+    if (!me) return
+    sfxPause()
+    await supabase.rpc("pause_turn", { p_code: code, p_player_id: me.id })
+    await loadState()
+  }
+
+  async function doContinueTurn() {
+    if (!me) return
+    await supabase.rpc("start_round", { p_code: code })
+    await supabase.rpc("start_turn", { p_code: code, p_player_id: me.id })
+    await loadState()
+  }
+
+  async function pickNextGame(gameSub) {
+    await supabase.from("games").update({ next_game: gameSub }).eq("code", code)
+  }
+
+  async function doPlayAgain() {
+    setPlayAgainError(null)
+    const { error } = await supabase.rpc("reset_game_for_replay", { p_code: code })
+    if (error) {
+      setPlayAgainError(error.message)
+      return
+    }
+    router.replace(`/${code}`)
+  }
+
+  if (!game) {
+    return (
+      <>
+      <div style={{ minHeight: "100dvh", background: T1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ color: "white", fontSize: 22, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" }}>Loading…</p>
+      </div>
+        {pokeSystemNode}
+      </>
+    )
+  }
+
+  const skipDisabled = !activeClue || cluesInBowl <= 1 || (game.skip_limit > 0 && game.turn_skips_used >= game.skip_limit)
+
+  const SWIPE_THRESHOLD = 80
+
+  // Run a Web Animations API animation and commit the end state to inline style
+  async function runAnim(el, keyframes, options) {
+    const anim = el.animate(keyframes, { ...options, fill: "forwards" })
+    await anim.finished
+    anim.commitStyles()
+    anim.cancel()
+  }
+
+  function handleTouchStart(e) {
+    dragStartX.current = e.touches[0].clientX
+    dragStartY.current = e.touches[0].clientY
+    dragDirection.current = null
+    setDragging(true)
+  }
+
+  function setPanelSide(showCorrect) {
+    if (correctPanelRef.current) correctPanelRef.current.style.zIndex = showCorrect ? 1 : 0
+    if (skipPanelRef.current) skipPanelRef.current.style.zIndex = showCorrect ? 0 : 1
+  }
+
+  function handleTouchMove(e) {
+    const dx = e.touches[0].clientX - dragStartX.current
+    const dy = e.touches[0].clientY - dragStartY.current
+    if (dragDirection.current === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+      dragDirection.current = Math.abs(dx) > Math.abs(dy) ? "h" : "v"
+    }
+    if (dragDirection.current === "h") {
+      e.preventDefault()
+      const newDragX = dx < 0 && skipDisabled ? dx / 4 : dx
+      dragXRef.current = newDragX
+      setDragX(newDragX) // for panel active-state scaling only
+      if (cardRef.current) cardRef.current.style.transform = `translateX(${newDragX}px)`
+      setPanelSide(newDragX >= 0) // keep panel z-index in sync without waiting for React
+    }
+  }
+
+  async function handleTouchEnd() {
+    const dx = dragXRef.current
+    const dir = dragDirection.current
+    dragDirection.current = null
+    dragXRef.current = 0
+    setDragging(false)
+
+    const card = cardRef.current
+    if (!card) { setDragX(0); return }
+
+    if (dir === "h") {
+      if (dx >= SWIPE_THRESHOLD && activeClue) {
+        animatingRef.current = true
+        setFlying("correct")
+        const actionPromise = doCorrect() // concurrent with fly-off animation
+        await runAnim(card,
+          [{ transform: `translateX(${dx}px)` }, { transform: "translateX(110%)" }],
+          { duration: 180, easing: "ease-in" }
+        )
+        const serverClue = await actionPromise // almost always already resolved
+        setActiveClue(serverClue ?? nextClue)
+        setDragX(0)
+        setFlying("enter-from-left")
+        card.style.transform = "translateX(-110%)"
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+        await runAnim(card,
+          [{ transform: "translateX(-110%)" }, { transform: "translateX(0)" }],
+          { duration: 280, easing: "cubic-bezier(0.25, 1, 0.5, 1)" }
+        )
+        card.style.transform = ""
+        setFlying(null)
+        animatingRef.current = false
+        loadState()
+        return
+      } else if (dx <= -SWIPE_THRESHOLD && !skipDisabled) {
+        animatingRef.current = true
+        setFlying("skip")
+        const actionPromise = doSkip() // concurrent with fly-off animation
+        await runAnim(card,
+          [{ transform: `translateX(${dx}px)` }, { transform: "translateX(-110%)" }],
+          { duration: 180, easing: "ease-in" }
+        )
+        const serverClue = await actionPromise // almost always already resolved
+        setActiveClue(serverClue ?? nextClue)
+        setDragX(0)
+        setFlying("enter-from-right")
+        card.style.transform = "translateX(110%)"
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))
+        await runAnim(card,
+          [{ transform: "translateX(110%)" }, { transform: "translateX(0)" }],
+          { duration: 280, easing: "cubic-bezier(0.25, 1, 0.5, 1)" }
+        )
+        card.style.transform = ""
+        setFlying(null)
+        animatingRef.current = false
+        loadState()
+        return
+      }
+    }
+
+    // Snap back with spring bounce
+    await runAnim(card,
+      [{ transform: `translateX(${dx}px)` }, { transform: "translateX(0)" }],
+      { duration: 280, easing: "cubic-bezier(0.25, 1, 0.5, 1)" }
+    )
+    card.style.transform = ""
+    setDragX(0)
+  }
+
+  const timerUrgent = secondsRemaining <= 5
+
+  return (
+    <>
+    <div style={{ minHeight: "100dvh", background: T1, color: "white", display: "flex", flexDirection: "column" }}>
+
+      {/* Top bar: scores + round */}
+      <div style={{ padding: "16px 20px", background: "#0C47E9", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexShrink: 0 }}>
+
+        <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+          <div style={{ textAlign: "center", minWidth: 40 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.75, marginBottom: 2 }}>Round</div>
+            <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1 }}>
+              {game.round_index ?? 1}<span style={{ opacity: 0.65, fontWeight: 600 }}>/{game.rounds_total ?? 3}</span>
+            </div>
+          </div>
+          {game.phase === "play" && (
+            <div style={{ textAlign: "center", minWidth: 40 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.75, marginBottom: 2 }}>Clues Left</div>
+              <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1 }}>{cluesInBowl}</div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.75, marginBottom: 2 }}>Boys</div>
+            <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, color: currentActor?.team === 1 && game.phase !== "finished" ? YELLOW : "white" }}>
+              {game.team1_score ?? 0}
+            </div>
+          </div>
+          <div style={{ fontSize: 20, opacity: 0.2, fontWeight: 300 }}>–</div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.75, marginBottom: 2 }}>Girls</div>
+            <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, color: currentActor?.team === 2 && game.phase !== "finished" ? YELLOW : "white" }}>
+              {game.team2_score ?? 0}
+            </div>
+          </div>
+        </div>
+
+        {!game.turn_running && (
+          <button
+            onClick={() => setShowGameSettings((s) => { showGameSettingsRef.current = !s; return !s })}
+            style={{ background: WARM_LIGHT, color: "white", padding: "8px 12px", minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            {showGameSettings ? <span style={{ fontSize: 16, lineHeight: 1 }}>✕</span> : <CogIcon />}
+          </button>
+        )}
+      </div>
+
+      {/* Settings panel */}
+      {showGameSettings && !game.turn_running && (
+        <div style={{ padding: "16px 20px", background: "#0C47E9", flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+              Boys
+              <input
+                value={manualT1}
+                onChange={(e) => setManualT1(e.target.value)}
+                style={{ background: WARM_LIGHT, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }}
+              />
+            </label>
+            <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+              Girls
+              <input
+                value={manualT2}
+                onChange={(e) => setManualT2(e.target.value)}
+                style={{ background: WARM_LIGHT, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }}
+              />
+            </label>
+            <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+              Rounds
+              <input
+                value={roundsTotal}
+                onChange={(e) => setRoundsTotal(e.target.value)}
+                style={{ background: WARM_LIGHT, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }}
+              />
+            </label>
+            <button
+              onClick={saveScoreAndSettings}
+              style={{ background: YELLOW, color: "#000", fontSize: 14, fontWeight: 900, padding: "8px 16px" }}
+            >
+              Save
+            </button>
+            {game.phase === "between_rounds" && game.round_index < game.rounds_total && (
+              <button
+                onClick={doStartRound}
+                style={{ background: YELLOW, color: "#000", fontSize: 14, fontWeight: 900, padding: "8px 16px" }}
+              >
+                Start Round
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Turn banner */}
+      {(game.phase === "play" || game.phase === "between_rounds") && currentActor && (
+        <div style={{
+          background: currentActor.team === 1 ? BOYS : GIRLS,
+          padding: "14px 20px",
+          textAlign: "center",
+          flexShrink: 0,
+        }}>
+          <div style={{ fontSize: 22, fontWeight: 900, color: "white", letterSpacing: "0.04em" }}>
+            {currentActor.team === 1 ? "Boys' Turn" : "Girls' Turn"}
+            {!isMyTurn && (
+              <span style={{ fontWeight: 600, opacity: 0.85 }}>
+                {me?.team === currentActor.team ? " — Guess!" : " — Don't Guess!"}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Main content */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+
+        {/* GAME OVER */}
+        {game.phase === "finished" && (
+          <div style={{ padding: "40px 24px 48px", flex: 1 }}>
+            <div style={{ fontSize: "clamp(56px, 16vw, 88px)", fontWeight: 900, textTransform: "uppercase", lineHeight: 0.9, marginBottom: 32 }}>
+              Game<br />Over
+            </div>
+
+            <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.6, marginBottom: 8 }}>Winner</div>
+            <div style={{ fontSize: 52, fontWeight: 900, lineHeight: 1, marginBottom: 8 }}>
+              {game.team1_score === game.team2_score
+                ? "Tie!"
+                : game.team1_score > game.team2_score
+                  ? "Boys"
+                  : "Girls"}
+            </div>
+            <div style={{ fontSize: 18, opacity: 0.65, fontWeight: 600, marginBottom: 48 }}>
+              {game.team1_score} – {game.team2_score}
+            </div>
+
+            <button
+              onClick={doPlayAgain}
+              style={{
+                background: YELLOW,
+                color: "#000",
+                fontSize: 22,
+                fontWeight: 900,
+                padding: "22px 32px",
+                width: "100%",
+                display: "block",
+                marginBottom: playAgainError ? 12 : 48,
+              }}
+            >
+              Play Again
+            </button>
+            {playAgainError && (
+              <div style={{ fontSize: 13, color: "rgba(0,0,0,0.7)", background: YELLOW, padding: "10px 16px", marginBottom: 36, fontWeight: 700 }}>
+                Error: {playAgainError}
+              </div>
+            )}
+
+            <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 16 }}>All Clues</div>
+            {players.filter((p) => allClues.some((c) => c.player_id === p.id)).map((player) => (
+              <div key={player.id} style={{ marginBottom: 28 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.6, marginBottom: 8 }}>{player.name}</div>
+                {allClues.filter((c) => c.player_id === player.id).map((clue) => (
+                  <div key={clue.id} style={{ padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.15)", fontSize: 17, fontWeight: 700 }}>
+                    {clue.text}
+                  </div>
+                ))}
+              </div>
+            ))}
+
+            <div style={{ marginTop: 16 }}>
+              <button onClick={() => setShowGameModal(true)}
+                style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
+                Play Another Game
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ROUND BEGINNING */}
+        {game.phase === "between_rounds" && (
+          <div style={{ padding: "40px 24px 48px", flex: 1, display: "flex", flexDirection: "column" }}>
+            <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.75, marginBottom: 12 }}>
+              New Round
+            </div>
+            <div style={{ fontSize: "clamp(44px, 12vw, 72px)", fontWeight: 900, lineHeight: 1, marginBottom: 4, whiteSpace: "nowrap" }}>
+              Round {game.round_index ?? 1}
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 700, opacity: 0.6, marginBottom: 48 }}>
+              of {game.rounds_total ?? 3}
+            </div>
+
+            {!showGameSettings && (
+              <div style={{ marginTop: 48 }}>
+                {game.turn_new_round_continuation && isMyTurn && me?.time_bank_seconds != null ? (
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.75, marginBottom: 12 }}>
+                      Your turn continues!
+                    </div>
+                    <div style={{ fontSize: 96, fontWeight: 900, lineHeight: 1, marginBottom: 4 }}>
+                      {me.time_bank_seconds}<span style={{ fontSize: 36, fontWeight: 600, opacity: 0.6 }}>s</span>
+                    </div>
+                    <div style={{ fontSize: 15, opacity: 0.65, fontWeight: 600, marginBottom: 32 }}>
+                      left on your clock
+                    </div>
+                    <button
+                      onClick={doContinueTurn}
+                      style={{ background: YELLOW, color: "#000", fontSize: 26, fontWeight: 900, padding: "24px 32px", width: "100%", display: "block" }}
+                    >
+                      Continue Turn
+                    </button>
+                  </div>
+                ) : game.turn_new_round_continuation ? (
+                  (() => {
+                    const actor = players.find((p) => p.id === game.turn_player_id)
+                    return (
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ fontSize: 16, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.75, marginBottom: 12 }}>
+                          Turn continues
+                        </div>
+                        <div style={{ fontSize: 36, fontWeight: 900, lineHeight: 1.1, marginBottom: 8 }}>
+                          {actor?.name ?? "Someone"}
+                        </div>
+                        {actor?.time_bank_seconds != null && (
+                          <>
+                            <div style={{ fontSize: 64, fontWeight: 900, lineHeight: 1, marginBottom: 4 }}>
+                              {actor.time_bank_seconds}<span style={{ fontSize: 24, fontWeight: 600, opacity: 0.6 }}>s</span>
+                            </div>
+                            <div style={{ fontSize: 14, opacity: 0.6, fontWeight: 600 }}>
+                              left on their clock
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )
+                  })()
+                ) : isMyTurn ? (
+                  <button
+                    onClick={doStartRound}
+                    style={{ background: YELLOW, color: "#000", fontSize: 26, fontWeight: 900, padding: "24px 32px", width: "100%", display: "block" }}
+                  >
+                    Begin My Turn
+                  </button>
+                ) : (
+                  <div style={{ fontSize: 16, fontWeight: 700, opacity: 0.65, textAlign: "center" }}>
+                    Waiting for {currentActor?.name ?? "next player"}…
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MY TURN */}
+        {game.phase === "play" && isMyTurn && (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px", paddingBottom: "max(20px, env(safe-area-inset-bottom, 20px))" }}>
+
+            {!game.turn_running ? (
+              /* Pre-turn or paused */
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, textAlign: "center" }}>
+                {isPaused ? (
+                  /* PAUSED */
+                  <>
+                    <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.6 }}>Paused</div>
+                    <div style={{ fontSize: 96, fontWeight: 900, lineHeight: 1 }}>
+                      {secondsRemaining}<span style={{ fontSize: 36, fontWeight: 600, opacity: 0.6 }}>s</span>
+                    </div>
+                    <button
+                      onClick={doStartTurn}
+                      style={{ background: YELLOW, color: "#000", fontSize: 28, fontWeight: 900, padding: "28px 32px", width: "100%", display: "block" }}
+                    >
+                      Resume Turn
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.6 }}>Your Turn</div>
+                    <div style={{ fontSize: 56, fontWeight: 900, lineHeight: 1 }}>Ready?</div>
+
+                    <button
+                      onClick={doStartTurn}
+                      style={{ background: YELLOW, color: "#000", fontSize: 28, fontWeight: 900, padding: "28px 32px", width: "100%", display: "block" }}
+                    >
+                      Start Turn
+                    </button>
+
+                    {players.filter(p => p.team === me.team).length > 1 && (
+                      <button
+                        onClick={doPassTurn}
+                        style={{ background: WARM_LIGHT, color: "white", fontSize: 16, fontWeight: 700, padding: "16px 24px", width: "100%", display: "block" }}
+                      >
+                        Pass turn to another teammate
+                      </button>
+                    )}
+
+                    <div style={{ opacity: 0.65, fontSize: 14, fontWeight: 600, width: "100%", display: "flex", justifyContent: "space-between" }}>
+                      <div>← Swipe left for Skip</div>
+                      <div>Swipe right for Correct →</div>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              /* Turn running */
+              <>
+                {/* Timer */}
+                <div style={{
+                  fontSize: 96,
+                  fontWeight: 900,
+                  lineHeight: 1,
+                  color: timerUrgent ? YELLOW : "white",
+                  marginBottom: 8,
+                  flexShrink: 0,
+                }}>
+                  {secondsRemaining}
+                </div>
+
+                {/* Clue — swipeable */}
+                {(() => {
+                  const showingCorrect =
+                    flying === "correct" || flying === "enter-from-left" ? true :
+                    flying === "skip" || flying === "enter-from-right" ? false :
+                    dragX >= 0
+                  const correctActive = flying === "correct" || dragX >= SWIPE_THRESHOLD
+                  const skipActive = flying === "skip" || dragX <= -SWIPE_THRESHOLD
+                  return (
+                    <div style={{ flex: 1, position: "relative", overflow: "hidden", userSelect: "none", marginBottom: 16 }}>
+
+                      {/* Correct panel — left-aligned, green, behind card when swiping right */}
+                      <div ref={correctPanelRef} style={{
+                        position: "absolute", inset: 0, background: "#22C55E",
+                        display: "flex", alignItems: "center", paddingLeft: 28,
+                        zIndex: showingCorrect ? 1 : 0,
+                      }}>
+                        <span style={{
+                          fontSize: 30, fontWeight: 900, color: "white", textTransform: "uppercase", letterSpacing: "0.06em",
+                          transform: correctActive ? "scale(1.12)" : "scale(1)",
+                          transition: "transform 120ms ease",
+                          display: "block",
+                        }}>✓ Correct</span>
+                      </div>
+
+                      {/* Skip panel — right-aligned, dark, behind card when swiping left */}
+                      <div ref={skipPanelRef} style={{
+                        position: "absolute", inset: 0, background: "#1e1e2e",
+                        display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 28,
+                        zIndex: showingCorrect ? 0 : 1,
+                      }}>
+                        <span style={{
+                          fontSize: 30, fontWeight: 900, color: skipDisabled ? "rgba(255,255,255,0.3)" : "white", textTransform: "uppercase", letterSpacing: "0.06em",
+                          transform: skipActive ? "scale(1.12)" : "scale(1)",
+                          transition: "transform 120ms ease",
+                          display: "block",
+                          textDecoration: skipDisabled ? "line-through" : "none",
+                        }}>Skip ✕</span>
+                      </div>
+
+                      {/* Clue card — position driven imperatively via cardRef, not React state */}
+                      <div
+                        ref={cardRef}
+                        onTouchStart={handleTouchStart}
+                        onTouchMove={handleTouchMove}
+                        onTouchEnd={handleTouchEnd}
+                        style={{
+                          position: "absolute", inset: 0, zIndex: 2,
+                          background: T1,
+                          display: "flex", alignItems: "center", padding: "0 4px",
+                          willChange: "transform",
+                        }}
+                      >
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {cluesInBowl === 1 && activeClue && (
+                            <div style={{
+                              fontSize: 14,
+                              fontWeight: 800,
+                              textTransform: "uppercase",
+                              letterSpacing: "0.15em",
+                              opacity: 0.75,
+                            }}>
+                              Last clue left!
+                            </div>
+                          )}
+                          <div style={{
+                            fontSize: clueTextSize(activeClue?.text),
+                            fontWeight: 900,
+                            lineHeight: 1.1,
+                            letterSpacing: "-0.5px",
+                            wordBreak: "break-word",
+                          }}>
+                            {activeClue?.text ?? ""}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Action buttons */}
+                <div style={{ display: "grid", gap: 8, flexShrink: 0 }}>
+                  <button
+                    onClick={async () => {
+                      animatingRef.current = true
+                      setActiveClue(null)
+                      const newClue = await doCorrect()
+                      setActiveClue(newClue)
+                      animatingRef.current = false
+                      loadState()
+                    }}
+                    disabled={!activeClue}
+                    style={{
+                      background: TEAL,
+                      color: "white",
+                      fontSize: 28,
+                      fontWeight: 900,
+                      padding: "28px 16px",
+                      width: "100%",
+                      display: "block",
+                    }}
+                  >
+                    Correct
+                  </button>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                    <button
+                      onClick={async () => {
+                        animatingRef.current = true
+                        setActiveClue(null)
+                        const newClue = await doSkip()
+                        setActiveClue(newClue)
+                        animatingRef.current = false
+                        loadState()
+                      }}
+                      disabled={skipDisabled}
+                      style={{ background: WARM_LIGHT, color: "white", fontSize: 16, fontWeight: 800, padding: "18px 8px", textDecoration: skipDisabled ? "line-through" : "none" }}
+                    >
+                      {game.skip_penalty < 0 ? `Skip (${game.skip_penalty})` : "Skip"}
+                    </button>
+                    <button
+                      onClick={doPause}
+                      style={{ background: WARM_LIGHT, color: "white", fontSize: 16, fontWeight: 800, padding: "18px 8px" }}
+                    >
+                      Pause
+                    </button>
+                    <button
+                      onClick={() => doEndTurn(activeClue ? "manual" : "pause_no_clues")}
+                      style={{ background: RED, color: "white", fontSize: 16, fontWeight: 800, padding: "18px 8px" }}
+                    >
+                      End Early
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* WATCHING (not my turn, turn running) */}
+        {game.phase === "play" && !isMyTurn && (
+          <div style={{ flex: 1, padding: "32px 24px 40px", display: "flex", flexDirection: "column" }}>
+            <div style={{ marginBottom: 40 }}>
+              {isPaused && (
+                <div style={{ fontSize: 38, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.08em", color: YELLOW, marginBottom: 10 }}>
+                  ⏸ Paused
+                </div>
+              )}
+              {!isPaused && (
+                <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 10 }}>
+                  Playing Now
+                </div>
+              )}
+              <div style={{ fontSize: "clamp(44px, 12vw, 64px)", fontWeight: 900, lineHeight: 1, marginBottom: 12 }}>
+                {currentActor?.name ?? "—"}
+              </div>
+              {game.turn_running && (
+                <div style={{ fontSize: 64, fontWeight: 900, lineHeight: 1, color: timerUrgent ? YELLOW : "rgba(255,255,255,0.85)" }}>
+                  {secondsRemaining}
+                  <span style={{ fontSize: 22, fontWeight: 600, opacity: 0.65 }}>s</span>
+                </div>
+              )}
+              {isPaused && (
+                <div style={{ fontSize: 64, fontWeight: 900, lineHeight: 1, opacity: 0.85 }}>
+                  {secondsRemaining}
+                  <span style={{ fontSize: 22, fontWeight: 600, opacity: 0.65 }}>s</span>
+                </div>
+              )}
+            </div>
+
+            {onDeck.length > 1 && (
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 14 }}>
+                  Up Next
+                </div>
+                {onDeck.slice(1).map((p, idx) => (
+                  <div
+                    key={`${p.id}-${idx}`}
+                    style={{ padding: "14px 0", borderBottom: "1px solid rgba(255,255,255,0.12)", display: "flex", alignItems: "center", gap: 12 }}
+                  >
+                    <div style={{ width: 10, height: 10, borderRadius: "50%", background: p.team === 1 ? BOYS : GIRLS, flexShrink: 0, outline: "2px solid rgba(255,255,255,0.3)" }} />
+                    <span style={{ fontSize: 20, fontWeight: 700 }}>{p.name}</span>
+                    <span style={{ fontSize: 13, opacity: 0.65, fontWeight: 600 }}>{p.team === 1 ? "Boys" : "Girls"}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>
+    </div>
+      {pokeSystemNode}
+      {showGameModal && (
+        <GameModal
+          onClose={() => setShowGameModal(false)}
+          onSelect={sub => pickNextGame(sub)}
+          currentSub="fishbowl"
+        />
+      )}
+    </>
+  )
+}

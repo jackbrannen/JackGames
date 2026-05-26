@@ -1,0 +1,623 @@
+"use client"
+
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
+import { supabase } from "../../../lib/supabase"
+import PokeSystem, { FOOTER_H } from "../../../components/PokeSystem"
+import GameModal from "../../../components/GameModal"
+
+const PRIMARY = "#974344"
+const DARK    = "#803946"
+const MID     = "#8A3D45"
+const WARM    = "#AE5C4D"
+const YELLOW  = "#FBDF54"
+
+function playChirp() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain); gain.connect(ctx.destination)
+    osc.frequency.setValueAtTime(523, ctx.currentTime)
+    osc.frequency.setValueAtTime(659, ctx.currentTime + 0.08)
+    gain.gain.setValueAtTime(0.25, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25)
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.25)
+  } catch {}
+}
+
+function sfxCorrect() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    function tone(freq, start, dur, vol = 0.08) {
+      const o = ctx.createOscillator(); const g = ctx.createGain()
+      o.frequency.value = freq; g.gain.setValueAtTime(vol, ctx.currentTime + start)
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur)
+      o.connect(g); g.connect(ctx.destination)
+      o.start(ctx.currentTime + start); o.stop(ctx.currentTime + start + dur)
+    }
+    tone(660, 0, 0.1); tone(880, 0.09, 0.18)
+    setTimeout(() => ctx.close(), 600)
+  } catch {}
+}
+
+function sfxTurnEnd() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    function tone(freq, start, dur, vol = 0.1) {
+      const o = ctx.createOscillator(); const g = ctx.createGain()
+      o.frequency.value = freq
+      g.gain.setValueAtTime(vol, ctx.currentTime + start)
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur)
+      o.connect(g); g.connect(ctx.destination)
+      o.start(ctx.currentTime + start); o.stop(ctx.currentTime + start + dur)
+    }
+    tone(440, 0, 0.12); tone(330, 0.11, 0.22)
+    setTimeout(() => ctx.close(), 800)
+  } catch {}
+}
+
+function sfxSkip() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const o = ctx.createOscillator(); const g = ctx.createGain()
+    o.frequency.value = 370; g.gain.setValueAtTime(0.05, ctx.currentTime)
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18)
+    o.connect(g); g.connect(ctx.destination)
+    o.start(); o.stop(ctx.currentTime + 0.18)
+    setTimeout(() => ctx.close(), 400)
+  } catch {}
+}
+
+function clueTextSize(text) {
+  const len = text?.length ?? 0
+  if (len < 8) return 72
+  if (len < 14) return 58
+  if (len < 22) return 46
+  if (len < 32) return 36
+  return 28
+}
+
+const teamLabel = (t) => t === "A" ? "Boys" : "Girls"
+const teamColor = (t) => t === "A" ? YELLOW : WARM
+const teamTextColor = (t) => t === "A" ? "#000" : "white"
+
+// Shared stat chip component (inline, no state)
+function StatChips({ correct, left }) {
+  return (
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div style={{ background: DARK, padding: "10px 16px", display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 22, fontWeight: 900, color: YELLOW }}>{correct}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, opacity: 0.65 }}>correct</span>
+      </div>
+      {left != null && (
+        <div style={{ background: DARK, padding: "10px 16px", display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 22, fontWeight: 900 }}>{left}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, opacity: 0.65 }}>left</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Shared top bar used by all playing-phase views
+function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
+  return (
+    <div style={{
+      padding: "12px 20px",
+      background: DARK,
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      flexShrink: 0,
+    }}>
+      <div style={{ display: "flex", gap: 20 }}>
+        {[["A", game.team_a_score ?? 0], ["B", game.team_b_score ?? 0]].map(([t, score]) => (
+          <div key={t}>
+            <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.65, marginBottom: 2 }}>
+              {teamLabel(t)}
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, color: t === playingTeam ? YELLOW : "white" }}>
+              {score}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, color: timerUrgent ? YELLOW : "white" }}>
+        {secondsRemaining}<span style={{ fontSize: 18, fontWeight: 600, opacity: 0.55 }}>s</span>
+      </div>
+    </div>
+  )
+}
+
+
+const POKE_COLORS = { dark: "#803946", mid: "#8A3D45", wl: "#AE5C4D", yellow: "#FBDF54", notifBg: "#4A1F28" }
+const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
+
+export default function Play({ params }) {
+  const router = useRouter()
+  const code = useMemo(() => params.code.toUpperCase(), [params.code])
+  const [myPlayerId, setMyPlayerId] = useState(null)
+  const [game, setGame] = useState(null)
+  const [players, setPlayers] = useState([])
+  const [currentClue, setCurrentClue] = useState(null)
+  const [pendingCount, setPendingCount] = useState(0)
+  const [nowMs, setNowMs] = useState(Date.now())
+  const [acting, setActing] = useState(false)
+  const [showGameModal, setShowGameModal] = useState(false)
+  const [instructions, setInstructions] = useState("")
+  const endingRef = useRef(false)
+  const soundTriggerRef = useRef(null)
+
+  useEffect(() => {
+    const existing = localStorage.getItem(`rc:${code}:playerId`)
+    if (existing) setMyPlayerId(existing)
+  }, [code])
+
+  async function loadState() {
+    const { data: gameData } = await supabase
+      .from("reversecharades_games")
+      .select("code,phase,host_id,current_team,current_guesser_id,current_controller_id,current_clue_id,turn_started_at,turn_duration_seconds,skip_limit,skip_penalty,skips_this_turn,correct_this_turn,last_turn_correct,last_turn_skips,last_turn_team,team_a_score,team_b_score,team_a_turns,team_b_turns,next_game")
+      .eq("code", code)
+      .single()
+    if (!gameData) return
+
+    const { data: playerData } = await supabase
+      .from("reversecharades_players")
+      .select("id,name,team,ready,created_at")
+      .eq("game_code", code)
+      .order("created_at", { ascending: true })
+
+    let clueData = null
+    if (gameData.current_clue_id && gameData.phase === "playing") {
+      const { data: cd } = await supabase
+        .from("reversecharades_clues")
+        .select("id,text")
+        .eq("id", gameData.current_clue_id)
+        .single()
+      clueData = cd ?? null
+    }
+
+    let count = 0
+    if (gameData.phase === "playing") {
+      const { count: c } = await supabase
+        .from("reversecharades_clues")
+        .select("id", { count: "exact", head: true })
+        .eq("game_code", code)
+        .eq("status", "pending")
+      count = c ?? 0
+    }
+
+    setGame(gameData)
+    setPlayers(playerData ?? [])
+    setCurrentClue(clueData)
+    setPendingCount(count)
+  }
+
+  useEffect(() => {
+    if (!game || !myPlayerId) return
+    const prev = soundTriggerRef.current
+    soundTriggerRef.current = game.phase
+    if (!prev) return
+    if (prev !== game.phase) {
+      if (prev === "playing") sfxTurnEnd()
+      else playChirp()
+    }
+  }, [game?.phase])
+
+  useEffect(() => {
+    supabase.from("game_instructions").select("body").eq("game_key", "reversecharades").single()
+      .then(({ data }) => { if (data?.body) setInstructions(data.body) })
+    loadState()
+    let poll = setInterval(loadState, 1500)
+    function handleVisibility() { clearInterval(poll); if (!document.hidden) { loadState(); poll = setInterval(loadState, 1500) } }
+    document.addEventListener("visibilitychange", handleVisibility)
+    const ticker = setInterval(() => setNowMs(Date.now()), 300)
+    const channel = supabase.channel(`rc-play-${code}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_games", filter: `code=eq.${code}` }, loadState)
+      .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_players" }, loadState)
+      .subscribe()
+    return () => { clearInterval(poll); clearInterval(ticker); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
+  }, [code])
+
+  useEffect(() => {
+    if (game?.phase === "lobby") router.replace(`/${code}`)
+  }, [game?.phase])
+
+  useEffect(() => {
+    if (!game?.next_game) return
+    window.location.href = `https://${game.next_game}.jackbrannen.com/`
+  }, [game?.next_game])
+
+  const me = players.find(p => p.id === myPlayerId)
+
+  const secondsRemaining = useMemo(() => {
+    if (!game?.turn_started_at) return game?.turn_duration_seconds ?? 45
+    const elapsed = Math.floor((nowMs - new Date(game.turn_started_at).getTime()) / 1000)
+    return Math.max(0, (game.turn_duration_seconds ?? 45) - elapsed)
+  }, [game, nowMs])
+
+  // ── PokeSystem (always mounted for notifications) ──────────────────────────
+  const pokeSystemNode = me ? (
+    <PokeSystem
+      colors={POKE_COLORS}
+      roomCode={code}
+      currentPlayer={me.name}
+      allPlayers={players.map(p => p.name)}
+      playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, team: p.team, teamColor: p.team ? teamColor(p.team) : undefined, teamLabel: p.team ? teamLabel(p.team) : undefined, teamTextColor: p.team ? teamTextColor(p.team) : undefined }))}
+      gamePhase={game?.phase}
+      timerRunning={!!game?.turn_started_at && secondsRemaining > 0}
+      rules={instructions ? [["How to Play", instructions]] : null}
+      onResetToLobby={async () => { await supabase.rpc("rc_reset_game", { p_code: code }) }}
+    />
+  ) : null
+
+  const guesser = players.find(p => p.id === game?.current_guesser_id)
+  const controller = players.find(p => p.id === game?.current_controller_id)
+
+  const amGuesser = myPlayerId === game?.current_guesser_id
+  const amController = myPlayerId === game?.current_controller_id
+  const myTeam = me?.team
+  const playingTeam = game?.current_team
+  const amPlayingTeam = myTeam === playingTeam
+
+  useEffect(() => {
+    if (game?.phase !== "playing") return
+    if (secondsRemaining > 0) return
+    if (!game.turn_started_at) return
+    if (endingRef.current) return
+    endingRef.current = true
+    ;(async () => {
+      try {
+        await supabase.rpc("rc_end_turn", { p_code: code })
+        await loadState()
+      } finally { endingRef.current = false }
+    })()
+  }, [code, game?.phase, game?.turn_started_at, secondsRemaining])
+
+  async function doStartTurn() {
+    if (!myPlayerId || acting) return
+    setActing(true)
+    const { error } = await supabase.rpc("rc_start_turn", { p_code: code, p_player_id: myPlayerId })
+    if (error) { setActing(false); return }
+    await loadState()
+    setActing(false)
+  }
+
+  async function doCorrect() {
+    if (!currentClue || !myPlayerId || acting) return
+    setActing(true)
+    sfxCorrect()
+    await supabase.rpc("rc_correct", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
+    await loadState()
+    setActing(false)
+  }
+
+  async function doSkip() {
+    if (!currentClue || !myPlayerId || acting) return
+    setActing(true)
+    sfxSkip()
+    await supabase.rpc("rc_skip", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
+    await loadState()
+    setActing(false)
+  }
+
+  async function doResetGame() {
+    await supabase.rpc("rc_reset_game", { p_code: code })
+    router.replace(`/${code}`)
+  }
+
+  async function pickNextGame(gameSub) {
+    await supabase.from("reversecharades_games").update({ next_game: gameSub }).eq("code", code)
+  }
+
+  if (!game) {
+    return (
+      <>
+      <div style={{ minHeight: "100dvh", background: PRIMARY, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ color: "white", fontSize: 22, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" }}>Loading…</p>
+      </div>
+        {pokeSystemNode}
+      </>
+    )
+  }
+
+  const skipDisabled = acting || !currentClue || pendingCount <= 1 || (game.skip_limit > 0 && game.skips_this_turn >= game.skip_limit)
+  const timerUrgent = secondsRemaining <= 5
+
+  // ─── FINISHED ───────────────────────────────────────────────────────────────
+  if (game.phase === "finished") {
+    const aScore = game.team_a_score ?? 0
+    const bScore = game.team_b_score ?? 0
+    const tied = aScore === bScore
+    const winner = tied ? null : aScore > bScore ? "A" : "B"
+    const winnerTurns = winner === "A" ? game.team_a_turns : game.team_b_turns
+    const loserTurns = winner === "A" ? game.team_b_turns : game.team_a_turns
+    const turnImbalance = !tied && winnerTurns != null && loserTurns != null && winnerTurns > loserTurns
+
+    return (
+      <>
+      <div style={{ minHeight: "100dvh", background: PRIMARY, color: "white", padding: "40px 24px 80px" }}>
+        <div style={{ fontSize: "clamp(56px, 16vw, 88px)", fontWeight: 900, textTransform: "uppercase", lineHeight: 0.9, marginBottom: 32 }}>
+          Game<br />Over
+        </div>
+
+        {/* Winner */}
+        <div style={{ background: DARK, padding: "24px", marginBottom: 16 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.65, marginBottom: 8 }}>
+            {tied ? "Result" : "Winner"}
+          </div>
+          <div style={{ fontSize: 44, fontWeight: 900, lineHeight: 1, color: tied ? "white" : YELLOW }}>
+            {tied ? "It's a tie!" : `${teamLabel(winner)} wins`}
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 700, opacity: 0.65, marginTop: 6 }}>
+            {aScore} – {bScore}
+          </div>
+        </div>
+
+        {turnImbalance && (
+          <div style={{ background: MID, padding: "14px 18px", marginBottom: 16, fontSize: 14, fontWeight: 600, opacity: 0.85, borderLeft: `4px solid ${YELLOW}` }}>
+            Note: {teamLabel(winner)} had one more turn than {teamLabel(winner === "A" ? "B" : "A")}.
+          </div>
+        )}
+
+        {/* Scores */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 40 }}>
+          {[["A", aScore], ["B", bScore]].map(([t, score]) => (
+            <div key={t} style={{ background: MID, overflow: "hidden" }}>
+              <div style={{
+                background: teamColor(t),
+                color: teamTextColor(t),
+                fontSize: 12, fontWeight: 900,
+                padding: "7px 12px",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}>
+                {teamLabel(t)}
+              </div>
+              <div style={{ padding: "16px 12px" }}>
+                <div style={{ fontSize: 48, fontWeight: 900, lineHeight: 1 }}>{score}</div>
+                <div style={{ fontSize: 13, opacity: 0.65, fontWeight: 600, marginTop: 4 }}>
+                  {t === "A" ? game.team_a_turns : game.team_b_turns} turn{(t === "A" ? game.team_a_turns : game.team_b_turns) !== 1 ? "s" : ""}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={doResetGame}
+          style={{ background: YELLOW, color: "#000", fontSize: 22, fontWeight: 900, padding: "22px 32px", width: "100%", display: "block", marginBottom: 32 }}
+        >
+          Play Again
+        </button>
+
+        <button onClick={() => setShowGameModal(true)}
+          style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
+          Play Another Game
+        </button>
+      </div>
+        {pokeSystemNode}
+      {showGameModal && (
+        <GameModal
+          onClose={() => setShowGameModal(false)}
+          onSelect={sub => pickNextGame(sub)}
+          currentSub="reversecharades"
+        />
+      )}
+      </>
+    )
+  }
+
+  // ─── TURN START ──────────────────────────────────────────────────────────────
+  if (game.phase === "turn_start") {
+    const bigText = amGuesser ? "Your turn" : `${guesser?.name ?? "—"} is guessing`
+    const controllerLine = amController ? "You control clues" : `${controller?.name ?? "—"} controls clues`
+
+    return (
+      <>
+      <div style={{ minHeight: "100dvh", background: PRIMARY, color: "white", display: "flex", flexDirection: "column" }}>
+
+        {/* Score bar */}
+        <div style={{ padding: "16px 20px", background: DARK, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 24 }}>
+            {[["A", game.team_a_score ?? 0], ["B", game.team_b_score ?? 0]].map(([t, score]) => (
+              <div key={t}>
+                <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.65, marginBottom: 2 }}>
+                  {teamLabel(t)}
+                </div>
+                <div style={{ fontSize: 30, fontWeight: 900, lineHeight: 1, color: t === playingTeam ? YELLOW : "white" }}>
+                  {score}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 13, opacity: 0.65, fontWeight: 600 }}>
+            {pendingCount > 0 ? `${pendingCount} clues left` : ""}
+          </div>
+        </div>
+
+        {/* Main */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "32px 24px" }}>
+          <div style={{
+            display: "inline-flex", alignSelf: "flex-start",
+            background: teamColor(playingTeam), color: teamTextColor(playingTeam),
+            fontSize: 12, fontWeight: 900, padding: "5px 10px",
+            textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 20,
+          }}>
+            {teamLabel(playingTeam)}
+          </div>
+
+          <div style={{ fontSize: "clamp(36px, 10vw, 54px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 10 }}>
+            {bigText}
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 600, opacity: 0.65, marginBottom: 48 }}>
+            {controllerLine}
+          </div>
+
+          {amGuesser ? (
+            <button
+              onClick={doStartTurn}
+              disabled={acting}
+              style={{ background: YELLOW, color: "#000", fontSize: 24, fontWeight: 900, padding: "24px 32px", width: "100%", display: "block" }}
+            >
+              {acting ? "Starting…" : "Start"}
+            </button>
+          ) : (
+            <div style={{ fontSize: 16, fontWeight: 600, opacity: 0.45 }}>
+              Waiting for {guesser?.name ?? "the guesser"}…
+            </div>
+          )}
+        </div>
+      </div>
+        {pokeSystemNode}
+      </>
+    )
+  }
+
+  // ─── PLAYING ─────────────────────────────────────────────────────────────────
+  if (game.phase === "playing") {
+    const topBar = (
+      <PlayingTopBar
+        game={game}
+        secondsRemaining={secondsRemaining}
+        timerUrgent={timerUrgent}
+        playingTeam={playingTeam}
+      />
+    )
+
+    // GUESSER — can't see clue
+    if (amGuesser) {
+      return (
+        <div style={{ minHeight: "100dvh", background: DARK, color: "white", display: "flex", flexDirection: "column" }}>
+          {topBar}
+
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center", gap: 32 }}>
+            <div style={{ fontSize: "clamp(32px, 9vw, 48px)", fontWeight: 900, lineHeight: 1.1 }}>
+              Guess the word!
+            </div>
+            <StatChips correct={game.correct_this_turn ?? 0} left={null} />
+          </div>
+        </div>
+      )
+    }
+
+    // CONTROLLER — sees clue with buttons
+    if (amController) {
+      return (
+        <div style={{ minHeight: "100dvh", background: PRIMARY, color: "white", display: "flex", flexDirection: "column" }}>
+          {topBar}
+
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "28px 24px" }}>
+            <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.65, marginBottom: 12 }}>
+              Act it out!
+            </div>
+            <div style={{
+              fontSize: clueTextSize(currentClue?.text),
+              fontWeight: 900,
+              lineHeight: 1.1,
+              letterSpacing: "-0.5px",
+              wordBreak: "break-word",
+              marginBottom: 20,
+            }}>
+              {currentClue?.text ?? "—"}
+            </div>
+            <StatChips correct={game.correct_this_turn ?? 0} left={pendingCount} />
+          </div>
+
+          <div style={{ padding: "16px 20px", paddingBottom: "max(20px, env(safe-area-inset-bottom, 20px))", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
+            <button
+              onClick={doCorrect}
+              disabled={acting || !currentClue}
+              style={{ background: YELLOW, color: "#000", fontSize: 28, fontWeight: 900, padding: "28px 16px", width: "100%", display: "block" }}
+            >
+              ✓ Correct
+            </button>
+            <button
+              onClick={doSkip}
+              disabled={skipDisabled}
+              style={{
+                background: skipDisabled ? MID : WARM,
+                color: "white",
+                fontSize: 18,
+                fontWeight: 800,
+                padding: "18px 16px",
+                width: "100%",
+                display: "block",
+                textDecoration: (game.skip_limit > 0 && game.skips_this_turn >= game.skip_limit) ? "line-through" : "none",
+              }}
+            >
+              {game.skip_penalty < 0 ? `Skip (${game.skip_penalty})` : "Skip"}
+              {game.skip_limit > 0 && ` · ${game.skips_this_turn ?? 0}/${game.skip_limit} used`}
+            </button>
+          </div>
+        </div>
+      )
+    }
+
+    // SAME TEAM — sees clue, no buttons
+    if (amPlayingTeam) {
+      return (
+        <div style={{ minHeight: "100dvh", background: PRIMARY, color: "white", display: "flex", flexDirection: "column" }}>
+          {topBar}
+
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "28px 24px" }}>
+            <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.65, marginBottom: 12 }}>
+              Act it out for {guesser?.name ?? "the guesser"}!
+            </div>
+            <div style={{
+              fontSize: clueTextSize(currentClue?.text),
+              fontWeight: 900,
+              lineHeight: 1.1,
+              letterSpacing: "-0.5px",
+              wordBreak: "break-word",
+              marginBottom: 20,
+            }}>
+              {currentClue?.text ?? "—"}
+            </div>
+            <StatChips correct={game.correct_this_turn ?? 0} left={null} />
+          </div>
+
+          <div style={{ padding: "16px 20px", paddingBottom: "max(20px, env(safe-area-inset-bottom, 20px))", background: DARK, flexShrink: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.65 }}>
+              {controller?.name ?? "Someone"} has the controls
+            </div>
+          </div>
+        </div>
+      )
+    }
+
+    // OTHER TEAM — watching
+    return (
+      <>
+      <div style={{ minHeight: "100dvh", background: PRIMARY, color: "white", display: "flex", flexDirection: "column" }}>
+        {topBar}
+
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "28px 24px" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.65, marginBottom: 10 }}>Guessing</div>
+          <div style={{ fontSize: "clamp(36px, 10vw, 56px)", fontWeight: 900, lineHeight: 1, marginBottom: 28 }}>
+            {guesser?.name ?? "—"}
+          </div>
+          <StatChips correct={game.correct_this_turn ?? 0} left={null} />
+        </div>
+
+        <div style={{ padding: "16px 24px", paddingBottom: "max(20px, env(safe-area-inset-bottom, 20px))", background: DARK, flexShrink: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.65 }}>
+            Don't give it away — your turn is coming.
+          </div>
+        </div>
+      </div>
+        {pokeSystemNode}
+      </>
+    )
+  }
+
+  return (
+    <>
+    <div style={{ minHeight: "100dvh", background: PRIMARY, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <p style={{ color: "white", fontSize: 20, fontWeight: 700 }}>Loading…</p>
+    </div>
+      {pokeSystemNode}
+    </>
+  )
+}

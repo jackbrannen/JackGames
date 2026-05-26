@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.env.local
+.env
+*.env
+.DS_Store
+supabase/.temp/
+**/supabase/.temp/
+*.env.local.tmp
+*.env.prod.tmp
+.env.local.tmp
+.env.prod.tmp

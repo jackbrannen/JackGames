@@ -1,0 +1,20 @@
+{
+  "name": "jackgames-root",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "Fishbowl",
+    "GameOfWhat",
+    "Avalon",
+    "FirstToWorst",
+    "Drawful",
+    "SoClover",
+    "Telestrations",
+    "Copycats",
+    "Codenames",
+    "ReverseCharades",
+    "ExquisiteCorpse",
+    "MrWhite",
+    "JackGames"
+  ]
+}

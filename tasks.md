@@ -1,0 +1,4 @@
+- SoClover: The Fifth Card setting should be editable before joining the game
+- SoClover: The 5th card option can't currently be toggled on.
+- SoClover: when the guesser rotates cards or the board, it is STILL not shown on other devices. The screen updates only when a card is moved. It should also update on card or board rotations. It also doesn't update when cards are taken off the board, only when they're put on it.
+- GameofWhat: when all questions are submitted, no need to make players choose to start the round. Just go ahead and start it.

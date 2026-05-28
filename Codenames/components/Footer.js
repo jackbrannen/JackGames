@@ -3,7 +3,8 @@
 // Spec:
 // Sticky 56px bar fixed to the bottom of every game screen.
 // Left slot: hamburger button (☰) that toggles the Menu. Shows ✕ when menu is open.
-//   Disabled and dimmed when timerRunning is true (e.g. during an active Fishbowl turn).
+//   Hidden entirely when timerRunning is true (e.g. during an active Fishbowl turn) —
+//   the footer bar remains visible with action buttons filling the full width.
 // Right slot: children — action button(s) passed by the game page.
 // Exports FOOTER_H so pages can offset their scroll areas and fixed-bottom elements.
 //
@@ -43,25 +44,25 @@ export default function Footer({
       borderTop: "1px solid rgba(255,255,255,0.09)",
       zIndex: 80,
     }}>
-      <button
-        onClick={() => !timerRunning && onToggle?.()}
-        disabled={timerRunning}
-        style={{
-          width: 56,
-          flexShrink: 0,
-          background: isOpen ? wl : "transparent",
-          color: "white",
-          fontSize: 18,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          borderRight: "1px solid rgba(255,255,255,0.09)",
-          transition: "background 0.15s",
-          opacity: timerRunning ? 0.25 : 1,
-        }}
-      >
-        {isOpen ? "✕" : "☰"}
-      </button>
+      {!timerRunning && (
+        <button
+          onClick={() => onToggle?.()}
+          style={{
+            width: 56,
+            flexShrink: 0,
+            background: isOpen ? wl : "transparent",
+            color: "white",
+            fontSize: 18,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRight: "1px solid rgba(255,255,255,0.09)",
+            transition: "background 0.15s",
+          }}
+        >
+          {isOpen ? "✕" : "☰"}
+        </button>
+      )}
       <div style={{ flex: 1, display: "flex", alignItems: "stretch" }}>
         {children}
       </div>

@@ -362,6 +362,8 @@ Each shared component has a canonical source in `packages/shared/components/` an
 | **Notifications** | `Notifications.js` | Poke/message strips fixed at top of screen; tap or swipe to dismiss |
 | **WaitingList** | `WaitingList.js` | Player rows with status dots and inline 👉 poke buttons |
 
+Full props, usage examples, and behavior notes are in the spec comment at the top of each component file. `PokeSystem.js` is a backward-compatible wrapper around Footer + Menu + Notifications — existing games use it until they're migrated. Rollout status tracked in `tasks.md`.
+
 ### Key constants
 ```js
 export const FOOTER_H = 56  // from Footer.js — height of the sticky footer bar

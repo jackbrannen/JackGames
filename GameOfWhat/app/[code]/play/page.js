@@ -91,6 +91,7 @@ export default function Play({ params }) {
   const [instructions, setInstructions] = useState("")
   const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
   const [pokeJustSent, setPokeJustSent] = useState(null)
+  const [menuOpen, setMenuOpen] = useState(false)
   const { onTypingChange, typingPlayerIds } = useTypingPresence("gow", code, myPlayerId)
 
   useEffect(() => {
@@ -408,7 +409,6 @@ export default function Play({ params }) {
     setTimeout(() => setPokeCooldownActive(false), 10000)
   }
 
-  const [menuOpen, setMenuOpen] = useState(false)
   const pokeSystemNode = (footer = null) => me ? (
     <>
       <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />

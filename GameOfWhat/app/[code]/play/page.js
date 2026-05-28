@@ -9,6 +9,7 @@ import Notifications from "../../../components/Notifications"
 import GameModal from "../../../components/GameModal"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import FooterButton from "../../../components/FooterButton"
+import WaitingList from "../../../components/WaitingList"
 import TextEntry from "../../../components/TextEntry"
 import Selections from "../../../components/Selections"
 import { playYourTurn } from "../../../lib/sounds"
@@ -666,34 +667,15 @@ export default function Play({ params }) {
         <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 14 }}>
           Round {game.round_index + 1} Questions
         </div>
-        <div style={{ background: "#5C1640", padding: "4px 14px 10px", borderTop: "3px solid rgba(255,255,255,0.30)", marginBottom: 20 }}>
-          {players.map(p => {
-            const done = !!p.question
-            const isMe = p.id === myPlayerId
-            return (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
-                <div style={{ width: 7, height: 7, borderRadius: "50%", background: done ? GREEN : "rgba(255,255,255,0.2)", flexShrink: 0 }} />
-                <span style={{ fontSize: 17, fontWeight: 700, flex: 1 }}>
-                  {p.name}
-                  {isMe && <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.65, marginLeft: 6 }}>you</span>}
-                </span>
-                {!done && !isMe ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    {typingPlayerIds.has(p.id) && <span style={{ fontSize: 16 }}>💬</span>}
-                    {pokeJustSent === p.name ? (
-                      <span style={{ fontSize: 18, color: GREEN, fontWeight: 700 }}>✓</span>
-                    ) : !pokeCooldownActive ? (
-                      <button onClick={() => sendInlinePoke(p.name)} style={{ background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 20, padding: "0 4px", lineHeight: 1 }}>👉</button>
-                    ) : null}
-                  </div>
-                ) : (
-                  <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.65 }}>
-                    {done ? "Ready" : "Writing…"}
-                  </span>
-                )}
-              </div>
-            )
-          })}
+        <div style={{ marginBottom: 20 }}>
+          <WaitingList
+            players={players.map(p => ({ name: p.name, done: !!p.question, typing: typingPlayerIds.has(p.id) }))}
+            myName={me?.name}
+            colors={{ mid: "#5C1640" }}
+            onPoke={sendInlinePoke}
+            cooldownActive={pokeCooldownActive}
+            pokeJustSent={pokeJustSent}
+          />
         </div>
 
         {me && !myNextQuestion && (
@@ -852,18 +834,15 @@ export default function Play({ params }) {
                 <div style={{ fontSize: 15, fontWeight: 700, opacity: 0.65, marginBottom: 20 }}>
                   This is your question — sit back while others answer.
                 </div>
-                {eligibleAnswerers.map(p => {
-                  const submitted = answers.some(a => a.player_id === p.id)
-                  return (
-                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-                      <div style={{ width: 7, height: 7, borderRadius: "50%", background: submitted ? GREEN : "rgba(255,255,255,0.2)", flexShrink: 0 }} />
-                      <span style={{ fontSize: 16, fontWeight: 700 }}>
-                        {p.name}
-                        {!submitted && typingPlayerIds.has(p.id) && <span style={{ fontSize: 14, marginLeft: 6 }}>💬</span>}
-                      </span>
-                    </div>
-                  )
-                })}
+                <WaitingList
+                  players={eligibleAnswerers.map(p => ({ name: p.name, done: answers.some(a => a.player_id === p.id), typing: typingPlayerIds.has(p.id) }))}
+                  myName={me?.name}
+                  colors={{ mid: WARM_LIGHT }}
+                  onPoke={sendInlinePoke}
+                  cooldownActive={pokeCooldownActive}
+                  pokeJustSent={pokeJustSent}
+                  showCount={false}
+                />
               </div>
             ) : hasSubmittedAnswer ? (
               <div>

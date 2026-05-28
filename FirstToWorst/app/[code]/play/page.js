@@ -8,6 +8,7 @@ import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import GameModal from "../../../components/GameModal"
 import FooterButton from "../../../components/FooterButton"
+import WaitingList from "../../../components/WaitingList"
 import { useDuplicates } from "../../../lib/useDuplicates"
 import { playYourTurn } from "../../../lib/sounds"
 
@@ -354,43 +355,6 @@ function TopBar({ left, right }) {
   )
 }
 
-function StatusList({ players, checkFn, myPlayerId, onPoke, typingPlayerIds, pokeCooldownActive, pokeJustSent }) {
-  return (
-    <div style={{ background: MID, padding: "4px 14px 10px" }}>
-      {players.map((p, i) => {
-        const done = checkFn(p)
-        const isMe = p.id === myPlayerId
-        return (
-          <div
-            key={p.id}
-            style={{
-              display: "flex", alignItems: "center", gap: 10, padding: "10px 0",
-              borderBottom: i < players.length - 1 ? "1px solid rgba(255,255,255,0.10)" : "none",
-            }}
-          >
-            <div style={{
-              width: 8, height: 8, borderRadius: "50%",
-              background: done ? GREEN : MID,
-              flexShrink: 0,
-            }} />
-            <span style={{ fontSize: 17, fontWeight: 700, flex: 1 }}>
-              {p.name}
-              {isMe && <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.65, marginLeft: 6 }}>you</span>}
-              {!done && typingPlayerIds?.has(p.id) && <span style={{ fontSize: 14, marginLeft: 6 }}>💬</span>}
-            </span>
-            {!done && !isMe && onPoke && (
-              pokeJustSent === p.name ? (
-                <span style={{ fontSize: 18, color: GREEN, fontWeight: 700 }}>✓</span>
-              ) : !pokeCooldownActive ? (
-                <button onClick={() => onPoke(p.name)} style={{ background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 20, padding: "0 4px", lineHeight: 1 }}>👉</button>
-              ) : null
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
 
 function Scoreboard({ right, wrong }) {
   return (
@@ -756,7 +720,14 @@ export default function Play({ params }) {
             <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 20 }}>
               Submitted
             </div>
-            <StatusList players={writingPlayers} checkFn={p => p.words_submitted} myPlayerId={myPlayerId} onPoke={sendInlinePoke} typingPlayerIds={typingPlayerIds} pokeCooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
+            <WaitingList
+              players={writingPlayers.map(p => ({ name: p.name, done: p.words_submitted, typing: typingPlayerIds.has(p.id) }))}
+              myName={me?.name}
+              colors={{ mid: MID }}
+              onPoke={sendInlinePoke}
+              cooldownActive={pokeCooldownActive}
+              pokeJustSent={pokeJustSent}
+            />
           </div>
         </div>
           {pokeSystemNode()}
@@ -776,7 +747,14 @@ export default function Play({ params }) {
             <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 20, marginTop: 32 }}>
               Submitted
             </div>
-            <StatusList players={writingPlayers} checkFn={p => p.words_submitted} myPlayerId={myPlayerId} onPoke={sendInlinePoke} typingPlayerIds={typingPlayerIds} pokeCooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
+            <WaitingList
+              players={writingPlayers.map(p => ({ name: p.name, done: p.words_submitted, typing: typingPlayerIds.has(p.id) }))}
+              myName={me?.name}
+              colors={{ mid: MID }}
+              onPoke={sendInlinePoke}
+              cooldownActive={pokeCooldownActive}
+              pokeJustSent={pokeJustSent}
+            />
           </div>
         </div>
           {pokeSystemNode()}
@@ -1022,7 +1000,14 @@ export default function Play({ params }) {
             <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 20 }}>
               Rankings
             </div>
-            <StatusList players={rankingPlayers} checkFn={p => p.ranking_locked} myPlayerId={myPlayerId} onPoke={sendInlinePoke} pokeCooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
+            <WaitingList
+              players={rankingPlayers.map(p => ({ name: p.name, done: p.ranking_locked, typing: typingPlayerIds.has(p.id) }))}
+              myName={me?.name}
+              colors={{ mid: MID }}
+              onPoke={sendInlinePoke}
+              cooldownActive={pokeCooldownActive}
+              pokeJustSent={pokeJustSent}
+            />
           </div>
         </div>
           {pokeSystemNode()}
@@ -1042,7 +1027,14 @@ export default function Play({ params }) {
             <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 20 }}>
               Rankings
             </div>
-            <StatusList players={rankingPlayers} checkFn={p => p.ranking_locked} myPlayerId={myPlayerId} onPoke={sendInlinePoke} pokeCooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
+            <WaitingList
+              players={rankingPlayers.map(p => ({ name: p.name, done: p.ranking_locked, typing: typingPlayerIds.has(p.id) }))}
+              myName={me?.name}
+              colors={{ mid: MID }}
+              onPoke={sendInlinePoke}
+              cooldownActive={pokeCooldownActive}
+              pokeJustSent={pokeJustSent}
+            />
             <p style={{ fontSize: 13, opacity: 0.65, fontWeight: 600, marginTop: 12 }}>No peeking at anyone else&rsquo;s phone!</p>
           </div>
         </div>
@@ -1267,12 +1259,12 @@ export default function Play({ params }) {
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <StatusList
-                players={nonSubjectPlayers}
-                checkFn={p => p.guessing_ready}
-                myPlayerId={myPlayerId}
+              <WaitingList
+                players={nonSubjectPlayers.map(p => ({ name: p.name, done: p.guessing_ready, typing: typingPlayerIds.has(p.id) }))}
+                myName={me?.name}
+                colors={{ mid: MID }}
                 onPoke={sendInlinePoke}
-                pokeCooldownActive={pokeCooldownActive}
+                cooldownActive={pokeCooldownActive}
                 pokeJustSent={pokeJustSent}
               />
             </div>

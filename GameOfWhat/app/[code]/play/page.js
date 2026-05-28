@@ -196,7 +196,7 @@ export default function Play({ params }) {
       })
     channelRef.current = channel
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
-  }, [code, myPlayerId])
+  }, [code])
 
   const currentQuestionId = currentQuestion?.id
   useEffect(() => {

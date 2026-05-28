@@ -23,37 +23,19 @@ import { supabase } from "./supabase"
 
 export default function useTypingPresence(gameKey, code, myPlayerId) {
   const channelRef = useRef(null)
-  const myPlayerIdRef = useRef(myPlayerId)
   const isTypingRef = useRef(false)
   const [presenceState, setPresenceState] = useState({})
-
-  // Keep ref current so the subscribe callback (a closure) can read the latest value
-  useEffect(() => { myPlayerIdRef.current = myPlayerId }, [myPlayerId])
 
   useEffect(() => {
     if (!code) return
     const channel = supabase.channel(`${gameKey}-typing-${code}`)
       .on("presence", { event: "sync" }, () => {
-        const s = channel.presenceState()
-        console.log("[presence] sync:", JSON.stringify(s))
-        setPresenceState({ ...s })
+        setPresenceState({ ...channel.presenceState() })
       })
-      .subscribe(async status => {
-        console.log("[presence] status:", status, "id:", myPlayerIdRef.current)
-        if (status === "SUBSCRIBED" && myPlayerIdRef.current) {
-          await channel.track({ playerId: myPlayerIdRef.current, typing: false })
-          console.log("[presence] tracked initial")
-        }
-      })
+      .subscribe()
     channelRef.current = channel
     return () => { supabase.removeChannel(channel) }
   }, [gameKey, code])
-
-  // Track when myPlayerId becomes available after the channel is already subscribed
-  useEffect(() => {
-    if (!myPlayerId || !channelRef.current) return
-    channelRef.current.track({ playerId: myPlayerId, typing: false })
-  }, [myPlayerId])
 
   const typingPlayerIds = new Set(
     Object.values(presenceState).flatMap(presences =>
@@ -65,8 +47,11 @@ export default function useTypingPresence(gameKey, code, myPlayerId) {
     if (!channelRef.current || !myPlayerId) return
     if (isTyping === isTypingRef.current) return
     isTypingRef.current = isTyping
-    console.log("[presence] track:", isTyping)
-    channelRef.current.track({ playerId: myPlayerId, typing: isTyping })
+    if (isTyping) {
+      channelRef.current.track({ playerId: myPlayerId, typing: true })
+    } else {
+      channelRef.current.untrack()
+    }
   }
 
   return { onTypingChange, typingPlayerIds }

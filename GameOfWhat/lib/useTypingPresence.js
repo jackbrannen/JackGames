@@ -32,10 +32,16 @@ export default function useTypingPresence(gameKey, code, myPlayerId) {
   useEffect(() => {
     if (!code) return
     const channel = supabase.channel(`${gameKey}-typing-${code}`)
-      .on("presence", { event: "sync" }, () => setPresenceState({ ...channel.presenceState() }))
+      .on("presence", { event: "sync" }, () => {
+        const s = channel.presenceState()
+        console.log("[presence] sync:", JSON.stringify(s))
+        setPresenceState({ ...s })
+      })
       .subscribe(async status => {
+        console.log("[presence] status:", status, "id:", myPlayerIdRef.current)
         if (status === "SUBSCRIBED" && myPlayerIdRef.current) {
           await channel.track({ playerId: myPlayerIdRef.current, typing: false })
+          console.log("[presence] tracked initial")
         }
       })
     channelRef.current = channel
@@ -55,6 +61,7 @@ export default function useTypingPresence(gameKey, code, myPlayerId) {
   )
 
   function onTypingChange(isTyping) {
+    console.log("[presence] onTypingChange:", isTyping, "id:", myPlayerId, "channel:", !!channelRef.current)
     if (!channelRef.current || !myPlayerId) return
     channelRef.current.track({ playerId: myPlayerId, typing: isTyping })
   }

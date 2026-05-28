@@ -9,6 +9,7 @@ import Notifications from "../../../components/Notifications"
 import GameModal from "../../../components/GameModal"
 import FooterButton from "../../../components/FooterButton"
 import WaitingList from "../../../components/WaitingList"
+import TextEntry from "../../../components/TextEntry"
 import { useDuplicates } from "../../../lib/useDuplicates"
 import { playYourTurn } from "../../../lib/sounds"
 
@@ -411,6 +412,7 @@ export default function Play({ params }) {
   // Submitting phase — length set from game.words_per_writer once loaded
   const [wordFields, setWordFields] = useState(["", "", "", "", ""])
   const { dupeIndices, hasDuplicates } = useDuplicates(wordFields)
+  const wordInputRefs = useRef([])
   const [shownIdeas, setShownIdeas] = useState([])
   const [loadingIdeas, setLoadingIdeas] = useState(false)
   const [submitError, setSubmitError] = useState("")
@@ -840,24 +842,25 @@ export default function Play({ params }) {
               const isDupe = dupeIndices.has(idx)
               return (
                 <div key={idx}>
-                  <input
+                  <TextEntry
                     value={wordFields[idx]}
-                    onChange={e => {
+                    onChange={v => {
                       const next = [...wordFields]
-                      next[idx] = e.target.value
+                      next[idx] = v
                       setWordFields(next)
                       if (copiedIdeaIndex === idx) setCopiedIdeaIndex(null)
                       trackTyping()
                     }}
-                    onKeyDown={e => { if (e.key === "Enter" && idx < 4) document.querySelectorAll(".ftw-word-input")[idx + 1]?.focus() }}
+                    inputRef={el => { wordInputRefs.current[idx] = el }}
+                    onSubmit={idx < wordFields.length - 1
+                      ? () => wordInputRefs.current[idx + 1]?.focus()
+                      : handleSubmitWords}
+                    multiline={false}
                     placeholder={`${thingWord.charAt(0).toUpperCase() + thingWord.slice(1)} ${k + 1}`}
                     maxLength={60}
-                    className="ftw-word-input"
-                    style={{
-                      background: isCopied ? "rgba(240,79,82,0.18)" : isDupe ? "#5C1010" : WARM_LIGHT, color: "white",
-                      fontSize: 18, fontWeight: 600, padding: "16px 18px",
-                      width: "100%", display: "block", marginBottom: isCopied ? 4 : 6,
-                    }}
+                    bg={isCopied ? "rgba(240,79,82,0.18)" : isDupe ? "#5C1010" : WARM_LIGHT}
+                    fontSize={18}
+                    style={{ fontWeight: 600, marginBottom: isCopied ? 4 : 6 }}
                   />
                   {isCopied && (
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#F04F52", marginBottom: 6 }}>
@@ -877,24 +880,25 @@ export default function Play({ params }) {
         const isDupe = dupeIndices.has(i)
         return (
           <div key={i}>
-            <input
+            <TextEntry
               value={val}
-              onChange={e => {
+              onChange={v => {
                 const next = [...wordFields]
-                next[i] = e.target.value
+                next[i] = v
                 setWordFields(next)
                 if (copiedIdeaIndex === i) setCopiedIdeaIndex(null)
                 trackTyping()
               }}
-              onKeyDown={e => { if (e.key === "Enter" && i < 4) document.querySelectorAll(".ftw-word-input")[i + 1]?.focus() }}
+              inputRef={el => { wordInputRefs.current[i] = el }}
+              onSubmit={i < wordFields.length - 1
+                ? () => wordInputRefs.current[i + 1]?.focus()
+                : handleSubmitWords}
+              multiline={false}
               placeholder={`${thingWord.charAt(0).toUpperCase() + thingWord.slice(1)} ${i + 1}`}
               maxLength={60}
-              className="ftw-word-input"
-              style={{
-                background: isCopied ? "rgba(240,79,82,0.18)" : isDupe ? "#5C1010" : WARM_LIGHT, color: "white",
-                fontSize: 18, fontWeight: 600, padding: "16px 18px",
-                width: "100%", display: "block", marginBottom: isCopied ? 4 : 8,
-              }}
+              bg={isCopied ? "rgba(240,79,82,0.18)" : isDupe ? "#5C1010" : WARM_LIGHT}
+              fontSize={18}
+              style={{ fontWeight: 600, marginBottom: isCopied ? 4 : 8 }}
             />
             {isCopied && (
               <div style={{ fontSize: 13, fontWeight: 700, color: "#F04F52", marginBottom: 8 }}>

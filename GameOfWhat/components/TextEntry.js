@@ -25,7 +25,10 @@
     fontSize        number  — default 20
     disabled        bool
     autoFocus       bool
+    inputRef        ref     — attached to the underlying <input>/<textarea> element
     onSubmit        () => void  — called on Enter key (single-line only)
+                               — for focus-next in multi-field forms, pass
+                               — () => nextRef.current?.focus() on intermediate fields
     style           object  — additional style overrides
 
   Typing indicator:
@@ -51,6 +54,7 @@ export default function TextEntry({
   fontSize = 20,
   disabled = false,
   autoFocus = false,
+  inputRef,
   onSubmit,
   style,
 }) {
@@ -96,7 +100,7 @@ export default function TextEntry({
   }
 
   if (multiline) {
-    return <textarea {...shared} rows={rows} style={{ ...shared.style, resize: "none" }} />
+    return <textarea {...shared} ref={inputRef} rows={rows} style={{ ...shared.style, resize: "none" }} />
   }
-  return <input {...shared} />
+  return <input {...shared} ref={inputRef} />
 }

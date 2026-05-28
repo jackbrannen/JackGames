@@ -11,7 +11,7 @@
 //   Rules — shown if rules prop is provided
 //   My Word — shown if word prop is non-null (Mr. White)
 //   My Role — shown if roleContent prop is non-null (Avalon)
-//   Settings — shown if onSettings prop is provided (Fishbowl mid-game settings)
+//   Settings — shown if settingsContent prop is non-null (Fishbowl mid-game settings)
 //   Lobby — shown if onResetToLobby prop is provided
 //
 // Closing the drawer resets the active panel to null.
@@ -40,7 +40,7 @@
 //     gamePhase={game?.phase}
 //     word={null}                 // string → shows "My Word" tile
 //     roleContent={null}          // JSX → shows "My Role" tile (Avalon)
-//     onSettings={null}           // () => void → shows "Settings" tile (Fishbowl)
+//     settingsContent={null}      // JSX → shows "Settings" tile; game owns settings state (Fishbowl)
 //     onResetToLobby={async () => supabase.rpc("game_reset_to_lobby", { p_code: code })}
 //     rules={null}                // [[title, body], ...] → shows Rules tile
 //     peekBarHeight="0px"
@@ -62,7 +62,7 @@ export default function Menu({
   word = null,
   roleContent = null,
   onResetToLobby,
-  onSettings,
+  settingsContent = null,
   rules,
   peekBarHeight = "0px",
 }) {
@@ -141,7 +141,7 @@ export default function Menu({
     rules       ? { icon: "📋", label: "Rules",    action: () => setPanel("rules") }    : null,
     word !== null        ? { icon: "📖", label: "My Word",  action: () => setPanel("myWord") }  : null,
     roleContent !== null ? { icon: "🃏", label: "My Role",  action: () => setPanel("myRole") }  : null,
-    onSettings  ? { icon: "⚙️",  label: "Settings", action: () => { onClose(); onSettings() } } : null,
+    settingsContent !== null ? { icon: "⚙️", label: "Settings", action: () => setPanel("settings") } : null,
     onResetToLobby ? { icon: "🏠", label: "Lobby",  action: () => setPanel("lobbyWarn1") }      : null,
   ].filter(Boolean)
 
@@ -276,6 +276,17 @@ export default function Menu({
               </div>
             ))}
             <button onClick={onClose} style={{ ...modal.cancel, flex: "unset" }}>Got it</button>
+          </div>
+        </div>
+      )}
+
+      {/* Settings modal */}
+      {panel === "settings" && settingsContent && (
+        <div onClick={onClose} style={modal.backdrop}>
+          <div onClick={e => e.stopPropagation()} style={{ ...modal.box, maxHeight: "80dvh", overflowY: "auto" }}>
+            <div style={modal.title}>Settings</div>
+            {settingsContent}
+            <button onClick={onClose} style={{ ...modal.cancel, flex: "unset" }}>Done</button>
           </div>
         </div>
       )}

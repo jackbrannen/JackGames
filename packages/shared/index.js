@@ -1,1 +1,7 @@
 export { default as GameModal, GAMES, useNextGames } from "./components/GameModal"
+export { default as Footer, FOOTER_H } from "./components/Footer"
+export { default as Menu } from "./components/Menu"
+export { default as Notifications } from "./components/Notifications"
+export { default as WaitingList } from "./components/WaitingList"
+export { default as PokeSystem } from "./components/PokeSystem"
+export * from "./components/styles"

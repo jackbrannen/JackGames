@@ -68,10 +68,7 @@ All games live in a single git repo at `https://github.com/jackbrannen/JackGames
 
 ### Shared components
 
-- Canonical source: `packages/shared/components/GameModal.js`
-- Each game has its own copy at `[Game]/components/GameModal.js`
-- When updating a shared component: edit the canonical copy, then copy it to each affected game's `components/` folder
-- Future: if we ever migrate to full monorepo Vercel setup, imports would switch to `@jackgames/shared/components/GameModal`
+Canonical sources live in `packages/shared/components/`. Each game has its own copy at `[Game]/components/[Name].js`. To update a shared component: edit the canonical, then copy it to all 12 games. See the **Shared Components** section below for the full list and specs.
 
 ## Deployment
 
@@ -94,8 +91,7 @@ When a shared mechanic is improved in one game, immediately update all other gam
 - Opacity floor (0.65 minimum on colored backgrounds)
 - 50%+ ready to advance from results screens
 - Button loading state never resets on success
-- **PokeSystem** (hamburger menu, notifications, poke/message) — see dedicated section below
-- **Inline poke buttons** on waiting-screen player rows
+- **Shared components** (Footer, Menu, Notifications, WaitingList, GameModal) — see dedicated section below
 
 Failing to propagate improvements counts as an incomplete task.
 
@@ -165,11 +161,11 @@ The central hub at `JackGames/` lists all games. Each game card uses that game's
 
 ### Team-Based Games
 Fishbowl, Codenames, and Reverse Charades use two teams. These games:
-- Show team badges in the PokeSystem Players modal (pass `teamColor`/`teamLabel` in `playerDetails`)
-- Disable the hamburger menu while the timer is running (pass `timerRunning` to PokeSystem)
+- Show team badges in the Menu's Players tile (pass `teamColor`/`teamLabel` in `playerDetails`)
+- Disable the hamburger while the timer is running (pass `timerRunning` to Footer)
 - Use team-grid player list layouts instead of the standard numbered layout
 
-Avalon has hidden roles (not teams in the traditional sense) — do NOT show role info in the Players modal.
+Avalon has hidden roles (not teams in the traditional sense) — do NOT show role info in the Players tile.
 
 ---
 
@@ -352,119 +348,59 @@ Fixed position, full-screen, semi-transparent dark background. Click outside to 
 
 ---
 
-## PokeSystem — Shared Hamburger Menu Component
+## Shared Components
 
-Every game has `components/PokeSystem.js`. This is a **single canonical file** — when it changes, copy it to all 11 game repos and commit each. Do not diverge per-game except via props.
+Each shared component has a canonical source in `packages/shared/components/` and a copy in every game's `components/` folder. To update: edit canonical, copy to all 12 games. Full specs live alongside each component file.
 
-### What it provides
-- Fixed footer bar with a ☰ hamburger button (left) and a `children` slot (right)
-- Slide-up drawer with tile grid: Players, Message, Poke, My Word (optional), My Role (optional), Rules (optional), Lobby (optional)
-- Notification strips (top-right, fixed) for incoming pokes and messages — tap or right-swipe to dismiss
-- Poke flash animation 0.45s (was 0.9s — do not revert)
+### Component list
 
-### Key exports
+| Component | File | What it does |
+|---|---|---|
+| **GameModal** | `GameModal.js` | Game-picker modal shown at end of game |
+| **Footer** | `Footer.js` | Sticky 56px bar at bottom; hamburger left, action buttons right |
+| **Menu** | `Menu.js` | Slide-up drawer opened by the hamburger; Players, Poke, Message, optional tiles |
+| **Notifications** | `Notifications.js` | Poke/message strips fixed at top of screen; tap or swipe to dismiss |
+| **WaitingList** | `WaitingList.js` | Player rows with status dots and inline 👉 poke buttons |
+
+### Key constants
 ```js
-export const FOOTER_H = 56  // height of the sticky footer bar
-```
+export const FOOTER_H = 56  // from Footer.js — height of the sticky footer bar
 
-Every play page must account for this footer. Use these constants:
-```js
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
-// Use BOTTOM_PAD for paddingBottom on flex-scroll content areas
-// Use bottom: FOOTER_H for fixed-bottom action bars
+// Use BOTTOM_PAD for paddingBottom on scrollable content areas
 ```
 
-### Props
+### Colors per game
+Each game passes a `colors` object to Footer, Menu, and Notifications:
 ```js
-<PokeSystem
-  colors={{ dark, mid, wl, yellow, notifBg }}  // game-specific hex values
-  roomCode={code}
-  currentPlayer={me.name}
-  allPlayers={players.map(p => p.name)}
-  playerDetails={players.map(p => ({
-    name: p.name,
-    firstName: p.first_name,
-    lastName: p.last_name,
-    // Optional — for team games only:
-    teamColor: "#CC2222",   // colored badge background
-    teamLabel: "Red",       // badge text
-    teamTextColor: "#fff",  // badge text color (defaults to white)
-  }))}
-  gamePhase={game?.phase}
-  word={null}              // string → shows "My Word" tile; null → hides it
-  roleContent={null}       // JSX → shows "My Role" tile; null → hides it (Avalon only)
-  timerRunning={false}     // true → dims and disables hamburger (Fishbowl, ReverseCharades)
-  onResetToLobby={async () => { await supabase.rpc("game_reset_to_lobby", { p_code: code }) }}
-  rules={null}             // [[title, body], ...] → shows Rules tile; null → hides it
-  peekBarHeight="0px"      // offset if something sits above the footer
->
-  {/* optional JSX rendered in the right side of the footer bar */}
-</PokeSystem>
-```
+{ dark, mid, wl, yellow, notifBg }
 
-### Wiring into a play page
-1. Import at top: `import PokeSystem, { FOOTER_H } from "../../../components/PokeSystem"`
-2. Define color constants and `BOTTOM_PAD` near the top of the file
-3. Define `pokeSystemNode` **after** `const me = players.find(...)` but **before** any conditional returns:
-   ```js
-   const pokeSystemNode = me ? <PokeSystem colors={POKE_COLORS} ... /> : null
-   ```
-4. Wrap every `return (...)` in the component as `return (<>...<pokeSystemNode/></>)`
-5. Change any `position: "fixed", bottom: 0` action bars to `bottom: FOOTER_H`
+// Fishbowl:        { dark: "#0C47E9", mid: "#2357E7", wl: "#4A70FF", yellow: "#FBDF54", notifBg: "#071A8A" }
+// GameOfWhat:      { dark: "#4A123B", mid: "#5C1640", wl: "#8B2060", yellow: "#FBDF54", notifBg: "#2D0A25" }
+// FirstToWorst:    { dark: "#003638", mid: "#00423f", wl: "#006648", yellow: "#FBDF54", notifBg: "#001E1C" }
+// Drawful:         { dark: "#1C5250", mid: "#245E5C", wl: "#3A9180", yellow: "#F5E8D8", notifBg: "#0F302F" }
+// SoClover:        { dark: "#4C7523", mid: "#5A8026", wl: "#90A331", yellow: "#FBDF54", notifBg: "#2E4510" }
+// Avalon:          { dark: "#0A1520", mid: "#121F2E", wl: "#1E3248", yellow: "#C9A84C", notifBg: "#060D14" }
+// Telestrations:   { dark: "#1A0840", mid: "#200C52", wl: "#4A228C", yellow: "#FBDF54", notifBg: "#15062A" }
+// Copycats:        { dark: "#1A0840", mid: "#200C52", wl: "#4A228C", yellow: "#FBDF54", notifBg: "#15062A" }
+// Codenames, ReverseCharades, ExquisiteCorpse, MrWhite — derive from primary colors
+```
 
 ### Pokes database table
 All games share the same `pokes` table:
 - `room_code` text, `from_player` text, `to_player` text | null, `message` text, `id` uuid, `created_at` timestamp
-- Direct insert for pokes: `supabase.from("pokes").insert({ room_code, from_player, to_player, message: "👉" })`
-- Direct insert for messages: same but `to_player: null` and `message` = the text
+- Poke: `supabase.from("pokes").insert({ room_code, from_player, to_player: targetName, message: "👉" })`
+- Message: same but `to_player: null` and `message` = the text
 
-### POKE_COLORS per game
-```js
-// Telestrations / Copycats
-{ dark: "#1A0840", mid: "#200C52", wl: "#4A228C", yellow: "#FBDF54", notifBg: "#15062A" }
-// GameOfWhat
-{ dark: "#4A123B", mid: "#5C1640", wl: "#8B2060", yellow: "#FBDF54", notifBg: "#2D0A25" }
-// FirstToWorst
-{ dark: "#003638", mid: "#00423f", wl: "#006648", yellow: "#FBDF54", notifBg: "#001E1C" }
-// Drawful
-{ dark: "#1C5250", mid: "#245E5C", wl: "#3A9180", yellow: "#F5E8D8", notifBg: "#0F302F" }
-// SoClover
-{ dark: "#4C7523", mid: "#5A8026", wl: "#90A331", yellow: "#FBDF54", notifBg: "#2E4510" }
-// Fishbowl
-{ dark: "#0C47E9", mid: "#2357E7", wl: "#4A70FF", yellow: "#FBDF54", notifBg: "#071A8A" }
-// Avalon
-{ dark: "#0A1520", mid: "#121F2E", wl: "#1E3248", yellow: "#C9A84C", notifBg: "#060D14" }
-// Codenames, ReverseCharades, ExquisiteCorpse — derive from their primary colors
-```
-
-### Reset RPCs
-Each game needs a reset-to-lobby RPC for the PokeSystem Lobby tile. These exist:
+### Reset RPCs (used by Menu's Lobby tile)
 - `tel_reset_game`, `gow_reset_game`, `ftw_reset_to_lobby`, `drawful_reset_game`
 - `soclover_reset_to_lobby`, `avalon_reset_to_lobby`, `cc_reset_to_lobby`
-- `reset_codenames_game`, `rc_reset_game`, `ec_reset_game` (or equivalent)
+- `reset_codenames_game`, `rc_reset_game`, `ec_reset_game`
 
-### Game-specific PokeSystem behaviors
-- **Fishbowl**: `timerRunning={!!game?.turn_running}` — menu disabled during active turn
-- **ReverseCharades**: `timerRunning={!!game?.turn_started_at && secondsRemaining > 0}` — same
-- **Avalon**: `roleContent={hasSeenRole ? <RoleCardBody /> : null}` — "My Role" tile replaces the old floating mini-card. The old mini-card and role modal have been removed.
-- **Team games** (Fishbowl, Codenames, ReverseCharades): pass `teamColor`/`teamLabel`/`teamTextColor` in `playerDetails`
-
-### Inline poke buttons on waiting screens
-Any screen with a player-status list (done/pending dots) should show a 👉 button for pending non-self players. The button calls `sendInlinePoke(p.name)` directly — no confirmation, no PokeSystem modal.
-
-```js
-async function sendInlinePoke(targetName) {
-  if (!me) return
-  await supabase.from("pokes").insert({ room_code: code, from_player: me.name, to_player: targetName, message: "👉" })
-}
-// In the player row:
-{!done && !isMe && (
-  <button onClick={() => sendInlinePoke(p.name)}
-    style={{ background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 20, padding: "0 4px", lineHeight: 1 }}>👉</button>
-)}
-```
-
-Games with reusable waiting-list components (Copycats: `WaitingList`, FirstToWorst: `StatusList`) pass `myPlayerId` and `onPoke={sendInlinePoke}` as props.
+### Game-specific behaviors
+- **Fishbowl / ReverseCharades**: pass `timerRunning` to Footer — disables hamburger during active turn
+- **Avalon**: pass `roleContent` JSX to Menu — shows "My Role" tile with hidden-role info
+- **Team games** (Fishbowl, Codenames, ReverseCharades): pass `teamColor`/`teamLabel`/`teamTextColor` in `playerDetails` to Menu
 
 ---
 
@@ -640,7 +576,7 @@ When the mechanic requires each answer/option to have at most one voter (e.g. Dr
 - Each player fetches only their own role
 - RPC assigns roles atomically at game start
 - "Evil sees evil" info: send evil player IDs only to players whose role grants that knowledge
-- Identity card is accessed via the ☰ hamburger menu "My Role" tile — there is no floating mini-card
+- Identity card is accessed via the Menu's "My Role" tile — there is no floating mini-card
 
 ### useSubmitNudge
 Some games use `lib/useSubmitNudge.js` — a hook that tracks whether the player has started typing/drawing and nudges them to submit. This file **must be committed to git** in every game that imports it. If a Vercel build fails with `Module not found: Can't resolve '../lib/useSubmitNudge'`, the file is on disk but untracked — run `git add lib/useSubmitNudge.js && git commit` and redeploy.

@@ -24,6 +24,7 @@ import { supabase } from "./supabase"
 export default function useTypingPresence(gameKey, code, myPlayerId) {
   const channelRef = useRef(null)
   const myPlayerIdRef = useRef(myPlayerId)
+  const isTypingRef = useRef(false)
   const [presenceState, setPresenceState] = useState({})
 
   // Keep ref current so the subscribe callback (a closure) can read the latest value
@@ -32,10 +33,16 @@ export default function useTypingPresence(gameKey, code, myPlayerId) {
   useEffect(() => {
     if (!code) return
     const channel = supabase.channel(`${gameKey}-typing-${code}`)
-      .on("presence", { event: "sync" }, () => setPresenceState({ ...channel.presenceState() }))
+      .on("presence", { event: "sync" }, () => {
+        const s = channel.presenceState()
+        console.log("[presence] sync:", JSON.stringify(s))
+        setPresenceState({ ...s })
+      })
       .subscribe(async status => {
+        console.log("[presence] status:", status, "id:", myPlayerIdRef.current)
         if (status === "SUBSCRIBED" && myPlayerIdRef.current) {
           await channel.track({ playerId: myPlayerIdRef.current, typing: false })
+          console.log("[presence] tracked initial")
         }
       })
     channelRef.current = channel
@@ -56,6 +63,9 @@ export default function useTypingPresence(gameKey, code, myPlayerId) {
 
   function onTypingChange(isTyping) {
     if (!channelRef.current || !myPlayerId) return
+    if (isTyping === isTypingRef.current) return
+    isTypingRef.current = isTyping
+    console.log("[presence] track:", isTyping)
     channelRef.current.track({ playerId: myPlayerId, typing: isTyping })
   }
 

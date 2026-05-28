@@ -24,6 +24,7 @@ import { supabase } from "./supabase"
 export default function useTypingPresence(gameKey, code, myPlayerId) {
   const channelRef = useRef(null)
   const myPlayerIdRef = useRef(myPlayerId)
+  const isTypingRef = useRef(false)
   const [presenceState, setPresenceState] = useState({})
 
   // Keep ref current so the subscribe callback (a closure) can read the latest value
@@ -61,8 +62,10 @@ export default function useTypingPresence(gameKey, code, myPlayerId) {
   )
 
   function onTypingChange(isTyping) {
-    console.log("[presence] onTypingChange:", isTyping, "id:", myPlayerId, "channel:", !!channelRef.current)
     if (!channelRef.current || !myPlayerId) return
+    if (isTyping === isTypingRef.current) return
+    isTypingRef.current = isTyping
+    console.log("[presence] track:", isTyping)
     channelRef.current.track({ playerId: myPlayerId, typing: isTyping })
   }
 

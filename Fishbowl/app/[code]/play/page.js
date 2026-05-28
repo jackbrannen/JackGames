@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
-import PokeSystem, { FOOTER_H } from "../../../components/PokeSystem"
+import Footer, { FOOTER_H } from "../../../components/Footer"
+import Menu from "../../../components/Menu"
+import Notifications from "../../../components/Notifications"
 import GameModal from "../../../components/GameModal"
 
 const T1         = "#3378FF"  // page background blue
@@ -35,14 +37,6 @@ function sfxStartRound() { _sfx(c => { _tone(c, 440, 0.12, 0.06); _tone(c, 660, 
 function sfxEndRound()   { _sfx(c => { _tone(c, 660, 0.12, 0.07); _tone(c, 440, 0.28, 0.06, "sine", 0.11) }) }
 function sfxEndTurn()    { _sfx(c => { _tone(c, 880, 0.22, 0.05, "square") }) }
 
-function CogIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-    </svg>
-  )
-}
 
 function buildOnDeck(players, game, count = 4) {
   const team1 = players.filter((p) => p.team === 1)
@@ -119,10 +113,9 @@ export default function Play({ params }) {
   const [manualT1, setManualT1] = useState("0")
   const [manualT2, setManualT2] = useState("0")
   const [roundsTotal, setRoundsTotal] = useState("3")
-  const [showGameSettings, setShowGameSettings] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [showGameModal, setShowGameModal] = useState(false)
   const [instructions, setInstructions] = useState("")
-  const showGameSettingsRef = useRef(false)
   const endingRef = useRef(false)
   const prevRunningRef = useRef(false)
   const [dragX, setDragX] = useState(0)
@@ -227,11 +220,9 @@ export default function Play({ params }) {
     // ── 3. Apply all state updates together (React batches into one render) ──
     setGame(gameData)
     setPlayers(playerData ?? [])
-    if (!showGameSettingsRef.current) {
-      setManualT1(String(gameData.team1_score ?? 0))
-      setManualT2(String(gameData.team2_score ?? 0))
-      setRoundsTotal(String(gameData.rounds_total ?? 3))
-    }
+    setManualT1(String(gameData.team1_score ?? 0))
+    setManualT2(String(gameData.team2_score ?? 0))
+    setRoundsTotal(String(gameData.rounds_total ?? 3))
 
     if (!animatingRef.current) {
       if (gameData.active_clue_id) {
@@ -281,21 +272,6 @@ export default function Play({ params }) {
   }, [game?.turn_running])
 
   const me = players.find((p) => p.id === myPlayerId)
-
-  // ── PokeSystem (always mounted for notifications) ──────────────────────────
-  const pokeSystemNode = me ? (
-    <PokeSystem
-      colors={POKE_COLORS}
-      roomCode={code}
-      currentPlayer={me.name}
-      allPlayers={players.map(p => p.name)}
-      playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, team: p.team, teamColor: p.team === 1 ? BOYS : p.team === 2 ? GIRLS : undefined, teamLabel: p.team === 1 ? "Team 1" : p.team === 2 ? "Team 2" : undefined }))}
-      gamePhase={game?.phase}
-      timerRunning={!!game?.turn_running}
-      rules={instructions ? [["How to Play", instructions]] : null}
-      onResetToLobby={async () => { await supabase.rpc("reset_game_for_replay", { p_code: code }) }}
-    />
-  ) : null
 
   const currentActor = players.find((p) => p.id === game?.turn_player_id)
   const isMyTurn = !!me && !!game?.turn_player_id && game.turn_player_id === me.id
@@ -430,7 +406,6 @@ export default function Play({ params }) {
       <div style={{ minHeight: "100dvh", background: T1, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <p style={{ color: "white", fontSize: 22, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" }}>Loading…</p>
       </div>
-        {pokeSystemNode}
       </>
     )
   }
@@ -584,61 +559,7 @@ export default function Play({ params }) {
           </div>
         </div>
 
-        {!game.turn_running && (
-          <button
-            onClick={() => setShowGameSettings((s) => { showGameSettingsRef.current = !s; return !s })}
-            style={{ background: WARM_LIGHT, color: "white", padding: "8px 12px", minWidth: 44, display: "flex", alignItems: "center", justifyContent: "center" }}
-          >
-            {showGameSettings ? <span style={{ fontSize: 16, lineHeight: 1 }}>✕</span> : <CogIcon />}
-          </button>
-        )}
       </div>
-
-      {/* Settings panel */}
-      {showGameSettings && !game.turn_running && (
-        <div style={{ padding: "16px 20px", background: "#0C47E9", flexShrink: 0 }}>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-              Boys
-              <input
-                value={manualT1}
-                onChange={(e) => setManualT1(e.target.value)}
-                style={{ background: WARM_LIGHT, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }}
-              />
-            </label>
-            <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-              Girls
-              <input
-                value={manualT2}
-                onChange={(e) => setManualT2(e.target.value)}
-                style={{ background: WARM_LIGHT, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }}
-              />
-            </label>
-            <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-              Rounds
-              <input
-                value={roundsTotal}
-                onChange={(e) => setRoundsTotal(e.target.value)}
-                style={{ background: WARM_LIGHT, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }}
-              />
-            </label>
-            <button
-              onClick={saveScoreAndSettings}
-              style={{ background: YELLOW, color: "#000", fontSize: 14, fontWeight: 900, padding: "8px 16px" }}
-            >
-              Save
-            </button>
-            {game.phase === "between_rounds" && game.round_index < game.rounds_total && (
-              <button
-                onClick={doStartRound}
-                style={{ background: YELLOW, color: "#000", fontSize: 14, fontWeight: 900, padding: "8px 16px" }}
-              >
-                Start Round
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Turn banner */}
       {(game.phase === "play" || game.phase === "between_rounds") && currentActor && (
@@ -736,9 +657,8 @@ export default function Play({ params }) {
               of {game.rounds_total ?? 3}
             </div>
 
-            {!showGameSettings && (
-              <div style={{ marginTop: 48 }}>
-                {game.turn_new_round_continuation && isMyTurn && me?.time_bank_seconds != null ? (
+            <div style={{ marginTop: 48 }}>
+              {game.turn_new_round_continuation && isMyTurn && me?.time_bank_seconds != null ? (
                   <div style={{ textAlign: "center" }}>
                     <div style={{ fontSize: 16, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.75, marginBottom: 12 }}>
                       Your turn continues!
@@ -792,8 +712,7 @@ export default function Play({ params }) {
                     Waiting for {currentActor?.name ?? "next player"}…
                   </div>
                 )}
-              </div>
-            )}
+            </div>
           </div>
         )}
 
@@ -1052,7 +971,49 @@ export default function Play({ params }) {
 
       </div>
     </div>
-      {pokeSystemNode}
+      {me && <>
+        <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />
+        <Menu
+          supabase={supabase}
+          colors={POKE_COLORS}
+          isOpen={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          roomCode={code}
+          currentPlayer={me.name}
+          playerDetails={players.map(p => ({
+            name: p.name,
+            teamColor: p.team === 1 ? BOYS : p.team === 2 ? GIRLS : undefined,
+            teamLabel: p.team === 1 ? "Boys" : p.team === 2 ? "Girls" : undefined,
+          }))}
+          gamePhase={game?.phase}
+          rules={instructions ? [["How to Play", instructions]] : null}
+          onResetToLobby={async () => { await supabase.rpc("reset_game_for_replay", { p_code: code }) }}
+          settingsContent={<>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+                Boys
+                <input value={manualT1} onChange={e => setManualT1(e.target.value)}
+                  style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }} />
+              </label>
+              <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+                Girls
+                <input value={manualT2} onChange={e => setManualT2(e.target.value)}
+                  style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }} />
+              </label>
+              <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+                Rounds
+                <input value={roundsTotal} onChange={e => setRoundsTotal(e.target.value)}
+                  style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }} />
+              </label>
+              <button onClick={saveScoreAndSettings}
+                style={{ background: YELLOW, color: "#000", fontSize: 14, fontWeight: 900, padding: "8px 16px" }}>
+                Save
+              </button>
+            </div>
+          </>}
+        />
+        <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} timerRunning={!!game?.turn_running} />
+      </>}
       {showGameModal && (
         <GameModal
           onClose={() => setShowGameModal(false)}

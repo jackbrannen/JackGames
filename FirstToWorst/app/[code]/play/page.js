@@ -11,6 +11,7 @@ import FooterButton from "../../../components/FooterButton"
 import WaitingList from "../../../components/WaitingList"
 import TextEntry from "../../../components/TextEntry"
 import { useDuplicates } from "../../../lib/useDuplicates"
+import useTypingPresence from "../../../lib/useTypingPresence"
 import { playYourTurn } from "../../../lib/sounds"
 
 const BG          = "#004F45"
@@ -435,9 +436,7 @@ export default function Play({ params }) {
   const prevLastMoveRef = useRef(null)
   const botAutoRef = useRef({})
   const soundTriggerRef = useRef(null)
-  const channelRef = useRef(null)
-  const typingTimerRef = useRef(null)
-  const [presenceState, setPresenceState] = useState({})
+  const { onTypingChange, typingPlayerIds } = useTypingPresence("ftw", code, myPlayerId)
   const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
   const [pokeJustSent, setPokeJustSent] = useState(null)
   const [instructions, setInstructions] = useState("")
@@ -545,13 +544,7 @@ export default function Play({ params }) {
     const channel = supabase.channel(`ftw-play-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "ftw_games", filter: `code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "ftw_players", filter: `game_code=eq.${code}` }, loadState)
-      .on("presence", { event: "sync" }, () => setPresenceState({ ...channel.presenceState() }))
-      .subscribe(async status => {
-        if (status === "SUBSCRIBED" && myPlayerId) {
-          await channel.track({ playerId: myPlayerId, typing: false })
-        }
-      })
-    channelRef.current = channel
+      .subscribe()
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
@@ -660,21 +653,6 @@ export default function Play({ params }) {
       })
     }
   }, [game?.phase, game?.round_phase, game?.guessing_index, players.length, myPlayerId])
-
-  function trackTyping() {
-    if (!channelRef.current || !myPlayerId) return
-    channelRef.current.track({ playerId: myPlayerId, typing: true })
-    clearTimeout(typingTimerRef.current)
-    typingTimerRef.current = setTimeout(() => {
-      if (channelRef.current) channelRef.current.track({ playerId: myPlayerId, typing: false })
-    }, 3000)
-  }
-
-  const typingPlayerIds = new Set(
-    Object.values(presenceState).flatMap(presences =>
-      presences.filter(p => p.typing && p.playerId !== myPlayerId).map(p => p.playerId)
-    )
-  )
 
   if (!game) {
     return (
@@ -849,8 +827,8 @@ export default function Play({ params }) {
                       next[idx] = v
                       setWordFields(next)
                       if (copiedIdeaIndex === idx) setCopiedIdeaIndex(null)
-                      trackTyping()
                     }}
+                    onTypingChange={onTypingChange}
                     inputRef={el => { wordInputRefs.current[idx] = el }}
                     onSubmit={idx < wordFields.length - 1
                       ? () => wordInputRefs.current[idx + 1]?.focus()
@@ -887,8 +865,8 @@ export default function Play({ params }) {
                 next[i] = v
                 setWordFields(next)
                 if (copiedIdeaIndex === i) setCopiedIdeaIndex(null)
-                trackTyping()
               }}
+              onTypingChange={onTypingChange}
               inputRef={el => { wordInputRefs.current[i] = el }}
               onSubmit={i < wordFields.length - 1
                 ? () => wordInputRefs.current[i + 1]?.focus()

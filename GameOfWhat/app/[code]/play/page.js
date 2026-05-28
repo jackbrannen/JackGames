@@ -8,6 +8,7 @@ import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import GameModal from "../../../components/GameModal"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
+import useTypingPresence from "../../../lib/useTypingPresence"
 import FooterButton from "../../../components/FooterButton"
 import WaitingList from "../../../components/WaitingList"
 import TextEntry from "../../../components/TextEntry"
@@ -90,9 +91,7 @@ export default function Play({ params }) {
   const [instructions, setInstructions] = useState("")
   const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
   const [pokeJustSent, setPokeJustSent] = useState(null)
-  const channelRef = useRef(null)
-  const typingTimerRef = useRef(null)
-  const [presenceState, setPresenceState] = useState({})
+  const { onTypingChange, typingPlayerIds } = useTypingPresence("gow", code, myPlayerId)
 
   useEffect(() => {
     if (!game || !myPlayerId) return
@@ -188,13 +187,7 @@ export default function Play({ params }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "gow_players", filter: `game_code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "gow_answers" }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "gow_votes" }, loadState)
-      .on("presence", { event: "sync" }, () => setPresenceState({ ...channel.presenceState() }))
-      .subscribe(async status => {
-        if (status === "SUBSCRIBED" && myPlayerId) {
-          await channel.track({ playerId: myPlayerId, typing: false })
-        }
-      })
-    channelRef.current = channel
+      .subscribe()
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
@@ -392,21 +385,6 @@ export default function Play({ params }) {
     await supabase.rpc("gow_start_next_round", { p_code: code })
     await loadState()
   }
-
-  function trackTyping() {
-    if (!channelRef.current || !myPlayerId) return
-    channelRef.current.track({ playerId: myPlayerId, typing: true })
-    clearTimeout(typingTimerRef.current)
-    typingTimerRef.current = setTimeout(() => {
-      if (channelRef.current) channelRef.current.track({ playerId: myPlayerId, typing: false })
-    }, 3000)
-  }
-
-  const typingPlayerIds = new Set(
-    Object.values(presenceState).flatMap(presences =>
-      presences.filter(p => p.typing && p.playerId !== myPlayerId).map(p => p.playerId)
-    )
-  )
 
   // Must be before early return — Rules of Hooks
   const myAnswerRecordEarly = answers.find(a => a.player_id === myPlayerId)
@@ -682,7 +660,8 @@ export default function Play({ params }) {
           <div>
             <TextEntry
               value={roundQuestion}
-              onChange={v => { setRoundQuestion(v); trackTyping() }}
+              onChange={v => setRoundQuestion(v)}
+              onTypingChange={onTypingChange}
               onSubmit={submitRoundQuestion}
               placeholder="Write a question for everyone…"
               maxLength={200}
@@ -862,7 +841,8 @@ export default function Play({ params }) {
               <div>
                 <TextEntry
                   value={myAnswer}
-                  onChange={v => { setMyAnswer(v); trackTyping() }}
+                  onChange={v => setMyAnswer(v)}
+                  onTypingChange={onTypingChange}
                   placeholder="Your answer…"
                   maxLength={300}
                   rows={3}

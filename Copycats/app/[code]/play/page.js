@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
-import PokeSystem, { FOOTER_H } from "../../../components/PokeSystem"
+import Footer, { FOOTER_H } from "../../../components/Footer"
+import Menu from "../../../components/Menu"
+import Notifications from "../../../components/Notifications"
 import GameModal from "../../../components/GameModal"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 
@@ -276,18 +278,26 @@ export default function PlayPage({ params }) {
     setTimeout(() => setPokeCooldownActive(false), 10000)
   }
 
-  // ── PokeSystem (always mounted for notifications) ──────────────────────────
+  const [menuOpen, setMenuOpen] = useState(false)
   const pokeSystemNode = (footer = null) => me ? (
-    <PokeSystem
-      colors={POKE_COLORS}
-      roomCode={code}
-      currentPlayer={me.name}
-      allPlayers={players.map(p => p.name)}
-      playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name }))}
-      gamePhase={game?.phase}
-      rules={instructions ? [["How to Play", instructions]] : null}
-      onResetToLobby={async () => { await supabase.rpc("cc_reset_to_lobby", { p_code: code }) }}
-    >{footer}</PokeSystem>
+    <>
+      <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />
+      <Menu
+        supabase={supabase}
+        colors={POKE_COLORS}
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        roomCode={code}
+        currentPlayer={me.name}
+        playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name }))}
+        gamePhase={game?.phase}
+        rules={instructions ? [["How to Play", instructions]] : null}
+        onResetToLobby={async () => { await supabase.rpc("cc_reset_to_lobby", { p_code: code }) }}
+      />
+      <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
+        {footer}
+      </Footer>
+    </>
   ) : null
 
   if (!me) {

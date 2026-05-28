@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
-import PokeSystem, { FOOTER_H } from "../../../components/PokeSystem"
+import Footer, { FOOTER_H } from "../../../components/Footer"
+import Menu from "../../../components/Menu"
+import Notifications from "../../../components/Notifications"
 import GameModal from "../../../components/GameModal"
 
 const PRIMARY = "#974344"
@@ -237,19 +239,25 @@ export default function Play({ params }) {
     return Math.max(0, (game.turn_duration_seconds ?? 45) - elapsed)
   }, [game, nowMs])
 
-  // ── PokeSystem (always mounted for notifications) ──────────────────────────
+  const [menuOpen, setMenuOpen] = useState(false)
+  const timerRunning = !!game?.turn_started_at && secondsRemaining > 0
   const pokeSystemNode = me ? (
-    <PokeSystem
-      colors={POKE_COLORS}
-      roomCode={code}
-      currentPlayer={me.name}
-      allPlayers={players.map(p => p.name)}
-      playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, team: p.team, teamColor: p.team ? teamColor(p.team) : undefined, teamLabel: p.team ? teamLabel(p.team) : undefined, teamTextColor: p.team ? teamTextColor(p.team) : undefined }))}
-      gamePhase={game?.phase}
-      timerRunning={!!game?.turn_started_at && secondsRemaining > 0}
-      rules={instructions ? [["How to Play", instructions]] : null}
-      onResetToLobby={async () => { await supabase.rpc("rc_reset_game", { p_code: code }) }}
-    />
+    <>
+      <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />
+      <Menu
+        supabase={supabase}
+        colors={POKE_COLORS}
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        roomCode={code}
+        currentPlayer={me.name}
+        playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, teamColor: p.team ? teamColor(p.team) : undefined, teamLabel: p.team ? teamLabel(p.team) : undefined, teamTextColor: p.team ? teamTextColor(p.team) : undefined }))}
+        gamePhase={game?.phase}
+        rules={instructions ? [["How to Play", instructions]] : null}
+        onResetToLobby={async () => { await supabase.rpc("rc_reset_game", { p_code: code }) }}
+      />
+      <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} timerRunning={timerRunning} />
+    </>
   ) : null
 
   const guesser = players.find(p => p.id === game?.current_guesser_id)

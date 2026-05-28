@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
-import PokeSystem, { FOOTER_H } from "../../../components/PokeSystem"
+import Footer, { FOOTER_H } from "../../../components/Footer"
+import Menu from "../../../components/Menu"
+import Notifications from "../../../components/Notifications"
 import GameModal from "../../../components/GameModal"
 
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
@@ -13,6 +15,7 @@ const DARK = "#1F1829"
 const MID = "#251E33"
 const WARM_LIGHT = "#464171"
 const YELLOW = "#FBDF54"
+const POKE_COLORS = { dark: "#1F1829", mid: "#251E33", wl: "#464171", yellow: "#FBDF54", notifBg: "#15062A" }
 
 function playChirp() {
   try {
@@ -54,6 +57,7 @@ export default function Play({ params }) {
   const [finishing, setFinishing] = useState(false)
   const [showGameModal, setShowGameModal] = useState(false)
   const [instructions, setInstructions] = useState("")
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const prevPhaseRef = useRef(null)
   const soundTriggerRef = useRef(null)
@@ -229,16 +233,24 @@ export default function Play({ params }) {
       </div>
     )
   }
-  const pokeProps = {
-    roomCode: code,
-    currentPlayer: me?.name ?? "",
-    allPlayers: players.map(p => p.name),
-    playerDetails: players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name })),
-    word: myWord,
-    gamePhase: game.phase,
-    rules: instructions ? [["How to Play", instructions]] : null,
-    peekBarHeight: "env(safe-area-inset-bottom)",
-  }
+  const renderUI = (footerChildren = null) => (
+    <>
+      <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me?.name ?? ""} />
+      <Menu
+        supabase={supabase} colors={POKE_COLORS} isOpen={menuOpen} onClose={() => setMenuOpen(false)}
+        roomCode={code} currentPlayer={me?.name ?? ""}
+        playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name }))}
+        word={myWord}
+        gamePhase={game.phase}
+        rules={instructions ? [["How to Play", instructions]] : null}
+        onResetToLobby={async () => { await supabase.rpc("mw_reset_game", { p_code: code }) }}
+        peekBarHeight="env(safe-area-inset-bottom)"
+      />
+      <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} peekBarHeight="env(safe-area-inset-bottom)">
+        {footerChildren}
+      </Footer>
+    </>
+  )
 
   // ─── FINISHED ────────────────────────────────────────────────────────────────
   if (game.phase === "finished" && revealData) {
@@ -296,11 +308,11 @@ export default function Play({ params }) {
           </div>
         </div>
 
-        <PokeSystem {...pokeProps}>
+        {renderUI(
           <button onClick={() => router.replace(`/${code}`)} style={footerBtnStyle(YELLOW, "#000")}>
             Back to Lobby
           </button>
-        </PokeSystem>
+        )}
         {showGameModal && (
           <GameModal
             onClose={() => setShowGameModal(false)}
@@ -348,7 +360,7 @@ export default function Play({ params }) {
           )}
         </div>
 
-        <PokeSystem {...pokeProps}>{revealFooterAction}</PokeSystem>
+        {renderUI(revealFooterAction)}
       </div>
     )
   }
@@ -391,7 +403,7 @@ export default function Play({ params }) {
           )}
         </div>
 
-        <PokeSystem {...pokeProps}>{discussionFooterAction}</PokeSystem>
+        {renderUI(discussionFooterAction)}
 
         {confirmElimination && (
           <div
@@ -473,7 +485,7 @@ export default function Play({ params }) {
         <p style={{ fontSize: 14, color: "rgba(255,255,255,0.55)", marginTop: 12, textAlign: "center", lineHeight: 1.5, maxWidth: 340, opacity: cardFlipping ? 0 : 1, transition: "opacity 0.2s" }}>
           Open the menu to view your card again.
         </p>
-        <PokeSystem {...pokeProps} />
+        {renderUI()}
       </div>
     )
   }
@@ -514,7 +526,7 @@ export default function Play({ params }) {
         )}
       </div>
 
-      <PokeSystem {...pokeProps}>{statementsFooterAction}</PokeSystem>
+      {renderUI(statementsFooterAction)}
     </div>
   )
 }

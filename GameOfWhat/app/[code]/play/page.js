@@ -92,6 +92,7 @@ export default function Play({ params }) {
   const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
   const [pokeJustSent, setPokeJustSent] = useState(null)
   const { onTypingChange, typingPlayerIds } = useTypingPresence("gow", code, myPlayerId)
+  console.log("[GOW play] render — code:", code, "myPlayerId:", myPlayerId, "typingPlayerIds:", [...typingPlayerIds])
 
   useEffect(() => {
     if (!game || !myPlayerId) return

@@ -268,6 +268,8 @@ export default function Play({ params }) {
       setFlying(null)
       dragDirection.current = null
       dragXRef.current = 0
+    } else {
+      setMenuOpen(false)
     }
   }, [game?.turn_running])
 
@@ -521,6 +523,10 @@ export default function Play({ params }) {
 
   const timerUrgent = secondsRemaining <= 5
 
+  const hasPassTurn = !!(me && game.phase === "play" && isMyTurn && !game.turn_running && !isPaused && players.filter(p => p.team === me.team).length > 1)
+  const footerHeight = hasPassTurn ? FOOTER_H * 2 : FOOTER_H
+  const dynamicBottomPad = `calc(${footerHeight + 8}px + env(safe-area-inset-bottom))`
+
   // Footer action buttons — primary actions for each non-active-turn state
   const footerAction = me ? (() => {
     if (game.phase === "between_rounds" && isMyTurn) {
@@ -532,12 +538,14 @@ export default function Play({ params }) {
     if (game.phase === "play" && isMyTurn && !game.turn_running) {
       if (isPaused)
         return <button onClick={doStartTurn} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900 }}>Resume Turn</button>
-      return <>
-        <button onClick={doStartTurn} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900 }}>Start Turn</button>
-        {players.filter(p => p.team === me.team).length > 1 && (
-          <button onClick={doPassTurn} style={{ flex: 1, height: "100%", background: WARM_LIGHT, color: "white", fontSize: 16, fontWeight: 700 }}>Pass Turn</button>
-        )}
-      </>
+      if (hasPassTurn)
+        return (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <button onClick={doStartTurn} style={{ flex: 1, background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900 }}>Start Turn</button>
+            <button onClick={doPassTurn} style={{ flex: 1, background: WARM_LIGHT, color: "white", fontSize: 16, fontWeight: 700 }}>Pass turn to another player</button>
+          </div>
+        )
+      return <button onClick={doStartTurn} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900 }}>Start Turn</button>
     }
     return null
   })() : null
@@ -728,7 +736,7 @@ export default function Play({ params }) {
 
         {/* MY TURN */}
         {game.phase === "play" && isMyTurn && (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px", paddingBottom: game.turn_running ? `calc(120px + env(safe-area-inset-bottom))` : BOTTOM_PAD }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px", paddingBottom: game.turn_running ? `calc(120px + env(safe-area-inset-bottom))` : dynamicBottomPad }}>
 
             {!game.turn_running ? (
               /* Pre-turn or paused */
@@ -972,7 +980,7 @@ export default function Play({ params }) {
             </div>
           </div>
         ) : (
-          <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
+          <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} timerRunning={!!game?.turn_running} height={footerHeight}>
             {footerAction}
           </Footer>
         )}

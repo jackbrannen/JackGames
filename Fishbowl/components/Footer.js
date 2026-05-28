@@ -27,6 +27,7 @@ export default function Footer({
   onToggle,
   timerRunning = false,
   peekBarHeight = "0px",
+  height = FOOTER_H,
   children,
 }) {
   const { dark = "#1A1A2E", wl = "#3A3A60" } = colors
@@ -37,7 +38,7 @@ export default function Footer({
       bottom: peekBarHeight,
       left: 0,
       right: 0,
-      height: FOOTER_H,
+      height: height,
       background: dark,
       display: "flex",
       alignItems: "stretch",

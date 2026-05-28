@@ -20,7 +20,7 @@
 */
 
 import { useState, useEffect, useRef } from "react"
-import supabase from "./supabase"
+import { supabase } from "./supabase"
 
 export default function useTypingPresence(gameKey, code, myPlayerId) {
   const channelRef = useRef(null)

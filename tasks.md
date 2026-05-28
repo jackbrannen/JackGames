@@ -3,36 +3,19 @@
 Canonical files in `packages/shared/components/`, copied to all 12 games.
 Do in small batches, deploy, test before continuing.
 
-### Built but needs spec corrections before wiring
-- [ ] **Menu** — currently includes Message and Poke tiles, which should be hidden. "Players" tile should become "Scores" (listing scores) in games with scoring, with poke buttons inline. Games with teams should group by team. Settings tile needed for Fishbowl. See spec below.
-- [ ] **Footer** — currently dims/disables during timer. Spec says it should not appear at all during timer (Fishbowl, ReverseCharades).
+### Wired into all 12 games ✓
+- [x] Footer — `components/Footer.js`
+- [x] Menu — `components/Menu.js`
+- [x] Notifications — `components/Notifications.js`
 
 ### Built — needs wiring into game pages
-- [ ] Footer — `components/Footer.js` — spec at top of file
-- [ ] Menu — `components/Menu.js` — spec at top of file
-- [ ] Notifications — `components/Notifications.js` — spec at top of file
-- [ ] WaitingList — `components/WaitingList.js` — spec at top of file
-
-### Implementation status per game (Footer + Menu + Notifications + WaitingList)
-- [ ] Fishbowl
-- [ ] GameOfWhat
-- [ ] FirstToWorst
-- [ ] SoClover
-- [ ] Telestrations
-- [ ] Copycats
-- [ ] Drawful
-- [ ] Avalon
-- [ ] Codenames
-- [ ] ReverseCharades
-- [ ] ExquisiteCorpse
-- [ ] MrWhite
+- [ ] FooterButton — `components/FooterButton.js`
+- [ ] Selections — `components/Selections.js`
+- [ ] TextEntry — `components/TextEntry.js`
+- [ ] WaitingList — `components/WaitingList.js`
 
 ### Components still to build
-- [ ] **Action button** — lives in Footer's right slot. May be one or two buttons. Primary button always changes immediately to loading state on tap. Two buttons can share a row or stack.
-- [ ] **Selections** — tap a row to select; whole row highlights; X to deselect; no separate submit button. Own answer shown last in alternate shade with label. See GameOfWhat for reference.
-- [ ] **Text entry & submission** — signals primary action button to pulse if text entered but not submitted. Signals game when player is typing (feeds WaitingList). Supports multiple fields (FirstToWorst).
-- [ ] **Duplicate detection** — works with Text entry. Three modes: (1) within one player's fields — highlight duplicates, block submit; (2) between players for bonus points (Drawful, GameOfWhat) — show bonus on submission; (3) between players to block (Fishbowl, ReverseCharades) — highlight and block.
-- [ ] **Sound effects** — subtle: on submission, on your turn to act, on poke received.
+- [ ] **Duplicate detection** — works with TextEntry. Three modes: (1) within one player's fields — useDuplicates hook built ✓; (2) between players for bonus points (Drawful, GameOfWhat) — show bonus on submission; (3) between players to block (Fishbowl, ReverseCharades) — highlight and block. Modes 2-3 are game-specific (need DB data).
 
 ### Later
 - [ ] End game screen — final scores / winning team / creation screenshots (Drawful, Telestrations, ExquisiteCorpse). Play again button. Pick a game modal button.
@@ -48,6 +31,11 @@ Do in small batches, deploy, test before continuing.
 ### Already done
 - [x] GameModal — `components/GameModal.js`
 - [x] Notifications — `components/Notifications.js`
+- [x] FooterButton — `components/FooterButton.js` — auto-loading, nudge pulse, primary/secondary/danger variants
+- [x] Selections — `components/Selections.js` — tap-to-select rows, ✕ deselect, own-item label
+- [x] TextEntry — `components/TextEntry.js` — textarea/input, onTypingChange debounced callback
+- [x] sounds.js — `lib/sounds.js` — playSubmit, playYourTurn, playPoke
+- [x] useDuplicates — `lib/useDuplicates.js` — within-player duplicate detection hook
 - [x] WaitingList — `components/WaitingList.js`
 - [x] styles.js — `components/styles.js` — design tokens used by all components
 

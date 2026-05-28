@@ -92,7 +92,6 @@ export default function Play({ params }) {
   const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
   const [pokeJustSent, setPokeJustSent] = useState(null)
   const { onTypingChange, typingPlayerIds } = useTypingPresence("gow", code, myPlayerId)
-  console.log("[GOW play] render — code:", code, "myPlayerId:", myPlayerId, "typingPlayerIds:", [...typingPlayerIds])
 
   useEffect(() => {
     if (!game || !myPlayerId) return
@@ -195,7 +194,6 @@ export default function Play({ params }) {
   const currentQuestionId = currentQuestion?.id
   useEffect(() => {
     setMyAnswer("")
-    setSubmittingAnswer(false)
     setSubmittingVote(false)
     setMyVoteId(null)
     changingVoteRef.current = false
@@ -622,7 +620,7 @@ export default function Play({ params }) {
           Round {game.round_index + 1}
         </div>
         <div style={{ fontSize: 16, fontWeight: 700, opacity: 0.65, marginBottom: 40 }}>
-          of {game.rounds_total} [TEST]
+          of {game.rounds_total}
         </div>
 
         {game.round_index > 0 && (

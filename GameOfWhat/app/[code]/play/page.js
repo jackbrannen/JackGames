@@ -622,7 +622,7 @@ export default function Play({ params }) {
           Round {game.round_index + 1}
         </div>
         <div style={{ fontSize: 16, fontWeight: 700, opacity: 0.65, marginBottom: 40 }}>
-          of {game.rounds_total}
+          of {game.rounds_total} [TEST]
         </div>
 
         {game.round_index > 0 && (

@@ -1,4 +1,3 @@
-"use client"
 /*
   useTypingPresence — Supabase Presence-backed typing indicator hook
   ──────────────────────────────────────────────────────────────────

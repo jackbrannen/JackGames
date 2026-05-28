@@ -678,14 +678,17 @@ export default function Play({ params }) {
                   {isMe && <span style={{ fontSize: 12, fontWeight: 600, opacity: 0.65, marginLeft: 6 }}>you</span>}
                 </span>
                 {!done && !isMe ? (
-                  pokeJustSent === p.name ? (
-                    <span style={{ fontSize: 18, color: GREEN, fontWeight: 700 }}>✓</span>
-                  ) : !pokeCooldownActive ? (
-                    <button onClick={() => sendInlinePoke(p.name)} style={{ background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 20, padding: "0 4px", lineHeight: 1 }}>👉</button>
-                  ) : null
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    {typingPlayerIds.has(p.id) && <span style={{ fontSize: 16 }}>💬</span>}
+                    {pokeJustSent === p.name ? (
+                      <span style={{ fontSize: 18, color: GREEN, fontWeight: 700 }}>✓</span>
+                    ) : !pokeCooldownActive ? (
+                      <button onClick={() => sendInlinePoke(p.name)} style={{ background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 20, padding: "0 4px", lineHeight: 1 }}>👉</button>
+                    ) : null}
+                  </div>
                 ) : (
                   <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.65 }}>
-                    {done ? "Ready" : typingPlayerIds.has(p.id) ? "💬" : "Writing…"}
+                    {done ? "Ready" : "Writing…"}
                   </span>
                 )}
               </div>

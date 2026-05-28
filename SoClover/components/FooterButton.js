@@ -85,7 +85,7 @@ export default function FooterButton({
         style={{
           display: "block",
           width: "100%",
-          height: "100%",
+          flex: 1,
           background: bg ?? v.bg,
           color: textColor ?? v.color,
           fontWeight: v.fontWeight,

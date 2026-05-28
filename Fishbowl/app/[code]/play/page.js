@@ -4,9 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import FooterButton from "../../../components/FooterButton"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import GameModal from "../../../components/GameModal"
+import { playYourTurn } from "../../../lib/sounds"
 
 const T1         = "#3378FF"  // page background blue
 const WARM_LIGHT = "#3399FF"
@@ -68,21 +70,6 @@ function buildOnDeck(players, game, count = 4) {
   return deck
 }
 
-function playChirp() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.frequency.setValueAtTime(523, ctx.currentTime)
-    osc.frequency.setValueAtTime(659, ctx.currentTime + 0.08)
-    gain.gain.setValueAtTime(0.25, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25)
-    osc.start(ctx.currentTime)
-    osc.stop(ctx.currentTime + 0.25)
-  } catch {}
-}
 
 function clueTextSize(text) {
   const len = text?.length ?? 0
@@ -137,7 +124,7 @@ export default function Play({ params }) {
     const prev = soundTriggerRef.current
     soundTriggerRef.current = game.phase
     if (!prev) return
-    if (prev !== game.phase) playChirp()
+    if (prev !== game.phase) playYourTurn()
   }, [game?.phase])
 
   useEffect(() => {
@@ -531,21 +518,21 @@ export default function Play({ params }) {
   const footerAction = me ? (() => {
     if (game.phase === "between_rounds" && isMyTurn) {
       if (game.turn_new_round_continuation && me.time_bank_seconds != null)
-        return <button onClick={doContinueTurn} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900 }}>Continue Turn</button>
+        return <FooterButton onClick={doContinueTurn} style={{ fontSize: 20 }}>Continue Turn</FooterButton>
       if (!game.turn_new_round_continuation)
-        return <button onClick={doStartRound} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900 }}>Begin My Turn</button>
+        return <FooterButton onClick={doStartRound} style={{ fontSize: 20 }}>Begin My Turn</FooterButton>
     }
     if (game.phase === "play" && isMyTurn && !game.turn_running) {
       if (isPaused)
-        return <button onClick={doStartTurn} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900 }}>Resume Turn</button>
+        return <FooterButton onClick={doStartTurn} style={{ fontSize: 20 }}>Resume Turn</FooterButton>
       if (hasPassTurn)
         return (
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-            <button onClick={doStartTurn} style={{ flex: 1, background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900 }}>Start Turn</button>
-            <button onClick={doPassTurn} style={{ flex: 1, background: WARM_LIGHT, color: "white", fontSize: 16, fontWeight: 700 }}>Pass turn to another player</button>
+            <FooterButton onClick={doStartTurn} style={{ fontSize: 20 }}>Start Turn</FooterButton>
+            <FooterButton variant="secondary" onClick={doPassTurn} style={{ fontSize: 16 }}>Pass turn to another player</FooterButton>
           </div>
         )
-      return <button onClick={doStartTurn} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900 }}>Start Turn</button>
+      return <FooterButton onClick={doStartTurn} style={{ fontSize: 20 }}>Start Turn</FooterButton>
     }
     return null
   })() : null

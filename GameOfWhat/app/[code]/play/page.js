@@ -8,6 +8,10 @@ import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import GameModal from "../../../components/GameModal"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
+import FooterButton from "../../../components/FooterButton"
+import TextEntry from "../../../components/TextEntry"
+import Selections from "../../../components/Selections"
+import { playYourTurn } from "../../../lib/sounds"
 
 const BG = "#6B1A44"
 const YELLOW = "#FBDF54"
@@ -57,22 +61,6 @@ function sampleIdeas(categories, excludeSet, count = 3) {
   return cats.slice(0, count).map(({ pool }) => pool[Math.floor(Math.random() * pool.length)])
 }
 
-function playChirp() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.frequency.setValueAtTime(523, ctx.currentTime)
-    osc.frequency.setValueAtTime(659, ctx.currentTime + 0.08)
-    gain.gain.setValueAtTime(0.25, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25)
-    osc.start(ctx.currentTime)
-    osc.stop(ctx.currentTime + 0.25)
-  } catch {}
-}
-
 export default function Play({ params }) {
   const router = useRouter()
   const code = useMemo(() => params.code.toUpperCase(), [params.code])
@@ -84,10 +72,8 @@ export default function Play({ params }) {
   const [answers, setAnswers] = useState([])
   const [votes, setVotes] = useState([])
   const [myAnswer, setMyAnswer] = useState("")
-  const [submittingAnswer, setSubmittingAnswer] = useState(false)
   const [myVoteId, setMyVoteId] = useState(null)
   const [submittingVote, setSubmittingVote] = useState(false)
-  const [selfFlash, setSelfFlash] = useState(false)
   const changingVoteRef = useRef(false)
   const botIdsRef = useRef([])
   const botActionsRef = useRef(new Set())
@@ -95,7 +81,6 @@ export default function Play({ params }) {
   const [resultSnapshot, setResultSnapshot] = useState(null)
   const [resultsAcknowledged, setResultsAcknowledged] = useState(null)
   const [roundQuestion, setRoundQuestion] = useState("")
-  const [submittingRoundQuestion, setSubmittingRoundQuestion] = useState(false)
   const [shownPrompts, setShownPrompts] = useState([])
   const [promptsPhase, setPromptsPhase] = useState("none")
   const [gameOverPlayers, setGameOverPlayers] = useState(null)
@@ -113,7 +98,7 @@ export default function Play({ params }) {
     const prev = soundTriggerRef.current
     soundTriggerRef.current = game.phase
     if (!prev) return
-    if (prev !== game.phase) playChirp()
+    if (prev !== game.phase) playYourTurn()
   }, [game?.phase])
 
   useEffect(() => {
@@ -298,7 +283,6 @@ export default function Play({ params }) {
 
   async function submitAnswer(skip = false) {
     if (!currentQuestion || !myPlayerId) return
-    setSubmittingAnswer(true)
     const { error } = await supabase.rpc("gow_submit_answer", {
       p_code: code,
       p_question_id: currentQuestion.id,
@@ -306,7 +290,7 @@ export default function Play({ params }) {
       p_text: skip ? null : myAnswer.trim(),
       p_skipped: skip,
     })
-    if (error) { setSubmittingAnswer(false); return }
+    if (error) throw error
     if (!skip && myAnswer.trim()) {
       const myText = myAnswer.trim().toLowerCase()
       const { data: freshAnswers } = await supabase
@@ -361,10 +345,9 @@ export default function Play({ params }) {
 
   async function submitRoundQuestion() {
     const trimmed = roundQuestion.trim()
-    if (!trimmed || submittingRoundQuestion || !myPlayerId) return
-    setSubmittingRoundQuestion(true)
-    await supabase.from("gow_players").update({ question: trimmed }).eq("id", myPlayerId)
-    setSubmittingRoundQuestion(false)
+    if (!trimmed || !myPlayerId) return
+    const { error } = await supabase.from("gow_players").update({ question: trimmed }).eq("id", myPlayerId)
+    if (error) throw error
     setRoundQuestion("")
     setShownPrompts([])
     setPromptsPhase("none")
@@ -571,9 +554,9 @@ export default function Play({ params }) {
         </div>
       </div>
         {pokeSystemNode(
-          <button onClick={handleAdvanceFromResults} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900 }}>
+          <FooterButton onClick={handleAdvanceFromResults} style={{ fontSize: 16 }}>
             {btnLabel}
-          </button>
+          </FooterButton>
         )}
       </>
     )
@@ -712,13 +695,15 @@ export default function Play({ params }) {
 
         {me && !myNextQuestion && (
           <div>
-            <input
+            <TextEntry
               value={roundQuestion}
-              onChange={e => { setRoundQuestion(e.target.value); trackTyping() }}
-              onKeyDown={e => e.key === "Enter" && submitRoundQuestion()}
+              onChange={v => { setRoundQuestion(v); trackTyping() }}
+              onSubmit={submitRoundQuestion}
               placeholder="Write a question for everyone…"
               maxLength={200}
-              style={{ background: WARM_LIGHT, color: "white", fontSize: 20, padding: "16px 18px", width: "100%", display: "block", border: "none", outline: "none", boxSizing: "border-box" }}
+              multiline={false}
+              bg={WARM_LIGHT}
+              fontSize={20}
             />
             {/* Ideas button */}
             <div style={{ marginTop: 16 }}>
@@ -775,13 +760,13 @@ export default function Play({ params }) {
         </div>
       </div>
         {pokeSystemNode(me && !myNextQuestion && !allNextQuestionsIn ? (
-          <button
+          <FooterButton
+            disabled={!roundQuestion.trim()}
             onClick={submitRoundQuestion}
-            disabled={!roundQuestion.trim() || submittingRoundQuestion}
-            style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900 }}
+            style={{ fontSize: 16 }}
           >
-            {submittingRoundQuestion ? "Submitting…" : "Submit Question"}
-          </button>
+            Submit Question
+          </FooterButton>
         ) : null)}
       </>
     )
@@ -816,6 +801,19 @@ export default function Play({ params }) {
   ))
   const votedPlayerIds = new Set(votes.map(v => v.voter_id))
   const notaVoters = votes.filter(v => v.answer_id === null).map(v => players.find(p => p.id === v.voter_id)?.name).filter(Boolean)
+
+  let answerFooterAction = null
+  if (phase === "answering" && !isQuestionAuthor && !hasSubmittedAnswer) {
+    answerFooterAction = (
+      <FooterButton
+        nudge={nudgeAnswer}
+        disabled={!myAnswer.trim()}
+        onClick={() => submitAnswer(false)}
+      >
+        Submit Answer
+      </FooterButton>
+    )
+  }
 
   return (
     <>
@@ -880,30 +878,22 @@ export default function Play({ params }) {
               </div>
             ) : (
               <div>
-                <textarea
+                <TextEntry
                   value={myAnswer}
-                  onChange={e => { setMyAnswer(e.target.value); trackTyping() }}
+                  onChange={v => { setMyAnswer(v); trackTyping() }}
                   placeholder="Your answer…"
                   maxLength={300}
                   rows={3}
-                  style={{ background: WARM_LIGHT, color: "white", fontSize: 20, padding: "16px 18px", width: "100%", border: "none", outline: "none", resize: "none", display: "block", boxSizing: "border-box", lineHeight: 1.4, marginBottom: 8 }}
+                  bg={WARM_LIGHT}
+                  fontSize={20}
+                  style={{ marginBottom: 8 }}
                 />
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    onClick={() => submitAnswer(false)}
-                    disabled={!myAnswer.trim() || submittingAnswer}
-                    style={{ background: YELLOW, color: "#000", fontSize: 18, fontWeight: 900, padding: "16px", flex: 1, display: "block", animation: nudgeAnswer ? "nudgePulse 1.0s ease-in-out infinite" : "none" }}
-                  >
-                    {submittingAnswer ? "Submitting…" : "Submit Answer"}
-                  </button>
-                  <button
-                    onClick={() => submitAnswer(true)}
-                    disabled={submittingAnswer}
-                    style={{ background: WARM_LIGHT, color: "white", fontSize: 15, fontWeight: 700, padding: "16px 20px", flexShrink: 0 }}
-                  >
-                    Skip
-                  </button>
-                </div>
+                <button
+                  onClick={() => submitAnswer(true)}
+                  style={{ background: WARM_LIGHT, color: "white", fontSize: 15, fontWeight: 700, padding: "16px 20px" }}
+                >
+                  Skip
+                </button>
               </div>
             )}
           </>
@@ -915,57 +905,21 @@ export default function Play({ params }) {
             <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.65, marginBottom: 16 }}>
               {myVoteId ? "Vote cast — tap ✕ to change:" : "Vote for your favorite:"}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
-              {answerGroups.map(group => {
-                const isMine = group.playerIds.includes(myPlayerId)
-                const isSelected = group.answerIds.includes(myVoteId)
-                const canVote = !isMine && (!myVoteId || changingVoteRef.current)
-                return (
-                  <div key={group.primaryId}>
-                    <div style={{ display: "flex", alignItems: "stretch" }}>
-                      <button
-                        onClick={() => {
-                          if (isMine) { setSelfFlash(true); setTimeout(() => setSelfFlash(false), 500); return }
-                          if (canVote) submitVote(group.primaryId)
-                        }}
-                        disabled={submittingVote || isSelected}
-                        style={{
-                          flex: 1,
-                          background: isSelected ? YELLOW : isMine && selfFlash ? "rgba(255,80,80,0.25)" : CARD_BG,
-                          color: isSelected ? "#000" : "white",
-                          fontSize: 18,
-                          fontWeight: 700,
-                          padding: "18px 20px",
-                          textAlign: "left",
-                          display: "block",
-                          opacity: myVoteId && !isSelected && !changingVoteRef.current ? 0.45 : 1,
-                        }}
-                      >
-                        {group.text}
-                      </button>
-                      {isSelected && (
-                        <button
-                          onClick={handleDeselect}
-                          style={{ background: "#4A123B", color: YELLOW, fontSize: 22, fontWeight: 900, padding: "18px 24px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                    {isMine && (
-                      <div style={{ fontSize: 13, fontWeight: 700, color: selfFlash ? RED : "rgba(255,255,255,0.65)", marginTop: 4, marginLeft: 2, transition: "color 150ms" }}>
-                        Your answer — you can't vote for yourself
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-
+            <div style={{ marginBottom: 24 }}>
+              <Selections
+                options={answerGroups.map(g => ({ id: g.primaryId, text: g.text, isMine: g.playerIds.includes(myPlayerId) }))}
+                selectedId={answerGroups.find(g => g.answerIds.includes(myVoteId))?.primaryId ?? null}
+                onSelect={id => submitVote(id)}
+                onDeselect={handleDeselect}
+                disabled={submittingVote}
+                colors={{ bg: CARD_BG, selectedBg: YELLOW, selectedText: "#000", deselectBg: "#4A123B", deselectText: YELLOW }}
+              />
+              {/* None of the above */}
               {(() => {
                 const isNota = myVoteId === "nota"
                 const canVoteNota = !myVoteId || changingVoteRef.current
                 return (
-                  <div style={{ display: "flex", alignItems: "stretch", marginTop: 4 }}>
+                  <div style={{ display: "flex", alignItems: "stretch", marginTop: 10 }}>
                     <button
                       onClick={() => { if (canVoteNota && !isNota) submitVote(null) }}
                       disabled={submittingVote || isNota}
@@ -973,11 +927,8 @@ export default function Play({ params }) {
                         flex: 1,
                         background: isNota ? YELLOW : WARM_LIGHT,
                         color: isNota ? "#000" : "rgba(255,255,255,0.5)",
-                        fontSize: 15,
-                        fontWeight: 700,
-                        padding: "16px 20px",
-                        textAlign: "left",
-                        display: "block",
+                        fontSize: 15, fontWeight: 700, padding: "16px 20px",
+                        textAlign: "left", display: "block",
                         opacity: myVoteId && !isNota && !changingVoteRef.current ? 0.45 : 1,
                       }}
                     >
@@ -1033,7 +984,7 @@ export default function Play({ params }) {
 
       </div>
     </div>
-      {pokeSystemNode()}
+      {pokeSystemNode(answerFooterAction)}
     </>
   )
 }

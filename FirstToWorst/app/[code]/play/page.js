@@ -7,6 +7,9 @@ import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import GameModal from "../../../components/GameModal"
+import FooterButton from "../../../components/FooterButton"
+import { useDuplicates } from "../../../lib/useDuplicates"
+import { playYourTurn } from "../../../lib/sounds"
 
 const BG          = "#004F45"
 const DARK        = "#003638"   // H=182° (+10°), B=22%
@@ -426,23 +429,6 @@ function sampleIdeas(categories, excludeSet, count = 3) {
   return cats.slice(0, count).map(({ pool }) => pool[Math.floor(Math.random() * pool.length)])
 }
 
-function playChirp() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.frequency.setValueAtTime(523, ctx.currentTime)
-    osc.frequency.setValueAtTime(659, ctx.currentTime + 0.08)
-    gain.gain.setValueAtTime(0.25, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25)
-    osc.start(ctx.currentTime)
-    osc.stop(ctx.currentTime + 0.25)
-  } catch {}
-}
-
-
 const POKE_COLORS = { dark: "#003638", mid: "#00423f", wl: "#006648", yellow: "#FBDF54", notifBg: "#001E1C" }
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
@@ -457,13 +443,12 @@ export default function Play({ params }) {
 
   // Ranking phase
   const [rankingItems, setRankingItems] = useState(null)
-  const [lockingIn, setLockingIn] = useState(false)
 
   // Submitting phase — length set from game.words_per_writer once loaded
   const [wordFields, setWordFields] = useState(["", "", "", "", ""])
+  const { dupeIndices, hasDuplicates } = useDuplicates(wordFields)
   const [shownIdeas, setShownIdeas] = useState([])
   const [loadingIdeas, setLoadingIdeas] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
   const [copiedIdeaIndex, setCopiedIdeaIndex] = useState(null)
 
@@ -505,7 +490,7 @@ export default function Play({ params }) {
     const prev = soundTriggerRef.current
     soundTriggerRef.current = game.phase
     if (!prev) return
-    if (prev !== game.phase) playChirp()
+    if (prev !== game.phase) playYourTurn()
   }, [game?.phase])
 
   useEffect(() => {
@@ -826,13 +811,13 @@ export default function Play({ params }) {
 
     async function handleSubmitWords() {
       const trimmed = wordFields.map(w => w.trim())
-      if (trimmed.some(w => !w)) { setSubmitError(`Fill in all ${wCount} before submitting.`); return }
+      if (trimmed.some(w => !w)) { setSubmitError(`Fill in all ${wCount} before submitting.`); throw new Error("validation") }
       const lower = trimmed.map(w => w.toLowerCase())
-      if (new Set(lower).size < wCount) { setSubmitError("No duplicates allowed."); return }
+      if (hasDuplicates) { setSubmitError("No duplicates allowed."); throw new Error("validation") }
 
       // Disallow words already submitted by other players
       const takenWord = trimmed.find(w => allWords.some(aw => aw.text.trim().toLowerCase() === w.toLowerCase()))
-      if (takenWord) { setSubmitError(`"${takenWord}" was already submitted. Try something else.`); return }
+      if (takenWord) { setSubmitError(`"${takenWord}" was already submitted. Try something else.`); throw new Error("validation") }
 
       // Disallow exact matches to any shown idea — error shown inline under that field
       const shownLower = shownIdeas.map(s => s.toLowerCase())
@@ -840,12 +825,11 @@ export default function Play({ params }) {
       if (copiedIdx !== -1) {
         setCopiedIdeaIndex(copiedIdx)
         setSubmitError("")
-        return
+        throw new Error("validation")
       }
       setCopiedIdeaIndex(null)
 
-      if (submitting || !myPlayerId) return
-      setSubmitting(true)
+      if (!myPlayerId) return
       setSubmitError("")
 
       const forPlayerIds = fieldToRecipient || null
@@ -859,10 +843,8 @@ export default function Play({ params }) {
       if (error) {
         console.error("ftw_submit_words error:", error)
         setSubmitError(error.message ?? JSON.stringify(error))
-        setSubmitting(false)
-        return
+        throw error
       }
-      // Don't reset submitting on success — stay "Submitting…" until phase change unmounts this view
       await loadState()
     }
 
@@ -877,6 +859,7 @@ export default function Play({ params }) {
             {Array.from({ length: g.count }, (_, k) => {
               const idx = g.startField + k
               const isCopied = copiedIdeaIndex === idx
+              const isDupe = dupeIndices.has(idx)
               return (
                 <div key={idx}>
                   <input
@@ -893,7 +876,7 @@ export default function Play({ params }) {
                     maxLength={60}
                     className="ftw-word-input"
                     style={{
-                      background: isCopied ? "rgba(240,79,82,0.18)" : WARM_LIGHT, color: "white",
+                      background: isCopied ? "rgba(240,79,82,0.18)" : isDupe ? "#5C1010" : WARM_LIGHT, color: "white",
                       fontSize: 18, fontWeight: 600, padding: "16px 18px",
                       width: "100%", display: "block", marginBottom: isCopied ? 4 : 6,
                     }}
@@ -913,6 +896,7 @@ export default function Play({ params }) {
       // Default: 5 generic inputs
       return wordFields.map((val, i) => {
         const isCopied = copiedIdeaIndex === i
+        const isDupe = dupeIndices.has(i)
         return (
           <div key={i}>
             <input
@@ -929,7 +913,7 @@ export default function Play({ params }) {
               maxLength={60}
               className="ftw-word-input"
               style={{
-                background: isCopied ? "rgba(240,79,82,0.18)" : WARM_LIGHT, color: "white",
+                background: isCopied ? "rgba(240,79,82,0.18)" : isDupe ? "#5C1010" : WARM_LIGHT, color: "white",
                 fontSize: 18, fontWeight: 600, padding: "16px 18px",
                 width: "100%", display: "block", marginBottom: isCopied ? 4 : 8,
               }}
@@ -1012,7 +996,7 @@ export default function Play({ params }) {
         </div>
       </div>
         {pokeSystemNode(
-          <button onClick={handleSubmitWords} disabled={submitting} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900 }}>{submitting ? "Submitting…" : "Submit"}</button>
+          <FooterButton onClick={handleSubmitWords} style={{ fontSize: 16 }}>Submit</FooterButton>
         )}
       </>
     )
@@ -1068,11 +1052,10 @@ export default function Play({ params }) {
     }
 
     async function handleLockIn() {
-      if (lockingIn || !rankingItems || !myPlayerId) return
-      setLockingIn(true)
+      if (!rankingItems || !myPlayerId) return
       const rankingIds = rankingItems.map(item => item.id)
-      await supabase.rpc("ftw_lock_ranking", { p_code: code, p_player_id: myPlayerId, p_ranking: rankingIds })
-      // Don't reset lockingIn on success — stay "Locking…" until phase change unmounts this view
+      const { error } = await supabase.rpc("ftw_lock_ranking", { p_code: code, p_player_id: myPlayerId, p_ranking: rankingIds })
+      if (error) throw error
       await loadState()
     }
 
@@ -1106,7 +1089,7 @@ export default function Play({ params }) {
         </div>
       </div>
         {pokeSystemNode(
-          <button onClick={handleLockIn} disabled={lockingIn} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900 }}>{lockingIn ? "Locking…" : "Lock It In"}</button>
+          <FooterButton onClick={handleLockIn} style={{ fontSize: 16 }}>Lock It In</FooterButton>
         )}
       </>
     )
@@ -1211,7 +1194,8 @@ export default function Play({ params }) {
 
       async function handleReady() {
         if (imReady || !myPlayerId || isSubject) return
-        await supabase.rpc("ftw_submit_ready", { p_code: code, p_player_id: myPlayerId })
+        const { error } = await supabase.rpc("ftw_submit_ready", { p_code: code, p_player_id: myPlayerId })
+        if (error) throw error
       }
 
       const listH = listTotalH(groupItems ?? [], vw() - 90)
@@ -1297,7 +1281,7 @@ export default function Play({ params }) {
           {pokeSystemNode(
             imReady
               ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.65)" }}>{readyCount} / {nonSubjectPlayers.length} ready…</div>
-              : <button onClick={handleReady} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900 }}>Ready</button>
+              : <FooterButton onClick={handleReady} style={{ fontSize: 16 }}>Ready</FooterButton>
           )}
         </>
       )
@@ -1325,7 +1309,8 @@ export default function Play({ params }) {
 
       async function handleVoteAdvance() {
         if (hasVotedNextRound || !myPlayerId) return
-        await supabase.rpc("ftw_vote_advance", { p_code: code, p_player_id: myPlayerId })
+        const { error } = await supabase.rpc("ftw_vote_advance", { p_code: code, p_player_id: myPlayerId })
+        if (error) throw error
       }
 
       return (
@@ -1360,7 +1345,7 @@ export default function Play({ params }) {
           {pokeSystemNode(
             hasVotedNextRound
               ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.65)" }}>{voteCount} / {guessParticipants} ready…</div>
-              : <button onClick={handleVoteAdvance} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900 }}>{isLastRound ? "See Final Score" : "Next Round"}</button>
+              : <FooterButton onClick={handleVoteAdvance} style={{ fontSize: 16 }}>{isLastRound ? "See Final Score" : "Next Round"}</FooterButton>
           )}
         </>
       )

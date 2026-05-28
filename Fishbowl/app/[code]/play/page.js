@@ -521,6 +521,29 @@ export default function Play({ params }) {
 
   const timerUrgent = secondsRemaining <= 5
 
+  // Footer action buttons — primary actions for each non-active-turn state
+  const footerAction = me ? (() => {
+    if (game.phase === "between_rounds" && isMyTurn) {
+      if (game.turn_new_round_continuation && me.time_bank_seconds != null)
+        return <button onClick={doContinueTurn} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900 }}>Continue Turn</button>
+      if (!game.turn_new_round_continuation)
+        return <button onClick={doStartRound} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900 }}>Begin My Turn</button>
+    }
+    if (game.phase === "play" && isMyTurn && !game.turn_running) {
+      if (isPaused)
+        return <button onClick={doStartTurn} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900 }}>Resume Turn</button>
+      return <>
+        <button onClick={doStartTurn} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900 }}>Start Turn</button>
+        {players.filter(p => p.team === me.team).length > 1 && (
+          <button onClick={doPassTurn} style={{ flex: 1, height: "100%", background: WARM_LIGHT, color: "white", fontSize: 16, fontWeight: 700 }}>Pass Turn</button>
+        )}
+      </>
+    }
+    return null
+  })() : null
+
+  const showTurnActionBar = game.phase === "play" && isMyTurn && !!game.turn_running
+
   return (
     <>
     <div style={{ minHeight: "100dvh", background: T1, color: "white", display: "flex", flexDirection: "column" }}>
@@ -585,7 +608,7 @@ export default function Play({ params }) {
 
         {/* GAME OVER */}
         {game.phase === "finished" && (
-          <div style={{ padding: "40px 24px 48px", flex: 1 }}>
+          <div style={{ padding: "40px 24px", paddingBottom: BOTTOM_PAD, flex: 1 }}>
             <div style={{ fontSize: "clamp(56px, 16vw, 88px)", fontWeight: 900, textTransform: "uppercase", lineHeight: 0.9, marginBottom: 32 }}>
               Game<br />Over
             </div>
@@ -646,7 +669,7 @@ export default function Play({ params }) {
 
         {/* ROUND BEGINNING */}
         {game.phase === "between_rounds" && (
-          <div style={{ padding: "40px 24px 48px", flex: 1, display: "flex", flexDirection: "column" }}>
+          <div style={{ padding: "40px 24px", paddingBottom: BOTTOM_PAD, flex: 1, display: "flex", flexDirection: "column" }}>
             <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.75, marginBottom: 12 }}>
               New Round
             </div>
@@ -659,66 +682,53 @@ export default function Play({ params }) {
 
             <div style={{ marginTop: 48 }}>
               {game.turn_new_round_continuation && isMyTurn && me?.time_bank_seconds != null ? (
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 16, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.75, marginBottom: 12 }}>
-                      Your turn continues!
-                    </div>
-                    <div style={{ fontSize: 96, fontWeight: 900, lineHeight: 1, marginBottom: 4 }}>
-                      {me.time_bank_seconds}<span style={{ fontSize: 36, fontWeight: 600, opacity: 0.6 }}>s</span>
-                    </div>
-                    <div style={{ fontSize: 15, opacity: 0.65, fontWeight: 600, marginBottom: 32 }}>
-                      left on your clock
-                    </div>
-                    <button
-                      onClick={doContinueTurn}
-                      style={{ background: YELLOW, color: "#000", fontSize: 26, fontWeight: 900, padding: "24px 32px", width: "100%", display: "block" }}
-                    >
-                      Continue Turn
-                    </button>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.75, marginBottom: 12 }}>
+                    Your turn continues!
                   </div>
-                ) : game.turn_new_round_continuation ? (
-                  (() => {
-                    const actor = players.find((p) => p.id === game.turn_player_id)
-                    return (
-                      <div style={{ textAlign: "center" }}>
-                        <div style={{ fontSize: 16, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.75, marginBottom: 12 }}>
-                          Turn continues
-                        </div>
-                        <div style={{ fontSize: 36, fontWeight: 900, lineHeight: 1.1, marginBottom: 8 }}>
-                          {actor?.name ?? "Someone"}
-                        </div>
-                        {actor?.time_bank_seconds != null && (
-                          <>
-                            <div style={{ fontSize: 64, fontWeight: 900, lineHeight: 1, marginBottom: 4 }}>
-                              {actor.time_bank_seconds}<span style={{ fontSize: 24, fontWeight: 600, opacity: 0.6 }}>s</span>
-                            </div>
-                            <div style={{ fontSize: 14, opacity: 0.6, fontWeight: 600 }}>
-                              left on their clock
-                            </div>
-                          </>
-                        )}
+                  <div style={{ fontSize: 96, fontWeight: 900, lineHeight: 1, marginBottom: 4 }}>
+                    {me.time_bank_seconds}<span style={{ fontSize: 36, fontWeight: 600, opacity: 0.6 }}>s</span>
+                  </div>
+                  <div style={{ fontSize: 15, opacity: 0.65, fontWeight: 600 }}>
+                    left on your clock
+                  </div>
+                </div>
+              ) : game.turn_new_round_continuation ? (
+                (() => {
+                  const actor = players.find((p) => p.id === game.turn_player_id)
+                  return (
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: 16, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.75, marginBottom: 12 }}>
+                        Turn continues
                       </div>
-                    )
-                  })()
-                ) : isMyTurn ? (
-                  <button
-                    onClick={doStartRound}
-                    style={{ background: YELLOW, color: "#000", fontSize: 26, fontWeight: 900, padding: "24px 32px", width: "100%", display: "block" }}
-                  >
-                    Begin My Turn
-                  </button>
-                ) : (
-                  <div style={{ fontSize: 16, fontWeight: 700, opacity: 0.65, textAlign: "center" }}>
-                    Waiting for {currentActor?.name ?? "next player"}…
-                  </div>
-                )}
+                      <div style={{ fontSize: 36, fontWeight: 900, lineHeight: 1.1, marginBottom: 8 }}>
+                        {actor?.name ?? "Someone"}
+                      </div>
+                      {actor?.time_bank_seconds != null && (
+                        <>
+                          <div style={{ fontSize: 64, fontWeight: 900, lineHeight: 1, marginBottom: 4 }}>
+                            {actor.time_bank_seconds}<span style={{ fontSize: 24, fontWeight: 600, opacity: 0.6 }}>s</span>
+                          </div>
+                          <div style={{ fontSize: 14, opacity: 0.6, fontWeight: 600 }}>
+                            left on their clock
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )
+                })()
+              ) : !isMyTurn ? (
+                <div style={{ fontSize: 16, fontWeight: 700, opacity: 0.65, textAlign: "center" }}>
+                  Waiting for {currentActor?.name ?? "next player"}…
+                </div>
+              ) : null}
             </div>
           </div>
         )}
 
         {/* MY TURN */}
         {game.phase === "play" && isMyTurn && (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px", paddingBottom: "max(20px, env(safe-area-inset-bottom, 20px))" }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px", paddingBottom: game.turn_running ? `calc(120px + env(safe-area-inset-bottom))` : BOTTOM_PAD }}>
 
             {!game.turn_running ? (
               /* Pre-turn or paused */
@@ -730,34 +740,11 @@ export default function Play({ params }) {
                     <div style={{ fontSize: 96, fontWeight: 900, lineHeight: 1 }}>
                       {secondsRemaining}<span style={{ fontSize: 36, fontWeight: 600, opacity: 0.6 }}>s</span>
                     </div>
-                    <button
-                      onClick={doStartTurn}
-                      style={{ background: YELLOW, color: "#000", fontSize: 28, fontWeight: 900, padding: "28px 32px", width: "100%", display: "block" }}
-                    >
-                      Resume Turn
-                    </button>
                   </>
                 ) : (
                   <>
                     <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.6 }}>Your Turn</div>
                     <div style={{ fontSize: 56, fontWeight: 900, lineHeight: 1 }}>Ready?</div>
-
-                    <button
-                      onClick={doStartTurn}
-                      style={{ background: YELLOW, color: "#000", fontSize: 28, fontWeight: 900, padding: "28px 32px", width: "100%", display: "block" }}
-                    >
-                      Start Turn
-                    </button>
-
-                    {players.filter(p => p.team === me.team).length > 1 && (
-                      <button
-                        onClick={doPassTurn}
-                        style={{ background: WARM_LIGHT, color: "white", fontSize: 16, fontWeight: 700, padding: "16px 24px", width: "100%", display: "block" }}
-                      >
-                        Pass turn to another teammate
-                      </button>
-                    )}
-
                     <div style={{ opacity: 0.65, fontSize: 14, fontWeight: 600, width: "100%", display: "flex", justifyContent: "space-between" }}>
                       <div>← Swipe left for Skip</div>
                       <div>Swipe right for Correct →</div>
@@ -860,59 +847,6 @@ export default function Play({ params }) {
                   )
                 })()}
 
-                {/* Action buttons */}
-                <div style={{ display: "grid", gap: 8, flexShrink: 0 }}>
-                  <button
-                    onClick={async () => {
-                      animatingRef.current = true
-                      setActiveClue(null)
-                      const newClue = await doCorrect()
-                      setActiveClue(newClue)
-                      animatingRef.current = false
-                      loadState()
-                    }}
-                    disabled={!activeClue}
-                    style={{
-                      background: TEAL,
-                      color: "white",
-                      fontSize: 28,
-                      fontWeight: 900,
-                      padding: "28px 16px",
-                      width: "100%",
-                      display: "block",
-                    }}
-                  >
-                    Correct
-                  </button>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-                    <button
-                      onClick={async () => {
-                        animatingRef.current = true
-                        setActiveClue(null)
-                        const newClue = await doSkip()
-                        setActiveClue(newClue)
-                        animatingRef.current = false
-                        loadState()
-                      }}
-                      disabled={skipDisabled}
-                      style={{ background: WARM_LIGHT, color: "white", fontSize: 16, fontWeight: 800, padding: "18px 8px", textDecoration: skipDisabled ? "line-through" : "none" }}
-                    >
-                      {game.skip_penalty < 0 ? `Skip (${game.skip_penalty})` : "Skip"}
-                    </button>
-                    <button
-                      onClick={doPause}
-                      style={{ background: WARM_LIGHT, color: "white", fontSize: 16, fontWeight: 800, padding: "18px 8px" }}
-                    >
-                      Pause
-                    </button>
-                    <button
-                      onClick={() => doEndTurn(activeClue ? "manual" : "pause_no_clues")}
-                      style={{ background: RED, color: "white", fontSize: 16, fontWeight: 800, padding: "18px 8px" }}
-                    >
-                      End Early
-                    </button>
-                  </div>
-                </div>
               </>
             )}
           </div>
@@ -920,7 +854,7 @@ export default function Play({ params }) {
 
         {/* WATCHING (not my turn, turn running) */}
         {game.phase === "play" && !isMyTurn && (
-          <div style={{ flex: 1, padding: "32px 24px 40px", display: "flex", flexDirection: "column" }}>
+          <div style={{ flex: 1, padding: "32px 24px", paddingBottom: BOTTOM_PAD, display: "flex", flexDirection: "column" }}>
             <div style={{ marginBottom: 40 }}>
               {isPaused && (
                 <div style={{ fontSize: 38, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.08em", color: YELLOW, marginBottom: 10 }}>
@@ -1012,7 +946,36 @@ export default function Play({ params }) {
             </div>
           </>}
         />
-        <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} timerRunning={!!game?.turn_running} />
+        {showTurnActionBar ? (
+          <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 80, display: "grid", paddingBottom: "env(safe-area-inset-bottom)" }}>
+            <button
+              onClick={async () => { animatingRef.current = true; setActiveClue(null); const newClue = await doCorrect(); setActiveClue(newClue); animatingRef.current = false; loadState() }}
+              disabled={!activeClue}
+              style={{ background: TEAL, color: "white", fontSize: 28, fontWeight: 900, padding: "22px 16px", width: "100%", display: "block" }}
+            >
+              Correct
+            </button>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr" }}>
+              <button
+                onClick={async () => { animatingRef.current = true; setActiveClue(null); const newClue = await doSkip(); setActiveClue(newClue); animatingRef.current = false; loadState() }}
+                disabled={skipDisabled}
+                style={{ background: WARM_LIGHT, color: "white", fontSize: 16, fontWeight: 800, padding: "16px 8px", textDecoration: skipDisabled ? "line-through" : "none" }}
+              >
+                {game.skip_penalty < 0 ? `Skip (${game.skip_penalty})` : "Skip"}
+              </button>
+              <button onClick={doPause} style={{ background: WARM_LIGHT, color: "white", fontSize: 16, fontWeight: 800, padding: "16px 8px" }}>
+                Pause
+              </button>
+              <button onClick={() => doEndTurn(activeClue ? "manual" : "pause_no_clues")} style={{ background: RED, color: "white", fontSize: 16, fontWeight: 800, padding: "16px 8px" }}>
+                End Early
+              </button>
+            </div>
+          </div>
+        ) : (
+          <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
+            {footerAction}
+          </Footer>
+        )}
       </>}
       {showGameModal && (
         <GameModal

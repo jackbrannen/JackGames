@@ -923,20 +923,18 @@ export default function Play({ params }) {
             </div>
 
             {/* Who has voted */}
-            <div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 10 }}>
-                Votes
-              </div>
-              {eligibleVoterIds.map(pid => {
+            <WaitingList
+              players={eligibleVoterIds.map(pid => {
                 const p = players.find(x => x.id === pid)
-                return (
-                  <div key={pid} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.10)" }}>
-                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: votedPlayerIds.has(pid) ? GREEN : "rgba(255,255,255,0.2)", flexShrink: 0 }} />
-                    <span style={{ fontSize: 15, fontWeight: 700 }}>{p?.name}</span>
-                  </div>
-                )
+                return { name: p?.name ?? "", done: votedPlayerIds.has(pid), typing: typingPlayerIds.has(pid) }
               })}
-            </div>
+              myName={me?.name}
+              colors={{ mid: WARM_LIGHT }}
+              onPoke={sendInlinePoke}
+              cooldownActive={pokeCooldownActive}
+              pokeJustSent={pokeJustSent}
+              showCount={false}
+            />
           </>
         )}
 

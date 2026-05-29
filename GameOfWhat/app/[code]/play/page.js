@@ -299,6 +299,7 @@ export default function Play({ params }) {
         p_voter_id: myPlayerId,
       })
     }
+    changingVoteRef.current = false
   }
 
   async function submitVote(answerId) {
@@ -867,6 +868,7 @@ export default function Play({ params }) {
                     {isNota && (
                       <button
                         onClick={handleDeselect}
+                        disabled={submittingVote}
                         style={{ background: "#4A123B", color: YELLOW, fontSize: 22, fontWeight: 900, padding: "16px 24px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
                       >
                         ✕

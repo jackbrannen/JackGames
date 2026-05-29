@@ -118,6 +118,7 @@ export default function Selections({
               {isSelected && (
                 <button
                   onClick={() => onDeselect?.()}
+                  disabled={disabled}
                   style={{
                     background: deselectBg,
                     color: derivedDeselectText,

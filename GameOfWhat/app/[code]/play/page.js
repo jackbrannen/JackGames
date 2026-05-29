@@ -13,6 +13,7 @@ import FooterButton from "../../../components/FooterButton"
 import WaitingList from "../../../components/WaitingList"
 import TextEntry from "../../../components/TextEntry"
 import Selections from "../../../components/Selections"
+import RandomIdeas from "../../../components/RandomIdeas"
 import { playYourTurn } from "../../../lib/sounds"
 
 const BG = "#6B1A44"
@@ -43,25 +44,6 @@ function pickRandWord() {
   return BOT_WORDS[Math.floor(Math.random() * BOT_WORDS.length)]
 }
 
-const IDEAS_URL = "https://raw.githubusercontent.com/jackbrannen/JackGames/main/random_ideas.json"
-let _ideasCache = null
-async function fetchIdeas() {
-  if (_ideasCache) return _ideasCache
-  const res = await fetch(IDEAS_URL)
-  _ideasCache = await res.json()
-  return _ideasCache
-}
-function sampleIdeas(categories, excludeSet, count = 3) {
-  const cats = Object.keys(categories).map(cat => ({
-    cat,
-    pool: categories[cat].filter(idea => !excludeSet.has(idea.toLowerCase()))
-  })).filter(({ pool }) => pool.length > 0)
-  for (let i = cats.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [cats[i], cats[j]] = [cats[j], cats[i]]
-  }
-  return cats.slice(0, count).map(({ pool }) => pool[Math.floor(Math.random() * pool.length)])
-}
 
 export default function Play({ params }) {
   const router = useRouter()
@@ -83,8 +65,6 @@ export default function Play({ params }) {
   const [resultSnapshot, setResultSnapshot] = useState(null)
   const [resultsAcknowledged, setResultsAcknowledged] = useState(null)
   const [roundQuestion, setRoundQuestion] = useState("")
-  const [shownPrompts, setShownPrompts] = useState([])
-  const [promptsPhase, setPromptsPhase] = useState("none")
   const [gameOverPlayers, setGameOverPlayers] = useState(null)
   const [showGameModal, setShowGameModal] = useState(false)
   const [bonusMatchName, setBonusMatchName] = useState(null)
@@ -201,7 +181,6 @@ export default function Play({ params }) {
   }, [currentQuestionId])
 
   const roundIndex = game?.round_index
-  useEffect(() => { setShownPrompts([]); setPromptsPhase("none") }, [roundIndex])
 
   useEffect(() => {
     supabase.from("game_instructions").select("body").eq("game_key", "gameofwhat").single()
@@ -352,42 +331,7 @@ export default function Play({ params }) {
     const { error } = await supabase.from("gow_players").update({ question: trimmed }).eq("id", myPlayerId)
     if (error) throw error
     setRoundQuestion("")
-    setShownPrompts([])
-    setPromptsPhase("none")
     await loadState()
-  }
-
-  async function handleDrawPrompts() {
-    if (promptsPhase === "done") return
-    const isFirst = promptsPhase === "none"
-
-    const categories = await fetchIdeas()
-
-    // Fresh fetch so we see words drawn by other players since last poll
-    const { data: fresh } = await supabase
-      .from("gow_games").select("used_prompts").eq("code", code).single()
-    const globallyUsed = new Set((fresh?.used_prompts ?? []).map(s => s.toLowerCase()))
-
-    const picked = sampleIdeas(categories, globallyUsed)
-    const newTags = picked.map(word => ({ word, isName: false }))
-
-    if (isFirst) {
-      const others = players.filter(p => p.id !== myPlayerId && (p.first_name || p.name))
-      if (others.length && newTags.length) {
-        const pick = others[Math.floor(Math.random() * others.length)]
-        const idx = Math.floor(Math.random() * newTags.length)
-        newTags[idx] = { word: pick.first_name || pick.name, isName: true }
-      }
-    }
-
-    if (picked.length) {
-      await supabase.from("gow_games")
-        .update({ used_prompts: [...(fresh?.used_prompts ?? []), ...picked] })
-        .eq("code", code)
-    }
-
-    setShownPrompts(prev => [...prev, ...newTags])
-    setPromptsPhase(isFirst ? "first" : promptsPhase === "first" ? "second" : "done")
   }
 
   async function startNextRound() {
@@ -429,7 +373,7 @@ export default function Play({ params }) {
         onClose={() => setMenuOpen(false)}
         roomCode={code}
         currentPlayer={me.name}
-        playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name }))}
+        playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, score: p.score }))}
         gamePhase={game?.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
         onResetToLobby={async () => { await supabase.rpc("gow_reset_game", { p_code: code }) }}
@@ -678,40 +622,17 @@ export default function Play({ params }) {
               bg={WARM_LIGHT}
               fontSize={20}
             />
-            {/* Ideas button */}
             <div style={{ marginTop: 16 }}>
-              {promptsPhase !== "done" ? (  // "none" | "first" | "second" | "done"
-                <button
-                  onClick={handleDrawPrompts}
-                  style={{ background: WARM_LIGHT, color: "white", fontSize: 15, fontWeight: 800, padding: "14px 18px", display: "block", width: "100%" }}
-                >
-                  {promptsPhase === "none" ? "✦ Random ideas" : "✦ 3 more ideas"}
-                </button>
-              ) : (
-                <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.25)", padding: "12px 18px", background: WARM_LIGHT }}>
-                  No more ideas for this question
-                </div>
-              )}
+              <RandomIdeas
+                key={roundIndex}
+                bg={WARM_LIGHT}
+                excludeIdeas={game.used_prompts ?? []}
+                playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
+                onDraw={ideas => supabase.from("gow_games")
+                  .update({ used_prompts: [...(game.used_prompts ?? []), ...ideas] })
+                  .eq("code", code)}
+              />
             </div>
-
-            {/* Prompt tags */}
-            {shownPrompts.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
-                {shownPrompts.map((p, i) => (
-                  <div key={i} style={{
-                    padding: "7px 14px",
-                    borderRadius: 999,
-                    fontSize: 14,
-                    fontWeight: 700,
-                    background: p.isName ? "rgba(251,223,84,0.12)" : WARM_LIGHT,
-                    color: p.isName ? YELLOW : "white",
-                    border: p.isName ? "1px solid rgba(251,223,84,0.3)" : "1px solid rgba(255,255,255,0.15)",
-                  }}>
-                    {p.word}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
 

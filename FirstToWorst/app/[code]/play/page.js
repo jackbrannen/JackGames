@@ -12,6 +12,7 @@ import WaitingList from "../../../components/WaitingList"
 import TextEntry from "../../../components/TextEntry"
 import { useDuplicates } from "../../../lib/useDuplicates"
 import useTypingPresence from "../../../lib/useTypingPresence"
+import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import { playYourTurn } from "../../../lib/sounds"
 
 const BG          = "#004F45"
@@ -449,6 +450,7 @@ export default function Play({ params }) {
   }, [code])
 
   const me = useMemo(() => players.find(p => p.id === myPlayerId), [players, myPlayerId])
+  const nudgeWords = useSubmitNudge(wordFields.some(w => w.trim()) ? "x" : "", !!me?.words_submitted)
 
   useEffect(() => {
     if (!game || !me) return
@@ -956,7 +958,7 @@ export default function Play({ params }) {
         </div>
       </div>
         {pokeSystemNode(
-          <FooterButton onClick={handleSubmitWords} style={{ fontSize: 16 }}>Submit</FooterButton>
+          <FooterButton nudge={nudgeWords} onClick={handleSubmitWords} style={{ fontSize: 16 }}>Submit</FooterButton>
         )}
       </>
     )

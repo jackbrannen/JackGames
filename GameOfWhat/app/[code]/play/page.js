@@ -837,12 +837,18 @@ export default function Play({ params }) {
                     Same answer as {bonusMatchName}! +1 bonus
                   </div>
                 )}
-                <div style={{ fontSize: 15, fontWeight: 700, opacity: 0.65, marginBottom: 4 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, opacity: 0.65, marginBottom: 20 }}>
                   Your answer: <span style={{ opacity: 1, color: "white" }}>{hasSkipped ? "(skipped)" : myAnswerRecord?.text}</span>
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.65, marginTop: 16 }}>
-                  Waiting for: {waitingOnPlayers.map(p => p.name).join(", ")}
-                </div>
+                <WaitingList
+                  players={eligibleAnswerers.map(p => ({ name: p.name, done: answers.some(a => a.player_id === p.id), typing: typingPlayerIds.has(p.id) }))}
+                  myName={me?.name}
+                  colors={{ mid: WARM_LIGHT }}
+                  onPoke={sendInlinePoke}
+                  cooldownActive={pokeCooldownActive}
+                  pokeJustSent={pokeJustSent}
+                  showCount={false}
+                />
               </div>
             ) : (
               <div>

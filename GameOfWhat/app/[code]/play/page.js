@@ -210,6 +210,11 @@ export default function Play({ params }) {
 
   const allNextQuestionsIn = game?.phase === "between_rounds" && players.length > 0 && players.every(p => p.question)
 
+  useEffect(() => {
+    if (!allNextQuestionsIn) return
+    supabase.rpc("gow_start_next_round", { p_code: code })
+  }, [allNextQuestionsIn])
+
   // ── DUMMY GAME AUTOMATION ─────────────────────────────────
 
   // Pre-fill answer field
@@ -713,12 +718,9 @@ export default function Play({ params }) {
         )}
 
         {allNextQuestionsIn && (
-          <button
-            onClick={startNextRound}
-            style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "20px", width: "100%", marginTop: 8 }}
-          >
-            Start Round {game.round_index + 1} →
-          </button>
+          <div style={{ fontSize: 16, fontWeight: 700, opacity: 0.65 }}>
+            All questions in. Starting round…
+          </div>
         )}
 
         </div>

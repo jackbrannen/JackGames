@@ -14,6 +14,7 @@ import WaitingList from "../../../components/WaitingList"
 import TextEntry from "../../../components/TextEntry"
 import Selections from "../../../components/Selections"
 import RandomIdeas from "../../../components/RandomIdeas"
+import StatusBar from "../../../components/StatusBar"
 import { playYourTurn } from "../../../lib/sounds"
 
 const BG = "#6B1A44"
@@ -420,11 +421,7 @@ export default function Play({ params }) {
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "14px 20px", background: "#4A123B", flexShrink: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, opacity: 0.75 }}>
-            Round {(game.round_index ?? 0) + 1} of {game.rounds_total ?? 3}
-          </div>
-        </div>
+        <StatusBar label={`Round ${(game.round_index ?? 0) + 1} of ${game.rounds_total ?? 3}`} dark="#4A123B" />
         <div style={{ flex: 1, overflowY: "auto", padding: "28px 20px", paddingBottom: BOTTOM_PAD }}>
           {snapQuestion && (
             <div style={{ marginBottom: 28 }}>
@@ -483,6 +480,43 @@ export default function Play({ params }) {
               </div>
             )}
           </div>
+
+          {/* Points earned this question */}
+          {(() => {
+            const pts = {}
+            const bonusIds = new Set()
+            for (const g of snapAnswerGroups) {
+              if (g.playerIds.length > 1) g.playerIds.forEach(id => bonusIds.add(id))
+              for (const id of g.playerIds) {
+                pts[id] = (pts[id] ?? 0) + g.voteCount + (g.playerIds.length > 1 ? 1 : 0)
+              }
+            }
+            const scorers = players.filter(p => pts[p.id] > 0).sort((a, b) => pts[b.id] - pts[a.id])
+            if (!scorers.length) return null
+            return (
+              <div style={{ marginTop: 4 }}>
+                <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 10 }}>
+                  Points this question
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {scorers.map(p => (
+                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ background: YELLOW, color: "#000", fontSize: 18, fontWeight: 900, minWidth: 44, textAlign: "center", padding: "5px 0", flexShrink: 0 }}>
+                        +{pts[p.id]}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 16, fontWeight: 700 }}>{p.name}</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.65 }}>
+                          {pts[p.id] - (bonusIds.has(p.id) ? 1 : 0)} vote{pts[p.id] - (bonusIds.has(p.id) ? 1 : 0) !== 1 ? "s" : ""}
+                          {bonusIds.has(p.id) && " · matched +1"}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
         </div>
       </div>
         {pokeSystemNode(

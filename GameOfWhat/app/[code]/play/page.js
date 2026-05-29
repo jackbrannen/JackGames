@@ -389,6 +389,7 @@ export default function Play({ params }) {
   // Must be before early return — Rules of Hooks
   const myAnswerRecordEarly = answers.find(a => a.player_id === myPlayerId)
   const nudgeAnswer = useSubmitNudge(myAnswer, !!myAnswerRecordEarly)
+  const nudgeQuestion = useSubmitNudge(roundQuestion, false)
 
   if (!game) {
     return (
@@ -725,6 +726,7 @@ export default function Play({ params }) {
         {pokeSystemNode(me && !myNextQuestion && !allNextQuestionsIn ? (
           <FooterButton
             disabled={!roundQuestion.trim()}
+            nudge={nudgeQuestion}
             onClick={submitRoundQuestion}
             style={{ fontSize: 16 }}
           >

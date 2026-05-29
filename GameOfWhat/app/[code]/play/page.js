@@ -65,6 +65,7 @@ export default function Play({ params }) {
   const soundTriggerRef = useRef(null)
   const [resultSnapshot, setResultSnapshot] = useState(null)
   const [resultsAcknowledged, setResultsAcknowledged] = useState(null)
+  const [readyForQuestionId, setReadyForQuestionId] = useState(null)
   const [roundQuestion, setRoundQuestion] = useState("")
   const [gameOverPlayers, setGameOverPlayers] = useState(null)
   const [showGameModal, setShowGameModal] = useState(false)
@@ -100,7 +101,7 @@ export default function Play({ params }) {
   async function loadState() {
     const { data: gameData } = await supabase
       .from("gow_games")
-      .select("code,phase,round_index,rounds_total,current_question_id,question_phase,used_prompts,next_game")
+      .select("code,phase,round_index,rounds_total,current_question_id,question_phase,used_prompts,next_game,ready_player_ids")
       .eq("code", code)
       .single()
     if (!gameData) return
@@ -180,6 +181,14 @@ export default function Play({ params }) {
     setMyVoteId(null)
     changingVoteRef.current = false
   }, [currentQuestionId])
+
+  // Auto-dismiss frozen results for players who pressed ready once phase advances
+  useEffect(() => {
+    if (readyForQuestionId && resultSnapshot?.questionId === readyForQuestionId && game?.question_phase !== "results") {
+      setResultsAcknowledged(readyForQuestionId)
+      setReadyForQuestionId(null)
+    }
+  }, [readyForQuestionId, resultSnapshot?.questionId, game?.question_phase])
 
   const roundIndex = game?.round_index
 
@@ -320,9 +329,11 @@ export default function Play({ params }) {
 
   async function handleAdvanceFromResults() {
     const snapId = resultSnapshot?.questionId
-    setResultsAcknowledged(snapId)
-    if (game?.question_phase === "results") {
-      await supabase.rpc("gow_advance_question", { p_code: code })
+    if (game?.question_phase === "results" && myPlayerId && snapId) {
+      setReadyForQuestionId(snapId)
+      await supabase.rpc("gow_mark_question_ready", { p_code: code, p_player_id: myPlayerId })
+    } else {
+      setResultsAcknowledged(snapId)
     }
     await loadState()
   }
@@ -418,6 +429,9 @@ export default function Play({ params }) {
     const snapSkipped = (snap.answers ?? []).filter(a => a.skipped)
     const stillInResults = game.question_phase === "results" && game.current_question_id === snap.questionId
     const btnLabel = game.phase === "finished" ? "Show Winner" : stillInResults ? "Next Question" : "Continue"
+    const readyIds = game?.ready_player_ids ?? []
+    const iAmReady = readyForQuestionId === snap.questionId
+    const readyCount = readyIds.length
 
     return (
       <>
@@ -438,13 +452,9 @@ export default function Play({ params }) {
             {[...snapAnswerGroups].sort((a, b) => b.voteCount - a.voteCount).map(group => {
               const authors = group.playerIds.map(id => players.find(p => p.id === id)?.name).filter(Boolean)
               const pts = group.voteCount
-              const groupVoters = (snap.votes ?? [])
-                .filter(v => group.answerIds.includes(v.answer_id))
-                .map(v => players.find(p => p.id === v.voter_id)?.name)
-                .filter(Boolean)
               return (
                 <div key={group.primaryId} style={{ background: CARD_BG, padding: "16px 20px" }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: groupVoters.length ? 10 : 0 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
                     <div style={{ background: pts > 0 ? YELLOW : WARM_LIGHT, color: pts > 0 ? "#000" : "rgba(255,255,255,0.5)", fontSize: 20, fontWeight: 900, minWidth: 44, textAlign: "center", padding: "6px 0", flexShrink: 0 }}>
                       {pts > 0 ? `+${pts}` : "0"}
                     </div>
@@ -456,22 +466,14 @@ export default function Play({ params }) {
                       </div>
                     </div>
                   </div>
-                  {groupVoters.length > 0 && (
-                    <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.65, marginLeft: 58 }}>
-                      Voted by: {groupVoters.join(", ")}
-                    </div>
-                  )}
                 </div>
               )
             })}
             {snapNotaVoters.length > 0 && (
               <div style={{ background: CARD_BG, padding: "16px 20px" }}>
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 10 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
                   <div style={{ background: WARM_LIGHT, color: "rgba(255,255,255,0.5)", fontSize: 20, fontWeight: 900, minWidth: 44, textAlign: "center", padding: "6px 0", flexShrink: 0 }}>{snapNotaVoters.length}</div>
                   <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3, opacity: 0.65 }}>None of the above</div>
-                </div>
-                <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.65, marginLeft: 58 }}>
-                  Voted by: {snapNotaVoters.join(", ")}
                 </div>
               </div>
             )}
@@ -521,9 +523,15 @@ export default function Play({ params }) {
         </div>
       </div>
         {pokeSystemNode(
-          <FooterButton onClick={handleAdvanceFromResults} style={{ fontSize: 16 }}>
-            {btnLabel}
-          </FooterButton>
+          iAmReady ? (
+            <FooterButton disabled style={{ fontSize: 15, background: "rgba(255,255,255,0.15)", color: "white" }}>
+              {readyCount} / {players.length} ready…
+            </FooterButton>
+          ) : (
+            <FooterButton onClick={handleAdvanceFromResults} style={{ fontSize: 16 }}>
+              {btnLabel}
+            </FooterButton>
+          )
         )}
       </>
     )

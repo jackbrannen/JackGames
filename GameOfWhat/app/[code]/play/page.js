@@ -151,20 +151,20 @@ export default function Play({ params }) {
             answers: answerData ?? [],
             votes: voteData ?? [],
           })
+        } else if (
+          gameData.last_completed_question_id &&
+          lastFetchedResultsIdRef.current !== gameData.last_completed_question_id
+        ) {
+          // Phase advanced past results before this player polled — fetch last results once
+          lastFetchedResultsIdRef.current = gameData.last_completed_question_id
+          const [{ data: lqData }, { data: laData }, { data: lvData }] = await Promise.all([
+            supabase.from("gow_questions").select("id,text,author_id").eq("id", gameData.last_completed_question_id).single(),
+            supabase.from("gow_answers").select("id,text,player_id,vote_count,skipped").eq("question_id", gameData.last_completed_question_id).order("random_order", { ascending: true }),
+            supabase.from("gow_votes").select("answer_id,voter_id").eq("question_id", gameData.last_completed_question_id),
+          ])
+          setResultSnapshot({ questionId: gameData.last_completed_question_id, question: lqData, answers: laData ?? [], votes: lvData ?? [] })
         }
       }
-    } else if (gameData.last_completed_question_id && lastFetchedResultsIdRef.current !== gameData.last_completed_question_id) {
-      // Phase has advanced but there are results the player hasn't seen yet — fetch them once
-      lastFetchedResultsIdRef.current = gameData.last_completed_question_id
-      const [{ data: lqData }, { data: laData }, { data: lvData }] = await Promise.all([
-        supabase.from("gow_questions").select("id,text,author_id").eq("id", gameData.last_completed_question_id).single(),
-        supabase.from("gow_answers").select("id,text,player_id,vote_count,skipped").eq("question_id", gameData.last_completed_question_id).order("random_order", { ascending: true }),
-        supabase.from("gow_votes").select("answer_id,voter_id").eq("question_id", gameData.last_completed_question_id),
-      ])
-      setResultSnapshot({ questionId: gameData.last_completed_question_id, question: lqData, answers: laData ?? [], votes: lvData ?? [] })
-      setCurrentQuestion(null)
-      setAnswers([])
-      setVotes([])
     } else {
       setCurrentQuestion(null)
       setAnswers([])

@@ -377,6 +377,7 @@ Shared lib files (canonical in `packages/shared/lib/`, copied to each game's `li
 |---|---|
 | `lib/sounds.js` | `playSubmit`, `playYourTurn`, `playPoke` — audio feedback |
 | `lib/useDuplicates.js` | Within-player duplicate detection hook |
+| `lib/useTypingPresence.js` | Tracks which players are currently typing via Supabase presence channel |
 | `components/styles.js` | Design tokens (colors, spacing) used by shared components |
 
 Full props, usage examples, and behavior notes are in the spec comment at the top of each component file. `PokeSystem.js` is a backward-compatible wrapper around Footer + Menu + Notifications — existing games use it until they're migrated. Rollout status tracked in `tasks.md`.
@@ -395,7 +396,7 @@ Each game passes a `colors` object to Footer, Menu, and Notifications:
 { dark, mid, wl, yellow, notifBg }
 
 // Fishbowl:        { dark: "#0C47E9", mid: "#2357E7", wl: "#4A70FF", yellow: "#FBDF54", notifBg: "#071A8A" }
-// GameOfWhat:      { dark: "#4A123B", mid: "#5C1640", wl: "#8B2060", yellow: "#FBDF54", notifBg: "#2D0A25" }
+// GameOfWhat:      { dark: "#4A123B", mid: "#5C1640", wl: "#821F42", yellow: "#FBDF54", notifBg: "#300A20" }
 // FirstToWorst:    { dark: "#003638", mid: "#00423f", wl: "#006648", yellow: "#FBDF54", notifBg: "#001E1C" }
 // Drawful:         { dark: "#1C5250", mid: "#245E5C", wl: "#3A9180", yellow: "#F5E8D8", notifBg: "#0F302F" }
 // SoClover:        { dark: "#4C7523", mid: "#5A8026", wl: "#90A331", yellow: "#FBDF54", notifBg: "#2E4510" }

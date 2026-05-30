@@ -92,10 +92,9 @@ export default function Play({ params }) {
   useEffect(() => {
     const existing = localStorage.getItem(`gow:${code}:playerId`)
     if (existing) setMyPlayerId(existing)
-    try {
-      const bots = localStorage.getItem(`gow:${code}:botIds`)
-      if (bots) botIdsRef.current = JSON.parse(bots)
-    } catch {}
+    // Clear any stale bot IDs from previous sessions — bot feature removed
+    localStorage.removeItem(`gow:${code}:botIds`)
+    botIdsRef.current = []
   }, [code])
 
   async function loadState() {

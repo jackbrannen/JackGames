@@ -204,7 +204,10 @@ export default function Play({ params }) {
 
   useEffect(() => {
     if (!allNextQuestionsIn) return
-    supabase.rpc("gow_start_next_round", { p_code: code })
+    ;(async () => {
+      await supabase.rpc("gow_start_next_round", { p_code: code })
+      await loadState()
+    })()
   }, [allNextQuestionsIn, code])
 
   // ── DUMMY GAME AUTOMATION ─────────────────────────────────

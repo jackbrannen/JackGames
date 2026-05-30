@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../lib/supabase"
 
@@ -77,6 +77,7 @@ export default function Lobby({ params }) {
   const [instructions, setInstructions] = useState("")
 
   const me = players.find(p => p.id === myPlayerId)
+  const hasAutoJoinedRef = useRef(false)
 
   async function loadState() {
     const { data: gameData } = await supabase
@@ -111,6 +112,23 @@ export default function Lobby({ params }) {
       setUsername(saved.username || "")
     }
   }, [])
+
+  useEffect(() => {
+    if (!game || game.phase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    const saved = loadProfile()
+    if (!saved?.username) return
+    hasAutoJoinedRef.current = true
+    ;(async () => {
+      const { data: taken } = await supabase.from("gow_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
+      if (taken?.length > 0) return
+      const { data, error } = await supabase.from("gow_players")
+        .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName.trim(), last_name: saved.lastName.trim(), score: 0 })
+        .select("id").single()
+      if (error || !data) return
+      localStorage.setItem(`gow:${code}:playerId`, data.id)
+      setMyPlayerId(data.id)
+    })()
+  }, [game?.phase, myPlayerId, code])
 
   useEffect(() => {
     supabase.from("game_instructions").select("body").eq("game_key", "gameofwhat").single()
@@ -172,6 +190,18 @@ export default function Lobby({ params }) {
     setStarting(true)
     const { error } = await supabase.rpc("gow_start_game", { p_code: code })
     if (error) { setStarting(false); return }
+    await loadState()
+  }
+
+  const BOT_NAMES = ["Pixel", "Glitch", "Zippy", "Bloop", "Fizz", "Zap", "Bolt", "Neon", "Blip", "Flux"]
+  async function addDummy() {
+    const name = BOT_NAMES[players.length % BOT_NAMES.length]
+    const { data, error } = await supabase.from("gow_players")
+      .insert({ game_code: code, name, first_name: name, last_name: "Bot", score: 0 })
+      .select("id").single()
+    if (error || !data) return
+    const existing = JSON.parse(localStorage.getItem(`gow:${code}:botIds`) || "[]")
+    localStorage.setItem(`gow:${code}:botIds`, JSON.stringify([...existing, data.id]))
     await loadState()
   }
 
@@ -358,6 +388,14 @@ export default function Lobby({ params }) {
             </div>
           ))}
         </div>
+        {game.phase === "lobby" && (
+          <button
+            onClick={addDummy}
+            style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)", fontSize: 14, fontWeight: 700, padding: "10px 16px", marginTop: 8, display: "block", width: "100%" }}
+          >
+            + Add dummy player
+          </button>
+        )}
         {players.length < 4 && (
           <p style={{ fontSize: 13, opacity: 0.65, fontWeight: 600, marginTop: 10 }}>
             Need at least 4 players to start.

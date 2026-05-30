@@ -205,11 +205,7 @@ export default function Play({ params }) {
 
   useEffect(() => {
     if (!allNextQuestionsIn) return
-    console.log("[auto-start] calling RPC for", code)
-    supabase.rpc("gow_start_next_round", { p_code: code }).then(({ error }) => {
-      if (error) console.error("[auto-start] error:", error)
-      else console.log("[auto-start] success")
-    })
+    supabase.rpc("gow_start_next_round", { p_code: code })
   }, [allNextQuestionsIn, code])
 
   // ── DUMMY GAME AUTOMATION ─────────────────────────────────

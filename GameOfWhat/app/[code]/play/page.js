@@ -669,6 +669,7 @@ export default function Play({ params }) {
               <RandomIdeas
                 key={roundIndex}
                 bg={WARM_LIGHT}
+                fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
                 excludeIdeas={game.used_prompts ?? []}
                 playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
                 onDraw={ideas => supabase.from("gow_games")
@@ -754,12 +755,7 @@ export default function Play({ params }) {
     <>
     <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
 
-      {/* Top bar — round indicator only, no scores */}
-      <div style={{ padding: "14px 20px", background: "#4A123B", flexShrink: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 800, opacity: 0.75 }}>
-          Round {(game.round_index ?? 0) + 1} of {game.rounds_total ?? 3}
-        </div>
-      </div>
+      <StatusBar label={`Round ${(game.round_index ?? 0) + 1} of ${game.rounds_total ?? 3}`} dark="#4A123B" />
 
       {/* Main content */}
       <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", padding: "28px 20px", paddingBottom: BOTTOM_PAD }}>

@@ -9,7 +9,10 @@
   Props:
     bg           hex      — button and chip background (use game's WARM_LIGHT)
     yellow       hex      — name-tag highlight color (default #FBDF54)
-    excludeIdeas string[] — ideas to skip when sampling (e.g. game.used_prompts from DB)
+    fetchIdeas   async (count: number, exclude: string[]) => string[]
+                          — called to get ideas; use game's supabase RPC:
+                            (n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])
+    excludeIdeas string[] — ideas already used (e.g. game.used_prompts); passed to fetchIdeas
     playerNames  string[] — other players' first names; one injected on first draw
     maxDraws     number   — how many times player can draw (default 2)
     onDraw       (ideas: string[]) => void — called after each draw so game can persist
@@ -19,6 +22,7 @@
     <RandomIdeas
       key={roundIndex}
       bg={WARM_LIGHT}
+      fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
       excludeIdeas={game.used_prompts ?? []}
       playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
       onDraw={ideas => supabase.from("gow_games")
@@ -30,6 +34,7 @@
     <RandomIdeas
       key={round}
       bg={WARM_LIGHT}
+      fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
       playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
       maxDraws={Math.ceil(wordFields.length * 2 / 3)}
       onIdeaClick={idea => fillCurrentField(idea)}
@@ -38,28 +43,10 @@
 
 import { useState } from "react"
 
-const IDEAS_URL = "https://raw.githubusercontent.com/jackbrannen/JackGames/main/random_ideas.json"
-let _cache = null
-async function fetchIdeas() {
-  if (_cache) return _cache
-  const res = await fetch(IDEAS_URL)
-  _cache = await res.json()
-  return _cache
-}
-function sampleIdeas(categories, excludeSet, count = 3) {
-  const cats = Object.keys(categories).map(cat => ({
-    pool: categories[cat].filter(w => !excludeSet.has(w.toLowerCase()))
-  })).filter(c => c.pool.length > 0)
-  for (let i = cats.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [cats[i], cats[j]] = [cats[j], cats[i]]
-  }
-  return cats.slice(0, count).map(c => c.pool[Math.floor(Math.random() * c.pool.length)])
-}
-
 export default function RandomIdeas({
   bg = "rgba(255,255,255,0.15)",
   yellow = "#FBDF54",
+  fetchIdeas,
   excludeIdeas = [],
   playerNames = [],
   maxDraws = 2,
@@ -73,11 +60,11 @@ export default function RandomIdeas({
   const exhausted = draws >= maxDraws
 
   async function handleDraw() {
-    if (exhausted || loading) return
+    if (exhausted || loading || !fetchIdeas) return
     setLoading(true)
-    const categories = await fetchIdeas()
-    const seen = new Set([...excludeIdeas, ...chips.map(c => c.text)].map(s => s.toLowerCase()))
-    const picked = sampleIdeas(categories, seen)
+    const seen = [...excludeIdeas, ...chips.map(c => c.text)]
+    const picked = await fetchIdeas(3, seen)
+    if (!picked?.length) { setLoading(false); return }
     const newChips = picked.map(text => ({ text, isName: false }))
     if (draws === 0 && playerNames.length && newChips.length) {
       const name = playerNames[Math.floor(Math.random() * playerNames.length)]

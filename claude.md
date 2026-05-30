@@ -356,11 +356,28 @@ Each shared component has a canonical source in `packages/shared/components/` an
 
 | Component | File | What it does |
 |---|---|---|
-| **GameModal** | `GameModal.js` | Game-picker modal shown at end of game |
-| **Footer** | `Footer.js` | Sticky 56px bar at bottom; hamburger left, action buttons right |
-| **Menu** | `Menu.js` | Slide-up drawer opened by the hamburger; Players, Poke, Message, optional tiles |
-| **Notifications** | `Notifications.js` | Poke/message strips fixed at top of screen; tap or swipe to dismiss |
-| **WaitingList** | `WaitingList.js` | Player rows with status dots and inline 👉 poke buttons |
+| **HomeScreen** | `components/HomeScreen.js` | Game home/join page — big title, tagline, Create Game button, join input |
+| **Lobby** | `components/Lobby.js` | Pre-game lobby shell — header (code + invite + how-to-play), player list, slots for settings/start CTA/join form |
+| **EndGame** | `components/EndGame.js` | Final scores screen — "Game Over", sorted score list, Play Again + Play Another Game buttons |
+| **Results** | `components/Results.js` | Post-question results — answer groups with vote counts, bonus labels, per-round points breakdown |
+| **Footer** | `components/Footer.js` | Sticky 56px bar at bottom; hamburger left, action buttons right |
+| **FooterButton** | `components/FooterButton.js` | Action button for use inside Footer; auto-loading state, nudge pulse, primary/secondary/danger variants |
+| **Menu** | `components/Menu.js` | Slide-up drawer opened by the hamburger; Players, Poke, Message, optional tiles |
+| **Notifications** | `components/Notifications.js` | Poke/message strips fixed at top of screen; tap or swipe to dismiss |
+| **WaitingList** | `components/WaitingList.js` | Player rows with status dots and inline 👉 poke buttons |
+| **Selections** | `components/Selections.js` | Tap-to-select rows with ✕ deselect and own-item label |
+| **TextEntry** | `components/TextEntry.js` | Textarea/input with debounced `onTypingChange` callback |
+| **StatusBar** | `components/StatusBar.js` | Thin top strip — label + optional right node |
+| **RandomIdeas** | `components/RandomIdeas.js` | Draw button, idea chips, player name injection |
+| **GameModal** | `components/GameModal.js` | Game-picker modal shown at end of game |
+
+Shared lib files (canonical in `packages/shared/lib/`, copied to each game's `lib/`):
+
+| File | What it does |
+|---|---|
+| `lib/sounds.js` | `playSubmit`, `playYourTurn`, `playPoke` — audio feedback |
+| `lib/useDuplicates.js` | Within-player duplicate detection hook |
+| `components/styles.js` | Design tokens (colors, spacing) used by shared components |
 
 Full props, usage examples, and behavior notes are in the spec comment at the top of each component file. `PokeSystem.js` is a backward-compatible wrapper around Footer + Menu + Notifications — existing games use it until they're migrated. Rollout status tracked in `tasks.md`.
 

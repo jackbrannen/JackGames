@@ -65,7 +65,7 @@ export default function Play({ params }) {
   const soundTriggerRef = useRef(null)
   const [resultSnapshot, setResultSnapshot] = useState(null)
   const [resultsAcknowledged, setResultsAcknowledged] = useState(null)
-  const [readyForQuestionId, setReadyForQuestionId] = useState(null)
+  const lastFetchedResultsIdRef = useRef(null)
   const [roundQuestion, setRoundQuestion] = useState("")
   const [gameOverPlayers, setGameOverPlayers] = useState(null)
   const [showGameModal, setShowGameModal] = useState(false)
@@ -101,7 +101,7 @@ export default function Play({ params }) {
   async function loadState() {
     const { data: gameData } = await supabase
       .from("gow_games")
-      .select("code,phase,round_index,rounds_total,current_question_id,question_phase,used_prompts,next_game,ready_player_ids")
+      .select("code,phase,round_index,rounds_total,current_question_id,question_phase,used_prompts,next_game,last_completed_question_id")
       .eq("code", code)
       .single()
     if (!gameData) return
@@ -153,6 +153,18 @@ export default function Play({ params }) {
           })
         }
       }
+    } else if (gameData.last_completed_question_id && lastFetchedResultsIdRef.current !== gameData.last_completed_question_id) {
+      // Phase has advanced but there are results the player hasn't seen yet — fetch them once
+      lastFetchedResultsIdRef.current = gameData.last_completed_question_id
+      const [{ data: lqData }, { data: laData }, { data: lvData }] = await Promise.all([
+        supabase.from("gow_questions").select("id,text,author_id").eq("id", gameData.last_completed_question_id).single(),
+        supabase.from("gow_answers").select("id,text,player_id,vote_count,skipped").eq("question_id", gameData.last_completed_question_id).order("random_order", { ascending: true }),
+        supabase.from("gow_votes").select("answer_id,voter_id").eq("question_id", gameData.last_completed_question_id),
+      ])
+      setResultSnapshot({ questionId: gameData.last_completed_question_id, question: lqData, answers: laData ?? [], votes: lvData ?? [] })
+      setCurrentQuestion(null)
+      setAnswers([])
+      setVotes([])
     } else {
       setCurrentQuestion(null)
       setAnswers([])
@@ -181,14 +193,6 @@ export default function Play({ params }) {
     setMyVoteId(null)
     changingVoteRef.current = false
   }, [currentQuestionId])
-
-  // Auto-dismiss frozen results for players who pressed ready once phase advances
-  useEffect(() => {
-    if (readyForQuestionId && resultSnapshot?.questionId === readyForQuestionId && game?.question_phase !== "results") {
-      setResultsAcknowledged(readyForQuestionId)
-      setReadyForQuestionId(null)
-    }
-  }, [readyForQuestionId, resultSnapshot?.questionId, game?.question_phase])
 
   const roundIndex = game?.round_index
 
@@ -329,11 +333,9 @@ export default function Play({ params }) {
 
   async function handleAdvanceFromResults() {
     const snapId = resultSnapshot?.questionId
-    if (game?.question_phase === "results" && myPlayerId && snapId) {
-      setReadyForQuestionId(snapId)
-      await supabase.rpc("gow_mark_question_ready", { p_code: code, p_player_id: myPlayerId })
-    } else {
-      setResultsAcknowledged(snapId)
+    setResultsAcknowledged(snapId)
+    if (game?.question_phase === "results") {
+      await supabase.rpc("gow_advance_question", { p_code: code })
     }
     await loadState()
   }
@@ -429,9 +431,6 @@ export default function Play({ params }) {
     const snapSkipped = (snap.answers ?? []).filter(a => a.skipped)
     const stillInResults = game.question_phase === "results" && game.current_question_id === snap.questionId
     const btnLabel = game.phase === "finished" ? "Show Winner" : stillInResults ? "Next Question" : "Continue"
-    const readyIds = game?.ready_player_ids ?? []
-    const iAmReady = readyForQuestionId === snap.questionId
-    const readyCount = readyIds.length
 
     return (
       <>
@@ -523,15 +522,9 @@ export default function Play({ params }) {
         </div>
       </div>
         {pokeSystemNode(
-          iAmReady ? (
-            <FooterButton disabled style={{ fontSize: 15, background: "rgba(255,255,255,0.15)", color: "white" }}>
-              {readyCount} / {players.length} ready…
-            </FooterButton>
-          ) : (
-            <FooterButton onClick={handleAdvanceFromResults} style={{ fontSize: 16 }}>
-              {btnLabel}
-            </FooterButton>
-          )
+          <FooterButton onClick={handleAdvanceFromResults} style={{ fontSize: 16 }}>
+            {btnLabel}
+          </FooterButton>
         )}
       </>
     )

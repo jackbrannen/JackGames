@@ -133,14 +133,15 @@ export default function Play({ params }) {
         .order("random_order", { ascending: true })
       setAnswers(answerData ?? [])
 
-      if (myPlayerId) {
+      const pid = myPlayerId || localStorage.getItem(`gow:${code}:playerId`)
+      if (pid) {
         const { data: voteData } = await supabase
           .from("gow_votes")
           .select("answer_id,voter_id")
           .eq("question_id", gameData.current_question_id)
         setVotes(voteData ?? [])
         if (!changingVoteRef.current) {
-          const myVote = (voteData ?? []).find(v => v.voter_id === myPlayerId)
+          const myVote = (voteData ?? []).find(v => v.voter_id === pid)
           setMyVoteId(myVote ? (myVote.answer_id ?? "nota") : null)
         }
 
@@ -155,7 +156,6 @@ export default function Play({ params }) {
           gameData.last_completed_question_id &&
           lastFetchedResultsIdRef.current !== gameData.last_completed_question_id
         ) {
-          // Phase advanced past results before this player polled — fetch last results once
           lastFetchedResultsIdRef.current = gameData.last_completed_question_id
           const [{ data: lqData }, { data: laData }, { data: lvData }] = await Promise.all([
             supabase.from("gow_questions").select("id,text,author_id").eq("id", gameData.last_completed_question_id).single(),

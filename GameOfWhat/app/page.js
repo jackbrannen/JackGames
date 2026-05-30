@@ -53,19 +53,6 @@ async function createGame() {
   throw new Error("unable_to_allocate_game_code")
 }
 
-const BOT_WORDS = ["pizza","coffee","traffic","vacation","homework","laundry","dentist","parking","sunshine","deadline","wifi","elevator","printer","leftovers","voicemail"]
-const Q_TEMPLATES = [
-  w => `What would you do with ${w}?`,
-  w => `What's the best thing about ${w}?`,
-  w => `How would you explain ${w} to a five-year-old?`,
-  w => `What's the worst way to handle ${w}?`,
-  w => `What would ${w} say if it could talk?`,
-]
-function pickRandQuestion() {
-  const w = BOT_WORDS[Math.floor(Math.random() * BOT_WORDS.length)]
-  return Q_TEMPLATES[Math.floor(Math.random() * Q_TEMPLATES.length)](w)
-}
-
 const BG = "#6B1A44"
 const YELLOW = "#FBDF54"
 const WARM_LIGHT = "#821F42"
@@ -84,36 +71,6 @@ export default function Home() {
     try {
       const code = await createGame()
       router.push(`/${code}`)
-    } catch (e) {
-      setError(e?.message ?? "unknown error")
-      setIsCreating(false)
-    }
-  }
-
-  async function createDummyGame() {
-    if (isCreating) return
-    setError("")
-    setIsCreating(true)
-    try {
-      const code = await createGame()
-      const BOT_NAMES = ["Raccoon", "Flamingo", "Capybara"]
-      const { data: botData } = await supabase
-        .from("gow_players")
-        .insert(BOT_NAMES.map(name => ({ game_code: code, name, score: 0 })))
-        .select("id")
-      const botIds = (botData ?? []).map(b => b.id)
-      const { data: realData } = await supabase
-        .from("gow_players")
-        .insert({ game_code: code, name: "You", score: 0 })
-        .select("id").single()
-      localStorage.setItem(`gow:${code}:playerId`, realData.id)
-      localStorage.setItem(`gow:${code}:botIds`, JSON.stringify(botIds))
-      await supabase.rpc("gow_start_game", { p_code: code })
-      await Promise.all([...botIds, realData.id].map(id =>
-        supabase.from("gow_players").update({ question: pickRandQuestion() }).eq("id", id)
-      ))
-      await supabase.rpc("gow_start_next_round", { p_code: code })
-      router.push(`/${code}/play`)
     } catch (e) {
       setError(e?.message ?? "unknown error")
       setIsCreating(false)
@@ -220,7 +177,7 @@ export default function Home() {
       )}
 
       <button
-        onClick={createDummyGame}
+        onClick={onCreateClick}
         disabled={isCreating}
         style={{
           position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",

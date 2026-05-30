@@ -28,8 +28,8 @@ Do in small batches, deploy, test before continuing.
 - [ ] **Duplicate detection** — works with TextEntry. Three modes: (1) within one player's fields — useDuplicates hook built ✓; (2) between players for bonus points (Drawful, GameOfWhat) — show bonus on submission (GOW: working ad-hoc in submitAnswer); (3) between players to block (Fishbowl, ReverseCharades) — highlight and block. Modes 2-3 are game-specific (need DB data).
 
 ### Later
-- [ ] End game screen — final scores / winning team / creation screenshots (Drawful, Telestrations, ExquisiteCorpse). Play again button. Pick a game modal button.
-- [ ] Home screen — individual game home/join screen. Already exists, turn into component to eliminate inconsistencies.
+- [x] End game screen — final scores, Play Again, Play Another Game. (GOW wired ✓; Drawful, Telestrations, ExquisiteCorpse pending)
+- [x] Home screen — title, subtitle, Create Game, join input. (GOW wired ✓; all other games pending)
 - [x] Results — mid-game results list. Shows submitted text, authors, who chose what. Supports multiple choosers/authors. Labels for correct answers. (GOW wired ✓)
 - [x] Lobby — room code + invite + rules at top. Three zones: numbered player list (grouped by team if applicable), name entry / join button, settings (if game has them). (GOW wired ✓)
 - [ ] UI design / styles — audit and clean up type styles, colors, button styles across all games using styles.js.

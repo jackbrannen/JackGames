@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../lib/supabase"
 import { useSubmitNudge } from "../lib/useSubmitNudge"
+import HomeScreen from "../components/HomeScreen"
 
 const WORDS_A = [
   "MAPLE","RIVER","OCEAN","SUNRISE","VELVET","COPPER","SILVER","EMBER","FOREST","CLOUD",
@@ -53,10 +54,6 @@ async function createGame() {
   throw new Error("unable_to_allocate_game_code")
 }
 
-const BG = "#6B1A44"
-const YELLOW = "#FBDF54"
-const WARM_LIGHT = "#821F42"
-
 export default function Home() {
   const router = useRouter()
   const [isCreating, setIsCreating] = useState(false)
@@ -83,111 +80,18 @@ export default function Home() {
   }
 
   return (
-    <div style={{
-      minHeight: "100dvh",
-      background: BG,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "40px 24px",
-    }}>
-      <h1 style={{
-        fontSize: "clamp(52px, 16vw, 96px)",
-        fontWeight: 900,
-        color: "white",
-        letterSpacing: "-2px",
-        lineHeight: 0.9,
-        textAlign: "center",
-        marginBottom: 12,
-      }}>
-        The Game<br />of What
-      </h1>
-
-      <p style={{
-        color: "rgba(255,255,255,0.65)",
-        fontSize: 14,
-        fontWeight: 700,
-        textAlign: "center",
-        marginBottom: 56,
-        letterSpacing: "0.1em",
-      }}>
-        Questions · Answers · Votes
-      </p>
-
-      <div style={{ width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", gap: 8 }}>
-        <button
-          onClick={onCreateClick}
-          disabled={isCreating}
-          style={{
-            background: YELLOW,
-            color: "#000",
-            fontSize: 22,
-            fontWeight: 900,
-            padding: "22px 40px",
-            width: "100%",
-            display: "block",
-          }}
-        >
-          {isCreating ? "Creating…" : "Create Game"}
-        </button>
-
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="text"
-            placeholder="Room code"
-            value={joinCode}
-            onChange={e => setJoinCode(e.target.value.toUpperCase())}
-            onKeyDown={e => { if (e.key === "Enter") onJoin() }}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              background: WARM_LIGHT,
-              border: "none",
-              color: "white",
-              fontSize: 18,
-              fontWeight: 800,
-              padding: "18px 16px",
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-              outline: "none",
-            }}
-          />
-          <button
-            onClick={onJoin}
-            style={{
-              background: WARM_LIGHT,
-              color: "white",
-              fontSize: 18,
-              fontWeight: 900,
-              padding: "18px 20px",
-              flexShrink: 0,
-              animation: nudgeJoin ? "nudgePulse 1.5s ease-in-out infinite" : "none",
-            }}
-          >
-            Join
-          </button>
-        </div>
-      </div>
-
-      {!!error && (
-        <p style={{ color: YELLOW, marginTop: 20, fontSize: 14, fontWeight: 600, textAlign: "center" }}>
-          Error: {error}
-        </p>
-      )}
-
-      <button
-        onClick={onCreateClick}
-        disabled={isCreating}
-        style={{
-          position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
-          background: WARM_LIGHT, color: "rgba(255,255,255,0.65)",
-          fontSize: 11, fontWeight: 700, padding: "8px 16px",
-          letterSpacing: "0.1em", textTransform: "uppercase", whiteSpace: "nowrap",
-        }}
-      >
-        Dummy Game
-      </button>
-    </div>
+    <HomeScreen
+      title={<>The Game<br />of What</>}
+      subtitle="Questions · Answers · Votes"
+      onCreate={onCreateClick}
+      isCreating={isCreating}
+      joinCode={joinCode}
+      onJoinCodeChange={setJoinCode}
+      onJoin={onJoin}
+      nudgeJoin={nudgeJoin}
+      error={error}
+      onDummyGame={onCreateClick}
+      colors={{ bg: "#6B1A44", wl: "#821F42", yellow: "#FBDF54" }}
+    />
   )
 }

@@ -16,6 +16,7 @@ import Selections from "../../../components/Selections"
 import RandomIdeas from "../../../components/RandomIdeas"
 import StatusBar from "../../../components/StatusBar"
 import Results from "../../../components/Results"
+import EndGame from "../../../components/EndGame"
 import { playYourTurn } from "../../../lib/sounds"
 
 const BG = "#6B1A44"
@@ -494,45 +495,17 @@ export default function Play({ params }) {
 
   if (game.phase === "finished") {
     const finalPlayers = [...(gameOverPlayers ?? players)].sort((a, b) => b.score - a.score)
-    const topScore = finalPlayers[0]?.score ?? 0
-    const isTie = finalPlayers.filter(p => p.score === topScore).length > 1
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1, overflowY: "auto", padding: "40px 24px", paddingBottom: BOTTOM_PAD }}>
-          <div style={{ fontSize: "clamp(56px, 16vw, 88px)", fontWeight: 900, lineHeight: 0.9, marginBottom: 32 }}>
-            Game<br />Over
-          </div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 16 }}>
-            Final Scores
-          </div>
-          {finalPlayers.map((p, i) => {
-            const isWinner = p.score === topScore
-            return (
-            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
-              <div style={{ background: isWinner ? YELLOW : WARM_LIGHT, color: isWinner ? "#000" : "white", fontSize: 22, fontWeight: 900, minWidth: 52, textAlign: "center", padding: "8px 0" }}>
-                {p.score}
-              </div>
-              <div>
-                <span style={{ fontSize: 22, fontWeight: 700 }}>{p.name}</span>
-                {isWinner && <span style={{ fontSize: 12, fontWeight: 800, color: YELLOW, marginLeft: 10, textTransform: "uppercase", letterSpacing: "0.1em" }}>{isTie ? "Tied!" : "Winner!"}</span>}
-              </div>
-            </div>
-            )
-          })}
-
-          {/* Play again / another game */}
-          <div style={{ marginTop: 40, display: "flex", flexDirection: "column", gap: 10 }}>
-            <button onClick={resetGame}
-              style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
-              Play Again
-            </button>
-            <button onClick={() => setShowGameModal(true)}
-              style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%" }}>
-              Play Another Game
-            </button>
-          </div>
-        </div>
+        <EndGame
+          players={finalPlayers}
+          myPlayerId={myPlayerId}
+          onPlayAgain={resetGame}
+          onPlayAnotherGame={() => setShowGameModal(true)}
+          bottomPad={BOTTOM_PAD}
+          colors={{ yellow: YELLOW, wl: WARM_LIGHT }}
+        />
       </div>
         {pokeSystemNode()}
       {showGameModal && (

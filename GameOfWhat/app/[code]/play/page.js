@@ -230,6 +230,7 @@ export default function Play({ params }) {
   useEffect(() => {
     if (!botIdsRef.current.length || game?.question_phase !== "answering" || !currentQuestion) return
     botIdsRef.current.forEach(async botId => {
+      if (!players.find(p => p.id === botId)) return
       if (botId === currentQuestion.author_id) return
       if (answers.find(a => a.player_id === botId)) return
       const key = `${currentQuestion.id}-ans-${botId}`
@@ -246,6 +247,7 @@ export default function Play({ params }) {
   useEffect(() => {
     if (!botIdsRef.current.length || game?.question_phase !== "voting" || !currentQuestion) return
     botIdsRef.current.forEach(async botId => {
+      if (!players.find(p => p.id === botId)) return
       if (votes.find(v => v.voter_id === botId)) return
       const key = `${currentQuestion.id}-vote-${botId}`
       if (botActionsRef.current.has(key)) return
@@ -265,7 +267,8 @@ export default function Play({ params }) {
     const round = game.round_index
     botIdsRef.current.forEach(async botId => {
       const player = players.find(p => p.id === botId)
-      if (player?.question) return
+      if (!player) return
+      if (player.question) return
       const key = `r${round}-q-${botId}`
       if (botActionsRef.current.has(key)) return
       botActionsRef.current.add(key)

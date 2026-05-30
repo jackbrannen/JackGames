@@ -9,23 +9,31 @@ Do in small batches, deploy, test before continuing.
 - [x] Notifications — `components/Notifications.js`
 
 ### Wired into Fishbowl, GameOfWhat, FirstToWorst ✓ (others pending)
-- [ ] FooterButton — `components/FooterButton.js`
-- [ ] Selections — `components/Selections.js` (GOW only; FTW doesn't use it)
-- [ ] TextEntry — `components/TextEntry.js` (GOW only)
-- [ ] WaitingList — `components/WaitingList.js`
-- [ ] StatusBar — `components/StatusBar.js` (GOW only so far)
-- [ ] RandomIdeas — `components/RandomIdeas.js` (GOW only so far)
+- [x] FooterButton — `components/FooterButton.js`
+- [x] Selections — `components/Selections.js` (GOW only; FTW doesn't use it)
+- [x] TextEntry — `components/TextEntry.js` (GOW only)
+- [x] WaitingList — `components/WaitingList.js`
+- [x] StatusBar — `components/StatusBar.js` (GOW only so far)
+- [x] RandomIdeas — `components/RandomIdeas.js` (GOW only so far)
+
+### Roll out to remaining games (Avalon, Drawful, SoClover, Telestrations, Copycats, Codenames, ReverseCharades, ExquisiteCorpse)
+- [ ] FooterButton
+- [ ] WaitingList
+- [ ] StatusBar (where applicable)
+- [ ] RandomIdeas (where applicable)
+- [ ] TextEntry (where applicable)
+- [ ] Selections (where applicable)
 
 ### Components still to build
-- [ ] **Duplicate detection** — works with TextEntry. Three modes: (1) within one player's fields — useDuplicates hook built ✓; (2) between players for bonus points (Drawful, GameOfWhat) — show bonus on submission; (3) between players to block (Fishbowl, ReverseCharades) — highlight and block. Modes 2-3 are game-specific (need DB data).
+- [ ] **Duplicate detection** — works with TextEntry. Three modes: (1) within one player's fields — useDuplicates hook built ✓; (2) between players for bonus points (Drawful, GameOfWhat) — show bonus on submission (GOW: working ad-hoc in submitAnswer); (3) between players to block (Fishbowl, ReverseCharades) — highlight and block. Modes 2-3 are game-specific (need DB data).
 
 ### Later
 - [ ] End game screen — final scores / winning team / creation screenshots (Drawful, Telestrations, ExquisiteCorpse). Play again button. Pick a game modal button.
 - [ ] Home screen — individual game home/join screen. Already exists, turn into component to eliminate inconsistencies.
-- [ ] Results — mid-game results list. Shows submitted text, authors, who chose what. Supports multiple choosers/authors. Labels for correct answers.
-- [ ] Lobby — room code + invite + rules at top. Three zones: numbered player list (grouped by team if applicable), name entry / join button, settings (if game has them).
+- [x] Results — mid-game results list. Shows submitted text, authors, who chose what. Supports multiple choosers/authors. Labels for correct answers. (GOW wired ✓)
+- [x] Lobby — room code + invite + rules at top. Three zones: numbered player list (grouped by team if applicable), name entry / join button, settings (if game has them). (GOW wired ✓)
 - [ ] UI design / styles — audit and clean up type styles, colors, button styles across all games using styles.js.
-- [ ] Dummy games — auto-join if username exists. Pre-fill text fields from random ideas list.
+- [x] Dummy games — auto-join if username exists. Pre-fill text fields from random ideas list. (GOW done)
 
 ### Already done
 - [x] GameModal — `components/GameModal.js`
@@ -47,7 +55,7 @@ Do in small batches, deploy, test before continuing.
 - SoClover: The Fifth Card setting should be editable before joining the game
 - SoClover: The 5th card option can't currently be toggled on.
 - SoClover: when the guesser rotates cards or the board, it is STILL not shown on other devices. The screen updates only when a card is moved. It should also update on card or board rotations. It also doesn't update when cards are taken off the board, only when they're put on it.
-- GameOfWhat: auto-start round when all questions submitted — diagnostic logging deployed, root cause unconfirmed (check console for `[auto-start]` logs)
+- GameOfWhat: auto-start round when all questions submitted — fixed (effect now awaits RPC + calls loadState)
 - Fishbowl: change minimum players to 4
 
 ### Recently fixed

@@ -3,10 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../lib/supabase"
+import Lobby from "../../components/Lobby"
 
 const BG = "#6B1A44"
 const YELLOW = "#FBDF54"
 const WARM_LIGHT = "#821F42"
+const DARK = "#4A123B"
+const MID = "#5C1640"
+
+const LOBBY_COLORS = { dark: DARK, mid: MID, wl: WARM_LIGHT, yellow: YELLOW }
 
 const WORDS_A_GOW = [
   "MAPLE","RIVER","OCEAN","SUNRISE","VELVET","COPPER","SILVER","EMBER","FOREST","CLOUD",
@@ -19,7 +24,7 @@ const WORDS_A_GOW = [
   "PANDA","TIGER","OTTER","EAGLE","FALCON","ROBIN","WHALE","DOLPHIN","KOALA","ZEBRA",
 ]
 
-function splitCodeGOW(code) {
+function splitCode(code) {
   for (const w of WORDS_A_GOW) {
     if (code.startsWith(w)) return [w, code.slice(w.length)]
   }
@@ -56,7 +61,7 @@ const inputStyle = {
   boxSizing: "border-box",
 }
 
-export default function Lobby({ params }) {
+export default function LobbyPage({ params }) {
   const router = useRouter()
   const code = useMemo(() => params.code.toUpperCase(), [params.code])
 
@@ -71,7 +76,6 @@ export default function Lobby({ params }) {
   const [joinError, setJoinError] = useState("")
   const [rounds, setRounds] = useState("3")
   const [notFound, setNotFound] = useState(false)
-  const [showInstructions, setShowInstructions] = useState(false)
   const [confirmingStart, setConfirmingStart] = useState(false)
   const [starting, setStarting] = useState(false)
   const [instructions, setInstructions] = useState("")
@@ -193,24 +197,13 @@ export default function Lobby({ params }) {
     await loadState()
   }
 
-
-  if (notFound) {
-    return (
-      <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ color: "white", fontSize: 22, fontWeight: 700 }}>Room not found.</p>
-      </div>
-    )
+  async function handleInvite() {
+    const url = window.location.href
+    if (navigator.share) await navigator.share({ title: `Join Game of What — ${code}`, url })
+    else { await navigator.clipboard.writeText(url); alert("Link copied!") }
   }
 
-  if (!game) {
-    return (
-      <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 18, fontWeight: 700 }}>Loading…</p>
-      </div>
-    )
-  }
-
-  if (game.phase !== "lobby" && !myPlayerId) {
+  if (game?.phase !== "lobby" && !myPlayerId && game !== null) {
     return (
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center" }}>
         <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.5, marginBottom: 16, color: "white" }}>The Game of What</div>
@@ -221,188 +214,117 @@ export default function Lobby({ params }) {
     )
   }
 
+  const [word1, word2] = splitCode(code)
   const canStart = players.length >= 4
 
-  return (
-    <div style={{ minHeight: "100dvh", background: BG, color: "white" }}>
-
-      {/* Header */}
-      <div style={{ padding: "28px 24px 24px", background: "#4A123B", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.45, marginBottom: 4 }}>
-            The Game of What
-          </div>
-          <div style={{ fontSize: "clamp(18px, 6vw, 38px)", fontWeight: 900, letterSpacing: "-1px", lineHeight: 1, whiteSpace: "nowrap" }}>
-            {(() => { const [w1, w2] = splitCodeGOW(code); return <><span style={{ color: YELLOW }}>{w1}</span><span style={{ color: "rgba(255,255,255,0.75)" }}>{w2}</span></> })()}
-          </div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, marginTop: 4, alignItems: "stretch" }}>
-          <button
-            onClick={async () => {
-              const url = window.location.href
-              if (navigator.share) await navigator.share({ title: `Join Game of What — ${code}`, url })
-              else { await navigator.clipboard.writeText(url); alert("Link copied!") }
-            }}
-            style={{ background: WARM_LIGHT, color: "white", fontSize: 13, fontWeight: 800, padding: "10px 16px" }}
-          >
-            Invite
-          </button>
-          <button
-            onClick={() => setShowInstructions(true)}
-            style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 13, fontWeight: 800, padding: "10px 14px" }}
-          >
-            How to Play
-          </button>
-        </div>
+  const joinForm = !me ? (
+    <>
+      <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 14 }}>
+        Join Game
       </div>
-
-      {/* Rounds selector */}
-      <div style={{ padding: "16px 24px", background: "#5C1640", display: "flex", alignItems: "center", gap: 16 }}>
-        <span style={{ fontSize: 16, fontWeight: 800, color: "white" }}>Number of Rounds:</span>
-        <div style={{ display: "flex", gap: 6 }}>
-          {[1,2,3,4,5].map(v => (
-            <button
-              key={v}
-              onClick={() => saveRounds(v)}
-              style={{
-                background: Number(rounds) === v ? YELLOW : WARM_LIGHT,
-                color: Number(rounds) === v ? "#000" : "white",
-                fontSize: 18,
-                fontWeight: 900,
-                width: 44,
-                height: 44,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Start Game CTA */}
-      {canStart && (
-        <div style={{ padding: "20px 24px", background: YELLOW }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "#000", opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 10 }}>
-            All players in?
-          </div>
-          <button
-            onClick={() => setConfirmingStart(true)}
-            disabled={starting}
-            style={{ background: "#000", color: YELLOW, fontSize: 24, fontWeight: 900, padding: "20px", width: "100%", display: "block" }}
-          >
-            Start Game
-          </button>
-        </div>
-      )}
-
-      {/* Join */}
-      {!me && (
-        <div style={{ padding: "28px 24px 0" }}>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 14 }}>
-            Join Game
-          </div>
-          {!savedProfile && (
-            <>
-              <input
-                value={firstName}
-                onChange={e => setFirstName(e.target.value)}
-                placeholder="First name"
-                maxLength={40}
-                style={{ ...inputStyle, marginBottom: 8 }}
-              />
-              <input
-                value={lastName}
-                onChange={e => setLastName(e.target.value)}
-                placeholder="Last name"
-                maxLength={40}
-                style={{ ...inputStyle, marginBottom: 8 }}
-              />
-            </>
-          )}
+      {!savedProfile && (
+        <>
           <input
-            value={username}
-            onChange={e => setUsername(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && join()}
-            placeholder="Display Name"
+            value={firstName}
+            onChange={e => setFirstName(e.target.value)}
+            placeholder="First name"
             maxLength={40}
-            style={inputStyle}
+            style={{ ...inputStyle, marginBottom: 8 }}
           />
+          <input
+            value={lastName}
+            onChange={e => setLastName(e.target.value)}
+            placeholder="Last name"
+            maxLength={40}
+            style={{ ...inputStyle, marginBottom: 8 }}
+          />
+        </>
+      )}
+      <input
+        value={username}
+        onChange={e => setUsername(e.target.value)}
+        onKeyDown={e => e.key === "Enter" && join()}
+        placeholder="Display Name"
+        maxLength={40}
+        style={inputStyle}
+      />
+      <button
+        onClick={join}
+        disabled={!username.trim() || (!savedProfile && (!firstName.trim() || !lastName.trim())) || joining}
+        style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "18px", width: "100%", marginTop: 8, display: "block" }}
+      >
+        {joining ? "Joining…" : "Join"}
+      </button>
+      {joinError && (
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#F04F52", marginTop: 10 }}>
+          {joinError}
+        </div>
+      )}
+    </>
+  ) : null
+
+  const settingsStrip = (
+    <div style={{ padding: "16px 24px", background: MID, display: "flex", alignItems: "center", gap: 16 }}>
+      <span style={{ fontSize: 16, fontWeight: 800, color: "white" }}>Number of Rounds:</span>
+      <div style={{ display: "flex", gap: 6 }}>
+        {[1,2,3,4,5].map(v => (
           <button
-            onClick={join}
-            disabled={!username.trim() || (!savedProfile && (!firstName.trim() || !lastName.trim())) || joining}
-            style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "18px", width: "100%", marginTop: 8, display: "block" }}
+            key={v}
+            onClick={() => saveRounds(v)}
+            style={{
+              background: Number(rounds) === v ? YELLOW : WARM_LIGHT,
+              color: Number(rounds) === v ? "#000" : "white",
+              fontSize: 18,
+              fontWeight: 900,
+              width: 44,
+              height: 44,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
           >
-            {joining ? "Joining…" : "Join"}
+            {v}
           </button>
-          {joinError && (
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#F04F52", marginTop: 10 }}>
-              {joinError}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Players */}
-      <div style={{ padding: "28px 24px 0" }}>
-        <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 14 }}>
-          Players
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          {players.length === 0 && (
-            <div style={{ fontSize: 15, opacity: 0.65, fontStyle: "italic", padding: "12px 0" }}>No players yet</div>
-          )}
-          {players.map((p, i) => (
-            <div key={p.id} style={{ display: "flex" }}>
-              <div style={{
-                padding: "13px 0", minWidth: 48, flexShrink: 0,
-                background: "#4A123B",
-                fontSize: 18, fontWeight: 900, color: "white",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                {i + 1}
-              </div>
-              <div style={{
-                padding: "13px 16px", flex: 1,
-                background: "#5C1640",
-                display: "flex", alignItems: "center",
-              }}>
-                <div style={{ fontSize: 17, fontWeight: 700 }}>
-                  {p.name}
-                  {p.id === myPlayerId && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-        {players.length < 4 && (
-          <p style={{ fontSize: 13, opacity: 0.65, fontWeight: 600, marginTop: 10 }}>
-            Need at least 4 players to start.
-          </p>
-        )}
+        ))}
       </div>
+    </div>
+  )
 
-      {showInstructions && (
-        <div
-          onClick={() => setShowInstructions(false)}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 200, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 24, overflowY: "auto" }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{ background: "#1A1A2E", width: "100%", maxWidth: 480, padding: "28px 24px", marginTop: 24 }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-              <div style={{ fontSize: 20, fontWeight: 900, color: "white" }}>How to Play</div>
-              <button onClick={() => setShowInstructions(false)} style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 18, fontWeight: 800, padding: "6px 12px" }}>✕</button>
-            </div>
-            <div style={{ fontSize: 15, color: "rgba(255,255,255,0.85)", lineHeight: 1.7, fontWeight: 400, whiteSpace: "pre-wrap" }}>
-              {instructions || "Loading…"}
-            </div>
-          </div>
-        </div>
-      )}
+  const startCTA = canStart ? (
+    <div style={{ padding: "20px 24px", background: YELLOW }}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: "#000", opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 10 }}>
+        All players in?
+      </div>
+      <button
+        onClick={() => setConfirmingStart(true)}
+        disabled={starting}
+        style={{ background: "#000", color: YELLOW, fontSize: 24, fontWeight: 900, padding: "20px", width: "100%", display: "block" }}
+      >
+        Start Game
+      </button>
+    </div>
+  ) : null
+
+  return (
+    <>
+      <div style={{ background: BG }}>
+        <Lobby
+          code={code}
+          gameName="The Game of What"
+          players={players}
+          myPlayerId={myPlayerId}
+          onInvite={handleInvite}
+          howToPlayContent={instructions ? <span style={{ whiteSpace: "pre-wrap" }}>{instructions}</span> : <span>Loading…</span>}
+          codeDisplay={<><span style={{ color: YELLOW }}>{word1}</span><span style={{ color: "rgba(255,255,255,0.75)" }}>{word2}</span></>}
+          settingsContent={settingsStrip}
+          startContent={startCTA}
+          joinContent={joinForm}
+          colors={LOBBY_COLORS}
+          minPlayers={4}
+          notFound={notFound}
+          loading={!game}
+        />
+      </div>
 
       {confirmingStart && (
         <div
@@ -415,7 +337,7 @@ export default function Lobby({ params }) {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ background: "#4A123B", width: "100%", maxWidth: 400, padding: "28px 24px" }}
+            style={{ background: DARK, width: "100%", maxWidth: 400, padding: "28px 24px" }}
           >
             <h2 style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 8 }}>
               Start the game?
@@ -428,7 +350,7 @@ export default function Lobby({ params }) {
                 <div key={p.id} style={{ display: "flex" }}>
                   <div style={{
                     padding: "10px 0", minWidth: 40, flexShrink: 0,
-                    background: "#5C1640",
+                    background: MID,
                     fontSize: 15, fontWeight: 900, color: "white",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
@@ -457,7 +379,7 @@ export default function Lobby({ params }) {
               <button
                 onClick={() => { setConfirmingStart(false); startGame() }}
                 disabled={starting}
-                style={{ flex: 2, background: "#FBDF54", color: "#000", fontSize: 17, fontWeight: 900, padding: "16px" }}
+                style={{ flex: 2, background: YELLOW, color: "#000", fontSize: 17, fontWeight: 900, padding: "16px" }}
               >
                 {starting ? "Starting…" : "Start Game"}
               </button>
@@ -465,7 +387,6 @@ export default function Lobby({ params }) {
           </div>
         </div>
       )}
-
-    </div>
+    </>
   )
 }

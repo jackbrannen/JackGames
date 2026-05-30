@@ -15,6 +15,7 @@ import TextEntry from "../../../components/TextEntry"
 import Selections from "../../../components/Selections"
 import RandomIdeas from "../../../components/RandomIdeas"
 import StatusBar from "../../../components/StatusBar"
+import Results from "../../../components/Results"
 import { playYourTurn } from "../../../lib/sounds"
 
 const BG = "#6B1A44"
@@ -440,53 +441,6 @@ export default function Play({ params }) {
       <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
         <StatusBar label={`Round ${(game.round_index ?? 0) + 1} of ${game.rounds_total ?? 3}`} dark="#4A123B" />
         <div style={{ flex: 1, overflowY: "auto", padding: "28px 20px", paddingBottom: BOTTOM_PAD }}>
-          {snapQuestion && (
-            <div style={{ marginBottom: 28 }}>
-              <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 10 }}>
-                {snapQuestionAuthor ? `${snapQuestionAuthor.name}'s question` : "Question"}
-              </div>
-              <div style={{ fontSize: "clamp(22px, 6vw, 32px)", fontWeight: 800, lineHeight: 1.25 }}>
-                {snapQuestion.text}
-              </div>
-            </div>
-          )}
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 28 }}>
-            {[...snapAnswerGroups].sort((a, b) => b.voteCount - a.voteCount).map(group => {
-              const authors = group.playerIds.map(id => players.find(p => p.id === id)?.name).filter(Boolean)
-              const pts = group.voteCount
-              return (
-                <div key={group.primaryId} style={{ background: CARD_BG, padding: "16px 20px" }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-                    <div style={{ background: pts > 0 ? YELLOW : WARM_LIGHT, color: pts > 0 ? "#000" : "rgba(255,255,255,0.5)", fontSize: 20, fontWeight: 900, minWidth: 44, textAlign: "center", padding: "6px 0", flexShrink: 0 }}>
-                      {pts > 0 ? `+${pts}` : "0"}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>{group.text}</div>
-                      <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.65, marginTop: 3 }}>
-                        {authors.join(" & ")}
-                        {authors.length > 1 && <span style={{ marginLeft: 6, background: YELLOW, color: "#000", fontSize: 11, fontWeight: 900, padding: "1px 5px", verticalAlign: "middle" }}>matched +1</span>}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-            {snapNotaVoters.length > 0 && (
-              <div style={{ background: CARD_BG, padding: "16px 20px" }}>
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-                  <div style={{ background: WARM_LIGHT, color: "rgba(255,255,255,0.5)", fontSize: 20, fontWeight: 900, minWidth: 44, textAlign: "center", padding: "6px 0", flexShrink: 0 }}>{snapNotaVoters.length}</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3, opacity: 0.65 }}>None of the above</div>
-                </div>
-              </div>
-            )}
-            {snapSkipped.length > 0 && (
-              <div style={{ fontSize: 13, opacity: 0.65, fontWeight: 600, marginTop: 4 }}>
-                Skipped: {snapSkipped.map(a => players.find(p => p.id === a.player_id)?.name).filter(Boolean).join(", ")}
-              </div>
-            )}
-          </div>
-
-          {/* Points earned this question */}
           {(() => {
             const pts = {}
             const bonusIds = new Set()
@@ -497,29 +451,25 @@ export default function Play({ params }) {
               }
             }
             const scorers = players.filter(p => pts[p.id] > 0).sort((a, b) => pts[b.id] - pts[a.id])
-            if (!scorers.length) return null
             return (
-              <div style={{ marginTop: 4 }}>
-                <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 10 }}>
-                  Points this question
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {scorers.map(p => (
-                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <div style={{ background: YELLOW, color: "#000", fontSize: 18, fontWeight: 900, minWidth: 44, textAlign: "center", padding: "5px 0", flexShrink: 0 }}>
-                        +{pts[p.id]}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 16, fontWeight: 700 }}>{p.name}</div>
-                        <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.65 }}>
-                          {pts[p.id] - (bonusIds.has(p.id) ? 1 : 0)} vote{pts[p.id] - (bonusIds.has(p.id) ? 1 : 0) !== 1 ? "s" : ""}
-                          {bonusIds.has(p.id) && " · matched +1"}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <Results
+                question={snapQuestion ? { text: snapQuestion.text, authorName: snapQuestionAuthor?.name } : undefined}
+                items={[...snapAnswerGroups].sort((a, b) => b.voteCount - a.voteCount).map(g => ({
+                  id: g.primaryId,
+                  text: g.text,
+                  authorNames: g.playerIds.map(id => players.find(p => p.id === id)?.name).filter(Boolean),
+                  voteCount: g.voteCount,
+                  isBonus: g.playerIds.length > 1,
+                }))}
+                notaCount={snapNotaVoters.length}
+                skippedNames={snapSkipped.map(a => players.find(p => p.id === a.player_id)?.name).filter(Boolean)}
+                scorers={scorers.map(p => ({
+                  name: p.name,
+                  points: pts[p.id],
+                  detail: `${pts[p.id] - (bonusIds.has(p.id) ? 1 : 0)} vote${pts[p.id] - (bonusIds.has(p.id) ? 1 : 0) !== 1 ? "s" : ""}${bonusIds.has(p.id) ? " · matched +1" : ""}`,
+                }))}
+                colors={{ card: CARD_BG, yellow: YELLOW, dim: WARM_LIGHT }}
+              />
             )
           })()}
         </div>

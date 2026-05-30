@@ -376,7 +376,8 @@ Shared lib files (canonical in `packages/shared/lib/`, copied to each game's `li
 | File | What it does |
 |---|---|
 | `lib/sounds.js` | `playSubmit`, `playYourTurn`, `playPoke` — audio feedback |
-| `lib/useDuplicates.js` | Within-player duplicate detection hook |
+| `lib/useDuplicates.js` | Within-player duplicate detection — highlights duplicate fields within one player's form |
+| `lib/useBlockingDuplicates.js` | Between-player blocking duplicates — returns which of the current player's values clash with another player's submission (Fishbowl, ReverseCharades) |
 | `lib/useTypingPresence.js` | Tracks which players are currently typing via Supabase presence channel |
 | `components/styles.js` | Design tokens (colors, spacing) used by shared components |
 

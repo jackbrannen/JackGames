@@ -9,14 +9,18 @@
   Props:
     code            string   — room code (e.g. "MAPLERIVER")
     gameName        string   — e.g. "The Game of What"
-    players         { id, name }[]
+    players         { id, name, teamLabel?, teamColor? }[]
+                               — when teamLabel is present on any player, the list is grouped
+                               by team with a colored team header above each group
     myPlayerId      string | null
     onInvite        fn       — called when Invite is tapped
     howToPlayContent ReactNode  — content inside the How to Play modal (omit to hide button)
     codeDisplay     ReactNode  — overrides the default code text rendering in the header
     settingsContent ReactNode  — strip rendered below the header (game-specific settings)
     startContent    ReactNode  — start game CTA block (rendered above join form)
-    joinContent     ReactNode  — join form; shown when player hasn't joined (pass null to hide)
+    joinContent     ReactNode  — join form; shown when player hasn't joined.
+                               For team games, pass two team-join buttons here instead of
+                               a single Join button.
     showJoin        bool       — override visibility of joinContent (default: !myPlayerId)
     extraContent    ReactNode  — anything rendered below the player list
     colors          { dark, mid, wl, yellow }
@@ -43,6 +47,31 @@
 */
 
 import { useState } from "react"
+
+function PlayerRow({ p, i, myPlayerId, dark, mid }) {
+  return (
+    <div style={{ display: "flex" }}>
+      <div style={{
+        padding: "13px 0", minWidth: 48, flexShrink: 0,
+        background: dark,
+        fontSize: 18, fontWeight: 900, color: "white",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        {i + 1}
+      </div>
+      <div style={{
+        padding: "13px 16px", flex: 1,
+        background: mid,
+        display: "flex", alignItems: "center",
+      }}>
+        <div style={{ fontSize: 17, fontWeight: 700 }}>
+          {p.name}
+          {p.id === myPlayerId && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function Lobby({
   code = "",
@@ -136,33 +165,37 @@ export default function Lobby({
         <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 14 }}>
           Players
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          {players.length === 0 && (
-            <div style={{ fontSize: 15, opacity: 0.65, fontStyle: "italic", padding: "12px 0" }}>No players yet</div>
-          )}
-          {players.map((p, i) => (
-            <div key={p.id} style={{ display: "flex" }}>
-              <div style={{
-                padding: "13px 0", minWidth: 48, flexShrink: 0,
-                background: dark,
-                fontSize: 18, fontWeight: 900, color: "white",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                {i + 1}
+        {players.length === 0 && (
+          <div style={{ fontSize: 15, opacity: 0.65, fontStyle: "italic", padding: "12px 0" }}>No players yet</div>
+        )}
+        {(() => {
+          const hasTeams = players.some(p => p.teamLabel)
+          if (!hasTeams) {
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                {players.map((p, i) => <PlayerRow key={p.id} p={p} i={i} myPlayerId={myPlayerId} dark={dark} mid={mid} />)}
               </div>
-              <div style={{
-                padding: "13px 16px", flex: 1,
-                background: mid,
-                display: "flex", alignItems: "center",
-              }}>
-                <div style={{ fontSize: 17, fontWeight: 700 }}>
-                  {p.name}
-                  {p.id === myPlayerId && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
-                </div>
+            )
+          }
+          // Group by team, preserving insertion order
+          const teamOrder = []
+          const teamMap = {}
+          players.forEach(p => {
+            const label = p.teamLabel || ""
+            if (!teamMap[label]) { teamMap[label] = { color: p.teamColor, players: [] }; teamOrder.push(label) }
+            teamMap[label].players.push(p)
+          })
+          return teamOrder.map(label => (
+            <div key={label} style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: teamMap[label].color || "rgba(255,255,255,0.65)", marginBottom: 6 }}>
+                {label}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                {teamMap[label].players.map((p, i) => <PlayerRow key={p.id} p={p} i={i} myPlayerId={myPlayerId} dark={dark} mid={mid} />)}
               </div>
             </div>
-          ))}
-        </div>
+          ))
+        })()}
         {players.length < minPlayers && (
           <p style={{ fontSize: 13, opacity: 0.65, fontWeight: 600, marginTop: 10 }}>
             Need at least {minPlayers} players to start.

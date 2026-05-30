@@ -8,9 +8,10 @@
 
   Props:
     question     { text, authorName }  — displayed above answers (omit to hide)
-    items        { id, text, authorNames[], voteCount, isBonus?, isCorrect? }[]
-                   — sorted externally (usually by voteCount desc); isBonus shows
-                   "matched +1" badge; isCorrect shows a "✓ correct" label
+    items        { id, text, authorNames[], voteCount, voterNames[]?, isBonus?, isCorrect? }[]
+                   — sorted externally (usually by voteCount desc); voterNames lists
+                   who voted for this answer; isBonus shows "matched +1" badge;
+                   isCorrect shows a "✓ correct" label
     notaCount    number  — votes for "none of the above" (0 or omit to hide)
     notaLabel    string  — label for that row (default "None of the above")
     skippedNames string[]  — players who skipped (shown as small footnote)
@@ -97,6 +98,11 @@ export default function Results({
                       </span>
                     )}
                   </div>
+                  {(item.voterNames ?? []).length > 0 && (
+                    <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.5, marginTop: 4 }}>
+                      {item.voterNames.join(", ")}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

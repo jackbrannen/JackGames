@@ -3,7 +3,8 @@
 // Spec:
 // Fixed strips at the top-right of the screen showing incoming pokes and messages.
 // Each strip auto-dismisses after 4 seconds. Tap or swipe in any direction to dismiss early.
-// Plays a ping sound + vibration for direct pokes (to_player === currentPlayer).
+// For direct pokes (to_player === currentPlayer): plays a ping sound, vibrates the device,
+// and flashes the notification strip between notifBg and yellow twice on entry.
 // Subscribes to the shared `pokes` table via Supabase Realtime + 5s polling fallback.
 // Skips pokes that already existed when the component mounts (no replaying old history).
 //

@@ -210,17 +210,19 @@ export default function Play({ params }) {
 
   // ── DUMMY GAME AUTOMATION ─────────────────────────────────
 
-  // Pre-fill answer field
+  // Pre-fill answer field from random ideas
   useEffect(() => {
-    if (!botIdsRef.current.length || game?.question_phase !== "answering" || !currentQuestion) return
-    if (myPlayerId === currentQuestion.author_id) return
-    if (answers.some(a => a.player_id === myPlayerId)) return
-    setMyAnswer(prev => prev || pickRandWord())
+    if (game?.question_phase !== "answering" || !currentQuestion) return
+    const pid = myPlayerId || localStorage.getItem(`gow:${code}:playerId`)
+    if (!pid || pid === currentQuestion.author_id) return
+    if (answers.some(a => a.player_id === pid)) return
+    supabase.rpc("get_random_ideas", { p_count: 1, p_exclude: [] })
+      .then(({ data }) => { if (data?.[0]) setMyAnswer(prev => prev || data[0]) })
   }, [currentQuestion?.id, game?.question_phase])
 
   // Pre-fill round question field
   useEffect(() => {
-    if (!botIdsRef.current.length || game?.phase !== "between_rounds") return
+    if (game?.phase !== "between_rounds") return
     setRoundQuestion(prev => prev || pickRandQuestion())
   }, [roundIndex, game?.phase])
 

@@ -193,17 +193,6 @@ export default function Lobby({ params }) {
     await loadState()
   }
 
-  const BOT_NAMES = ["Pixel", "Glitch", "Zippy", "Bloop", "Fizz", "Zap", "Bolt", "Neon", "Blip", "Flux"]
-  async function addDummy() {
-    const name = BOT_NAMES[players.length % BOT_NAMES.length]
-    const { data, error } = await supabase.from("gow_players")
-      .insert({ game_code: code, name, first_name: name, last_name: "Bot", score: 0 })
-      .select("id").single()
-    if (error || !data) return
-    const existing = JSON.parse(localStorage.getItem(`gow:${code}:botIds`) || "[]")
-    localStorage.setItem(`gow:${code}:botIds`, JSON.stringify([...existing, data.id]))
-    await loadState()
-  }
 
   if (notFound) {
     return (
@@ -388,14 +377,6 @@ export default function Lobby({ params }) {
             </div>
           ))}
         </div>
-        {game.phase === "lobby" && (
-          <button
-            onClick={addDummy}
-            style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)", fontSize: 14, fontWeight: 700, padding: "10px 16px", marginTop: 8, display: "block", width: "100%" }}
-          >
-            + Add dummy player
-          </button>
-        )}
         {players.length < 4 && (
           <p style={{ fontSize: 13, opacity: 0.65, fontWeight: 600, marginTop: 10 }}>
             Need at least 4 players to start.

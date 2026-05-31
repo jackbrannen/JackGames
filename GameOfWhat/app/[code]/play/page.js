@@ -661,6 +661,7 @@ export default function Play({ params }) {
   if (phase === "answering" && !isQuestionAuthor && !hasSubmittedAnswer) {
     answerFooterAction = (
       <FooterButton
+        key={currentQuestion?.id}
         nudge={nudgeAnswer}
         disabled={!myAnswer.trim()}
         onClick={() => submitAnswer(false)}

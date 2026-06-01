@@ -376,7 +376,7 @@ function Scoreboard({ right, wrong }) {
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 
-const IDEAS_URL = "https://raw.githubusercontent.com/jackbrannen/JackGames/main/random_ideas.json"
+const IDEAS_URL = "https://raw.githubusercontent.com/jackbrannen/JackGames/main/JackGames/random_ideas.json"
 let _ideasCache = null
 async function fetchIdeas() {
   if (_ideasCache) return _ideasCache

@@ -9,6 +9,7 @@ import Notifications from "../../../components/Notifications"
 import GameModal from "../../../components/GameModal"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import useTypingPresence from "../../../lib/useTypingPresence"
+import useOnlinePresence from "../../../lib/useOnlinePresence"
 import FooterButton from "../../../components/FooterButton"
 import WaitingList from "../../../components/WaitingList"
 import TextEntry from "../../../components/TextEntry"
@@ -77,6 +78,8 @@ export default function Play({ params }) {
   const [pokeJustSent, setPokeJustSent] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const { onTypingChange, typingPlayerIds } = useTypingPresence("gow", code, myPlayerId)
+  const { onlinePlayerIds, presenceReady } = useOnlinePresence("gow", code, myPlayerId)
+  const isAway = (id) => presenceReady && id !== myPlayerId && !onlinePlayerIds.has(id)
 
   useEffect(() => {
     if (!game || !myPlayerId) return
@@ -543,7 +546,7 @@ export default function Play({ params }) {
         </div>
         <div style={{ marginBottom: 20 }}>
           <WaitingList
-            players={players.map(p => ({ name: p.name, done: !!p.question, typing: typingPlayerIds.has(p.id) }))}
+            players={players.map(p => ({ name: p.name, done: !!p.question, typing: typingPlayerIds.has(p.id), away: isAway(p.id) }))}
             myName={me?.name}
             colors={{ mid: "#5C1640" }}
             onPoke={sendInlinePoke}
@@ -682,7 +685,7 @@ export default function Play({ params }) {
                   This is your question — sit back while others answer.
                 </div>
                 <WaitingList
-                  players={eligibleAnswerers.map(p => ({ name: p.name, done: answers.some(a => a.player_id === p.id), typing: typingPlayerIds.has(p.id) }))}
+                  players={eligibleAnswerers.map(p => ({ name: p.name, done: answers.some(a => a.player_id === p.id), typing: typingPlayerIds.has(p.id), away: isAway(p.id) }))}
                   myName={me?.name}
                   colors={{ mid: WARM_LIGHT }}
                   onPoke={sendInlinePoke}
@@ -702,7 +705,7 @@ export default function Play({ params }) {
                   Your answer: <span style={{ opacity: 1, color: "white" }}>{hasSkipped ? "(skipped)" : myAnswerRecord?.text}</span>
                 </div>
                 <WaitingList
-                  players={eligibleAnswerers.map(p => ({ name: p.name, done: answers.some(a => a.player_id === p.id), typing: typingPlayerIds.has(p.id) }))}
+                  players={eligibleAnswerers.map(p => ({ name: p.name, done: answers.some(a => a.player_id === p.id), typing: typingPlayerIds.has(p.id), away: isAway(p.id) }))}
                   myName={me?.name}
                   colors={{ mid: WARM_LIGHT }}
                   onPoke={sendInlinePoke}
@@ -786,7 +789,7 @@ export default function Play({ params }) {
               <WaitingList
                 players={eligibleVoterIds.map(pid => {
                   const p = players.find(x => x.id === pid)
-                  return { name: p?.name ?? "", done: votedPlayerIds.has(pid), typing: typingPlayerIds.has(pid) }
+                  return { name: p?.name ?? "", done: votedPlayerIds.has(pid), typing: typingPlayerIds.has(pid), away: isAway(pid) }
                 })}
                 myName={me?.name}
                 colors={{ mid: CARD_BG }}

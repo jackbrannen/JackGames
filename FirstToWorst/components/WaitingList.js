@@ -5,6 +5,9 @@
 // Each row has: colored status dot, player name, optional typing indicator, inline poke button.
 //
 // Status dot: green (#22C55E) when done, dim white when pending.
+// "Stepped away": shown below the name (italic, muted) when p.away is true and p.done is false.
+//   Compute away in the parent: presenceReady && p.id !== myPlayerId && !onlinePlayerIds.has(p.id)
+//   where presenceReady and onlinePlayerIds come from useTypingPresence.
 // Typing indicator: 💬 shown when typing is true (player is actively writing).
 // Poke button: 👉 shown for pending players who are not the current user, but only
 //   after the WaitingList has been mounted for 10 seconds (avoids immediate poking).
@@ -72,9 +75,16 @@ export default function WaitingList({
                 width: 10, height: 10, borderRadius: "50%", flexShrink: 0,
                 background: p.done ? "#22C55E" : "rgba(255,255,255,0.25)",
               }} />
-              <span style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold, flex: 1, opacity: p.done ? OPACITY.full : 0.75 }}>
-                {p.name}
-              </span>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold, opacity: p.done ? OPACITY.full : 0.75 }}>
+                  {p.name}
+                </span>
+                {p.away && !p.done && (
+                  <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.5, fontStyle: "italic", marginTop: 2 }}>
+                    stepped away
+                  </div>
+                )}
+              </div>
               {p.typing && !p.done && (
                 <span style={{ fontSize: FONT_SIZE.small, opacity: 0.8 }}>💬</span>
               )}

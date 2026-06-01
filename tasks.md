@@ -27,9 +27,8 @@ EC=Exquisite Corpse, MW=Mr. White
 
 ### Dummy Game spec (per game)
 Each game's dummy game implementation must:
-1. **Auto-join** — use saved profile username; fall back to a placeholder name
-2. **Pre-fill text fields** — fill input fields with random ideas when the phase starts
-3. **Bot automation** — bots auto-submit their moves so the game progresses without waiting
+1. **Auto-join** — use saved profile username to join the lobby automatically
+2. **Pre-fill text fields** — fill input fields with random ideas when the relevant phase starts
 
 ### Components still to build
 - [ ] **Duplicate detection** — works with TextEntry. Three modes: (1) within one player's fields — useDuplicates hook built ✓; (2) between players for bonus points (Drawful, GameOfWhat) — show bonus on submission (GOW: working ad-hoc in submitAnswer); (3) between players to block (Fishbowl, ReverseCharades) — highlight and block. Modes 2-3 are game-specific (need DB data).
@@ -50,6 +49,14 @@ Each game's dummy game implementation must:
 - Change the pick a new game flow at the end of the game:
 	- Someone picks a new game, it opens that game and drops them immediately into the lobby
 	- Then it sends a pop-up message to the remaining players who are still on the end game screen of the previous game saying "[Name] has invited you to play [Game]" with a "Join" button. When pressed, drops them right into the lobby for that game.
+- GOW: No need to show scores at the bottom during normal round screens.
+- GOW (and maybe others): When picking an answer, the selections UI looks too similar to the Waiting list UI below it. Need to find a way to differentiate those two components.
+- Back to lobby from hamburger menu doesn't work
+- Waiting component looks too similar under voting component. How can we improve?
+- change the scores component to look like the player list component with scores on the left in boxes. Then change  player list component. Instead of numbering the players, just have a count at the top.
+- UI style guide has some contradicions: two notification styles, an old score card.
+- Game of What: take away multiple rounds option. All games are just one round.
+- The "stepped away" feature is very unreliable. Gives false positives and false negatives.
 
 ### Recently fixed
 - GOW Selections: pressing ✕ to deselect then blocked re-selection

@@ -52,11 +52,16 @@ Do in small batches, deploy, test before continuing.
 
 ## Bug fixes
 
-- SoClover: The Fifth Card setting should be editable before joining the game
-- SoClover: The 5th card option can't currently be toggled on.
-- SoClover: when the guesser rotates cards or the board, it is STILL not shown on other devices. The screen updates only when a card is moved. It should also update on card or board rotations. It also doesn't update when cards are taken off the board, only when they're put on it.
+- ~~SoClover: The Fifth Card setting should be editable before joining the game~~ ✓ (settings now visible/editable pre-join; toggle also calls loadState)
+- ~~SoClover: The 5th card option can't currently be toggled on.~~ ✓ (toggle now awaits update + calls loadState)
+- ~~SoClover: when the guesser rotates cards or the board, it is STILL not shown on other devices.~~ ✓ (card rotation + card removal now persist to guess_slots; board rotation already did)
 - GameOfWhat: auto-start round when all questions submitted — fixed (effect now awaits RPC + calls loadState)
-- Fishbowl: change minimum players to 4
+- ~~Fishbowl: change minimum players to 4~~ (already enforced: teamsBalanced requires ≥2 per team)
+- ~~GOW: remove skip as an option~~ ✓
+- ~~GOW: Dummy games: some answer fields load not populated by default~~ ✓ (answer pre-fill now synchronous using pickRandWord)
+- Change the pick a new game flow at the end of the game:
+	- Someone picks a new game, it opens that game and drops them immediately into the lobby
+	- Then it sends a pop-up message to the remaining players who are still on the end game screen of the previous game saying "[Name] has invited you to play [Game]" with a "Join" button. When pressed, drops them right into the lobby for that game.
 
 ### Recently fixed
 - GOW Selections: pressing ✕ to deselect then blocked re-selection — fixed `changingVoteRef` reset + disabled ✕ buttons during submission

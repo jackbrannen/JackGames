@@ -214,15 +214,14 @@ export default function Play({ params }) {
 
   // ── DUMMY GAME AUTOMATION ─────────────────────────────────
 
-  // Pre-fill answer field from random ideas
+  // Pre-fill answer field from random words
   useEffect(() => {
     if (game?.question_phase !== "answering" || !currentQuestion) return
     const pid = myPlayerId || localStorage.getItem(`gow:${code}:playerId`)
     if (!pid || pid === currentQuestion.author_id) return
     if (answers.some(a => a.player_id === pid)) return
-    supabase.rpc("get_random_ideas", { p_count: 1, p_exclude: [] })
-      .then(({ data }) => { if (data?.[0]) setMyAnswer(prev => prev || data[0]) })
-  }, [currentQuestion?.id, game?.question_phase])
+    setMyAnswer(prev => prev || pickRandWord())
+  }, [currentQuestion?.id, game?.question_phase, myPlayerId])
 
   // Pre-fill round question field
   useEffect(() => {
@@ -282,17 +281,17 @@ export default function Play({ params }) {
 
   // ─────────────────────────────────────────────────────────
 
-  async function submitAnswer(skip = false) {
+  async function submitAnswer() {
     if (!currentQuestion || !myPlayerId) return
     const { error } = await supabase.rpc("gow_submit_answer", {
       p_code: code,
       p_question_id: currentQuestion.id,
       p_player_id: myPlayerId,
-      p_text: skip ? null : myAnswer.trim(),
-      p_skipped: skip,
+      p_text: myAnswer.trim(),
+      p_skipped: false,
     })
     if (error) throw error
-    if (!skip && myAnswer.trim()) {
+    if (myAnswer.trim()) {
       const myText = myAnswer.trim().toLowerCase()
       const { data: freshAnswers } = await supabase
         .from("gow_answers").select("player_id,text")
@@ -664,7 +663,7 @@ export default function Play({ params }) {
         key={currentQuestion?.id}
         nudge={nudgeAnswer}
         disabled={!myAnswer.trim()}
-        onClick={() => submitAnswer(false)}
+        onClick={submitAnswer}
       >
         Submit Answer
       </FooterButton>
@@ -743,12 +742,6 @@ export default function Play({ params }) {
                   fontSize={20}
                   style={{ marginBottom: 8 }}
                 />
-                <button
-                  onClick={() => submitAnswer(true)}
-                  style={{ background: WARM_LIGHT, color: "white", fontSize: 15, fontWeight: 700, padding: "16px 20px" }}
-                >
-                  Skip
-                </button>
               </div>
             )}
           </>

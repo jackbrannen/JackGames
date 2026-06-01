@@ -296,27 +296,28 @@ export default function Lobby({ params }) {
       )}
 
       {/* Settings */}
-      {me && (
-        <div style={{ padding: "0 24px 0", borderTop: `1px solid rgba(255,255,255,0.08)` }}>
-          <div style={{ padding: "20px 0 16px", fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)" }}>Settings</div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: MID_DARK, padding: "16px" }}>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "white" }}>Fifth Card</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", marginTop: 3 }}>
-                {game?.fifth_card_enabled ? "5 cards shown when guessing (includes decoy)" : "4 cards shown when guessing (no decoy)"}
-              </div>
+      <div style={{ padding: "0 24px 0", borderTop: `1px solid rgba(255,255,255,0.08)` }}>
+        <div style={{ padding: "20px 0 16px", fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)" }}>Settings</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: MID_DARK, padding: "16px" }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "white" }}>Fifth Card</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", marginTop: 3 }}>
+              {game?.fifth_card_enabled ? "5 cards shown when guessing (includes decoy)" : "4 cards shown when guessing (no decoy)"}
             </div>
-            <button
-              onClick={() => supabase.from("soclover_games").update({ fifth_card_enabled: !game?.fifth_card_enabled }).eq("code", code)}
-              style={{
-                background: game?.fifth_card_enabled ? ACCENT : "rgba(255,255,255,0.15)",
-                color: game?.fifth_card_enabled ? "#000" : "white",
-                fontSize: 14, fontWeight: 800, padding: "10px 16px", flexShrink: 0, marginLeft: 16,
-              }}
-            >{game?.fifth_card_enabled ? "On" : "Off"}</button>
           </div>
+          <button
+            onClick={async () => {
+              await supabase.from("soclover_games").update({ fifth_card_enabled: !game?.fifth_card_enabled }).eq("code", code)
+              loadState()
+            }}
+            style={{
+              background: game?.fifth_card_enabled ? ACCENT : "rgba(255,255,255,0.15)",
+              color: game?.fifth_card_enabled ? "#000" : "white",
+              fontSize: 14, fontWeight: 800, padding: "10px 16px", flexShrink: 0, marginLeft: 16,
+            }}
+          >{game?.fifth_card_enabled ? "On" : "Off"}</button>
         </div>
-      )}
+      </div>
 
       {/* Players */}
       <div style={{ padding: "28px 24px 60px" }}>

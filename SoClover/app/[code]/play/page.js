@@ -674,7 +674,13 @@ export default function PlayPage({ params }) {
       }
     } else {
       if (isWriting) setLocalPool(p => [...p, cardIndex])
-      else if (isGuessing) setGuessPool(p => [...p, cardIndex])
+      else if (isGuessing) {
+        setGuessPool(p => [...p, cardIndex])
+        if (sourceType === "slot" && srcSlot && currentBoard) {
+          const next = { ...guessSlots, [srcSlot]: null }
+          supabase.from("soclover_boards").update({ guess_slots: next }).eq("id", currentBoard.id).then(() => {})
+        }
+      }
     }
   }
 
@@ -756,10 +762,10 @@ export default function PlayPage({ params }) {
   function onGuessSlotRotate(slotName) {
     const locked = new Set(currentBoard?.correct_slots_attempt1 ?? [])
     if (locked.has(slotName)) return
-    setGuessSlots(prev => {
-      if (!prev[slotName]) return prev
-      return { ...prev, [slotName]: { ...prev[slotName], rotation: rotateCW(prev[slotName].rotation) } }
-    })
+    if (!guessSlots[slotName]) return
+    const next = { ...guessSlots, [slotName]: { ...guessSlots[slotName], rotation: rotateCW(guessSlots[slotName].rotation) } }
+    setGuessSlots(next)
+    if (currentBoard) supabase.from("soclover_boards").update({ guess_slots: next }).eq("id", currentBoard.id).then(() => {})
   }
 
   const allGuessFilled = SLOT_NAMES.every(s => guessSlots[s] != null)

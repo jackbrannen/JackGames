@@ -3,8 +3,8 @@
   HomeScreen — individual game home/join page
   ────────────────────────────────────────────
   Full-screen centered layout with a big game title, tagline, Create Game button,
-  and a room-code join field + Join button. Optional Dummy Game button fixed at
-  the bottom.
+  a room-code join field + Join button, and a Dummy Game button fixed at the bottom.
+  The Dummy Game button is present in every game — it is not optional.
 
   Props:
     title          ReactNode  — big game title (e.g. <>The Game<br />of What</>)
@@ -16,8 +16,8 @@
     onJoin         fn         — called when Join is tapped or Enter pressed
     nudgeJoin      bool       — pulses the Join button when true (requires nudgePulse keyframe in globals.css)
     error          string     — error message shown below the buttons (pass "" to hide)
-    onDummyGame    fn         — if provided, shows a subtle Dummy Game button fixed at bottom
-    isDummy        bool       — disables and relabels Dummy Game button while creating
+    onDummyGame    fn         — called when Dummy Game is tapped (always shown; every game has one)
+    isDummy        bool       — disables and relabels Dummy Game button while setting up
     colors         {
                      bg,      // page background
                      wl,      // input/join button background (warm-light)
@@ -152,20 +152,18 @@ export default function HomeScreen({
         </p>
       )}
 
-      {onDummyGame && (
-        <button
-          onClick={onDummyGame}
-          disabled={isDummy}
-          style={{
-            position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
-            background: wl, color: "rgba(255,255,255,0.65)",
-            fontSize: 11, fontWeight: 700, padding: "8px 16px",
-            letterSpacing: "0.1em", textTransform: "uppercase", whiteSpace: "nowrap",
-          }}
-        >
-          {isDummy ? "Setting up…" : "Dummy Game"}
-        </button>
-      )}
+      <button
+        onClick={onDummyGame}
+        disabled={isDummy}
+        style={{
+          position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
+          background: wl, color: "rgba(255,255,255,0.65)",
+          fontSize: 11, fontWeight: 700, padding: "8px 16px",
+          letterSpacing: "0.1em", textTransform: "uppercase", whiteSpace: "nowrap",
+        }}
+      >
+        {isDummy ? "Setting up…" : "Dummy Game"}
+      </button>
     </div>
   )
 }

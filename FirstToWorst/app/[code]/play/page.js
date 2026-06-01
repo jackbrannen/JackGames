@@ -572,6 +572,7 @@ export default function Play({ params }) {
     if (game?.phase !== "submitting" || !myPlayerId || me?.words_submitted) return
     if (wordFields.some(w => w.trim())) return
     const wCount = wordFields.length
+    const FALLBACK = ["pizza","traffic","naps","coffee","deadlines","rain","meetings","weekends","sushi","dogs"]
     fetchIdeas().then(categories => {
       const picked = []
       const seen = new Set()
@@ -581,7 +582,14 @@ export default function Play({ params }) {
         picked.push(ideas[0])
         seen.add(ideas[0].toLowerCase())
       }
+      // Fill any remaining slots from local fallback
+      const fallbackPool = FALLBACK.filter(w => !seen.has(w))
+      while (picked.length < wCount && fallbackPool.length) {
+        picked.push(fallbackPool.shift())
+      }
       if (picked.length === wCount) setWordFields(picked)
+    }).catch(() => {
+      setWordFields(FALLBACK.slice(0, wCount))
     })
   }, [game?.phase, myPlayerId, me?.words_submitted, wordFields.length])
 
@@ -1103,6 +1111,7 @@ export default function Play({ params }) {
     if (game.round_phase === "intro") {
       async function handleLetsGo() {
         await supabase.rpc("ftw_start_dragging", { p_code: code })
+        await loadState()
       }
 
       if (isSubject) {
@@ -1190,6 +1199,7 @@ export default function Play({ params }) {
         if (imReady || !myPlayerId || isSubject) return
         const { error } = await supabase.rpc("ftw_submit_ready", { p_code: code, p_player_id: myPlayerId })
         if (error) throw error
+        await loadState()
       }
 
       const listH = listTotalH(groupItems ?? [], vw() - 90)
@@ -1305,6 +1315,7 @@ export default function Play({ params }) {
         if (hasVotedNextRound || !myPlayerId) return
         const { error } = await supabase.rpc("ftw_vote_advance", { p_code: code, p_player_id: myPlayerId })
         if (error) throw error
+        await loadState()
       }
 
       return (

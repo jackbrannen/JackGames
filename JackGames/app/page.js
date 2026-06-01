@@ -8,6 +8,7 @@ const YELLOW = "#FBDF54"
 const WARM_LIGHT = "#21232E"
 
 const GAMES = [
+  // Blues
   {
     name: "Fishbowl",
     description: "Teams guess clues from a bowl",
@@ -26,20 +27,59 @@ Round 3 — Act it out: No words at all.
 The same clues rotate through all rounds, so by Round 3 everyone has heard them and the game gets fast and chaotic. The team with the most points wins.`,
   },
   {
-    name: "The Game of What",
-    description: "Like Quiplash but with DIY Questions.",
+    name: "Exquisite Corpse",
+    description: "Cooperative blind drawing game.",
     players: "4+ players",
-    url: "https://gameofwhat.jackbrannen.com",
-    bg: "#A02866",
+    url: "https://exquisitecorpse.jackbrannen.com",
+    bg: "#1A3A5C",
     color: "white",
-    instructions: `A voting game about creativity and knowing your crowd.
+    instructions: `A collaborative drawing chain. Each player starts a drawing, then folds their paper (digitally) to hide most of it — leaving only a small strip visible at the fold line as a hint for the next person.
 
-Every player writes an open-ended question that invites creative, funny answers. The game then presents each question to all players, and everyone submits an answer.
+The next player draws a continuation below the hint, not knowing what came before. This repeats until every player has added a section to every chain.
 
-Answers are revealed anonymously, and the group votes for their favorite. The author of the winning answer earns points. Identical answers also earn bonus points.
-
-Highest score after all rounds wins.`,
+At the end, the full exquisite corpse — assembled from everyone's individual drawings — is revealed one layer at a time.`,
   },
+  // Teals & Greens
+  {
+    name: "Drawful",
+    description: "Draw weird. Guess weirder.",
+    players: "4+ players",
+    url: "https://drawful.jackbrannen.com",
+    bg: "#307977",
+    color: "white",
+    instructions: `Each player gets a secret prompt and draws it on their phone. No labels allowed.
+
+Everyone's drawings are shown one at a time. All other players type a fake title that sounds plausible. The real prompt is mixed in with the fakes, and everyone votes for which title they think is real.
+
+You score points by voting for the real prompt, or by writing a fake that fools other players into voting for it. Identical fakes earn bonus points too.`,
+  },
+  {
+    name: "First to Worst",
+    description: "Submit 5 things, rank them secretly, then the group guesses your order.",
+    players: "4+ players",
+    url: "https://firsttoworst.jackbrannen.com",
+    bg: "#004F45",
+    color: "white",
+    instructions: `A ranking game. Each player picks a theme (or it's random) and submits 5 words that fit the theme. Your words go to another player, who ranks them from first to worst.
+
+Once everyone has ranked their words, the whole group tries to guess the exact ranking together — dragging words into what they think is the right order. The ranker watches and can't say anything.
+
+After the group locks in their guess, the real ranking is revealed. Everyone scores points for every word in the correct position.`,
+  },
+  {
+    name: "So Clover",
+    description: "Arrange keyword cards, write clues, guess each other's boards.",
+    players: "2+ players",
+    url: "https://soclover.jackbrannen.com",
+    bg: "#6B8C2A",
+    color: "white",
+    instructions: `A cooperative word game. Each player gets a board with 4 keyword cards. Where two words from a card touch an edge, you write a single clue word that connects both keywords.
+
+Once everyone has written their clues, the boards are passed. The next player sees only the clue words (not which keywords they connect) and must figure out the correct arrangement of the 4 cards.
+
+Points are earned for correct placements. Perfect guesses earn a bonus point. Everyone's scores are summed — it's a cooperative total at the end.`,
+  },
+  // Warm / Earth
   {
     name: "Avalon",
     description: "Hidden roles — find the traitors before they sabotage the quests.",
@@ -58,19 +98,6 @@ Good wins if 3 quests succeed — but evil gets one last chance: the Assassin ca
 Evil wins if 3 quests fail, 5 consecutive proposals are rejected, or the Assassin identifies Merlin.`,
   },
   {
-    name: "First to Worst",
-    description: "Submit 5 things, rank them secretly, then the group guesses your order.",
-    players: "4+ players",
-    url: "https://firsttoworst.jackbrannen.com",
-    bg: "#004F45",
-    color: "white",
-    instructions: `A ranking game. Each player picks a theme (or it's random) and submits 5 words that fit the theme. Your words go to another player, who ranks them from first to worst.
-
-Once everyone has ranked their words, the whole group tries to guess the exact ranking together — dragging words into what they think is the right order. The ranker watches and can't say anything.
-
-After the group locks in their guess, the real ranking is revealed. Everyone scores points for every word in the correct position.`,
-  },
-  {
     name: "Codenames",
     description: "Two teams race to find their secret agents using one-word clues.",
     players: "4+ players",
@@ -83,58 +110,39 @@ Cluegivers take turns giving a one-word clue plus a number ("Vehicles, 3"). Thei
 
 The first team to correctly identify all their words wins.`,
   },
+  // Reds & Pinks
   {
-    name: "Telestrations",
-    description: "Write a sentence, draw it, guess the drawing — watch it fall apart.",
-    players: "5+ players",
-    url: "https://telestrations.jackbrannen.com",
-    bg: "#2B0F6B",
-    color: "white",
-    instructions: `A telephone-style game alternating between drawing and guessing.
-
-Each player starts by writing a phrase. They pass it to the next player, who draws it. That drawing passes to the next player, who guesses what it is. Their guess passes on to be drawn again, and so on down the chain.
-
-At the end, the original phrase and the final result are revealed side by side. The further it drifts from the original, the funnier it gets.`,
-  },
-  {
-    name: "Exquisite Corpse",
-    description: "Cooperative blind drawing game.",
+    name: "Reverse Charades",
+    description: "Everyone acts it out — one person guesses.",
     players: "4+ players",
-    url: "https://exquisitecorpse.jackbrannen.com",
-    bg: "#1A3A5C",
+    url: "https://reversecharades.jackbrannen.com",
+    bg: "#974344",
     color: "white",
-    instructions: `A collaborative drawing chain. Each player starts a drawing, then folds their paper (digitally) to hide most of it — leaving only a small strip visible at the fold line as a hint for the next person.
+    instructions: `Normal Charades in reverse: instead of one person acting for the group, the whole team acts while the guesser calls out guesses until they get it.
 
-The next player draws a continuation below the hint, not knowing what came before. This repeats until every player has added a section to every chain.
+Three modes:
+1. Catchphrase — teammates can say anything but the clue word.
+2. Body cues — teammates tell the guesser what to do with their body until they figure it out.
+3. Chain reaction — teammates alternate saying one word at a time to build sentences.
 
-At the end, the full exquisite corpse — assembled from everyone's individual drawings — is revealed one layer at a time.`,
+Teams alternate turns. The team with the most points wins.`,
   },
   {
-    name: "Drawful",
-    description: "Draw weird. Guess weirder.",
+    name: "The Game of What",
+    description: "Like Quiplash but with DIY Questions.",
     players: "4+ players",
-    url: "https://drawful.jackbrannen.com",
-    bg: "#307977",
+    url: "https://gameofwhat.jackbrannen.com",
+    bg: "#A02866",
     color: "white",
-    instructions: `Each player gets a secret prompt and draws it on their phone. No labels allowed.
+    instructions: `A voting game about creativity and knowing your crowd.
 
-Everyone's drawings are shown one at a time. All other players type a fake title that sounds plausible. The real prompt is mixed in with the fakes, and everyone votes for which title they think is real.
+Every player writes an open-ended question that invites creative, funny answers. The game then presents each question to all players, and everyone submits an answer.
 
-You score points by voting for the real prompt, or by writing a fake that fools other players into voting for it. Identical fakes earn bonus points too.`,
+Answers are revealed anonymously, and the group votes for their favorite. The author of the winning answer earns points. Identical answers also earn bonus points.
+
+Highest score after all rounds wins.`,
   },
-  {
-    name: "So Clover",
-    description: "Arrange keyword cards, write clues, guess each other's boards.",
-    players: "2+ players",
-    url: "https://soclover.jackbrannen.com",
-    bg: "#6B8C2A",
-    color: "white",
-    instructions: `A cooperative word game. Each player gets a board with 4 keyword cards. Where two words from a card touch an edge, you write a single clue word that connects both keywords.
-
-Once everyone has written their clues, the boards are passed. The next player sees only the clue words (not which keywords they connect) and must figure out the correct arrangement of the 4 cards.
-
-Points are earned for correct placements. Perfect guesses earn a bonus point. Everyone's scores are summed — it's a cooperative total at the end.`,
-  },
+  // Purples
   {
     name: "Copycats",
     description: "Write a question for another player. Everyone else tries to fake their answer.",
@@ -151,6 +159,19 @@ All answers are shuffled and shown anonymously. Everyone votes for which answer 
 Points: guess the real answer → earn points. Your fake fools someone → earn a point per person fooled. Write the same answer as someone else → you both earn a bonus point.`,
   },
   {
+    name: "Telestrations",
+    description: "Write a sentence, draw it, guess the drawing — watch it fall apart.",
+    players: "5+ players",
+    url: "https://telestrations.jackbrannen.com",
+    bg: "#2B0F6B",
+    color: "white",
+    instructions: `A telephone-style game alternating between drawing and guessing.
+
+Each player starts by writing a phrase. They pass it to the next player, who draws it. That drawing passes to the next player, who guesses what it is. Their guess passes on to be drawn again, and so on down the chain.
+
+At the end, the original phrase and the final result are revealed side by side. The further it drifts from the original, the funnier it gets.`,
+  },
+  {
     name: "Mr. White",
     description: "One player has a slightly different word. Find the impostor.",
     players: "4+ players",
@@ -164,22 +185,6 @@ Each player says one statement about their word without saying it directly. Afte
 If they're right, Mr. White loses — unless they can guess what the real word was.
 
 If the group is wrong, Mr. White survives to another round. Last player standing wins.`,
-  },
-  {
-    name: "Reverse Charades",
-    description: "Everyone acts it out — one person guesses.",
-    players: "4+ players",
-    url: "https://reversecharades.jackbrannen.com",
-    bg: "#974344",
-    color: "white",
-    instructions: `Normal Charades in reverse: instead of one person acting for the group, the whole team acts while the guesser calls out guesses until they get it.
-
-Three modes:
-1. Catchphrase — teammates can say anything but the clue word.
-2. Body cues — teammates tell the guesser what to do with their body until they figure it out.
-3. Chain reaction — teammates alternate saying one word at a time to build sentences.
-
-Teams alternate turns. The team with the most points wins.`,
   },
 ]
 

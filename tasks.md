@@ -1,75 +1,60 @@
-## Shared Component Rollout
+## Component & Feature Rollout
 
-Canonical files in `packages/shared/components/`, copied to all 12 games.
-Do in small batches, deploy, test before continuing.
+✓ = wired in game's app pages · — = not yet · · = not applicable to this game
 
-### Wired into all 12 games ✓
-- [x] Footer — `components/Footer.js`
-- [x] Menu — `components/Menu.js`
-- [x] Notifications — `components/Notifications.js`
+All 12 games have copies of every shared component file. "Wired" means the game's
+pages actually import and use the component. Footer, Menu, Notifications, GameModal
+are wired in all 12 games and omitted from the table.
 
-### Wired into Fishbowl, GameOfWhat, FirstToWorst ✓ (others pending)
-- [x] FooterButton — `components/FooterButton.js`
-- [x] Selections — `components/Selections.js` (GOW only; FTW doesn't use it)
-- [x] TextEntry — `components/TextEntry.js` (GOW only)
-- [x] WaitingList — `components/WaitingList.js`
-- [x] StatusBar — `components/StatusBar.js` (GOW only so far)
-- [x] RandomIdeas — `components/RandomIdeas.js` (GOW only so far)
+|                  | FB | GOW | AV | FTW | DF | SC | TEL | CC | CN | RC | EC | MW |
+|------------------|----|-----|----|-----|----|----|-----|----|----|----|----|-----|
+| FooterButton     | ✓  | ✓   |    | ✓   |    |    |     |    |    |    |    |    |
+| WaitingList      |    | ✓   |    | ✓   |    |    |     | ✓  |    |    |    |    |
+| StatusBar        |    | ✓   |    |     |    | ✓  |     |    |    |    |    |    |
+| TextEntry        |    | ✓   |    | ✓   |    |    |     |    |    |    |    |    |
+| RandomIdeas      |    | ✓   |    |     |    |    |     |    |    |    |    |    |
+| Selections       |    | ✓   |    |     |    |    |     |    |    |    |    |    |
+| HomeScreen       |    | ✓   |    |     |    |    |     |    |    |    |    |    |
+| Lobby            |    | ✓   |    |     |    |    |     |    |    |    |    |    |
+| EndGame          |    | ✓   |    |     |    |    |     |    |    |    |    |    |
+| Results          |    | ✓   |    |     |    |    |     |    |    |    |    |    |
+| **Dummy Games**  |    | ✓   |    | ✓   |    |    |     |    |    |    |    |    |
+| **Online pres.** |    | ✓   |    |     |    |    |     |    |    |    |    |    |
 
-### Roll out to remaining games (Avalon, Drawful, SoClover, Telestrations, Copycats, Codenames, ReverseCharades, ExquisiteCorpse)
-- [ ] FooterButton
-- [ ] WaitingList
-- [ ] StatusBar (where applicable)
-- [ ] RandomIdeas (where applicable)
-- [ ] TextEntry (where applicable)
-- [ ] Selections (where applicable)
+FB=Fishbowl, GOW=Game of What, AV=Avalon, FTW=First to Worst, DF=Drawful,
+SC=So Clover, TEL=Telestrations, CC=Copycats, CN=Codenames, RC=Reverse Charades,
+EC=Exquisite Corpse, MW=Mr. White
+
+### Dummy Game spec (per game)
+Each game's dummy game implementation must:
+1. **Auto-join** — use saved profile username; fall back to a placeholder name
+2. **Pre-fill text fields** — fill input fields with random ideas when the phase starts
+3. **Bot automation** — bots auto-submit their moves so the game progresses without waiting
 
 ### Components still to build
 - [ ] **Duplicate detection** — works with TextEntry. Three modes: (1) within one player's fields — useDuplicates hook built ✓; (2) between players for bonus points (Drawful, GameOfWhat) — show bonus on submission (GOW: working ad-hoc in submitAnswer); (3) between players to block (Fishbowl, ReverseCharades) — highlight and block. Modes 2-3 are game-specific (need DB data).
-
-### Later
-- [x] End game screen — final scores, Play Again, Play Another Game. (GOW wired ✓; Drawful, Telestrations, ExquisiteCorpse pending)
-- [x] Home screen — title, subtitle, Create Game, join input. (GOW wired ✓; all other games pending)
-- [x] Results — mid-game results list. Shows submitted text, authors, who chose what. Supports multiple choosers/authors. Labels for correct answers. (GOW wired ✓)
-- [x] Lobby — room code + invite + rules at top. Three zones: numbered player list (grouped by team if applicable), name entry / join button, settings (if game has them). (GOW wired ✓)
-- [ ] UI design / styles — audit and clean up type styles, colors, button styles across all games using styles.js.
-- [x] Dummy games — auto-join if username exists. Pre-fill text fields from random ideas list. (GOW done)
-
-### Already done
-- [x] GameModal — `components/GameModal.js`
-- [x] Notifications — `components/Notifications.js`
-- [x] FooterButton — `components/FooterButton.js` — auto-loading, nudge pulse, primary/secondary/danger variants
-- [x] Selections — `components/Selections.js` — tap-to-select rows, ✕ deselect, own-item label
-- [x] TextEntry — `components/TextEntry.js` — textarea/input, onTypingChange debounced callback
-- [x] StatusBar — `components/StatusBar.js` — thin top strip, label + optional right node
-- [x] RandomIdeas — `components/RandomIdeas.js` — draw button, chips, player name injection
-- [x] sounds.js — `lib/sounds.js` — playSubmit, playYourTurn, playPoke
-- [x] useDuplicates — `lib/useDuplicates.js` — within-player duplicate detection hook
-- [x] WaitingList — `components/WaitingList.js`
-- [x] styles.js — `components/styles.js` — design tokens used by all components
 
 ---
 
 ## Bug fixes
 
-- ~~SoClover: The Fifth Card setting should be editable before joining the game~~ ✓ (settings now visible/editable pre-join; toggle also calls loadState)
-- ~~SoClover: The 5th card option can't currently be toggled on.~~ ✓ (toggle now awaits update + calls loadState)
-- ~~SoClover: when the guesser rotates cards or the board, it is STILL not shown on other devices.~~ ✓ (card rotation + card removal now persist to guess_slots; board rotation already did)
-- GameOfWhat: auto-start round when all questions submitted — fixed (effect now awaits RPC + calls loadState)
-- ~~Fishbowl: change minimum players to 4~~ (already enforced: teamsBalanced requires ≥2 per team)
-- ~~GOW: Dummy games: some answer fields load not populated by default~~ ✓ (answer pre-fill now synchronous using pickRandWord)
-- GOW: Selections component doesn't follow UI for "my answer" set in style guide. Fix. But also: why not?
+- ~~SoClover: The Fifth Card setting should be editable before joining the game~~ ✓
+- ~~SoClover: The 5th card option can't currently be toggled on.~~ ✓
+- ~~SoClover: when the guesser rotates cards or the board, it is STILL not shown on other devices.~~ ✓
+- ~~GOW: remove skip as an option~~ ✓
+- ~~GOW: Dummy games: answer fields not pre-populated~~ ✓
+- ~~GOW: Selections "my answer" style doesn't match style guide~~ ✓
+- ~~GOW: Scores showing during normal round screens~~ ✓
+- ~~GOW/others: Selections and WaitingList look too similar~~ ✓
+- ~~Back to lobby from hamburger menu doesn't work~~ ✓ (all 12 games)
 - Change the pick a new game flow at the end of the game:
 	- Someone picks a new game, it opens that game and drops them immediately into the lobby
 	- Then it sends a pop-up message to the remaining players who are still on the end game screen of the previous game saying "[Name] has invited you to play [Game]" with a "Join" button. When pressed, drops them right into the lobby for that game.
-- GOW: No need to show scores at the bottom during normal round screens.
-- GOW (and maybe others): When picking an answer, the selections UI looks too similar to the Waiting list UI below it. Need to find a way to differentiate those two components.
-- Back to lobby from hamburger menu doesn't work
-- Waiting component looks too similar under voting component. How can we improve?
 
 ### Recently fixed
-- GOW Selections: pressing ✕ to deselect then blocked re-selection — fixed `changingVoteRef` reset + disabled ✕ buttons during submission
-- GOW voting typing indicator: bubble now clears when player stops typing (using `channel.untrack()`)
+- GOW Selections: pressing ✕ to deselect then blocked re-selection
+- GOW voting typing indicator: bubble now clears when player stops typing
 - GOW submit nudge: wired to question field; FTW submit nudge wired to word fields
-- GOW results: all players now see results screen (50%+ ready to advance via `gow_mark_question_ready`); removed redundant "Voted by" lines from answer cards
-- GOW answering/voting: WaitingList shown to all players waiting, not just question author
+- GOW results: all players now see results screen (50%+ ready to advance)
+- GOW answering/voting: WaitingList shown to all players waiting
+- FTW dummy game: uses saved profile name; pre-fills word fields; bots auto-rank

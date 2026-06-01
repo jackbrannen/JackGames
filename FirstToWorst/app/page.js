@@ -110,8 +110,8 @@ export default function Home() {
       const { data: allPlayers, error: playerErr } = await supabase
         .from("ftw_players")
         .insert([
-          ...BOT_NAMES.map(name => ({ game_code: code, name, first_name: name, last_name: "", is_bot: true })),
-          { game_code: code, name: realName, first_name: realFirst, last_name: realLast, is_bot: false },
+          ...BOT_NAMES.map(name => ({ game_code: code, name, first_name: name, last_name: "", is_bot: true, opt_out_write: false, opt_out_rank: false, opt_out_guess: false })),
+          { game_code: code, name: realName, first_name: realFirst, last_name: realLast, is_bot: false, opt_out_write: false, opt_out_rank: false, opt_out_guess: false },
         ])
         .select("id,name,is_bot")
       if (playerErr) throw playerErr

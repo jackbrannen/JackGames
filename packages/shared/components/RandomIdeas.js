@@ -14,7 +14,7 @@
                             (n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])
     excludeIdeas string[] — ideas already used (e.g. game.used_prompts); passed to fetchIdeas
     playerNames  string[] — other players' first names; one injected on first draw
-    maxDraws     number   — how many times player can draw (default 2)
+    maxDraws     number   — how many times player can draw (default 3)
     onDraw       (ideas: string[]) => void — called after each draw so game can persist
     onIdeaClick  (idea: string) => void    — optional; makes chips tappable (e.g. to fill a field)
 
@@ -49,7 +49,7 @@ export default function RandomIdeas({
   fetchIdeas,
   excludeIdeas = [],
   playerNames = [],
-  maxDraws = 2,
+  maxDraws = 3,
   onDraw,
   onIdeaClick,
 }) {

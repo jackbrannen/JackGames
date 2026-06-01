@@ -265,14 +265,14 @@ export default function StyleGuide() {
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>A golden retriever named Biscuit</div>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 5 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>wrote</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>Written by</span>
                     <span style={{ fontSize: 13, fontWeight: 700 }}>
                       Alice & Bob
                       <span style={{ marginLeft: 6, background: yellow, color: "#000", fontSize: 11, fontWeight: 900, padding: "1px 5px", verticalAlign: "middle" }}>matched +1</span>
                     </span>
                   </div>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 3 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>chose</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>Chosen by</span>
                     <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.6 }}>Carol, Dave</span>
                   </div>
                 </div>
@@ -284,7 +284,7 @@ export default function StyleGuide() {
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>My credit card statement</div>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 5 }}>
-                    <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>wrote</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>Written by</span>
                     <span style={{ fontSize: 13, fontWeight: 700 }}>Carol</span>
                   </div>
                 </div>
@@ -297,15 +297,12 @@ export default function StyleGuide() {
               </div>
             </div>
           </div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 10 }}>Points this question</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {[{ name: "Alice", pts: 4, detail: "3 votes · matched +1" }, { name: "Bob", pts: 2, detail: "1 vote · matched +1" }].map(s => (
-              <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ background: yellow, color: "#000", fontSize: 18, fontWeight: 900, minWidth: 44, textAlign: "center", padding: "5px 0", flexShrink: 0 }}>+{s.pts}</div>
-                <div>
-                  <div style={{ fontSize: 16, fontWeight: 700 }}>{s.name}</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.65 }}>{s.detail}</div>
-                </div>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 10 }}>Scores</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {[{ name: "Alice", score: 12 }, { name: "Bob", score: 9 }, { name: "Carol", score: 7 }, { name: "Dave", score: 4 }].map(s => (
+              <div key={s.name} style={{ display: "flex", alignItems: "center", padding: "10px 16px", background: mid }}>
+                <span style={{ fontSize: 17, fontWeight: 700, flex: 1 }}>{s.name}</span>
+                <span style={{ fontSize: 22, fontWeight: 900 }}>{s.score}</span>
               </div>
             ))}
           </div>
@@ -328,10 +325,7 @@ export default function StyleGuide() {
                 {p.score}
               </div>
               <div>
-                <span style={{ fontSize: 22, fontWeight: 700 }}>
-                  {p.name}
-                  {p.isMe && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
-                </span>
+                <span style={{ fontSize: 22, fontWeight: 700 }}>{p.name}</span>
                 {p.isWinner && <span style={{ fontSize: 12, fontWeight: 800, color: yellow, marginLeft: 10, textTransform: "uppercase", letterSpacing: "0.1em" }}>Winner!</span>}
               </div>
             </div>

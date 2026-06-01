@@ -441,37 +441,20 @@ export default function Play({ params }) {
       <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
         <StatusBar label={`Round ${(game.round_index ?? 0) + 1} of ${game.rounds_total ?? 3}`} dark="#4A123B" />
         <div style={{ flex: 1, overflowY: "auto", padding: "28px 20px", paddingBottom: BOTTOM_PAD }}>
-          {(() => {
-            const pts = {}
-            const bonusIds = new Set()
-            for (const g of snapAnswerGroups) {
-              if (g.playerIds.length > 1) g.playerIds.forEach(id => bonusIds.add(id))
-              for (const id of g.playerIds) {
-                pts[id] = (pts[id] ?? 0) + g.voteCount + (g.playerIds.length > 1 ? 1 : 0)
-              }
-            }
-            const scorers = players.filter(p => pts[p.id] > 0).sort((a, b) => pts[b.id] - pts[a.id])
-            return (
-              <Results
-                question={snapQuestion ? { text: snapQuestion.text, authorName: snapQuestionAuthor?.name } : undefined}
-                items={[...snapAnswerGroups].sort((a, b) => b.voteCount - a.voteCount).map(g => ({
-                  id: g.primaryId,
-                  text: g.text,
-                  authorNames: g.playerIds.map(id => players.find(p => p.id === id)?.name).filter(Boolean),
-                  voteCount: g.voteCount,
-                  isBonus: g.playerIds.length > 1,
-                }))}
-                notaCount={snapNotaVoters.length}
-                skippedNames={snapSkipped.map(a => players.find(p => p.id === a.player_id)?.name).filter(Boolean)}
-                scorers={scorers.map(p => ({
-                  name: p.name,
-                  points: pts[p.id],
-                  detail: `${pts[p.id] - (bonusIds.has(p.id) ? 1 : 0)} vote${pts[p.id] - (bonusIds.has(p.id) ? 1 : 0) !== 1 ? "s" : ""}${bonusIds.has(p.id) ? " · matched +1" : ""}`,
-                }))}
-                colors={{ card: CARD_BG, yellow: YELLOW, dim: WARM_LIGHT }}
-              />
-            )
-          })()}
+          <Results
+            question={snapQuestion ? { text: snapQuestion.text, authorName: snapQuestionAuthor?.name } : undefined}
+            items={[...snapAnswerGroups].sort((a, b) => b.voteCount - a.voteCount).map(g => ({
+              id: g.primaryId,
+              text: g.text,
+              authorNames: g.playerIds.map(id => players.find(p => p.id === id)?.name).filter(Boolean),
+              voteCount: g.voteCount,
+              isBonus: g.playerIds.length > 1,
+            }))}
+            notaCount={snapNotaVoters.length}
+            skippedNames={snapSkipped.map(a => players.find(p => p.id === a.player_id)?.name).filter(Boolean)}
+            scores={[...players].sort((a, b) => b.score - a.score).map(p => ({ name: p.name, score: p.score }))}
+            colors={{ card: CARD_BG, yellow: YELLOW, dim: WARM_LIGHT }}
+          />
         </div>
       </div>
         {pokeSystemNode(

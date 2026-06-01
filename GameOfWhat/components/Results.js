@@ -3,8 +3,7 @@
   Results — post-question results list
   ─────────────────────────────────────
   Shows answer groups with vote counts, authors, and optional bonus/correct
-  labels. Below the answers: optional "none of the above" row, skipped names,
-  and a per-player points breakdown for this round.
+  labels. Below the answers: overall game scores sorted descending.
 
   Props:
     question     { text, authorName }  — displayed above answers (omit to hide)
@@ -15,9 +14,9 @@
     notaCount    number  — votes for "none of the above" (0 or omit to hide)
     notaLabel    string  — label for that row (default "None of the above")
     skippedNames string[]  — players who skipped (shown as small footnote)
-    scorers      { name, points, detail? }[]
-                   — players who earned points this round, shown in a breakdown
-                   below the answers. `detail` is a short string like "3 votes · matched +1"
+    scores       { name, score }[]
+                   — all players with their current overall score, sorted descending;
+                   shown as a simple scoreboard below the answers
     colors       {
                    card,    // answer card background
                    yellow,  // accent / vote badge fill when pts > 0
@@ -37,7 +36,7 @@
       }))}
       notaCount={notaVoters.length}
       skippedNames={skipped.map(a => players.find(p => p.id === a.player_id)?.name).filter(Boolean)}
-      scorers={scorers.map(p => ({ name: p.name, points: pts[p.id], detail: scorerDetail(p) }))}
+      scores={[...players].sort((a, b) => b.score - a.score).map(p => ({ name: p.name, score: p.score }))}
       colors={{ card: CARD_BG, yellow: YELLOW, dim: WARM_LIGHT }}
     />
 */
@@ -48,7 +47,7 @@ export default function Results({
   notaCount = 0,
   notaLabel = "None of the above",
   skippedNames = [],
-  scorers = [],
+  scores = [],
   colors = {},
   gap = 12,
 }) {
@@ -87,7 +86,7 @@ export default function Results({
                   <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>{item.text}</div>
                   {(item.authorNames ?? []).length > 0 && (
                     <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 5 }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>wrote</span>
+                      <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>Written by</span>
                       <span style={{ fontSize: 13, fontWeight: 700 }}>
                         {(item.authorNames ?? []).join(" & ")}
                         {item.isBonus && (
@@ -105,7 +104,7 @@ export default function Results({
                   )}
                   {(item.voterNames ?? []).length > 0 && (
                     <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 3 }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>chose</span>
+                      <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>Chosen by</span>
                       <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.6 }}>{item.voterNames.join(", ")}</span>
                     </div>
                   )}
@@ -135,24 +134,17 @@ export default function Results({
         )}
       </div>
 
-      {/* Points earned this round */}
-      {scorers.length > 0 && (
+      {/* Overall scores */}
+      {scores.length > 0 && (
         <div>
           <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 10 }}>
-            Points this question
+            Scores
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {scorers.map((s, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ background: yellow, color: "#000", fontSize: 18, fontWeight: 900, minWidth: 44, textAlign: "center", padding: "5px 0", flexShrink: 0 }}>
-                  +{s.points}
-                </div>
-                <div>
-                  <div style={{ fontSize: 16, fontWeight: 700 }}>{s.name}</div>
-                  {s.detail && (
-                    <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.65 }}>{s.detail}</div>
-                  )}
-                </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {scores.map((s, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 16px", background: card }}>
+                <span style={{ fontSize: 17, fontWeight: 700, flex: 1 }}>{s.name}</span>
+                <span style={{ fontSize: 22, fontWeight: 900 }}>{s.score}</span>
               </div>
             ))}
           </div>

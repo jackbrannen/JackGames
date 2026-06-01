@@ -267,11 +267,17 @@ export default function StyleGuide() {
                 <div style={{ background: yellow, color: "#000", fontSize: 20, fontWeight: 900, minWidth: 44, textAlign: "center", padding: "6px 0", flexShrink: 0 }}>+3</div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>A golden retriever named Biscuit</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.65, marginTop: 3 }}>
-                    Alice & Bob
-                    <span style={{ marginLeft: 6, background: yellow, color: "#000", fontSize: 11, fontWeight: 900, padding: "1px 5px", verticalAlign: "middle" }}>matched +1</span>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 5 }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>wrote</span>
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>
+                      Alice & Bob
+                      <span style={{ marginLeft: 6, background: yellow, color: "#000", fontSize: 11, fontWeight: 900, padding: "1px 5px", verticalAlign: "middle" }}>matched +1</span>
+                    </span>
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.5, marginTop: 4 }}>Carol, Dave voted</div>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 3 }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>chose</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.6 }}>Carol, Dave</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -280,7 +286,10 @@ export default function StyleGuide() {
                 <div style={{ background: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.5)", fontSize: 20, fontWeight: 900, minWidth: 44, textAlign: "center", padding: "6px 0", flexShrink: 0 }}>0</div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>My credit card statement</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.65, marginTop: 3 }}>Carol</div>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 5 }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>wrote</span>
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>Carol</span>
+                  </div>
                 </div>
               </div>
             </div>

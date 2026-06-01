@@ -85,22 +85,28 @@ export default function Results({
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>{item.text}</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.65, marginTop: 3 }}>
-                    {(item.authorNames ?? []).join(" & ")}
-                    {item.isBonus && (
-                      <span style={{ marginLeft: 6, background: yellow, color: "#000", fontSize: 11, fontWeight: 900, padding: "1px 5px", verticalAlign: "middle" }}>
-                        matched +1
+                  {(item.authorNames ?? []).length > 0 && (
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 5 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>wrote</span>
+                      <span style={{ fontSize: 13, fontWeight: 700 }}>
+                        {(item.authorNames ?? []).join(" & ")}
+                        {item.isBonus && (
+                          <span style={{ marginLeft: 6, background: yellow, color: "#000", fontSize: 11, fontWeight: 900, padding: "1px 5px", verticalAlign: "middle" }}>
+                            matched +1
+                          </span>
+                        )}
+                        {item.isCorrect && (
+                          <span style={{ marginLeft: 6, color: yellow, fontSize: 12, fontWeight: 900 }}>
+                            ✓ correct
+                          </span>
+                        )}
                       </span>
-                    )}
-                    {item.isCorrect && (
-                      <span style={{ marginLeft: 6, color: yellow, fontSize: 12, fontWeight: 900 }}>
-                        ✓ correct
-                      </span>
-                    )}
-                  </div>
+                    </div>
+                  )}
                   {(item.voterNames ?? []).length > 0 && (
-                    <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.5, marginTop: 4 }}>
-                      {item.voterNames.join(", ")}
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 3 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>chose</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.6 }}>{item.voterNames.join(", ")}</span>
                     </div>
                   )}
                 </div>

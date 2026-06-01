@@ -67,7 +67,6 @@ export default function WaitingList({
               }} />
               <span style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold, flex: 1, opacity: p.done ? OPACITY.full : 0.75 }}>
                 {p.name}
-                {isMe && <span style={{ fontSize: 12, opacity: OPACITY.muted, marginLeft: 6 }}>you</span>}
               </span>
               {p.typing && !p.done && (
                 <span style={{ fontSize: FONT_SIZE.small, opacity: 0.8 }}>💬</span>

@@ -64,9 +64,4 @@ export const STYLE = {
     letterSpacing: "0.15em",
     opacity:       OPACITY.moderate,
   },
-  youLabel: {
-    fontSize:   12,
-    opacity:    OPACITY.muted,
-    marginLeft: 6,
-  },
 }

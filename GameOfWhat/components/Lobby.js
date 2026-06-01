@@ -66,7 +66,6 @@ function PlayerRow({ p, i, myPlayerId, dark, mid }) {
       }}>
         <div style={{ fontSize: 17, fontWeight: 700 }}>
           {p.name}
-          {p.id === myPlayerId && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
         </div>
       </div>
     </div>

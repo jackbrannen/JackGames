@@ -424,7 +424,7 @@ export default function Lobby({ params }) {
                     <div style={{ width: 7, height: 7, borderRadius: "50%", background: p.ready ? "#12BAAA" : "rgba(0,0,0,0.18)", flexShrink: 0 }} />
                     <span style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.2, flex: 1, minWidth: 0, overflow: "hidden" }}>
                       {p.name}
-                      {p.id === myPlayerId && <span style={{ opacity: 0.4, fontSize: 11, fontWeight: 600 }}> you</span>}
+                      
                       {p.is_cluegiver && (
                         <span style={{ background: color, color: "white", fontSize: 9, fontWeight: 900, padding: "1px 5px", marginLeft: 5, letterSpacing: "0.06em", textTransform: "uppercase", verticalAlign: "middle" }}>
                           Cluegiver
@@ -623,7 +623,7 @@ export default function Lobby({ params }) {
                   }}>
                     <span style={{ fontSize: 16, fontWeight: 700, color: "white" }}>
                       {p.name}
-                      {p.id === myPlayerId && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
+                      
                     </span>
                   </div>
                 </div>

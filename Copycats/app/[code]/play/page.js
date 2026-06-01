@@ -123,7 +123,7 @@ function WaitingList({ players, doneIds, myPlayerId, onPoke, doneLabel = "Ready"
             <div style={{ width: 10, height: 10, borderRadius: "50%", background: done ? GREEN : "rgba(255,255,255,0.25)", flexShrink: 0 }} />
             <span style={{ fontSize: 16, fontWeight: 600, flex: 1 }}>
               {p.name}
-              {isMe && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
+              
               {!done && typingPlayerIds?.has(p.id) && <span style={{ fontSize: 14, marginLeft: 6 }}>💬</span>}
             </span>
             {!done && !isMe && onPoke ? (
@@ -892,7 +892,7 @@ export default function PlayPage({ params }) {
                     {i + 1}
                   </div>
                   <div style={{ background: MID, flex: 1, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: 16, fontWeight: 700 }}>{p.name}{p.id === myId && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}</span>
+                    <span style={{ fontSize: 16, fontWeight: 700 }}>{p.name}</span>
                     <span style={{ fontSize: 18, fontWeight: 900, color: YELLOW }}>{p.score}</span>
                   </div>
                 </div>
@@ -938,7 +938,7 @@ export default function PlayPage({ params }) {
                   <div style={{ background: MID, flex: 1, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div>
                       <span style={{ fontSize: 17, fontWeight: 700 }}>{p.name}</span>
-                      {p.id === myId && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
+                      
                       {p.id === winner.id && (
                         <div style={{ fontSize: 11, fontWeight: 800, color: YELLOW, textTransform: "uppercase", letterSpacing: "0.12em", marginTop: 2 }}>
                           Winner

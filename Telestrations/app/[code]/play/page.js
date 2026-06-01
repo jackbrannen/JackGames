@@ -1225,7 +1225,7 @@ export default function Play({ params }) {
                   <div style={{ width: 8, height: 8, borderRadius: "50%", background: done ? "#12BAAA" : "rgba(255,255,255,0.2)", flexShrink: 0 }} />
                   <span style={{ fontSize: 16, fontWeight: 700, flex: 1 }}>
                     {p.name}
-                    {isMe && <span style={{ fontSize: 11, opacity: 0.65, marginLeft: 6 }}>you</span>}
+                    
                   </span>
                   {!done && !isMe && (
                     pokeJustSent === p.name ? (
@@ -1304,7 +1304,7 @@ export default function Play({ params }) {
                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: done ? "#12BAAA" : "rgba(255,255,255,0.2)", flexShrink: 0 }} />
                 <span style={{ fontSize: 16, fontWeight: 700, flex: 1 }}>
                   {p.name}
-                  {isMe && <span style={{ fontSize: 11, opacity: 0.65, marginLeft: 6 }}>you</span>}
+                  
                   {!done && typingPlayerIds.has(p.id) && <span style={{ fontSize: 14, marginLeft: 6 }}>💬</span>}
                 </span>
                 {!done && !isMe && (

@@ -73,8 +73,7 @@ export default function EndGame({
             <div>
               <span style={{ fontSize: 22, fontWeight: 700 }}>
                 {p.name}
-                {p.id === myPlayerId && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
-              </span>
+                              </span>
               {isWinner && (
                 <span style={{ fontSize: 12, fontWeight: 800, color: yellow, marginLeft: 10, textTransform: "uppercase", letterSpacing: "0.1em" }}>
                   {isTie ? "Tied!" : "Winner!"}

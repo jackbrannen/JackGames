@@ -389,7 +389,7 @@ export default function Lobby({ params }) {
                   }}>
                     <span style={{ fontSize: 17, fontWeight: 700 }}>
                       {p.name}
-                      {p.id === myPlayerId && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
+                      
                     </span>
                   </div>
                 </div>
@@ -492,7 +492,7 @@ export default function Lobby({ params }) {
                   <div style={{ padding: "10px 14px", flex: 1, background: WARM_LIGHT, display: "flex", alignItems: "center" }}>
                     <span style={{ fontSize: 16, fontWeight: 700, color: "white" }}>
                       {p.name}
-                      {p.id === myPlayerId && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
+                      
                     </span>
                   </div>
                 </div>

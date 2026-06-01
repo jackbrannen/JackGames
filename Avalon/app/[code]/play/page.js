@@ -362,7 +362,7 @@ export default function Play({ params }) {
         )}
         <span style={{ fontSize: 16, fontWeight: 700, flex: 1 }}>
           {p.name}
-          {p.id === myId            && <span style={{ opacity: 0.65, fontSize: 13, fontWeight: 600 }}> you</span>}
+          
           {p.id === game?.leader_id && <span style={{ opacity: 0.45, fontSize: 13, fontWeight: 600 }}> ♛</span>}
         </span>
       </div>
@@ -548,7 +548,7 @@ export default function Play({ params }) {
                 </div>
                 <span style={{ fontSize: 16, fontWeight: 700, flex: 1 }}>
                   {p.name}
-                  {p.id === myId && <span style={{ opacity: 0.65, fontSize: 13 }}> you</span>}
+                  
                 </span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: p.ready ? GOOD : "rgba(232,220,200,0.3)" }}>
                   {p.ready ? "Ready" : "Not ready"}
@@ -707,7 +707,7 @@ export default function Play({ params }) {
                 <div style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: p.submitted_card ? TEAL : "rgba(255,255,255,0.18)" }} />
                 <span style={{ fontSize: 16, fontWeight: 700, flex: 1 }}>
                   {p.name}
-                  {p.id === myId && <span style={{ opacity: 0.65, fontSize: 13 }}> you</span>}
+                  
                 </span>
                 {p.submitted_card && <span style={{ fontSize: 13, color: TEAL, fontWeight: 700 }}>✓</span>}
               </div>
@@ -859,7 +859,7 @@ export default function Play({ params }) {
                     </div>
                     <span style={{ fontSize: 16, fontWeight: 700 }}>
                       {p.name}
-                      {p.id === myId && <span style={{ opacity: 0.65, fontSize: 13 }}> you</span>}
+                      
                     </span>
                   </div>
                 ))}

@@ -878,7 +878,7 @@ export default function PlayPage({ params }) {
                       <span style={{ fontSize: 16 }}>{done ? "✅" : "⬜"}</span>
                       <span style={{ fontSize: 16, fontWeight: 700, color: WHITE, flex: 1 }}>
                         {p.name}
-                        {isMe && <span style={{ fontSize: 11, opacity: 0.65, marginLeft: 6 }}>you</span>}
+                        
                         {!done && typingPlayerIds.has(p.id) && <span style={{ fontSize: 14, marginLeft: 6 }}>💬</span>}
                       </span>
                       {!done && !isMe && (

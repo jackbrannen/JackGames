@@ -202,10 +202,7 @@ export default function StyleGuide() {
                 {i + 1}
               </div>
               <div style={{ flex: 1, background: mid, padding: "13px 16px", display: "flex", alignItems: "center" }}>
-                <span style={{ fontSize: 17, fontWeight: 700 }}>
-                  {name}
-                  {name === "You" && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
-                </span>
+                <span style={{ fontSize: 17, fontWeight: 700 }}>{name}</span>
               </div>
             </div>
           ))}

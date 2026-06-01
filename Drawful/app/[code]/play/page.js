@@ -767,7 +767,7 @@ export default function Play({ params }) {
                 display: "flex", flexDirection: "column", justifyContent: "center",
               }}>
                 <div style={{ fontSize: 18, fontWeight: 700 }}>
-                  {p.name}{p.id === myPlayerId && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
+                  {p.name}
                 </div>
                 <div style={{ fontSize: 12, opacity: 0.65, fontWeight: 700 }}>#{i + 1}</div>
               </div>
@@ -1176,7 +1176,7 @@ export default function Play({ params }) {
                     display: "flex", flexDirection: "column", justifyContent: "center",
                   }}>
                     <div style={{ fontSize: 16, fontWeight: 700 }}>
-                      {p.name}{p.id === myPlayerId && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
+                      {p.name}
                     </div>
                     <div style={{ fontSize: 12, opacity: 0.65, fontWeight: 700 }}>#{i + 1}</div>
                   </div>

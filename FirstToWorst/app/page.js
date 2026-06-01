@@ -88,19 +88,35 @@ export default function Home() {
     setCreating(true)
     setError("")
     try {
+      // Use saved profile for the real player
+      const saved = (() => {
+        try {
+          const local = JSON.parse(localStorage.getItem("jackgames:profile") || "null")
+          const match = document.cookie.match(/(?:^|;\s*)jackgames_profile=([^;]*)/)
+          const cookie = match ? JSON.parse(decodeURIComponent(match[1])) : null
+          const merged = { ...(local ?? {}) }
+          for (const [k, v] of Object.entries(cookie ?? {})) { if (v) merged[k] = v }
+          if (merged.firstName && merged.lastName) return merged
+        } catch {}
+        return null
+      })()
+      const realName  = saved?.username?.trim()   || "You"
+      const realFirst = saved?.firstName?.trim()  || "You"
+      const realLast  = saved?.lastName?.trim()   || ""
+
       const code = await createGame()
 
-      // Insert 3 bots + "You"
+      // Insert 3 bots + real player
       const { data: allPlayers, error: playerErr } = await supabase
         .from("ftw_players")
         .insert([
           ...BOT_NAMES.map(name => ({ game_code: code, name, first_name: name, last_name: "", is_bot: true })),
-          { game_code: code, name: "You", first_name: "You", last_name: "", is_bot: false },
+          { game_code: code, name: realName, first_name: realFirst, last_name: realLast, is_bot: false },
         ])
-        .select("id,name")
+        .select("id,name,is_bot")
       if (playerErr) throw playerErr
 
-      const youPlayer = allPlayers.find(p => p.name === "You")
+      const youPlayer = allPlayers.find(p => !p.is_bot)
       localStorage.setItem(`ftw:${code}:playerId`, youPlayer.id)
 
       // Start game
@@ -111,35 +127,16 @@ export default function Home() {
       })
       if (startErr) throw startErr
 
-      // Submit words for all players (last submission triggers word assignment + phase → ranking)
-      const allWords = [...BOT_WORDS, YOU_WORDS]
-      for (let i = 0; i < allPlayers.length; i++) {
+      // Submit bot words only — real player submits their own in the play page
+      const botPlayers = allPlayers.filter(p => p.is_bot)
+      for (let i = 0; i < botPlayers.length; i++) {
         const { error: submitErr } = await supabase.rpc("ftw_submit_words", {
           p_code: code,
-          p_player_id: allPlayers[i].id,
-          p_words: allWords[i],
+          p_player_id: botPlayers[i].id,
+          p_words: BOT_WORDS[i],
           p_for_player_ids: null,
         })
         if (submitErr) throw submitErr
-      }
-
-      // Fetch assigned word IDs (set by the last ftw_submit_words call)
-      const { data: updatedPlayers, error: fetchErr } = await supabase
-        .from("ftw_players")
-        .select("id,assigned_word_ids")
-        .eq("game_code", code)
-      if (fetchErr) throw fetchErr
-
-      // Lock rankings for all players with a random shuffle (last one triggers phase → guessing)
-      for (const player of updatedPlayers) {
-        if (!player.assigned_word_ids?.length) continue
-        const shuffled = [...player.assigned_word_ids].sort(() => Math.random() - 0.5)
-        const { error: lockErr } = await supabase.rpc("ftw_lock_ranking", {
-          p_code: code,
-          p_player_id: player.id,
-          p_ranking: shuffled,
-        })
-        if (lockErr) throw lockErr
       }
 
       router.push(`/${code}/play`)

@@ -567,6 +567,37 @@ export default function Play({ params }) {
     setWordFields(prev => prev.some(f => f) ? prev : Array(game.words_per_writer).fill(""))
   }, [game?.words_per_writer])
 
+  // Pre-fill word fields from random ideas (dummy games — player hasn't typed anything yet)
+  useEffect(() => {
+    if (game?.phase !== "submitting" || !myPlayerId || me?.words_submitted) return
+    if (wordFields.some(w => w.trim())) return
+    const wCount = wordFields.length
+    fetchIdeas().then(categories => {
+      const picked = []
+      const seen = new Set()
+      while (picked.length < wCount) {
+        const ideas = sampleIdeas(categories, seen, 1)
+        if (!ideas.length) break
+        picked.push(ideas[0])
+        seen.add(ideas[0].toLowerCase())
+      }
+      if (picked.length === wCount) setWordFields(picked)
+    })
+  }, [game?.phase, myPlayerId, me?.words_submitted, wordFields.length])
+
+  // Bot auto-ranking: bots lock a random ranking after all words are submitted
+  useEffect(() => {
+    if (game?.phase !== "ranking" || !myPlayerId) return
+    const bots = players.filter(p => p.is_bot && !p.ranking_locked && p.assigned_word_ids?.length)
+    bots.forEach(async bot => {
+      const key = `rank:${bot.id}`
+      if (botAutoRef.current[key]) return
+      botAutoRef.current[key] = true
+      const shuffled = [...bot.assigned_word_ids].sort(() => Math.random() - 0.5)
+      await supabase.rpc("ftw_lock_ranking", { p_code: code, p_player_id: bot.id, p_ranking: shuffled })
+    })
+  }, [game?.phase, players.map(p => p.ranking_locked).join(",")])
+
   // Auto-skip phases for opted-out players
   useEffect(() => {
     if (!myPlayerId || !me) return

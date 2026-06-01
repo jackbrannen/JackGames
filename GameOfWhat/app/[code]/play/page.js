@@ -214,12 +214,11 @@ export default function Play({ params }) {
 
   // ── DUMMY GAME AUTOMATION ─────────────────────────────────
 
-  // Pre-fill answer field from random words
+  // Pre-fill answer field
   useEffect(() => {
     if (game?.question_phase !== "answering" || !currentQuestion) return
     const pid = myPlayerId || localStorage.getItem(`gow:${code}:playerId`)
     if (!pid || pid === currentQuestion.author_id) return
-    if (answers.some(a => a.player_id === pid)) return
     setMyAnswer(prev => prev || pickRandWord())
   }, [currentQuestion?.id, game?.question_phase, myPlayerId])
 

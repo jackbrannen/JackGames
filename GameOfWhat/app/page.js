@@ -91,6 +91,7 @@ export default function Home() {
       nudgeJoin={nudgeJoin}
       error={error}
       onDummyGame={onCreateClick}
+      isDummy={isCreating}
       colors={{ bg: "#6B1A44", wl: "#821F42", yellow: "#FBDF54" }}
     />
   )

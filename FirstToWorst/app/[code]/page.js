@@ -272,7 +272,7 @@ export default function Lobby({ params }) {
       const { data: taken } = await supabase.from("ftw_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
       if (taken?.length > 0) return
       const { data, error } = await supabase.from("ftw_players")
-        .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName.trim(), last_name: saved.lastName.trim(), score: 0 })
+        .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName.trim(), last_name: saved.lastName.trim(), opt_out_write: false, opt_out_rank: false, opt_out_guess: false })
         .select("id").single()
       if (error || !data) return
       localStorage.setItem(`ftw:${code}:playerId`, data.id)

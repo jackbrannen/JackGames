@@ -198,6 +198,7 @@ export default function Play({ params }) {
     if (iHavePressedStatements) return
     setStatementsPressed(true)
     await supabase.rpc("mw_statements_ready", { p_code: code, p_player_id: myPlayerId })
+    await loadState()
   }
 
   async function handleEliminate() {
@@ -205,13 +206,15 @@ export default function Play({ params }) {
     setEliminating(true)
     setConfirmElimination(false)
     const { error } = await supabase.rpc("mw_eliminate", { p_code: code, p_eliminated_id: myPlayerId })
-    if (error) setEliminating(false)
+    if (error) { setEliminating(false); return }
+    await loadState()
   }
 
   async function handleNextRound() {
     if (iHavePressedNextRound) return
     setNextRoundPressed(true)
     await supabase.rpc("mw_next_round", { p_code: code, p_player_id: myPlayerId })
+    await loadState()
   }
 
   if (!game || !myWord) {
@@ -297,7 +300,7 @@ export default function Play({ params }) {
           </div>
 
           <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 10 }}>
-            <button onClick={() => supabase.rpc("mw_reset_game", { p_code: code })}
+            <button onClick={async () => { await supabase.rpc("mw_reset_game", { p_code: code }); await loadState() }}
               style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
               Play Again
             </button>

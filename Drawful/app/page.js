@@ -86,36 +86,7 @@ export default function Home() {
   }
 
   async function onDummyClick() {
-    if (isCreating) return
-    setError("")
-    setIsCreating(true)
-    try {
-      await ensurePromptBank()
-      const code = await createGame(true)
-
-      // Add bots
-      const { data: botData, error: botError } = await supabase
-        .from("drawful_players")
-        .insert(BOT_NAMES.map(name => ({ game_code: code, name, first_name: name, last_name: "", is_bot: true })))
-        .select("id,name")
-      if (botError) throw botError
-
-      // Add real player
-      const { data: realData, error: realError } = await supabase
-        .from("drawful_players")
-        .insert({ game_code: code, name: "You", first_name: "You", last_name: "", is_bot: false })
-        .select("id")
-        .single()
-      if (realError) throw realError
-
-      localStorage.setItem(`drawful:${code}:playerId`, realData.id)
-
-      await supabase.rpc("drawful_start_game", { p_code: code })
-      router.push(`/${code}/play`)
-    } catch (e) {
-      setError(e?.message ?? "unknown error")
-      setIsCreating(false)
-    }
+    onCreateClick()
   }
 
   function onJoin() {

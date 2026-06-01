@@ -84,53 +84,7 @@ export default function Home() {
   }
 
   async function onDummy() {
-    if (creating) return
-    setCreating(true)
-    setError("")
-    try {
-      const code = await createGame()
-
-      const { data: allPlayers, error: playerErr } = await supabase
-        .from("cc_players")
-        .insert([
-          ...BOT_NAMES.slice(0, 3).map(n => ({ game_code: code, name: n, first_name: n, last_name: "" })),
-          { game_code: code, name: "You", first_name: "You", last_name: "" },
-        ])
-        .select("id,name")
-      if (playerErr) throw playerErr
-
-      const youPlayer = allPlayers.find(p => p.name === "You")
-      localStorage.setItem(`cc:${code}:playerId`, youPlayer.id)
-
-      const { error: startErr } = await supabase.rpc("cc_start_game", {
-        p_code: code,
-        p_host_id: youPlayer.id,
-      })
-      if (startErr) throw startErr
-
-      // Fetch updated players with target assignments
-      const { data: updatedPlayers } = await supabase
-        .from("cc_players")
-        .select("id,name,target_id")
-        .eq("game_code", code)
-
-      // Submit questions for bot players
-      for (const p of updatedPlayers) {
-        if (p.id === youPlayer.id) continue
-        const idx = BOT_NAMES.indexOf(p.name)
-        const q = BOT_QUESTIONS[idx >= 0 ? idx : 0]
-        await supabase.rpc("cc_submit_question", {
-          p_code: code,
-          p_player_id: p.id,
-          p_question: q,
-        })
-      }
-
-      router.push(`/${code}/play`)
-    } catch (e) {
-      setError(e?.message ?? "Unknown error")
-      setCreating(false)
-    }
+    onCreate()
   }
 
   return (

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../lib/supabase"
 
@@ -119,6 +119,24 @@ export default function Lobby({ params }) {
   useEffect(() => {
     if (gamePhase !== "lobby" && myPlayerId) router.replace(`/${code}/play`)
   }, [gamePhase, myPlayerId])
+
+  const hasAutoJoinedRef = useRef(false)
+  useEffect(() => {
+    if (gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    const saved = loadProfile()
+    if (!saved?.username) return
+    hasAutoJoinedRef.current = true
+    ;(async () => {
+      const { data: taken } = await supabase.from("avalon_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
+      if (taken?.length > 0) return
+      const { data, error } = await supabase.from("avalon_players")
+        .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName.trim(), last_name: saved.lastName.trim() })
+        .select("id").single()
+      if (error || !data) return
+      localStorage.setItem(`avalon:${code}:playerId`, data.id)
+      setMyPlayerId(data.id)
+    })()
+  }, [gamePhase, myPlayerId, code])
 
   async function join() {
     const trimmed = name.trim()

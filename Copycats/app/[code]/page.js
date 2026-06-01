@@ -115,6 +115,24 @@ export default function LobbyPage({ params }) {
     if (g.phase !== "lobby") router.push(`/${code}/play`)
   }
 
+  const hasAutoJoinedRef = useRef(false)
+  useEffect(() => {
+    if (!game || game.phase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    const saved = loadProfile()
+    if (!saved?.username) return
+    hasAutoJoinedRef.current = true
+    ;(async () => {
+      const taken = players.some(p => p.name.toLowerCase() === saved.username.trim().toLowerCase())
+      if (taken) return
+      const { data, error } = await supabase.from("cc_players")
+        .insert({ game_code: code, first_name: saved.firstName.trim(), last_name: saved.lastName.trim(), name: saved.username.trim() })
+        .select("id").single()
+      if (error || !data) return
+      localStorage.setItem(`cc:${code}:playerId`, data.id)
+      setMyPlayerId(data.id)
+    })()
+  }, [game?.phase, myPlayerId, code])
+
   async function onJoin() {
     if (joining) return
     const trimmedUsername = username.trim()

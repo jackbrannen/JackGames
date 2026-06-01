@@ -756,7 +756,8 @@ export default function PlayPage({ params }) {
       p_code: code, p_player_id: myPlayerId,
       p_slots: localSlots, p_clues: localClues,
     })
-    if (error) { setClueError(error.message); setSubmitting(false) }
+    if (error) { setClueError(error.message); setSubmitting(false); return }
+    await loadState()
   }
 
   function onGuessSlotRotate(slotName) {
@@ -786,13 +787,15 @@ export default function PlayPage({ params }) {
   async function onContinueAttempt2() {
     if (!currentBoard) return
     await supabase.rpc("soclover_start_attempt2", { p_code: code, p_board_id: currentBoard.id })
+    await loadState()
   }
 
   async function onReadyNextBoard() {
     if (readying) return
     setReadying(true)
     const { error } = await supabase.rpc("soclover_mark_ready", { p_code: code, p_player_id: myPlayerId })
-    if (error) setReadying(false)
+    if (error) { setReadying(false); return }
+    await loadState()
   }
 
   function rotateBoardCW() {
@@ -820,6 +823,7 @@ export default function PlayPage({ params }) {
     guessInitRef.current = null
     setGuessResult(null)
     setReadying(false)
+    await loadState()
   }
 
   async function pickNextGame(gameSub) {

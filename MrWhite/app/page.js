@@ -169,6 +169,19 @@ export default function Home() {
           Error: {error}
         </p>
       )}
+
+      <button
+        onClick={onCreateClick}
+        disabled={isCreating}
+        style={{
+          position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
+          background: WARM_LIGHT, color: "rgba(255,255,255,0.65)",
+          fontSize: 11, fontWeight: 700, padding: "8px 16px",
+          letterSpacing: "0.1em", textTransform: "uppercase", whiteSpace: "nowrap",
+        }}
+      >
+        {isCreating ? "Setting up…" : "Dummy Game"}
+      </button>
     </div>
   )
 }

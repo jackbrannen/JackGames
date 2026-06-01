@@ -140,6 +140,24 @@ export default function Lobby({ params }) {
     }
   }, [game?.phase, me])
 
+  const hasAutoJoinedRef = useRef(false)
+  useEffect(() => {
+    if (!game || game.phase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    const saved = loadProfile()
+    if (!saved?.username) return
+    hasAutoJoinedRef.current = true
+    ;(async () => {
+      const { data: taken } = await supabase.from("mrwhite_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
+      if (taken?.length > 0) return
+      const { data, error } = await supabase.from("mrwhite_players")
+        .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName.trim(), last_name: saved.lastName.trim(), is_bot: false })
+        .select("id").single()
+      if (error || !data) return
+      localStorage.setItem(`mw:${code}:playerId`, data.id)
+      setMyPlayerId(data.id)
+    })()
+  }, [game?.phase, myPlayerId, code])
+
   async function join() {
     const trimmedUsername = username.trim()
     const trimmedFirst = (savedProfile?.firstName || firstName).trim()

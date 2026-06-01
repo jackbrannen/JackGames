@@ -101,77 +101,7 @@ export default function Home() {
   }
 
   async function onDummyClick() {
-    if (isCreating) return
-    setError("")
-    setIsCreating(true)
-    try {
-      const code = await createGame(true)
-
-      // Create real player slot — will be claimed in lobby
-      // Create 4 bots
-      const { data: botData, error: botError } = await supabase
-        .from("tel_players")
-        .insert(BOT_NAMES.map(name => ({ game_code: code, name, first_name: name, last_name: "", is_bot: true })))
-        .select("id,name")
-      if (botError) throw botError
-
-      // Create placeholder real player ("You")
-      const { data: realData, error: realError } = await supabase
-        .from("tel_players")
-        .insert({ game_code: code, name: "You", first_name: "You", last_name: "", is_bot: false })
-        .select("id")
-        .single()
-      if (realError) throw realError
-
-      localStorage.setItem(`tel:${code}:playerId`, realData.id)
-
-      // Start game (assigns seats)
-      await supabase.rpc("tel_start_game", { p_code: code })
-
-      // Fetch players with seats to pre-insert bot step 0
-      const { data: allPlayers } = await supabase
-        .from("tel_players")
-        .select("id,seat,is_bot")
-        .eq("game_code", code)
-
-      const blankDrawing = makeBlankDrawing()
-      const n = allPlayers.length
-
-      // Pre-insert ALL bot steps — text steps get funny sentences, drawing steps get blank canvas
-      const botPlayers = allPlayers.filter(p => p.is_bot)
-      const stepsToInsert = []
-      let textStepCounter = 0
-
-      for (const bot of botPlayers) {
-        for (let step = 0; step < n; step++) {
-          const chainOwnerSeat = ((bot.seat - step) % n + n) % n
-          const chainOwner = allPlayers.find(p => p.seat === chainOwnerSeat)
-          if (!chainOwner) continue
-
-          const isDrawing = step % 2 === 1
-          stepsToInsert.push({
-            game_code: code,
-            chain_owner_id: chainOwner.id,
-            step_number: step,
-            step_type: isDrawing ? "drawing" : "text",
-            content: isDrawing ? blankDrawing : BOT_SENTENCES[textStepCounter++ % BOT_SENTENCES.length],
-            author_id: bot.id,
-          })
-        }
-      }
-
-      // Insert bot steps (bot steps that need real player's content as predecessor will be fine
-      // because the step auto-advance only happens after ALL player submissions per step number)
-      if (stepsToInsert.length > 0) {
-        const { error: stepsError } = await supabase.from("tel_steps").insert(stepsToInsert)
-        if (stepsError) throw stepsError
-      }
-
-      router.push(`/${code}/play`)
-    } catch (e) {
-      setError(e?.message ?? "unknown error")
-      setIsCreating(false)
-    }
+    onCreateClick()
   }
 
   function onJoin() {

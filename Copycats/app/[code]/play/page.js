@@ -360,7 +360,8 @@ export default function PlayPage({ params }) {
         p_player_id: myId,
         p_question: myQuestion.trim(),
       })
-      if (error) { setQuestionLoading(false) }
+      if (error) { setQuestionLoading(false); return }
+      await loadState()
     }
 
     return (
@@ -432,6 +433,7 @@ export default function PlayPage({ params }) {
         setBonusMatchName(matchPlayer?.name || "someone")
         setTimeout(() => setBonusMatchName(null), 4000)
       }
+      await loadState()
     }
 
     // Target already submitted — show incoming answers live
@@ -660,7 +662,8 @@ export default function PlayPage({ params }) {
         p_round: current_round,
         p_voted_for_player_id: selectedVote,
       })
-      if (error) { setVoteLoading(false) }
+      if (error) { setVoteLoading(false); return }
+      await loadState()
     }
 
     return (
@@ -773,7 +776,8 @@ export default function PlayPage({ params }) {
         p_code: code,
         p_player_id: myId,
       })
-      if (error) setReadyLoading(false)
+      if (error) { setReadyLoading(false); return }
+      await loadState()
     }
 
     return (

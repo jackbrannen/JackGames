@@ -859,7 +859,7 @@ export default function Play({ params }) {
 
         {/* Play again / another game */}
         <div style={{ padding: "0 24px 48px", display: "flex", flexDirection: "column", gap: 10 }}>
-          <button onClick={() => supabase.rpc("ec_reset_game", { p_code: code })}
+          <button onClick={async () => { await supabase.rpc("ec_reset_game", { p_code: code }); await loadState() }}
             style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
             Play Again
           </button>

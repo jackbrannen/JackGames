@@ -213,7 +213,7 @@ export default function Lobby({ params }) {
     <div style={{ minHeight: "100dvh", background: BG, color: TEXT, paddingBottom: "max(48px, calc(48px + env(safe-area-inset-bottom, 0px)))" }}>
 
       {/* Header */}
-      <div style={{ padding: "28px 24px 24px", background: "rgba(0,0,0,0.3)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+      <div style={{ padding: "28px 24px 24px", background: "#0A1520", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.45, marginBottom: 4 }}>
             Avalon
@@ -302,10 +302,10 @@ export default function Lobby({ params }) {
               background: CARD, padding: "14px 16px",
               display: "flex", alignItems: "center", gap: 10,
             }}>
-              <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.3, minWidth: 20 }}>{i + 1}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.65, minWidth: 20 }}>{i + 1}</span>
               <span style={{ fontSize: 17, fontWeight: 700, flex: 1 }}>
                 {p.name}
-                {p.id === myPlayerId && <span style={{ opacity: 0.4, fontSize: 12, fontWeight: 600 }}> you</span>}
+                {p.id === myPlayerId && <span style={{ opacity: 0.65, fontSize: 12, fontWeight: 600 }}> you</span>}
               </span>
             </div>
           ))}

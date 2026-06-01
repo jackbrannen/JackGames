@@ -3,7 +3,8 @@
 // ─── Typography ───────────────────────────────────────────────────────────────
 
 export const FONT_SIZE = {
-  min:           13,   // absolute minimum — never go below this
+  eyebrow:       11,   // exception: uppercase/letter-spaced metadata labels only (e.g. "ROUND 2 OF 5")
+  min:           13,   // absolute minimum for all reading text
   small:         14,
   body:          16,
   bodyLg:        18,

@@ -1021,13 +1021,13 @@ export default function Play({ params }) {
               <div style={{ maxWidth: 480, margin: "0 auto", display: "flex", flexDirection: "column", gap: 8 }}>
                 <button
                   onClick={() => handleDownloadChainImage(modalChain)}
-                  style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "16px", width: "100%", borderRadius: 8 }}
+                  style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "16px", width: "100%" }}
                 >
                   Download as image
                 </button>
                 <button
                   onClick={() => setSelectedChainOwner(null)}
-                  style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "16px", width: "100%", borderRadius: 8 }}
+                  style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "16px", width: "100%" }}
                 >Close</button>
               </div>
             </div>
@@ -1085,7 +1085,7 @@ export default function Play({ params }) {
           <button
             onClick={handleAdvanceReveal}
             disabled={advancing}
-            style={{ background: YELLOW, color: "#000", fontSize: 22, fontWeight: 900, padding: "22px", width: "100%", display: "block", borderRadius: 8 }}
+            style={{ background: YELLOW, color: "#000", fontSize: 22, fontWeight: 900, padding: "22px", width: "100%", display: "block" }}
           >
             Reveal my telestration
           </button>
@@ -1101,7 +1101,7 @@ export default function Play({ params }) {
       return (
         <>
         <div style={{ minHeight: "100dvh", background: BG, color: "white", paddingBottom: FOOTER_H }}>
-          <div style={{ padding: "28px 24px 20px", background: "rgba(0,0,0,0.3)" }}>
+          <div style={{ padding: "28px 24px 20px", background: "#1A0840" }}>
             <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.45, marginBottom: 4 }}>
               CHAIN {currentRevealChain + 1} OF {n}
             </div>
@@ -1129,7 +1129,7 @@ export default function Play({ params }) {
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, color: "white", paddingBottom: allStepsRevealed ? FOOTER_H + 80 : FOOTER_H }}>
-        <div style={{ padding: "28px 24px 20px", background: "rgba(0,0,0,0.3)" }}>
+        <div style={{ padding: "28px 24px 20px", background: "#1A0840" }}>
           <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.45, marginBottom: 4 }}>
             YOUR TELESTRATION
           </div>
@@ -1155,7 +1155,7 @@ export default function Play({ params }) {
                     <button
                       onClick={handleAdvanceReveal}
                       disabled={advancing}
-                      style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "16px 36px", borderRadius: 8 }}
+                      style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "16px 36px" }}
                     >
                       Reveal
                     </button>
@@ -1377,7 +1377,7 @@ export default function Play({ params }) {
         <button
           onClick={() => handleSubmitSentence()}
           disabled={!sentence.trim() || submitting}
-          style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "18px", width: "100%", marginTop: 8, display: "block", borderRadius: 8, animation: nudgeSentence ? "nudgePulse 1.0s ease-in-out infinite" : "none" }}
+          style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "18px", width: "100%", marginTop: 8, display: "block", animation: nudgeSentence ? "nudgePulse 1.0s ease-in-out infinite" : "none" }}
         >
           {submitting ? "Submitting…" : "Lock it in"}
         </button>

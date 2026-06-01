@@ -329,7 +329,7 @@ export default function Play({ params }) {
   function Header({ sub, showTrack = true }) {
     return (
       <>
-      <div style={{ background: "rgba(0,0,0,0.35)" }}>
+      <div style={{ background: "#0A1520" }}>
         {sub && (
           <div style={{ padding: "14px 24px 0" }}>
             <div style={{ fontSize: 14, fontWeight: 800, color: GOLD }}>{sub}</div>
@@ -362,7 +362,7 @@ export default function Play({ params }) {
         )}
         <span style={{ fontSize: 16, fontWeight: 700, flex: 1 }}>
           {p.name}
-          {p.id === myId            && <span style={{ opacity: 0.4, fontSize: 13, fontWeight: 600 }}> you</span>}
+          {p.id === myId            && <span style={{ opacity: 0.65, fontSize: 13, fontWeight: 600 }}> you</span>}
           {p.id === game?.leader_id && <span style={{ opacity: 0.45, fontSize: 13, fontWeight: 600 }}> ♛</span>}
         </span>
       </div>
@@ -491,7 +491,7 @@ export default function Play({ params }) {
 
     phaseContent = (
       <div style={{ paddingBottom: 120 }}>
-        <div style={{ background: "rgba(0,0,0,0.35)", padding: "20px 24px 24px" }}>
+        <div style={{ background: "#0A1520", padding: "20px 24px 24px" }}>
           <div style={{ fontSize: 40, fontWeight: 900, color: GOLD, letterSpacing: "-1.5px", lineHeight: 1 }}>
             Role Reveal
           </div>
@@ -548,7 +548,7 @@ export default function Play({ params }) {
                 </div>
                 <span style={{ fontSize: 16, fontWeight: 700, flex: 1 }}>
                   {p.name}
-                  {p.id === myId && <span style={{ opacity: 0.4, fontSize: 13 }}> you</span>}
+                  {p.id === myId && <span style={{ opacity: 0.65, fontSize: 13 }}> you</span>}
                 </span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: p.ready ? GOOD : "rgba(232,220,200,0.3)" }}>
                   {p.ready ? "Ready" : "Not ready"}
@@ -576,7 +576,7 @@ export default function Play({ params }) {
 
     phaseContent = (
       <div style={{ paddingBottom: BOTTOM_PAD }}>
-        <div style={{ background: "rgba(0,0,0,0.35)" }}>
+        <div style={{ background: "#0A1520" }}>
           <QuestTrack />
           <div style={{ padding: "0 24px 20px", textAlign: "center" }}>
             <div style={{ fontSize: 32, fontWeight: 900, color: GOLD, lineHeight: 1, letterSpacing: "-1px" }}>
@@ -673,7 +673,7 @@ export default function Play({ params }) {
               </button>
             </div>
           ) : (
-            <div style={{ fontSize: 15, opacity: 0.55, paddingTop: 8 }}>
+            <div style={{ fontSize: 15, opacity: 0.65, paddingTop: 8 }}>
               Waiting for {leader?.name ?? "the leader"} to record the vote…
             </div>
           )}
@@ -707,7 +707,7 @@ export default function Play({ params }) {
                 <div style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: p.submitted_card ? TEAL : "rgba(255,255,255,0.18)" }} />
                 <span style={{ fontSize: 16, fontWeight: 700, flex: 1 }}>
                   {p.name}
-                  {p.id === myId && <span style={{ opacity: 0.4, fontSize: 13 }}> you</span>}
+                  {p.id === myId && <span style={{ opacity: 0.65, fontSize: 13 }}> you</span>}
                 </span>
                 {p.submitted_card && <span style={{ fontSize: 13, color: TEAL, fontWeight: 700 }}>✓</span>}
               </div>
@@ -752,7 +752,7 @@ export default function Play({ params }) {
             </div>
           )}
           {!onQuest && (
-            <div style={{ fontSize: 13, opacity: 0.45 }}>
+            <div style={{ fontSize: 13, opacity: 0.65 }}>
               You're not on this quest. Hang tight for the outcome…
             </div>
           )}
@@ -859,7 +859,7 @@ export default function Play({ params }) {
                     </div>
                     <span style={{ fontSize: 16, fontWeight: 700 }}>
                       {p.name}
-                      {p.id === myId && <span style={{ opacity: 0.4, fontSize: 13 }}> you</span>}
+                      {p.id === myId && <span style={{ opacity: 0.65, fontSize: 13 }}> you</span>}
                     </span>
                   </div>
                 ))}
@@ -992,7 +992,7 @@ export default function Play({ params }) {
 
       {/* Score menu bar — matches other games' top bar style */}
       {showMenuBar && (
-        <div style={{ background: "rgba(0,0,0,0.35)", padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ background: "#0A1520", padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: GOOD, opacity: 0.7, marginBottom: 2 }}>Loyal Servants</div>

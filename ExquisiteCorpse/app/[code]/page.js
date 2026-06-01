@@ -223,7 +223,7 @@ export default function Lobby({ params }) {
     <div style={{ minHeight: "100dvh", background: BG, color: "white" }}>
 
       {/* Header */}
-      <div style={{ padding: "28px 24px 24px", background: "rgba(0,0,0,0.3)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+      <div style={{ padding: "28px 24px 24px", background: "#102540", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.45, marginBottom: 4 }}>
             Exquisite Corpse

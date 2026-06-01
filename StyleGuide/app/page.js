@@ -114,8 +114,8 @@ export default function StyleGuide() {
               <div style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.medium, opacity: OPACITY.muted }}>Waiting for other players to submit…</div>
             </div>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.5, marginBottom: 4 }}>Eyebrow / progress label — {FONT_SIZE.min}px / {FONT_WEIGHT.heavy} / uppercase</div>
-              <div style={STYLE.eyebrow}>Round 2 of 5</div>
+              <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.5, marginBottom: 4 }}>Eyebrow / progress label — 11px / {FONT_WEIGHT.heavy} / uppercase <span style={{ opacity: 0.6 }}>(exception: 11px allowed for metadata labels, not reading text)</span></div>
+              <div style={{ ...STYLE.eyebrow, fontSize: 11 }}>Round 2 of 5</div>
             </div>
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.5, marginBottom: 4 }}>Minimum — {FONT_SIZE.min}px / {FONT_WEIGHT.semibold}</div>

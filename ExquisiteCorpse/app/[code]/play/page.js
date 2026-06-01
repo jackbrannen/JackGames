@@ -347,7 +347,7 @@ function DrawingCanvas({ peekImageUrl, peekFoldPct, onExport, onFirstMark }) {
       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 0 8px" }}>
         <button
           onClick={() => handleSetTool("pen")}
-          style={{ background: toolMode === "pen" ? YELLOW : WARM_LIGHT, color: toolMode === "pen" ? "#000" : "white", width: 44, height: 44, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+          style={{ background: toolMode === "pen" ? YELLOW : WARM_LIGHT, color: toolMode === "pen" ? "#000" : "white", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
@@ -355,7 +355,7 @@ function DrawingCanvas({ peekImageUrl, peekFoldPct, onExport, onFirstMark }) {
         </button>
         <button
           onClick={() => handleSetTool(toolMode === "eraser" ? "pen" : "eraser")}
-          style={{ background: toolMode === "eraser" ? YELLOW : WARM_LIGHT, color: toolMode === "eraser" ? "#000" : "white", width: 44, height: 44, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+          style={{ background: toolMode === "eraser" ? YELLOW : WARM_LIGHT, color: toolMode === "eraser" ? "#000" : "white", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/>
@@ -363,23 +363,23 @@ function DrawingCanvas({ peekImageUrl, peekFoldPct, onExport, onFirstMark }) {
         </button>
         <button
           onClick={() => handleSetTool(toolMode === "bucket" ? "pen" : "bucket")}
-          style={{ background: toolMode === "bucket" ? YELLOW : WARM_LIGHT, color: toolMode === "bucket" ? "#000" : "white", width: 44, height: 44, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+          style={{ background: toolMode === "bucket" ? YELLOW : WARM_LIGHT, color: toolMode === "bucket" ? "#000" : "white", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="m19 11-8-8-8.5 8.5a5.5 5.5 0 0 0 7.78 7.78Z"/><path d="m5 3 5 5"/><path d="M22 22c0-1.2-.2-2-.8-3-1.4 0-2.2 1.8-2.2 3"/>
           </svg>
         </button>
-        <button onClick={handleUndo} style={{ background: WARM_LIGHT, color: "white", width: 44, height: 44, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <button onClick={handleUndo} style={{ background: WARM_LIGHT, color: "white", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/>
           </svg>
         </button>
-        <button onClick={handleRedo} style={{ background: WARM_LIGHT, color: "white", width: 44, height: 44, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <button onClick={handleRedo} style={{ background: WARM_LIGHT, color: "white", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/>
           </svg>
         </button>
-        <button onClick={handleClear} style={{ background: WARM_LIGHT, color: "rgba(255,255,255,0.6)", width: 44, height: 44, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <button onClick={handleClear} style={{ background: WARM_LIGHT, color: "rgba(255,255,255,0.6)", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
           </svg>
@@ -900,7 +900,7 @@ export default function Play({ params }) {
       <>
       <div style={{ minHeight: "100dvh", background: BG, color: "white", paddingBottom: amPresenter ? FOOTER_H + 80 : FOOTER_H }}>
         {/* Header — identical for everyone */}
-        <div style={{ padding: "28px 24px 20px", background: "rgba(0,0,0,0.3)" }}>
+        <div style={{ padding: "28px 24px 20px", background: "#102540" }}>
           <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.45, marginBottom: 4 }}>
             CHAIN {currentRevealChain + 1} OF {revealOrder.length}
           </div>
@@ -973,7 +973,7 @@ export default function Play({ params }) {
         <p style={{ fontSize: 14, opacity: 0.4, fontWeight: 500, marginBottom: 40 }}>You'll see what the last player left you.</p>
         <button
           onClick={() => setShowTransition(false)}
-          style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "18px 40px", borderRadius: 8 }}
+          style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "18px 40px" }}
         >
           Continue →
         </button>
@@ -1023,7 +1023,7 @@ export default function Play({ params }) {
         <button
           onClick={uploadAndSubmitDrawing}
           disabled={!canvasDirty || submitting}
-          style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "20px", width: "100%", display: "block", marginTop: 16, borderRadius: 8 }}
+          style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "20px", width: "100%", display: "block", marginTop: 16 }}
         >
           {submitting ? "Submitting…" : "Done Drawing"}
         </button>
@@ -1037,7 +1037,7 @@ export default function Play({ params }) {
             <button
               onClick={handleGetIdeas}
               disabled={loadingIdeas}
-              style={{ background: WARM_LIGHT, color: "white", fontSize: 15, fontWeight: 800, padding: "14px 18px", width: "100%", marginBottom: shownIdeas.length ? 12 : 0, borderRadius: 6 }}
+              style={{ background: WARM_LIGHT, color: "white", fontSize: 15, fontWeight: 800, padding: "14px 18px", width: "100%", marginBottom: shownIdeas.length ? 12 : 0 }}
             >
               {shownIdeas.length === 0 ? "✦ Random ideas" : "✦ 3 more ideas"}
             </button>

@@ -214,7 +214,7 @@ export default function Menu({
                           <div style={{ flex: 1 }}>
                             <div style={{ fontSize: 16, fontWeight: 700, color: "white" }}>
                               {p.name}
-                              {isMe && <span style={{ fontSize: 12, opacity: 0.55, marginLeft: 6 }}>you</span>}
+                              {isMe && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
                             </div>
                             {(p.firstName || p.lastName) && (
                               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.65)" }}>{[p.firstName, p.lastName].filter(Boolean).join(" ")}</div>

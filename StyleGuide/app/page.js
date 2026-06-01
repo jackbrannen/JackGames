@@ -259,6 +259,83 @@ export default function StyleGuide() {
           <div style={{ fontSize: 13, opacity: 0.55, fontWeight: 600, marginTop: 10 }}>2 / 4 submitted</div>
         </Section>
 
+        {/* Results */}
+        <Section title="Results (Post-Question)">
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 28 }}>
+            <div style={{ background: mid, padding: "16px 20px" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                <div style={{ background: yellow, color: "#000", fontSize: 20, fontWeight: 900, minWidth: 44, textAlign: "center", padding: "6px 0", flexShrink: 0 }}>+3</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>A golden retriever named Biscuit</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.65, marginTop: 3 }}>
+                    Alice & Bob
+                    <span style={{ marginLeft: 6, background: yellow, color: "#000", fontSize: 11, fontWeight: 900, padding: "1px 5px", verticalAlign: "middle" }}>matched +1</span>
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.5, marginTop: 4 }}>Carol, Dave voted</div>
+                </div>
+              </div>
+            </div>
+            <div style={{ background: mid, padding: "16px 20px" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                <div style={{ background: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.5)", fontSize: 20, fontWeight: 900, minWidth: 44, textAlign: "center", padding: "6px 0", flexShrink: 0 }}>0</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>My credit card statement</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.65, marginTop: 3 }}>Carol</div>
+                </div>
+              </div>
+            </div>
+            <div style={{ background: mid, padding: "16px 20px" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                <div style={{ background: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.5)", fontSize: 20, fontWeight: 900, minWidth: 44, textAlign: "center", padding: "6px 0", flexShrink: 0 }}>1</div>
+                <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3, opacity: 0.65 }}>None of the above</div>
+              </div>
+            </div>
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 10 }}>Points this question</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {[{ name: "Alice", pts: 4, detail: "3 votes · matched +1" }, { name: "Bob", pts: 2, detail: "1 vote · matched +1" }].map(s => (
+              <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ background: yellow, color: "#000", fontSize: 18, fontWeight: 900, minWidth: 44, textAlign: "center", padding: "5px 0", flexShrink: 0 }}>+{s.pts}</div>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 700 }}>{s.name}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.65 }}>{s.detail}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        {/* End Game */}
+        <Section title="End Game (Final Scores)">
+          <div style={{ fontSize: "clamp(56px, 16vw, 88px)", fontWeight: 900, lineHeight: 0.9, marginBottom: 32 }}>
+            Game<br />Over
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 16 }}>Final Scores</div>
+          {[
+            { name: "Alice", score: 12, isWinner: true },
+            { name: "Bob",   score: 9  },
+            { name: "Carol", score: 7  },
+            { name: "You",   score: 5, isMe: true },
+          ].map(p => (
+            <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
+              <div style={{ background: p.isWinner ? yellow : "rgba(255,255,255,0.15)", color: p.isWinner ? actionColor : "white", fontSize: 22, fontWeight: 900, minWidth: 52, textAlign: "center", padding: "8px 0" }}>
+                {p.score}
+              </div>
+              <div>
+                <span style={{ fontSize: 22, fontWeight: 700 }}>
+                  {p.name}
+                  {p.isMe && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
+                </span>
+                {p.isWinner && <span style={{ fontSize: 12, fontWeight: 800, color: yellow, marginLeft: 10, textTransform: "uppercase", letterSpacing: "0.1em" }}>Winner!</span>}
+              </div>
+            </div>
+          ))}
+          <div style={{ marginTop: 40, display: "flex", flexDirection: "column", gap: 10 }}>
+            <button style={{ background: actionBg, color: actionColor, fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>Play Again</button>
+            <button style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%" }}>Play Another Game</button>
+          </div>
+        </Section>
+
         {/* Status bar */}
         <Section title="Status Bar">
           <div style={{ background: dark, padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -294,6 +371,55 @@ export default function StyleGuide() {
               <button style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 13, fontWeight: 700, padding: "6px 12px" }}>✕</button>
             </div>
           </div>
+        </Section>
+
+        {/* Random Ideas */}
+        <Section title="Random Ideas">
+          <button style={{ background: wl, color: "white", fontSize: 15, fontWeight: 800, padding: "14px 18px", display: "block", width: "100%", marginBottom: 12 }}>
+            ✦ Random ideas
+          </button>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+            {[
+              { text: "A dentist", isName: false },
+              { text: "Traffic jam", isName: false },
+              { text: "Vacation plans", isName: false },
+              { text: "Carol", isName: true },
+            ].map((chip, i) => (
+              <div key={i} style={{
+                padding: "7px 14px", borderRadius: 999,
+                fontSize: 14, fontWeight: 700,
+                background: chip.isName ? "rgba(251,223,84,0.12)" : wl,
+                color: chip.isName ? yellow : "white",
+                border: chip.isName ? `1px solid rgba(251,223,84,0.3)` : "1px solid rgba(255,255,255,0.15)",
+              }}>
+                {chip.text}
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.5, marginBottom: 6 }}>Exhausted state</div>
+          <div style={{ background: wl, color: "rgba(255,255,255,0.25)", fontSize: 13, fontWeight: 600, padding: "12px 18px" }}>
+            No more ideas for this question
+          </div>
+        </Section>
+
+        {/* Notifications */}
+        <Section title="Notifications (Poke / Message)">
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+            <div style={{ background: dark, padding: "8px 12px", maxWidth: 260, display: "flex", alignItems: "flex-start", gap: 8, boxShadow: "0 2px 16px rgba(0,0,0,0.6)" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "white", lineHeight: 1.3 }}>👉 Alice poked you</div>
+              </div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1, flexShrink: 0 }}>✕</div>
+            </div>
+            <div style={{ background: dark, padding: "8px 12px", maxWidth: 260, display: "flex", alignItems: "flex-start", gap: 8, boxShadow: "0 2px 16px rgba(0,0,0,0.6)" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "white", lineHeight: 1.3 }}>Anyone else stuck?</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.65)", marginTop: 2 }}>Bob</div>
+              </div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1, flexShrink: 0 }}>✕</div>
+            </div>
+          </div>
+          <div style={{ fontSize: 12, opacity: 0.5, fontWeight: 600 }}>Fixed top-right · auto-dismiss 4s · swipe to dismiss</div>
         </Section>
 
         {/* Action Bar */}

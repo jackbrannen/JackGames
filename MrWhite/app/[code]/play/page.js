@@ -243,7 +243,7 @@ export default function Play({ params }) {
         word={myWord}
         gamePhase={game.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
-        onResetToLobby={async () => { await supabase.rpc("mw_reset_game", { p_code: code }) }}
+        onResetToLobby={async () => { await supabase.rpc("mw_reset_game", { p_code: code }); await loadState() }}
         peekBarHeight="env(safe-area-inset-bottom)"
       />
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} peekBarHeight="env(safe-area-inset-bottom)">

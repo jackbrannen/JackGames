@@ -57,11 +57,15 @@ Do in small batches, deploy, test before continuing.
 - ~~SoClover: when the guesser rotates cards or the board, it is STILL not shown on other devices.~~ ✓ (card rotation + card removal now persist to guess_slots; board rotation already did)
 - GameOfWhat: auto-start round when all questions submitted — fixed (effect now awaits RPC + calls loadState)
 - ~~Fishbowl: change minimum players to 4~~ (already enforced: teamsBalanced requires ≥2 per team)
-- ~~GOW: remove skip as an option~~ ✓
 - ~~GOW: Dummy games: some answer fields load not populated by default~~ ✓ (answer pre-fill now synchronous using pickRandWord)
+- GOW: Selections component doesn't follow UI for "my answer" set in style guide. Fix. But also: why not?
 - Change the pick a new game flow at the end of the game:
 	- Someone picks a new game, it opens that game and drops them immediately into the lobby
 	- Then it sends a pop-up message to the remaining players who are still on the end game screen of the previous game saying "[Name] has invited you to play [Game]" with a "Join" button. When pressed, drops them right into the lobby for that game.
+- GOW: No need to show scores at the bottom during normal round screens.
+- GOW (and maybe others): When picking an answer, the selections UI looks too similar to the Waiting list UI below it. Need to find a way to differentiate those two components.
+- Back to lobby from hamburger menu doesn't work
+- Waiting component looks too similar under voting component. How can we improve?
 
 ### Recently fixed
 - GOW Selections: pressing ✕ to deselect then blocked re-selection — fixed `changingVoteRef` reset + disabled ✕ buttons during submission

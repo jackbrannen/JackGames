@@ -21,6 +21,8 @@
                     deselectText, // ✕ button text color (default selectedBg)
                     mineLabel?,   // label text color when unflashed (default rgba white 0.65)
                     flash?,       // flash color on own-item tap (default rgba red 0.25)
+                    mineBg?,      // own-item background (default rgba white 0.05 — visually dim)
+                    mineText?,    // own-item text color (default rgba white 0.4)
                   }
     mineLabel     string  — label under own item (default "Your answer — can't vote for yourself")
     gap           number  — gap between rows in px (default 10)
@@ -69,6 +71,8 @@ export default function Selections({
     deselectBg = "rgba(0,0,0,0.3)",
     deselectText,
     flash = "rgba(255,80,80,0.25)",
+    mineBg = "rgba(255,255,255,0.05)",
+    mineText = "rgba(255,255,255,0.4)",
   } = colors
 
   const derivedDeselectText = deselectText ?? selectedBg
@@ -102,8 +106,8 @@ export default function Selections({
                 disabled={disabled && !opt.isMine}
                 style={{
                   flex: 1,
-                  background: isSelected ? selectedBg : isFlashing ? flash : opt.isMine ? bg : bg,
-                  color: isSelected ? selectedText : "white",
+                  background: isSelected ? selectedBg : isFlashing ? flash : opt.isMine ? mineBg : bg,
+                  color: isSelected ? selectedText : opt.isMine ? mineText : "white",
                   fontSize,
                   fontWeight: 700,
                   padding: "18px 20px",

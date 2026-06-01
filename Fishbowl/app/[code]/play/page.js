@@ -916,7 +916,7 @@ export default function Play({ params }) {
           }))}
           gamePhase={game?.phase}
           rules={instructions ? [["How to Play", instructions]] : null}
-          onResetToLobby={async () => { await supabase.rpc("reset_game_for_replay", { p_code: code }) }}
+          onResetToLobby={async () => { await supabase.rpc("reset_game_for_replay", { p_code: code }); await loadState() }}
           settingsContent={<>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
               <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>

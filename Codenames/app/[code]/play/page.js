@@ -157,7 +157,7 @@ export default function Play({ params }) {
         playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, teamColor: p.team === "red" ? RED_COLOR : p.team === "blue" ? BLUE_COLOR : undefined, teamLabel: p.team === "red" ? "Red" : p.team === "blue" ? "Blue" : undefined }))}
         gamePhase={game?.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
-        onResetToLobby={async () => { await supabase.rpc("reset_codenames_game", { p_code: code }) }}
+        onResetToLobby={async () => { await supabase.rpc("reset_codenames_game", { p_code: code }); await loadState() }}
       />
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} />
     </>

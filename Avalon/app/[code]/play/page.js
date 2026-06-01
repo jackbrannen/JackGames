@@ -240,7 +240,7 @@ export default function Play({ params }) {
         gamePhase={game?.phase}
         roleContent={hasSeenRole ? <RoleCardBody /> : null}
         rules={instructions ? [["How to Play", instructions]] : null}
-        onResetToLobby={async () => { await supabase.rpc("avalon_reset_to_lobby", { p_code: code }) }}
+        onResetToLobby={async () => { await supabase.rpc("avalon_reset_to_lobby", { p_code: code }); await loadState() }}
       />
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} />
     </>

@@ -394,7 +394,7 @@ export default function Play({ params }) {
         playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, score: p.score }))}
         gamePhase={game?.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
-        onResetToLobby={async () => { await supabase.rpc("gow_reset_game", { p_code: code }) }}
+        onResetToLobby={async () => { await supabase.rpc("gow_reset_game", { p_code: code }); await loadState() }}
       />
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
         {footer}
@@ -779,37 +779,26 @@ export default function Play({ params }) {
             </div>
 
             {/* Who has voted */}
-            <WaitingList
-              players={eligibleVoterIds.map(pid => {
-                const p = players.find(x => x.id === pid)
-                return { name: p?.name ?? "", done: votedPlayerIds.has(pid), typing: typingPlayerIds.has(pid) }
-              })}
-              myName={me?.name}
-              colors={{ mid: WARM_LIGHT }}
-              onPoke={sendInlinePoke}
-              cooldownActive={pokeCooldownActive}
-              pokeJustSent={pokeJustSent}
-              showCount={false}
-            />
+            <div style={{ marginTop: 28 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.5, marginBottom: 10 }}>
+                Votes in
+              </div>
+              <WaitingList
+                players={eligibleVoterIds.map(pid => {
+                  const p = players.find(x => x.id === pid)
+                  return { name: p?.name ?? "", done: votedPlayerIds.has(pid), typing: typingPlayerIds.has(pid) }
+                })}
+                myName={me?.name}
+                colors={{ mid: CARD_BG }}
+                onPoke={sendInlinePoke}
+                cooldownActive={pokeCooldownActive}
+                pokeJustSent={pokeJustSent}
+                showCount={false}
+              />
+            </div>
           </>
         )}
 
-        {/* Scores — answering/voting only */}
-        {(phase === "answering" || phase === "voting") && (
-          <div style={{ marginTop: "auto", paddingTop: 32 }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 12 }}>
-              Scores
-            </div>
-            {sortedPlayers.map(p => (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.10)" }}>
-                <div style={{ background: WARM_LIGHT, fontSize: 18, fontWeight: 900, minWidth: 40, textAlign: "center", padding: "4px 0", color: "white" }}>
-                  {p.score}
-                </div>
-                <span style={{ fontSize: 16, fontWeight: 700, color: p.id === myPlayerId ? YELLOW : "white" }}>{p.name}</span>
-              </div>
-            ))}
-          </div>
-        )}
 
       </div>
     </div>

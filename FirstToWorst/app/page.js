@@ -84,66 +84,7 @@ export default function Home() {
   }
 
   async function onDummy() {
-    if (creating) return
-    setCreating(true)
-    setError("")
-    try {
-      // Use saved profile for the real player
-      const saved = (() => {
-        try {
-          const local = JSON.parse(localStorage.getItem("jackgames:profile") || "null")
-          const match = document.cookie.match(/(?:^|;\s*)jackgames_profile=([^;]*)/)
-          const cookie = match ? JSON.parse(decodeURIComponent(match[1])) : null
-          const merged = { ...(local ?? {}) }
-          for (const [k, v] of Object.entries(cookie ?? {})) { if (v) merged[k] = v }
-          if (merged.firstName && merged.lastName) return merged
-        } catch {}
-        return null
-      })()
-      const realName  = saved?.username?.trim()   || "You"
-      const realFirst = saved?.firstName?.trim()  || "You"
-      const realLast  = saved?.lastName?.trim()   || ""
-
-      const code = await createGame()
-
-      // Insert 3 bots + real player
-      const { data: allPlayers, error: playerErr } = await supabase
-        .from("ftw_players")
-        .insert([
-          ...BOT_NAMES.map(name => ({ game_code: code, name, first_name: name, last_name: "", is_bot: true, opt_out_write: false, opt_out_rank: false, opt_out_guess: false })),
-          { game_code: code, name: realName, first_name: realFirst, last_name: realLast, is_bot: false, opt_out_write: false, opt_out_rank: false, opt_out_guess: false },
-        ])
-        .select("id,name,is_bot")
-      if (playerErr) throw playerErr
-
-      const youPlayer = allPlayers.find(p => !p.is_bot)
-      localStorage.setItem(`ftw:${code}:playerId`, youPlayer.id)
-
-      // Start game
-      const { error: startErr } = await supabase.rpc("ftw_start_game", {
-        p_code: code,
-        p_host_id: youPlayer.id,
-        p_word_assignments: null,
-      })
-      if (startErr) throw startErr
-
-      // Submit bot words only — real player submits their own in the play page
-      const botPlayers = allPlayers.filter(p => p.is_bot)
-      for (let i = 0; i < botPlayers.length; i++) {
-        const { error: submitErr } = await supabase.rpc("ftw_submit_words", {
-          p_code: code,
-          p_player_id: botPlayers[i].id,
-          p_words: BOT_WORDS[i],
-          p_for_player_ids: null,
-        })
-        if (submitErr) throw submitErr
-      }
-
-      router.push(`/${code}/play`)
-    } catch (e) {
-      setError(e?.message ?? "Unknown error")
-      setCreating(false)
-    }
+    onCreate()
   }
 
   return (

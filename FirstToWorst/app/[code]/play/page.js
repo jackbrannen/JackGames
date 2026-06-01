@@ -585,19 +585,6 @@ export default function Play({ params }) {
     })
   }, [game?.phase, myPlayerId, me?.words_submitted, wordFields.length])
 
-  // Bot auto-ranking: bots lock a random ranking after all words are submitted
-  useEffect(() => {
-    if (game?.phase !== "ranking" || !myPlayerId) return
-    const bots = players.filter(p => p.is_bot && !p.ranking_locked && p.assigned_word_ids?.length)
-    bots.forEach(async bot => {
-      const key = `rank:${bot.id}`
-      if (botAutoRef.current[key]) return
-      botAutoRef.current[key] = true
-      const shuffled = [...bot.assigned_word_ids].sort(() => Math.random() - 0.5)
-      await supabase.rpc("ftw_lock_ranking", { p_code: code, p_player_id: bot.id, p_ranking: shuffled })
-    })
-  }, [game?.phase, players.map(p => p.ranking_locked).join(",")])
-
   // Auto-skip phases for opted-out players
   useEffect(() => {
     if (!myPlayerId || !me) return

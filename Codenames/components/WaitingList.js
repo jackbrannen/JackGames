@@ -6,7 +6,8 @@
 //
 // Status dot: green (#22C55E) when done, dim white when pending.
 // Typing indicator: 💬 shown when typing is true (player is actively writing).
-// Poke button: 👉 shown for pending players who are not the current user.
+// Poke button: 👉 shown for pending players who are not the current user, but only
+//   after the WaitingList has been mounted for 10 seconds (avoids immediate poking).
 //   - Calls onPoke(name) immediately with no confirmation.
 //   - After poking, the button shows ✓ for 2 seconds (pokeJustSent === name).
 //   - All poke buttons are disabled for 10 seconds after any poke (cooldownActive).
@@ -38,6 +39,7 @@
 //     setTimeout(() => setPokeCooldownActive(false), 10000)
 //   }
 
+import { useEffect, useState } from "react"
 import { FONT_SIZE, FONT_WEIGHT, OPACITY } from "./styles"
 
 export default function WaitingList({
@@ -51,6 +53,11 @@ export default function WaitingList({
 }) {
   const { mid = "#252540" } = colors
   const doneCount = players.filter(p => p.done).length
+  const [pokeReady, setPokeReady] = useState(false)
+  useEffect(() => {
+    const t = setTimeout(() => setPokeReady(true), 10000)
+    return () => clearTimeout(t)
+  }, [])
 
   return (
     <div>
@@ -71,7 +78,7 @@ export default function WaitingList({
               {p.typing && !p.done && (
                 <span style={{ fontSize: FONT_SIZE.small, opacity: 0.8 }}>💬</span>
               )}
-              {!p.done && !isMe && onPoke && (
+              {!p.done && !isMe && onPoke && pokeReady && (
                 <button
                   onClick={() => !cooldownActive && onPoke(p.name)}
                   style={{

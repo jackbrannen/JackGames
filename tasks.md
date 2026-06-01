@@ -49,19 +49,19 @@ Each game's dummy game implementation must:
 - Change the pick a new game flow at the end of the game:
 	- Someone picks a new game, it opens that game and drops them immediately into the lobby
 	- Then it sends a pop-up message to the remaining players who are still on the end game screen of the previous game saying "[Name] has invited you to play [Game]" with a "Join" button. When pressed, drops them right into the lobby for that game.
-- GOW: No need to show scores at the bottom during normal round screens.
-- GOW (and maybe others): When picking an answer, the selections UI looks too similar to the Waiting list UI below it. Need to find a way to differentiate those two components.
-- Back to lobby from hamburger menu doesn't work
-- Waiting component looks too similar under voting component. How can we improve?
-- change the scores component to look like the player list component with scores on the left in boxes. Then change  player list component. Instead of numbering the players, just have a count at the top.
-- UI style guide has some contradicions: two notification styles, an old score card.
+- change the scores component to look like the player list component with scores on the left in boxes. Then change player list component. Instead of numbering the players, just have a count at the top.
+- UI style guide has some contradictions: two notification styles, an old score card.
 - Game of What: take away multiple rounds option. All games are just one round.
 - The "stepped away" feature is very unreliable. Gives false positives and false negatives.
 
 ### Recently fixed
+- ~~GOW: Selections "my answer" style doesn't match style guide~~ ✓
+- ~~GOW: Scores showing during normal round screens~~ ✓
+- ~~GOW/others: Selections and WaitingList look too similar~~ ✓
+- ~~Back to lobby from hamburger menu doesn't work~~ ✓ (all 12 games)
+- ~~FTW dummy game~~ ✓ (auto-join + pre-fill word fields)
 - GOW Selections: pressing ✕ to deselect then blocked re-selection
 - GOW voting typing indicator: bubble now clears when player stops typing
 - GOW submit nudge: wired to question field; FTW submit nudge wired to word fields
 - GOW results: all players now see results screen (50%+ ready to advance)
 - GOW answering/voting: WaitingList shown to all players waiting
-- FTW dummy game: uses saved profile name; pre-fills word fields; bots auto-rank

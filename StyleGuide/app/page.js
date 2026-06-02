@@ -196,16 +196,19 @@ export default function StyleGuide() {
 
         {/* Player list */}
         <Section title="Player List (Lobby)">
-          {["Alice", "Bob", "Carol", "You"].map((name, i) => (
-            <div key={name} style={{ display: "flex", marginBottom: 3 }}>
-              <div style={{ width: 48, flexShrink: 0, background: dark, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900, padding: "13px 0" }}>
-                {i + 1}
-              </div>
-              <div style={{ flex: 1, background: mid, padding: "13px 16px", display: "flex", alignItems: "center" }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 4 }}>Players</div>
+          <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.65, marginBottom: 12 }}>4 players</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {["Alice", "Bob", "Carol"].map(name => (
+              <div key={name} style={{ background: mid, padding: "13px 16px" }}>
                 <span style={{ fontSize: 17, fontWeight: 700 }}>{name}</span>
               </div>
+            ))}
+            <div style={{ background: mid, padding: "13px 16px" }}>
+              <span style={{ fontSize: 17, fontWeight: 700 }}>You</span>
+              <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>
             </div>
-          ))}
+          </div>
         </Section>
 
         {/* Selections */}
@@ -299,10 +302,14 @@ export default function StyleGuide() {
           </div>
           <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 10 }}>Scores</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {[{ name: "Alice", score: 12 }, { name: "Bob", score: 9 }, { name: "Carol", score: 7 }, { name: "Dave", score: 4 }].map(s => (
-              <div key={s.name} style={{ display: "flex", alignItems: "center", padding: "10px 16px", background: mid }}>
-                <span style={{ fontSize: 17, fontWeight: 700, flex: 1 }}>{s.name}</span>
-                <span style={{ fontSize: 22, fontWeight: 900 }}>{s.score}</span>
+            {[{ name: "Alice", score: 12 }, { name: "Bob", score: 9 }, { name: "Carol", score: 7 }, { name: "Dave", score: 4 }].map((s, i) => (
+              <div key={s.name} style={{ display: "flex" }}>
+                <div style={{ background: i === 0 ? yellow : "rgba(255,255,255,0.15)", color: i === 0 ? actionColor : "rgba(255,255,255,0.75)", fontSize: 20, fontWeight: 900, minWidth: 52, textAlign: "center", padding: "10px 0", flexShrink: 0 }}>
+                  {s.score}
+                </div>
+                <div style={{ background: mid, padding: "10px 16px", flex: 1, display: "flex", alignItems: "center" }}>
+                  <span style={{ fontSize: 17, fontWeight: 700 }}>{s.name}</span>
+                </div>
               </div>
             ))}
           </div>
@@ -353,23 +360,6 @@ export default function StyleGuide() {
               <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.65 }}>Submitted by Alice</div>
             </div>
 
-            <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.5, marginTop: 8, marginBottom: 2 }}>Score card</div>
-            <div style={{ background: mid, padding: "16px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 17, fontWeight: 700 }}>Alice</span>
-                <span style={{ fontSize: 22, fontWeight: 900 }}>7</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-                <span style={{ fontSize: 17, fontWeight: 700, opacity: 0.75 }}>Bob</span>
-                <span style={{ fontSize: 22, fontWeight: 900, opacity: 0.75 }}>5</span>
-              </div>
-            </div>
-
-            <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.5, marginTop: 8, marginBottom: 2 }}>Notification strip</div>
-            <div style={{ background: dark, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 15, fontWeight: 700 }}>👉 Alice poked you</span>
-              <button style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 13, fontWeight: 700, padding: "6px 12px" }}>✕</button>
-            </div>
           </div>
         </Section>
 

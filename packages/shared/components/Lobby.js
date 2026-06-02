@@ -48,25 +48,12 @@
 
 import { useState } from "react"
 
-function PlayerRow({ p, i, myPlayerId, dark, mid }) {
+function PlayerRow({ p, myPlayerId, mid }) {
   return (
-    <div style={{ display: "flex" }}>
-      <div style={{
-        padding: "13px 0", minWidth: 48, flexShrink: 0,
-        background: dark,
-        fontSize: 18, fontWeight: 900, color: "white",
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}>
-        {i + 1}
-      </div>
-      <div style={{
-        padding: "13px 16px", flex: 1,
-        background: mid,
-        display: "flex", alignItems: "center",
-      }}>
-        <div style={{ fontSize: 17, fontWeight: 700 }}>
-          {p.name}
-        </div>
+    <div style={{ padding: "13px 16px", background: mid, display: "flex", alignItems: "center" }}>
+      <div style={{ fontSize: 17, fontWeight: 700 }}>
+        {p.name}
+        {p.id === myPlayerId && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
       </div>
     </div>
   )
@@ -161,8 +148,11 @@ export default function Lobby({
 
       {/* Player list */}
       <div style={{ padding: "28px 24px 0" }}>
-        <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 14 }}>
+        <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 4 }}>
           Players
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.65, marginBottom: 12 }}>
+          {players.length} {players.length === 1 ? "player" : "players"}
         </div>
         {players.length === 0 && (
           <div style={{ fontSize: 15, opacity: 0.65, fontStyle: "italic", padding: "12px 0" }}>No players yet</div>
@@ -172,7 +162,7 @@ export default function Lobby({
           if (!hasTeams) {
             return (
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                {players.map((p, i) => <PlayerRow key={p.id} p={p} i={i} myPlayerId={myPlayerId} dark={dark} mid={mid} />)}
+                {players.map(p => <PlayerRow key={p.id} p={p} myPlayerId={myPlayerId} mid={mid} />)}
               </div>
             )
           }
@@ -190,7 +180,7 @@ export default function Lobby({
                 {label}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                {teamMap[label].players.map((p, i) => <PlayerRow key={p.id} p={p} i={i} myPlayerId={myPlayerId} dark={dark} mid={mid} />)}
+                {teamMap[label].players.map(p => <PlayerRow key={p.id} p={p} myPlayerId={myPlayerId} mid={mid} />)}
               </div>
             </div>
           ))

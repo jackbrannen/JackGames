@@ -142,9 +142,18 @@ export default function Results({
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
             {scores.map((s, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", padding: "10px 16px", background: card }}>
-                <span style={{ fontSize: 17, fontWeight: 700, flex: 1 }}>{s.name}</span>
-                <span style={{ fontSize: 22, fontWeight: 900 }}>{s.score}</span>
+              <div key={i} style={{ display: "flex" }}>
+                <div style={{
+                  background: i === 0 ? yellow : dim,
+                  color: i === 0 ? "#000" : "rgba(255,255,255,0.75)",
+                  fontSize: 20, fontWeight: 900,
+                  minWidth: 52, textAlign: "center", padding: "10px 0", flexShrink: 0,
+                }}>
+                  {s.score}
+                </div>
+                <div style={{ background: card, padding: "10px 16px", flex: 1, display: "flex", alignItems: "center" }}>
+                  <span style={{ fontSize: 17, fontWeight: 700 }}>{s.name}</span>
+                </div>
               </div>
             ))}
           </div>

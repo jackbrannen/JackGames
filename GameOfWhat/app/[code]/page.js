@@ -74,7 +74,6 @@ export default function LobbyPage({ params }) {
   const [username, setUsername] = useState("")
   const [joining, setJoining] = useState(false)
   const [joinError, setJoinError] = useState("")
-  const [rounds, setRounds] = useState("3")
   const [notFound, setNotFound] = useState(false)
   const [confirmingStart, setConfirmingStart] = useState(false)
   const [starting, setStarting] = useState(false)
@@ -86,7 +85,7 @@ export default function LobbyPage({ params }) {
   async function loadState() {
     const { data: gameData } = await supabase
       .from("gow_games")
-      .select("code,phase,rounds_total,round_index")
+      .select("code,phase,round_index")
       .eq("code", code)
       .single()
 
@@ -100,7 +99,6 @@ export default function LobbyPage({ params }) {
 
     setGame(gameData)
     setPlayers(playerData ?? [])
-    setRounds(String(gameData.rounds_total ?? 3))
   }
 
   useEffect(() => {
@@ -183,12 +181,6 @@ export default function LobbyPage({ params }) {
     setJoining(false)
   }
 
-  async function saveRounds(val) {
-    const n = Math.max(1, Number(val) || 1)
-    setRounds(String(n))
-    await supabase.from("gow_games").update({ rounds_total: n }).eq("code", code)
-  }
-
   async function startGame() {
     if (starting) return
     setStarting(true)
@@ -263,33 +255,6 @@ export default function LobbyPage({ params }) {
     </>
   ) : null
 
-  const settingsStrip = (
-    <div style={{ padding: "16px 24px", background: MID, display: "flex", alignItems: "center", gap: 16 }}>
-      <span style={{ fontSize: 16, fontWeight: 800, color: "white" }}>Number of Rounds:</span>
-      <div style={{ display: "flex", gap: 6 }}>
-        {[1,2,3,4,5].map(v => (
-          <button
-            key={v}
-            onClick={() => saveRounds(v)}
-            style={{
-              background: Number(rounds) === v ? YELLOW : WARM_LIGHT,
-              color: Number(rounds) === v ? "#000" : "white",
-              fontSize: 18,
-              fontWeight: 900,
-              width: 44,
-              height: 44,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {v}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-
   const startCTA = canStart ? (
     <div style={{ padding: "20px 24px", background: YELLOW }}>
       <div style={{ fontSize: 13, fontWeight: 800, color: "#000", opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 10 }}>
@@ -316,7 +281,6 @@ export default function LobbyPage({ params }) {
           onInvite={handleInvite}
           howToPlayContent={instructions ? <span style={{ whiteSpace: "pre-wrap" }}>{instructions}</span> : <span>Loading…</span>}
           codeDisplay={<><span style={{ color: YELLOW }}>{word1}</span><span style={{ color: "rgba(255,255,255,0.75)" }}>{word2}</span></>}
-          settingsContent={settingsStrip}
           startContent={startCTA}
           joinContent={joinForm}
           colors={LOBBY_COLORS}

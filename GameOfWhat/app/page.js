@@ -45,7 +45,7 @@ async function createGame() {
 
     const { data, error: insertError } = await supabase
       .from("gow_games")
-      .insert({ code })
+      .insert({ code, rounds_total: 1 })
       .select("code")
       .single()
     if (insertError) throw insertError

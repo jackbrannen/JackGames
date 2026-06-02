@@ -52,7 +52,7 @@ Each game's dummy game implementation must:
 - change the scores component to look like the player list component with scores on the left in boxes. Then change player list component. Instead of numbering the players, just have a count at the top.
 - UI style guide has some contradictions: two notification styles, an old score card.
 - ~~Game of What: take away multiple rounds option. All games are just one round.~~ ✓
-- The "stepped away" feature is very unreliable. Gives false positives and false negatives.
+- ~~The "stepped away" feature is very unreliable. Gives false positives and false negatives.~~ ✓
 
 ### Recently fixed
 - ~~GOW: Selections "my answer" style doesn't match style guide~~ ✓

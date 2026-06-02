@@ -89,10 +89,6 @@ export default function Play({ params }) {
     if (prev !== game.phase) playYourTurn()
   }, [game?.phase])
 
-  useEffect(() => {
-    if (!game?.next_game) return
-    window.location.href = `https://${game.next_game}.jackbrannen.com/`
-  }, [game?.next_game])
 
   useEffect(() => {
     const existing = localStorage.getItem(`gow:${code}:playerId`)
@@ -105,7 +101,7 @@ export default function Play({ params }) {
   async function loadState() {
     const { data: gameData } = await supabase
       .from("gow_games")
-      .select("code,phase,round_index,rounds_total,current_question_id,question_phase,used_prompts,next_game,last_completed_question_id")
+      .select("code,phase,round_index,rounds_total,current_question_id,question_phase,used_prompts,next_game,next_game_picker_name,last_completed_question_id")
       .eq("code", code)
       .single()
     if (!gameData) return
@@ -474,7 +470,8 @@ export default function Play({ params }) {
   }
 
   async function pickNextGame(gameSub) {
-    await supabase.from("gow_games").update({ next_game: gameSub }).eq("code", code)
+    await supabase.from("gow_games").update({ next_game: gameSub, next_game_picker_name: me?.name }).eq("code", code)
+    window.location.href = `https://${gameSub}.jackbrannen.com/`
   }
 
   if (game.phase === "finished") {
@@ -492,13 +489,15 @@ export default function Play({ params }) {
         />
       </div>
         {pokeSystemNode()}
-      {showGameModal && (
-        <GameModal
-          onClose={() => setShowGameModal(false)}
-          onSelect={sub => pickNextGame(sub)}
-          currentSub="gameofwhat"
-        />
-      )}
+      <GameModal
+        open={showGameModal}
+        onClose={() => setShowGameModal(false)}
+        onSelect={sub => pickNextGame(sub)}
+        currentSub="gameofwhat"
+        nextGame={game?.next_game}
+        nextGamePickerName={game?.next_game_picker_name}
+        myName={me?.name}
+      />
       </>
     )
   }

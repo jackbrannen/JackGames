@@ -159,7 +159,7 @@ export default function Play({ params }) {
   async function loadState() {
     const { data: gameData } = await supabase
       .from("reversecharades_games")
-      .select("code,phase,host_id,current_team,current_guesser_id,current_controller_id,current_clue_id,turn_started_at,turn_duration_seconds,skip_limit,skip_penalty,skips_this_turn,correct_this_turn,last_turn_correct,last_turn_skips,last_turn_team,team_a_score,team_b_score,team_a_turns,team_b_turns,next_game")
+      .select("code,phase,host_id,current_team,current_guesser_id,current_controller_id,current_clue_id,turn_started_at,turn_duration_seconds,skip_limit,skip_penalty,skips_this_turn,correct_this_turn,last_turn_correct,last_turn_skips,last_turn_team,team_a_score,team_b_score,team_a_turns,team_b_turns,next_game,next_game_picker_name")
       .eq("code", code)
       .single()
     if (!gameData) return
@@ -226,10 +226,6 @@ export default function Play({ params }) {
     if (game?.phase === "lobby") router.replace(`/${code}`)
   }, [game?.phase])
 
-  useEffect(() => {
-    if (!game?.next_game) return
-    window.location.href = `https://${game.next_game}.jackbrannen.com/`
-  }, [game?.next_game])
 
   const me = players.find(p => p.id === myPlayerId)
 
@@ -316,7 +312,8 @@ export default function Play({ params }) {
   }
 
   async function pickNextGame(gameSub) {
-    await supabase.from("reversecharades_games").update({ next_game: gameSub }).eq("code", code)
+    await supabase.from("reversecharades_games").update({ next_game: gameSub, next_game_picker_name: me?.name }).eq("code", code)
+    window.location.href = `https://${gameSub}.jackbrannen.com/`
   }
 
   if (!game) {
@@ -406,13 +403,15 @@ export default function Play({ params }) {
         </button>
       </div>
         {pokeSystemNode}
-      {showGameModal && (
-        <GameModal
-          onClose={() => setShowGameModal(false)}
-          onSelect={sub => pickNextGame(sub)}
-          currentSub="reversecharades"
-        />
-      )}
+      <GameModal
+        open={showGameModal}
+        onClose={() => setShowGameModal(false)}
+        onSelect={sub => pickNextGame(sub)}
+        currentSub="reversecharades"
+        nextGame={game?.next_game}
+        nextGamePickerName={game?.next_game_picker_name}
+        myName={me?.name}
+      />
       </>
     )
   }

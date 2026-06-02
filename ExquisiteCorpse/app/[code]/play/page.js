@@ -721,10 +721,6 @@ export default function Play({ params }) {
     setTimeout(() => revealEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 80)
   }, [game?.phase, currentRevealStep, currentRevealChain])
 
-  useEffect(() => {
-    if (!game?.next_game) return
-    window.location.href = `https://${game.next_game}.jackbrannen.com/`
-  }, [game?.next_game])
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -814,7 +810,8 @@ export default function Play({ params }) {
   // ── Finished ──────────────────────────────────────────────────────────────
 
   async function pickNextGame(gameSub) {
-    await supabase.from("ec_games").update({ next_game: gameSub }).eq("code", code)
+    await supabase.from("ec_games").update({ next_game: gameSub, next_game_picker_name: me?.name }).eq("code", code)
+    window.location.href = `https://${gameSub}.jackbrannen.com/`
   }
 
   if (game.phase === "finished") {
@@ -875,13 +872,15 @@ export default function Play({ params }) {
         )}
       </div>
         {pokeSystemNode()}
-      {showGameModal && (
-        <GameModal
-          onClose={() => setShowGameModal(false)}
-          onSelect={sub => pickNextGame(sub)}
-          currentSub="exquisitecorpse"
-        />
-      )}
+      <GameModal
+        open={showGameModal}
+        onClose={() => setShowGameModal(false)}
+        onSelect={sub => pickNextGame(sub)}
+        currentSub="exquisitecorpse"
+        nextGame={game?.next_game}
+        nextGamePickerName={game?.next_game_picker_name}
+        myName={me?.name}
+      />
       </>
     )
   }

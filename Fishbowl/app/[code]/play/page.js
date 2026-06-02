@@ -242,10 +242,6 @@ export default function Play({ params }) {
     if (game?.phase === "lobby") router.replace(`/${code}`)
   }, [game?.phase])
 
-  useEffect(() => {
-    if (!game?.next_game) return
-    window.location.href = `https://${game.next_game}.jackbrannen.com/`
-  }, [game?.next_game])
 
   useEffect(() => {
     if (!game?.turn_running) {
@@ -376,7 +372,8 @@ export default function Play({ params }) {
   }
 
   async function pickNextGame(gameSub) {
-    await supabase.from("games").update({ next_game: gameSub }).eq("code", code)
+    await supabase.from("games").update({ next_game: gameSub, next_game_picker_name: me?.name }).eq("code", code)
+    window.location.href = `https://${gameSub}.jackbrannen.com/`
   }
 
   async function doPlayAgain() {
@@ -972,13 +969,15 @@ export default function Play({ params }) {
           </Footer>
         )}
       </>}
-      {showGameModal && (
-        <GameModal
-          onClose={() => setShowGameModal(false)}
-          onSelect={sub => pickNextGame(sub)}
-          currentSub="fishbowl"
-        />
-      )}
+      <GameModal
+        open={showGameModal}
+        onClose={() => setShowGameModal(false)}
+        onSelect={sub => pickNextGame(sub)}
+        currentSub="fishbowl"
+        nextGame={game?.next_game}
+        nextGamePickerName={game?.next_game_picker_name}
+        myName={me?.name}
+      />
     </>
   )
 }

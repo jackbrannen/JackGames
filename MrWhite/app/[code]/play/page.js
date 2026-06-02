@@ -71,7 +71,7 @@ export default function Play({ params }) {
   async function loadState() {
     const { data: gameData } = await supabase
       .from("mrwhite_games")
-      .select("code,phase,eliminated_player_id,reveal_at,ready_player_ids,mr_white_wins,round_number,next_game")
+      .select("code,phase,eliminated_player_id,reveal_at,ready_player_ids,mr_white_wins,round_number,next_game,next_game_picker_name")
       .eq("code", code)
       .single()
 
@@ -102,10 +102,6 @@ export default function Play({ params }) {
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
-  useEffect(() => {
-    if (!game?.next_game) return
-    window.location.href = `https://${game.next_game}.jackbrannen.com/`
-  }, [game?.next_game])
 
   // Fetch player info from API on phase change
   useEffect(() => {
@@ -123,7 +119,8 @@ export default function Play({ params }) {
   }, [game?.phase, myPlayerId])
 
   async function pickNextGame(gameSub) {
-    await supabase.from("mrwhite_games").update({ next_game: gameSub }).eq("code", code)
+    await supabase.from("mrwhite_games").update({ next_game: gameSub, next_game_picker_name: me?.name }).eq("code", code)
+    window.location.href = `https://${gameSub}.jackbrannen.com/`
   }
 
   async function fetchPlayerInfo() {
@@ -316,13 +313,15 @@ export default function Play({ params }) {
             Back to Lobby
           </button>
         )}
-        {showGameModal && (
-          <GameModal
-            onClose={() => setShowGameModal(false)}
-            onSelect={sub => pickNextGame(sub)}
-            currentSub="mrwhite"
-          />
-        )}
+        <GameModal
+          open={showGameModal}
+          onClose={() => setShowGameModal(false)}
+          onSelect={sub => pickNextGame(sub)}
+          currentSub="mrwhite"
+          nextGame={game?.next_game}
+          nextGamePickerName={game?.next_game_picker_name}
+          myName={me?.name}
+        />
       </div>
     )
   }

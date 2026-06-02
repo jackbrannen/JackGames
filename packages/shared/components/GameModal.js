@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+
 export const GAMES = [
   { name: "Fishbowl",         sub: "fishbowl",         players: "4+ players",   description: "Teams guess clues from a bowl.",                                                     bg: "#3378FF", color: "white"    },
   { name: "The Game of What", sub: "gameofwhat",        players: "4+ players",   description: "Like Quiplash but with DIY Questions.",                                              bg: "#A02866", color: "white"    },
@@ -20,42 +22,94 @@ export function useNextGames(currentSub) {
   return GAMES.filter(g => g.sub !== currentSub)
 }
 
-// Renders the full-screen modal overlay.
+// Always rendered — handles both the picker modal and the invite banner for others.
+//
 // Props:
-//   onClose: () => void
-//   onSelect: (sub: string) => void  — called with the subdomain of the chosen game
-//   currentSub: string               — the current game's subdomain (excluded from list)
-export default function GameModal({ onClose, onSelect, currentSub }) {
+//   open                bool    — show the game-picker modal overlay
+//   onClose             fn      — called when modal is dismissed
+//   onSelect            fn(sub) — called with subdomain of chosen game
+//   currentSub          string  — current game's subdomain (excluded from list)
+//   nextGame            string  — game.next_game — subdomain picker chose
+//   nextGamePickerName  string  — game.next_game_picker_name — who picked
+//   myName              string  — current player's name (me?.name)
+export default function GameModal({
+  open = false,
+  onClose,
+  onSelect,
+  currentSub,
+  nextGame,
+  nextGamePickerName,
+  myName,
+}) {
   const games = useNextGames(currentSub)
+  const [dismissed, setDismissed] = useState(false)
+
+  const showInvite = nextGame && nextGamePickerName && myName &&
+    myName !== nextGamePickerName && !dismissed
+  const inviteGameName = GAMES.find(g => g.sub === nextGame)?.name ?? nextGame
+
   return (
-    <div
-      onClick={onClose}
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 300, overflowY: "auto", WebkitOverflowScrolling: "touch" }}
-    >
-      <div onClick={e => e.stopPropagation()} style={{ maxWidth: 480, margin: "0 auto", padding: "24px 16px 64px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <div style={{ fontSize: 20, fontWeight: 900, color: "white" }}>Play Another Game</div>
+    <>
+      {/* Invite banner — shown to non-pickers when someone chooses a next game */}
+      {showInvite && (
+        <div style={{
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 500,
+          background: "#1A1A2E", borderBottom: "2px solid rgba(255,255,255,0.15)",
+          padding: "14px 16px", display: "flex", alignItems: "center", gap: 12,
+          boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "white" }}>
+              {nextGamePickerName} wants to play {inviteGameName}
+            </span>
+          </div>
           <button
-            onClick={onClose}
-            style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 18, fontWeight: 800, padding: "6px 12px" }}
-          >✕</button>
+            onClick={() => window.location.href = `https://${nextGame}.jackbrannen.com/`}
+            style={{ background: "#FBDF54", color: "#000", fontSize: 14, fontWeight: 900, padding: "10px 16px", flexShrink: 0 }}
+          >
+            Join
+          </button>
+          <button
+            onClick={() => setDismissed(true)}
+            style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "8px 12px", flexShrink: 0 }}
+          >
+            ✕
+          </button>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {games.map(g => (
-            <button
-              key={g.sub}
-              onClick={() => { onClose(); onSelect(g.sub) }}
-              style={{ display: "block", width: "100%", background: g.bg, color: g.color, padding: "20px", textAlign: "left" }}
-            >
-              <div style={{ fontSize: 20, fontWeight: 900, lineHeight: 1.2, marginBottom: 5 }}>{g.name}</div>
-              <div style={{ marginBottom: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, background: "rgba(0,0,0,0.2)", color: g.color, padding: "3px 8px", opacity: 0.85 }}>{g.players}</span>
-              </div>
-              <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.65 }}>{g.description}</div>
-            </button>
-          ))}
+      )}
+
+      {/* Game-picker modal overlay */}
+      {open && (
+        <div
+          onClick={onClose}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 300, overflowY: "auto", WebkitOverflowScrolling: "touch" }}
+        >
+          <div onClick={e => e.stopPropagation()} style={{ maxWidth: 480, margin: "0 auto", padding: "24px 16px 64px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <div style={{ fontSize: 20, fontWeight: 900, color: "white" }}>Play Another Game</div>
+              <button
+                onClick={onClose}
+                style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 18, fontWeight: 800, padding: "6px 12px" }}
+              >✕</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {games.map(g => (
+                <button
+                  key={g.sub}
+                  onClick={() => { onClose(); onSelect(g.sub) }}
+                  style={{ display: "block", width: "100%", background: g.bg, color: g.color, padding: "20px", textAlign: "left" }}
+                >
+                  <div style={{ fontSize: 20, fontWeight: 900, lineHeight: 1.2, marginBottom: 5 }}>{g.name}</div>
+                  <div style={{ marginBottom: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 800, background: "rgba(0,0,0,0.2)", color: g.color, padding: "3px 8px", opacity: 0.85 }}>{g.players}</span>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.65 }}>{g.description}</div>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </>
   )
 }

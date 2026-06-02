@@ -452,10 +452,6 @@ export default function Play({ params }) {
   const sentenceRef = useRef("")
   const revealEndRef = useRef(null)
 
-  useEffect(() => {
-    if (!game?.next_game) return
-    window.location.href = `https://${game.next_game}.jackbrannen.com/`
-  }, [game?.next_game])
 
   const me = players.find(p => p.id === myPlayerId)
 
@@ -475,7 +471,7 @@ export default function Play({ params }) {
 
   async function loadState() {
     const { data: gameData } = await supabase
-      .from("tel_games").select("phase,is_dummy,current_step,total_steps,reveal_order,current_reveal_chain,current_reveal_step,timer_seconds,step_started_at,next_game").eq("code", code).single()
+      .from("tel_games").select("phase,is_dummy,current_step,total_steps,reveal_order,current_reveal_chain,current_reveal_step,timer_seconds,step_started_at,next_game,next_game_picker_name").eq("code", code).single()
 
     if (!gameData) { router.replace(`/${code}`); return }
     if (gameData.phase === "lobby") {
@@ -924,7 +920,8 @@ export default function Play({ params }) {
   }
 
   async function pickNextGame(gameSub) {
-    await supabase.from("tel_games").update({ next_game: gameSub }).eq("code", code)
+    await supabase.from("tel_games").update({ next_game: gameSub, next_game_picker_name: me?.name }).eq("code", code)
+    window.location.href = `https://${gameSub}.jackbrannen.com/`
   }
 
   // ── Finished ──────────────────────────────────────────────────────────────
@@ -1044,13 +1041,15 @@ export default function Play({ params }) {
         )}
       </div>
       {pokeSystemNode()}
-      {showGameModal && (
-        <GameModal
-          onClose={() => setShowGameModal(false)}
-          onSelect={sub => pickNextGame(sub)}
-          currentSub="telestrations"
-        />
-      )}
+      <GameModal
+        open={showGameModal}
+        onClose={() => setShowGameModal(false)}
+        onSelect={sub => pickNextGame(sub)}
+        currentSub="telestrations"
+        nextGame={game?.next_game}
+        nextGamePickerName={game?.next_game_picker_name}
+        myName={me?.name}
+      />
     </>
     )
   }

@@ -300,7 +300,6 @@ export default function Lobby({ params }) {
   const [settingsDraft, setSettingsDraft] = useState(DEFAULT_SETTINGS)
   const [savingSettings, setSavingSettings] = useState(false)
   const [settingsMessage, setSettingsMessage] = useState("")
-  const demoAutoJoinedRef = useRef(false)
   const hasAutoJoinedRef = useRef(false)
 
   async function refreshPlayers() {
@@ -398,39 +397,6 @@ export default function Lobby({ params }) {
     loadGame()
     return () => { cancelled = true }
   }, [code])
-
-  const DEMO_NAMES = ["Alex", "Sam", "Jordan", "Casey", "Riley", "Morgan", "Jamie", "Taylor"]
-
-  useEffect(() => {
-    if (!isDemo || myPlayerId || gameLocked || gameExists !== true) return
-    if (demoAutoJoinedRef.current) return
-    demoAutoJoinedRef.current = true
-
-    const autoName = DEMO_NAMES[Math.floor(Math.random() * DEMO_NAMES.length)]
-    const team1Count = players.filter((p) => p.team === 1).length
-    const team2Count = players.filter((p) => p.team === 2).length
-    const team = team2Count <= team1Count ? 2 : 1
-
-    ;(async () => {
-      const { data, error } = await supabase
-        .from("players")
-        .insert({ game_code: code, name: autoName, team, ready: false })
-        .select("id")
-        .single()
-
-      if (error) { demoAutoJoinedRef.current = false; return }
-
-      localStorage.setItem(`fishbowl:${code}:playerId`, data.id)
-      setMyPlayerId(data.id)
-
-      await supabase.from("clues").insert(
-        DEMO_CLUES_T2.map((text) => ({ game_code: code, player_id: data.id, text }))
-      )
-
-      await refreshPlayers()
-      await refreshMyClues(data.id)
-    })()
-  }, [isDemo, myPlayerId, gameLocked, gameExists, players])
 
   useEffect(() => {
     supabase.from("game_instructions").select("body").eq("game_key", "fishbowl").single()

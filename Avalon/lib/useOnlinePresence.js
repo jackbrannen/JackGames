@@ -2,8 +2,12 @@
   useOnlinePresence — tracks which players have the game tab open and visible
   ─────────────────────────────────────────────────────────────────────────────
   Broadcasts this player's presence when their tab is visible; untracks when
-  the tab is hidden. After a 5-second grace period (presenceReady), players
-  not in the channel are considered "stepped away."
+  the tab has been hidden for 30 seconds. After a 12-second grace period
+  (presenceReady), players not in the channel are considered "stepped away."
+
+  The 30s hide debounce prevents false positives from mobile users who briefly
+  switch apps — immediate untrack on visibilitychange was the main source of
+  both false positives (away when they're not) and delayed-reappear issues.
 
   Separate from useTypingPresence — online status is a persistent signal,
   typing is transient. They run on different channels.
@@ -27,17 +31,25 @@
 
   Returns:
     onlinePlayerIds  Set<string>  — player IDs with active presence (excludes self)
-    presenceReady    bool         — true after 5s; gate "away" logic on this to avoid
+    presenceReady    bool         — true after 12s; gate "away" logic on this to avoid
                                     false positives during initial presence sync
 */
 
 import { useState, useEffect, useRef } from "react"
 import { supabase } from "./supabase"
 
+const HIDE_UNTRACK_DELAY = 30000 // ms hidden before considered away
+const PRESENCE_READY_DELAY = 12000 // ms after mount before marking anyone away
+
 export default function useOnlinePresence(gameKey, code, myPlayerId) {
   const channelRef = useRef(null)
+  const myPlayerIdRef = useRef(myPlayerId)
+  const hideTimerRef = useRef(null)
   const [presenceState, setPresenceState] = useState({})
   const [presenceReady, setPresenceReady] = useState(false)
+
+  // Keep ref current so visibilitychange handler always has the latest playerId
+  useEffect(() => { myPlayerIdRef.current = myPlayerId }, [myPlayerId])
 
   useEffect(() => {
     if (!code) return
@@ -48,14 +60,21 @@ export default function useOnlinePresence(gameKey, code, myPlayerId) {
       .subscribe()
     channelRef.current = channel
 
-    const readyTimer = setTimeout(() => setPresenceReady(true), 5000)
+    const readyTimer = setTimeout(() => setPresenceReady(true), PRESENCE_READY_DELAY)
 
     function handleVisibility() {
-      if (!channelRef.current || !myPlayerId) return
+      const ch = channelRef.current
+      const pid = myPlayerIdRef.current
+      if (!ch || !pid) return
       if (document.hidden) {
-        channelRef.current.untrack()
+        // Debounce: only untrack after sustained absence, not on every app-switch
+        hideTimerRef.current = setTimeout(() => {
+          if (document.hidden) ch.untrack()
+        }, HIDE_UNTRACK_DELAY)
       } else {
-        channelRef.current.track({ playerId: myPlayerId })
+        clearTimeout(hideTimerRef.current)
+        hideTimerRef.current = null
+        ch.track({ playerId: pid })
       }
     }
     document.addEventListener("visibilitychange", handleVisibility)
@@ -63,6 +82,7 @@ export default function useOnlinePresence(gameKey, code, myPlayerId) {
     return () => {
       supabase.removeChannel(channel)
       clearTimeout(readyTimer)
+      clearTimeout(hideTimerRef.current)
       document.removeEventListener("visibilitychange", handleVisibility)
     }
   }, [gameKey, code])

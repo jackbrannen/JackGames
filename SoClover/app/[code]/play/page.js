@@ -729,6 +729,16 @@ export default function PlayPage({ params }) {
   }
 
   const allSlotsFilled = SLOT_NAMES.every(s => localSlots[s] != null)
+  // Pre-fill clue fields (dummy games)
+  useEffect(() => {
+    if (game?.phase !== "clue_writing" || myBoard?.status === "submitted") return
+    if (Object.values(localClues).some(c => c.trim())) return
+    supabase.rpc("get_random_ideas", { p_count: 4, p_exclude: [] }).then(({ data }) => {
+      if (!data || data.length < 4) return
+      setLocalClues({ topLeft: data[0], topRight: data[1], bottomRight: data[2], bottomLeft: data[3] })
+    })
+  }, [game?.phase, myPlayerId, myBoard?.status])
+
   const allCluesFilled = LEAF_NAMES.every(l => localClues[l].trim().length > 0)
   const nudgeClues = useSubmitNudge(Object.values(localClues).join(""), myBoard?.status === "submitted")
   const clueWordsOnBoard = useMemo(() => {

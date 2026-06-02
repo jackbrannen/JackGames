@@ -536,6 +536,13 @@ export default function Play({ params }) {
   )
   const nudgeAnswer = useSubmitNudge(answerText, !!myAnswer)
 
+  // Pre-fill fake answer (dummy games)
+  useEffect(() => {
+    if (game?.phase !== "guessing" || amArtist || myAnswer) return
+    supabase.rpc("get_random_ideas", { p_count: 1, p_exclude: [] })
+      .then(({ data }) => { if (data?.[0]) setAnswerText(prev => prev || data[0]) })
+  }, [game?.phase, game?.current_drawing_index, myPlayerId, amArtist, !!myAnswer])
+
   const myVote = useMemo(() =>
     votes.find(v => v.drawing_player_id === currentArtist?.id && v.voter_id === myPlayerId),
     [votes, currentArtist, myPlayerId]

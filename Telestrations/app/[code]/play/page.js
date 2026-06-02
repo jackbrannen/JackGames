@@ -555,6 +555,15 @@ export default function Play({ params }) {
 
   const nudgeSentence = useSubmitNudge(sentence, myStepSubmitted)
 
+  // Pre-fill sentence on writing steps (dummy games)
+  useEffect(() => {
+    if (game?.phase !== "play" || !myChainOwner || myStepSubmitted) return
+    const isDrawingStep = currentStep % 2 === 1
+    if (isDrawingStep) return
+    supabase.rpc("get_random_ideas", { p_count: 1, p_exclude: [] })
+      .then(({ data }) => { if (data?.[0]) setSentence(prev => prev || data[0]) })
+  }, [game?.phase, currentStep, myPlayerId, myStepSubmitted])
+
   const submittedCount = useMemo(() => {
     return steps.filter(s => s.step_number === currentStep).length
   }, [steps, currentStep])

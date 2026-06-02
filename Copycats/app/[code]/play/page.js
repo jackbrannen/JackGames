@@ -252,6 +252,21 @@ export default function PlayPage({ params }) {
     )
   )
 
+  // Pre-fill question and answer fields (dummy games)
+  useEffect(() => {
+    if (game?.phase !== "question_writing" || !myId) return
+    supabase.rpc("get_random_ideas", { p_count: 1, p_exclude: [] })
+      .then(({ data }) => { if (data?.[0]) setMyQuestion(prev => prev || data[0]) })
+  }, [game?.phase, game?.current_round, myId])
+
+  useEffect(() => {
+    if (game?.phase !== "answering" || !myId) return
+    const myAnswerRow = answers.find(a => a.player_id === myId && a.round === game?.current_round)
+    if (myAnswerRow) return
+    supabase.rpc("get_random_ideas", { p_count: 1, p_exclude: [] })
+      .then(({ data }) => { if (data?.[0]) setMyAnswer(prev => prev || data[0]) })
+  }, [game?.phase, game?.current_round, myId, answers.length])
+
   // Must be declared before early returns — Rules of Hooks
   const myAnswerRowEarly = answers.find(a => a.player_id === myId && a.round === game?.current_round)
   const nudgeAnswer = useSubmitNudge(myAnswer, !!myAnswerRowEarly)

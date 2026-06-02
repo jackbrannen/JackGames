@@ -98,6 +98,7 @@ export default function Lobby({ params }) {
   const [confirmingStart, setConfirmingStart] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [draftFirstTurn, setDraftFirstTurn] = useState("red")
+  const hasAutoJoinedRef = useRef(false)
 
   async function refreshPlayers() {
     const { data } = await supabase
@@ -138,6 +139,27 @@ export default function Lobby({ params }) {
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     loadGame().then(() => refreshPlayers())
   }, [code])
+
+  useEffect(() => {
+    if (gameExists !== true || gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    const saved = loadProfile()
+    if (!saved?.username) return
+    hasAutoJoinedRef.current = true
+    ;(async () => {
+      const { data: taken } = await supabase.from("codenames_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
+      if (taken?.length > 0) return
+      const reds = players.filter(p => p.team === "red").length
+      const blues = players.filter(p => p.team === "blue").length
+      const team = blues <= reds ? "blue" : "red"
+      const { data, error } = await supabase.from("codenames_players")
+        .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName?.trim() ?? "", last_name: saved.lastName?.trim() ?? "", team })
+        .select("id").single()
+      if (error || !data) { hasAutoJoinedRef.current = false; return }
+      localStorage.setItem(`codenames:${code}:playerId`, data.id)
+      setMyPlayerId(data.id)
+      await refreshPlayers()
+    })()
+  }, [gameExists, gamePhase, myPlayerId, players.length, code])
 
   useEffect(() => {
     const poll = setInterval(async () => {

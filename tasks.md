@@ -18,7 +18,7 @@ are wired in all 12 games and omitted from the table.
 | Lobby            |    | ✓   |    |     |    |    |     |    |    |    |    |    |
 | EndGame          |    | ✓   |    |     |    |    |     |    |    |    |    |    |
 | Results          |    | ✓   |    |     |    |    |     |    |    |    |    |    |
-| **Dummy Games**  |    | ✓   |    | ✓   |    |    |     |    |    |    |    |    |
+| **Dummy Games**  | ✓  | ✓   | ·  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ·  | ·  |
 | **Online pres.** |    | ✓   |    |     |    |    |     |    |    |    |    |    |
 
 FB=Fishbowl, GOW=Game of What, AV=Avalon, FTW=First to Worst, DF=Drawful,

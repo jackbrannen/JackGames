@@ -217,6 +217,7 @@ export default function Lobby({ params }) {
   const [confirmingStart, setConfirmingStart] = useState(false)
   const [startError, setStartError] = useState("")
   const [starting, setStarting] = useState(false)
+  const hasAutoJoinedRef = useRef(false)
 
   async function refreshPlayers() {
     const { data } = await supabase
@@ -265,6 +266,31 @@ export default function Lobby({ params }) {
       await refreshMyClues(existing)
     })
   }, [code])
+
+  useEffect(() => {
+    if (game?.phase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    const saved = loadProfile()
+    if (!saved?.username) return
+    hasAutoJoinedRef.current = true
+    ;(async () => {
+      const { data: taken } = await supabase.from("reversecharades_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
+      if (taken?.length > 0) return
+      const aCount = players.filter(p => p.team === "A").length
+      const bCount = players.filter(p => p.team === "B").length
+      const team = bCount <= aCount ? "B" : "A"
+      const { data, error } = await supabase.from("reversecharades_players")
+        .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName?.trim() ?? "", last_name: saved.lastName?.trim() ?? "", team, ready: false })
+        .select("id").single()
+      if (error || !data) { hasAutoJoinedRef.current = false; return }
+      localStorage.setItem(`rc:${code}:playerId`, data.id)
+      setMyPlayerId(data.id)
+      const clueCount = game?.min_clues_per_player || 2
+      const { data: ideas } = await supabase.rpc("get_random_ideas", { p_count: clueCount, p_exclude: [] })
+      if (ideas?.length) await supabase.from("reversecharades_clues").insert(ideas.map(text => ({ game_code: code, submitted_by: data.id, text })))
+      await refreshPlayers()
+      await refreshMyClues(data.id)
+    })()
+  }, [game?.phase, myPlayerId, players.length, code])
 
   useEffect(() => {
     const poll = setInterval(async () => {

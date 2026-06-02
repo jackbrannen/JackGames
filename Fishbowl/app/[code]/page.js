@@ -301,6 +301,7 @@ export default function Lobby({ params }) {
   const [savingSettings, setSavingSettings] = useState(false)
   const [settingsMessage, setSettingsMessage] = useState("")
   const demoAutoJoinedRef = useRef(false)
+  const hasAutoJoinedRef = useRef(false)
 
   async function refreshPlayers() {
     const { data } = await supabase
@@ -331,6 +332,31 @@ export default function Lobby({ params }) {
       if (saved.team) setJoinGender(saved.team)
     }
   }, [])
+
+  useEffect(() => {
+    if (gameExists !== true || gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    const saved = loadProfile()
+    if (!saved?.username) return
+    hasAutoJoinedRef.current = true
+    ;(async () => {
+      const { data: taken } = await supabase.from("players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
+      if (taken?.length > 0) return
+      const t1 = players.filter(p => p.team === 1).length
+      const t2 = players.filter(p => p.team === 2).length
+      const team = t2 <= t1 ? 2 : 1
+      const { data, error } = await supabase.from("players")
+        .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName?.trim() ?? "", last_name: saved.lastName?.trim() ?? "", team, ready: false })
+        .select("id").single()
+      if (error || !data) { hasAutoJoinedRef.current = false; return }
+      localStorage.setItem(`fishbowl:${code}:playerId`, data.id)
+      setMyPlayerId(data.id)
+      const clueCount = gameSettings.min_clues_per_player || 3
+      const { data: ideas } = await supabase.rpc("get_random_ideas", { p_count: clueCount, p_exclude: [] })
+      if (ideas?.length) await supabase.from("clues").insert(ideas.map(text => ({ game_code: code, player_id: data.id, text })))
+      await refreshPlayers()
+      await refreshMyClues(data.id)
+    })()
+  }, [gameExists, gamePhase, myPlayerId, players.length, code])
 
   useEffect(() => {
     const existing = localStorage.getItem(`fishbowl:${code}:playerId`)

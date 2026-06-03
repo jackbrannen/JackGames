@@ -432,6 +432,8 @@ export default function Play({ params }) {
       .from("drawful_games").select("phase,drawing_started_at,current_drawing_index,is_dummy,ready_player_ids,next_game,next_game_picker_name").eq("code", code).single()
     if (!gameData) { router.replace(`/${code}`); return }
     if (gameData.phase === "lobby") { router.replace(`/${code}`); return }
+    // TEMP: Skip dummy games to finished for EndGame testing
+    if (gameData.is_dummy && gameData.phase !== "finished") gameData.phase = "finished"
     prevPhaseRef.current = gameData.phase
 
     const { data: playerData } = await supabase

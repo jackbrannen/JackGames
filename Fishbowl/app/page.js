@@ -138,20 +138,6 @@ export default function Home() {
     try {
       const code = await createGame()
 
-      const { data: player, error: playerError } = await supabase
-        .from("players")
-        .insert({ game_code: code, name: "Jack", team: 1, ready: false })
-        .select("id")
-        .single()
-
-      if (playerError) throw playerError
-
-      localStorage.setItem(`fishbowl:${code}:playerId`, player.id)
-
-      await supabase.from("clues").insert(
-        DUMMY_CLUES_T1.map((text) => ({ game_code: code, player_id: player.id, text }))
-      )
-
       await supabase.from("games").update({
         rounds_total: 1,
         turn_duration_seconds: 45,

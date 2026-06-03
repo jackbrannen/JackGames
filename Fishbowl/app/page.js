@@ -1,8 +1,9 @@
 "use client"
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { supabase } from "../lib/supabase"
+import { useRouter } from "next/navigation"
 import { useSubmitNudge } from "../lib/useSubmitNudge"
 
 const WORDS_A = [
@@ -48,6 +49,7 @@ function randomPin() {
 }
 
 async function createGame() {
+  const { supabase } = await import("../lib/supabase")
   const maxAttempts = 10
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
@@ -110,7 +112,6 @@ const DUMMY_CLUES_T2 = [
 
 export default function Home() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [errorMessage, setErrorMessage] = useState("")
   const [isCreating, setIsCreating] = useState(false)
   const [isDummy, setIsDummy] = useState(false)
@@ -137,6 +138,7 @@ export default function Home() {
     setIsDummy(true)
 
     try {
+      const { supabase } = await import("../lib/supabase")
       const code = await createGame()
 
       await supabase.from("games").update({

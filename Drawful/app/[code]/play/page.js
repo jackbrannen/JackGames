@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
@@ -428,12 +427,11 @@ export default function Play({ params }) {
 
 
   async function loadState() {
+    const { supabase } = await import("../../../lib/supabase")
     const { data: gameData } = await supabase
       .from("drawful_games").select("phase,drawing_started_at,current_drawing_index,is_dummy,ready_player_ids,next_game,next_game_picker_name").eq("code", code).single()
     if (!gameData) { router.replace(`/${code}`); return }
     if (gameData.phase === "lobby") { router.replace(`/${code}`); return }
-    // TEMP: Skip dummy games to finished for EndGame testing
-    if (gameData.is_dummy && gameData.phase !== "finished") gameData.phase = "finished"
     prevPhaseRef.current = gameData.phase
 
     const { data: playerData } = await supabase
@@ -460,20 +458,37 @@ export default function Play({ params }) {
   }, [code])
 
 
+  // Initial load + polling — always runs
   useEffect(() => {
-    supabase.from("game_instructions").select("body").eq("game_key", "drawful").single()
-      .then(({ data }) => { if (data?.body) setInstructions(data.body) })
-    loadState()
-    let poll = setInterval(loadState, 1500)
-    function handleVisibility() { clearInterval(poll); if (!document.hidden) { loadState(); poll = setInterval(loadState, 1500) } }
-    document.addEventListener("visibilitychange", handleVisibility)
-    const channel = supabase.channel(`drawful-play-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "drawful_games", filter: `code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "drawful_answers", filter: `game_code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "drawful_votes", filter: `game_code=eq.${code}` }, loadState)
-      .subscribe()
-    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
+    let cleanup
+    ;(async () => {
+      const { supabase } = await import("../../../lib/supabase")
+      supabase.from("game_instructions").select("body").eq("game_key", "drawful").single()
+        .then(({ data }) => { if (data?.body) setInstructions(data.body) })
+      loadState()
+      let poll = setInterval(loadState, 1500)
+      function handleVisibility() { clearInterval(poll); if (!document.hidden) { loadState(); poll = setInterval(loadState, 1500) } }
+      document.addEventListener("visibilitychange", handleVisibility)
+      cleanup = () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility) }
+    })()
+    return () => cleanup?.()
   }, [code])
+
+  // Realtime subscriptions — only when game is active
+  useEffect(() => {
+    if (!game || game.phase === "finished") return
+    let cleanup
+    ;(async () => {
+      const { supabase } = await import("../../../lib/supabase")
+      const channel = supabase.channel(`drawful-play-${code}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "drawful_games", filter: `code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "drawful_answers", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "drawful_votes", filter: `game_code=eq.${code}` }, loadState)
+        .subscribe()
+      cleanup = () => supabase.removeChannel(channel)
+    })()
+    return () => cleanup?.()
+  }, [code, game?.phase])
 
   // Reset per-round state when drawing index changes
   useEffect(() => {
@@ -651,6 +666,7 @@ export default function Play({ params }) {
 
   async function submitDrawing(autoSubmit = false) {
     if (submittingDrawing || me?.drawing_url) return
+    const { supabase } = await import("../../../lib/supabase")
     const getExport = getExportRef.current
     if (!getExport && !autoSubmit) { alert("Canvas not ready"); return }
 
@@ -681,6 +697,7 @@ export default function Play({ params }) {
 
   async function submitAnswer() {
     if (!answerText.trim() || submittingAnswer || myAnswer || amArtist) return
+    const { supabase } = await import("../../../lib/supabase")
     setSubmittingAnswer(true)
     const trimmed = answerText.trim()
     const capitalized = trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
@@ -706,6 +723,7 @@ export default function Play({ params }) {
 
   async function submitVote() {
     if (!selectedAnswerId || submittingVote || myVote || amArtist) return
+    const { supabase } = await import("../../../lib/supabase")
     setSubmittingVote(true)
     const { error } = await supabase.rpc("drawful_submit_vote", {
       p_code: code,
@@ -719,6 +737,7 @@ export default function Play({ params }) {
 
   async function markReady() {
     if (markingReady) return
+    const { supabase } = await import("../../../lib/supabase")
     setMarkingReady(true)
     await supabase.rpc("drawful_mark_ready", { p_code: code, p_player_id: myPlayerId })
     await loadState()
@@ -743,6 +762,7 @@ export default function Play({ params }) {
     const finalPlayers = [...players].sort((a, b) => b.score - a.score)
 
     const resetGame = async () => {
+      const { supabase } = await import("../../../lib/supabase")
       await supabase.rpc("drawful_reset_game", { p_code: code })
       await loadState()
     }

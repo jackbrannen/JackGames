@@ -103,7 +103,40 @@ export default function Home() {
   }
 
   async function onDummyClick() {
-    onCreateClick()
+    if (isCreating) return
+    setError("")
+    setIsCreating(true)
+    try {
+      const { supabase } = await import("../lib/supabase")
+
+      // Generate a unique code
+      let code
+      for (let i = 0; i < 10; i++) {
+        const candidate = randomCode()
+        const { count } = await supabase.from("drawful_games").select("code", { count: "exact", head: true }).eq("code", candidate).neq("phase", "finished")
+        if ((count ?? 0) === 0) { code = candidate; break }
+      }
+      if (!code) throw new Error("Could not generate code")
+
+      // Insert game directly with finished phase
+      const { error: gameErr } = await supabase.from("drawful_games").insert({ code, is_dummy: true, phase: "finished" })
+      if (gameErr) throw gameErr
+
+      // Insert bot players
+      const bots = [
+        { name: "Raccoon", seat: 0, score: 450, is_bot: true, game_code: code },
+        { name: "Flamingo", seat: 1, score: 380, is_bot: true, game_code: code },
+        { name: "Capybara", seat: 2, score: 520, is_bot: true, game_code: code },
+        { name: "Narwhal", seat: 3, score: 410, is_bot: true, game_code: code },
+      ]
+      const { error: botErr } = await supabase.from("drawful_players").insert(bots)
+      if (botErr) throw botErr
+
+      router.push(`/${code}/play`)
+    } catch (e) {
+      setError(e?.message ?? "unknown error")
+      setIsCreating(false)
+    }
   }
 
   function onJoin() {

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { supabase } from "../../lib/supabase"
 
 const BG = "#307977"
 const ACCENT = "#F5E8D8"
@@ -96,17 +95,22 @@ export default function Lobby({ params }) {
   }, [])
 
   useEffect(() => {
-    supabase.from("game_instructions").select("body").eq("game_key", "drawful").single()
-      .then(({ data }) => { if (data?.body) setInstructions(data.body) })
-    loadState()
-    let poll = setInterval(loadState, 1500)
-    function handleVisibility() { clearInterval(poll); if (!document.hidden) { loadState(); poll = setInterval(loadState, 1500) } }
-    document.addEventListener("visibilitychange", handleVisibility)
-    const channel = supabase.channel(`drawful-lobby-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "drawful_players", filter: `game_code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "drawful_games", filter: `code=eq.${code}` }, loadState)
-      .subscribe()
-    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
+    let cleanup
+    (async () => {
+      const { supabase } = await import("../../lib/supabase")
+      supabase.from("game_instructions").select("body").eq("game_key", "drawful").single()
+        .then(({ data }) => { if (data?.body) setInstructions(data.body) })
+      loadState()
+      let poll = setInterval(loadState, 1500)
+      function handleVisibility() { clearInterval(poll); if (!document.hidden) { loadState(); poll = setInterval(loadState, 1500) } }
+      document.addEventListener("visibilitychange", handleVisibility)
+      const channel = supabase.channel(`drawful-lobby-${code}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "drawful_players", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "drawful_games", filter: `code=eq.${code}` }, loadState)
+        .subscribe()
+      cleanup = () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
+    })()
+    return () => cleanup?.()
   }, [code])
 
   useEffect(() => {
@@ -115,7 +119,10 @@ export default function Lobby({ params }) {
 
   useEffect(() => {
     if (game?.phase === "finished" && me) {
-      supabase.rpc("drawful_reset_game", { p_code: code })
+      (async () => {
+        const { supabase } = await import("../../lib/supabase")
+        await supabase.rpc("drawful_reset_game", { p_code: code })
+      })()
     }
   }, [game?.phase, me])
 
@@ -126,6 +133,7 @@ export default function Lobby({ params }) {
     if (!saved?.username) return
     hasAutoJoinedRef.current = true
     ;(async () => {
+      const { supabase } = await import("../../lib/supabase")
       const { data: taken } = await supabase.from("drawful_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
       if (taken?.length > 0) return
       const { data, error } = await supabase.from("drawful_players")
@@ -138,6 +146,7 @@ export default function Lobby({ params }) {
   }, [game?.phase, myPlayerId, code])
 
   async function join() {
+    const { supabase } = await import("../../lib/supabase")
     const trimmedUsername = username.trim()
     const trimmedFirst = (savedProfile?.firstName || firstName).trim()
     const trimmedLast = (savedProfile?.lastName || lastName).trim()
@@ -169,6 +178,7 @@ export default function Lobby({ params }) {
 
   async function startGame() {
     if (starting) return
+    const { supabase } = await import("../../lib/supabase")
     setStarting(true)
     const { error } = await supabase.rpc("drawful_start_game", { p_code: code })
     if (error) { alert("Failed to start: " + error.message); setStarting(false) }

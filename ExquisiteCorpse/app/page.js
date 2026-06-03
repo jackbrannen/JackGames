@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { supabase } from "../lib/supabase"
 import { useSubmitNudge } from "../lib/useSubmitNudge"
 
 const BG = "#1A3A5C"

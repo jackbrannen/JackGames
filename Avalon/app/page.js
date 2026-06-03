@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { supabase } from "../lib/supabase"
 import { useSubmitNudge } from "../lib/useSubmitNudge"
 
 const BG = "#0F1923"
@@ -20,6 +19,7 @@ function randomCode() {
 }
 
 async function createGame() {
+  const { supabase } = await import("../lib/supabase")
   for (let attempt = 0; attempt < 10; attempt++) {
     const code = randomCode()
     const { count } = await supabase

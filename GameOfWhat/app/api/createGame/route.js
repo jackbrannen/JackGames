@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
+import { NextResponse } from "next/server"
 
 function randomCode() {
   const words = ["MAPLE", "RIVER", "STONE", "FOREST", "CLOUD", "BRIDGE", "SUNSET", "WINTER", "VALLEY", "HARBOR", "CRYSTAL", "THUNDER", "SILVER", "MARBLE", "GOLDEN", "MYSTIC", "DRAGON", "CROWN", "LANTERN", "PHOENIX", "VELVET", "SHADOW", "CASTLE", "PRISM", "EMBER", "RAVEN", "DESERT", "OCEAN", "ISLAND", "GARDEN"]
@@ -6,13 +7,7 @@ function randomCode() {
 }
 
 export async function OPTIONS() {
-  return new Response(null, {
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST",
-      "Access-Control-Allow-Headers": "Content-Type"
-    }
-  })
+  return NextResponse.json(null, { headers: corsHeaders })
 }
 
 const corsHeaders = {
@@ -47,11 +42,11 @@ export async function POST() {
         .select("code")
         .single()
       if (insertError) throw insertError
-      return Response.json({ code: String(data.code).toUpperCase() }, { headers: corsHeaders })
+      return NextResponse.json({ code: String(data.code).toUpperCase() }, { headers: corsHeaders })
     }
     throw new Error("unable_to_allocate_game_code")
   } catch (error) {
-    return Response.json(
+    return NextResponse.json(
       { error: error?.message ?? "unknown" },
       { status: 500, headers: corsHeaders }
     )

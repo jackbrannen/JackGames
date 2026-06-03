@@ -15,12 +15,22 @@ export async function OPTIONS() {
   })
 }
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type"
+}
+
 export async function POST() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  )
   try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    )
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      throw new Error("Missing Supabase environment variables")
+    }
+
     for (let attempt = 1; attempt <= 10; attempt++) {
       const code = randomCode()
       const { count, error: checkError } = await supabase
@@ -37,15 +47,13 @@ export async function POST() {
         .select("code")
         .single()
       if (insertError) throw insertError
-      return Response.json({ code: String(data.code).toUpperCase() }, {
-        headers: { "Access-Control-Allow-Origin": "*" }
-      })
+      return Response.json({ code: String(data.code).toUpperCase() }, { headers: corsHeaders })
     }
     throw new Error("unable_to_allocate_game_code")
   } catch (error) {
-    return Response.json({ error: error?.message ?? "unknown" }, {
-      status: 500,
-      headers: { "Access-Control-Allow-Origin": "*" }
-    })
+    return Response.json(
+      { error: error?.message ?? "unknown" },
+      { status: 500, headers: corsHeaders }
+    )
   }
 }

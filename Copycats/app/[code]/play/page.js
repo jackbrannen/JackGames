@@ -7,6 +7,7 @@ import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
+import EndGame from "../../../components/EndGame"
 
 const BG         = "#5C2D8C"
 const YELLOW     = "#FBDF54"
@@ -927,53 +928,19 @@ export default function PlayPage({ params }) {
   // ─── phase: finished ─────────────────────────────────────────────────────
 
   if (phase === "finished") {
-    const sorted = [...players].sort((a, b) => b.score - a.score)
-    const winner = sorted[0]
+    const finalPlayers = [...players].sort((a, b) => b.score - a.score)
+    const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-        <div style={{ background: DARK, padding: "20px", textAlign: "center" }}>
-          <h1 style={{ fontSize: 36, fontWeight: 900, color: "white" }}>Game Over</h1>
-        </div>
-        <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
-          <Section label="Final Scores">
-            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-              {sorted.map((p, i) => (
-                <div key={p.id} style={{ display: "flex" }}>
-                  <div style={{ background: DARK, padding: "14px 0", minWidth: 48, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900 }}>
-                    {i + 1}
-                  </div>
-                  <div style={{ background: MID, flex: 1, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div>
-                      <span style={{ fontSize: 17, fontWeight: 700 }}>{p.name}</span>
-                      
-                      {p.id === winner.id && (
-                        <div style={{ fontSize: 11, fontWeight: 800, color: YELLOW, textTransform: "uppercase", letterSpacing: "0.12em", marginTop: 2 }}>
-                          Winner
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: p.id === winner.id ? YELLOW : WARM_LIGHT }}>
-                      {p.score}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Section>
-
-          <div style={{ display: "flex", gap: 10, flexDirection: "column" }}>
-            <button onClick={async () => { await supabase.rpc("cc_reset_to_lobby", { p_code: code }); loadState() }}
-              style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
-              Play Again
-            </button>
-            <a href="https://games.jackbrannen.com"
-              style={{ display: "block", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%", textAlign: "center", textDecoration: "none" }}>
-              Play Another Game
-            </a>
-          </div>
-        </div>
+        <EndGame
+          players={finalPlayers}
+          myPlayerId={myId}
+          onPlayAgain={async () => { await supabase.rpc("cc_reset_to_lobby", { p_code: code }); await loadState() }}
+          bottomPad={BOTTOM_PAD}
+          colors={{ yellow: YELLOW, wl: MID }}
+        />
       </div>
         {pokeSystemNode()}
       </>

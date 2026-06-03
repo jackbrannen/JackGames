@@ -31,6 +31,7 @@ export function useNextGames(currentSub) {
 //   currentSub          string  — current game's subdomain (excluded from list)
 //   nextGame            string  — game.next_game — subdomain picker chose
 //   nextGamePickerName  string  — game.next_game_picker_name — who picked
+//   nextGameCode        string  — game.next_game_code — room code in the chosen game
 //   myName              string  — current player's name (me?.name)
 export default function GameModal({
   open = false,
@@ -39,12 +40,13 @@ export default function GameModal({
   currentSub,
   nextGame,
   nextGamePickerName,
+  nextGameCode,
   myName,
 }) {
   const games = useNextGames(currentSub)
   const [dismissed, setDismissed] = useState(false)
 
-  const showInvite = nextGame && nextGamePickerName && myName &&
+  const showInvite = nextGame && nextGamePickerName && nextGameCode && myName &&
     myName !== nextGamePickerName && !dismissed
   const inviteGameName = GAMES.find(g => g.sub === nextGame)?.name ?? nextGame
 
@@ -71,7 +73,7 @@ export default function GameModal({
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <button
-                onClick={() => window.location.href = `https://${nextGame}.jackbrannen.com/?fromGame=${currentSub}&pickerName=${encodeURIComponent(nextGamePickerName)}`}
+                onClick={() => window.location.href = `https://${nextGame}.jackbrannen.com/${nextGameCode}`}
                 style={{ background: "#FBDF54", color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}
               >
                 Join

@@ -456,22 +456,6 @@ export default function Play({ params }) {
     await supabase.rpc("gow_reset_game", { p_code: code })
   }
 
-  async function pickNextGame(gameSub) {
-    try {
-      const res = await fetch(`https://${gameSub}.jackbrannen.com/api/createGame`, { method: "POST" })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const json = await res.json()
-      if (json.error) throw new Error(json.error)
-      const newCode = json.code
-      if (!newCode) throw new Error("No code in response")
-      await supabase.from("gow_games").update({ next_game: gameSub, next_game_picker_name: me?.name, next_game_code: newCode }).eq("code", code)
-      window.location.href = `https://${gameSub}.jackbrannen.com/${newCode}`
-    } catch (error) {
-      console.error("[pickNextGame]", error)
-      alert("Failed to create game. Try again.")
-    }
-  }
-
   if (game.phase === "finished") {
     const finalPlayers = [...(gameOverPlayers ?? players)].sort((a, b) => b.score - a.score)
     return (
@@ -486,16 +470,6 @@ export default function Play({ params }) {
         />
       </div>
         {pokeSystemNode()}
-      <GameModal
-        open={showGameModal}
-        onClose={() => setShowGameModal(false)}
-        onSelect={sub => pickNextGame(sub)}
-        currentSub="gameofwhat"
-        nextGame={game?.next_game}
-        nextGamePickerName={game?.next_game_picker_name}
-        nextGameCode={game?.next_game_code}
-        myName={me?.name}
-      />
       </>
     )
   }

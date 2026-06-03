@@ -35,6 +35,7 @@ function randomCode() {
 }
 
 async function ensurePromptBank() {
+  const { supabase } = await import("../lib/supabase")
   const { count } = await supabase
     .from("drawful_prompts")
     .select("id", { count: "exact", head: true })

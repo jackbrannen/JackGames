@@ -81,12 +81,12 @@ export default function Home() {
     const pickerName = searchParams.get("pickerName")
 
     if (fromGame && pickerName) {
-      setIsCreating(true)
+      setCreating(true)
       createGame()
         .then(code => router.push(`/${code}`))
         .catch(e => {
           setError(e?.message ?? "Failed to create game")
-          setIsCreating(false)
+          setCreating(false)
         })
     }
   }, [searchParams, router])

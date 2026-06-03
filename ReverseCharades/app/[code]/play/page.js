@@ -410,6 +410,7 @@ export default function Play({ params }) {
         currentSub="reversecharades"
         nextGame={game?.next_game}
         nextGamePickerName={game?.next_game_picker_name}
+        nextGameCode={game?.next_game_code}
         myName={me?.name}
       />
       </>

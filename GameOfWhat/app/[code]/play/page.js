@@ -101,7 +101,7 @@ export default function Play({ params }) {
   async function loadState() {
     const { data: gameData } = await supabase
       .from("gow_games")
-      .select("code,phase,round_index,rounds_total,current_question_id,question_phase,used_prompts,next_game,next_game_picker_name,last_completed_question_id")
+      .select("code,phase,round_index,rounds_total,current_question_id,question_phase,used_prompts,next_game,next_game_picker_name,next_game_code,last_completed_question_id")
       .eq("code", code)
       .single()
     if (!gameData) return
@@ -458,8 +458,16 @@ export default function Play({ params }) {
   }
 
   async function pickNextGame(gameSub) {
-    await supabase.from("gow_games").update({ next_game: gameSub, next_game_picker_name: me?.name }).eq("code", code)
-    window.location.href = `https://${gameSub}.jackbrannen.com/`
+    try {
+      const res = await fetch(`https://${gameSub}.jackbrannen.com/api/createGame`, { method: "POST" })
+      const { code: newCode, error } = await res.json()
+      if (error) throw new Error(error)
+      await supabase.from("gow_games").update({ next_game: gameSub, next_game_picker_name: me?.name, next_game_code: newCode }).eq("code", code)
+      window.location.href = `https://${gameSub}.jackbrannen.com/${newCode}`
+    } catch (error) {
+      console.error("[pickNextGame]", error)
+      alert("Failed to create game. Try again.")
+    }
   }
 
   if (game.phase === "finished") {
@@ -484,6 +492,7 @@ export default function Play({ params }) {
         currentSub="gameofwhat"
         nextGame={game?.next_game}
         nextGamePickerName={game?.next_game_picker_name}
+        nextGameCode={game?.next_game_code}
         myName={me?.name}
       />
       </>

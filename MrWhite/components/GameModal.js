@@ -22,7 +22,7 @@ export function useNextGames(currentSub) {
   return GAMES.filter(g => g.sub !== currentSub)
 }
 
-// Always rendered — handles both the picker modal and the invite banner for others.
+// Always rendered — handles both the picker modal and the invite popup for others.
 //
 // Props:
 //   open                bool    — show the game-picker modal overlay
@@ -31,6 +31,7 @@ export function useNextGames(currentSub) {
 //   currentSub          string  — current game's subdomain (excluded from list)
 //   nextGame            string  — game.next_game — subdomain picker chose
 //   nextGamePickerName  string  — game.next_game_picker_name — who picked
+//   nextGameCode        string  — game.next_game_code — room code in the chosen game
 //   myName              string  — current player's name (me?.name)
 export default function GameModal({
   open = false,
@@ -39,42 +40,52 @@ export default function GameModal({
   currentSub,
   nextGame,
   nextGamePickerName,
+  nextGameCode,
   myName,
 }) {
   const games = useNextGames(currentSub)
   const [dismissed, setDismissed] = useState(false)
 
-  const showInvite = nextGame && nextGamePickerName && myName &&
+  const showInvite = nextGame && nextGamePickerName && nextGameCode && myName &&
     myName !== nextGamePickerName && !dismissed
   const inviteGameName = GAMES.find(g => g.sub === nextGame)?.name ?? nextGame
 
   return (
     <>
-      {/* Invite banner — shown to non-pickers when someone chooses a next game */}
+      {/* Invite popup — shown to non-pickers when someone chooses a next game */}
       {showInvite && (
-        <div style={{
-          position: "fixed", top: 0, left: 0, right: 0, zIndex: 500,
-          background: "#1A1A2E", borderBottom: "2px solid rgba(255,255,255,0.15)",
-          padding: "14px 16px", display: "flex", alignItems: "center", gap: 12,
-          boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
-        }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "white" }}>
-              {nextGamePickerName} wants to play {inviteGameName}
-            </span>
+        <div
+          onClick={() => setDismissed(true)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center" }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: "#111118", borderRadius: 12, padding: "32px 24px", maxWidth: 320,
+              textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.8)",
+            }}
+          >
+            <div style={{ fontSize: 24, fontWeight: 900, color: "white", marginBottom: 12 }}>
+              {nextGamePickerName} wants to play
+            </div>
+            <div style={{ fontSize: 28, fontWeight: 900, color: "#FBDF54", marginBottom: 24 }}>
+              {inviteGameName}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button
+                onClick={() => window.location.href = `https://${nextGame}.jackbrannen.com/${nextGameCode}`}
+                style={{ background: "#FBDF54", color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}
+              >
+                Join
+              </button>
+              <button
+                onClick={() => setDismissed(true)}
+                style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%" }}
+              >
+                Maybe later
+              </button>
+            </div>
           </div>
-          <button
-            onClick={() => window.location.href = `https://${nextGame}.jackbrannen.com/`}
-            style={{ background: "#FBDF54", color: "#000", fontSize: 14, fontWeight: 900, padding: "10px 16px", flexShrink: 0 }}
-          >
-            Join
-          </button>
-          <button
-            onClick={() => setDismissed(true)}
-            style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "8px 12px", flexShrink: 0 }}
-          >
-            ✕
-          </button>
         </div>
       )}
 

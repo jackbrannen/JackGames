@@ -1197,6 +1197,7 @@ export default function PlayPage({ params }) {
         currentSub="soclover"
         nextGame={game?.next_game}
         nextGamePickerName={game?.next_game_picker_name}
+        nextGameCode={game?.next_game_code}
         myName={me?.name}
       />
       </>

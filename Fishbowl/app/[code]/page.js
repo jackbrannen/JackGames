@@ -1017,6 +1017,7 @@ export default function Lobby({ params }) {
                     <div style={{ width: 7, height: 7, borderRadius: "50%", background: p.ready ? "#12BAAA" : "rgba(255,255,255,0.25)", flexShrink: 0 }} />
                     <span style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.2 }}>
                       {p.name}
+                      {p.id === myPlayerId && <span style={{ fontSize: 12, opacity: 0.65, fontWeight: 600, marginLeft: 6 }}>you</span>}
                     </span>
                   </div>
                 ))}
@@ -1281,7 +1282,7 @@ export default function Lobby({ params }) {
                   }}>
                     <span style={{ fontSize: 16, fontWeight: 700, color: "white" }}>
                       {p.name}
-                      
+                      {p.id === myPlayerId && <span style={{ fontSize: 12, opacity: 0.65, fontWeight: 600, marginLeft: 6 }}>you</span>}
                     </span>
                   </div>
                 </div>

@@ -1103,10 +1103,14 @@ export default function Play({ params }) {
 
     // ── INTRO ──
     if (game.round_phase === "intro") {
-      async function handleLetsGo() {
-        await supabase.rpc("ftw_start_dragging", { p_code: code })
-        await loadState()
-      }
+      useEffect(() => {
+        if (isSubject) return
+        const timer = setTimeout(async () => {
+          await supabase.rpc("ftw_start_dragging", { p_code: code })
+          await loadState()
+        }, 2000)
+        return () => clearTimeout(timer)
+      }, [code, isSubject])
 
       if (isSubject) {
         return (
@@ -1150,12 +1154,9 @@ export default function Play({ params }) {
             <p style={{ fontSize: 17, fontWeight: 600, opacity: 0.6, marginBottom: 48, lineHeight: 1.4 }}>
               Work together to figure out the order {subjectPlayer?.name} ranked them, from their first to their worst.
             </p>
-            <button
-              onClick={handleLetsGo}
-              style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "20px" }}
-            >
-              Let&rsquo;s Do This
-            </button>
+            <p style={{ fontSize: 15, fontWeight: 700, color: YELLOW }}>
+              Starting…
+            </p>
           </div>
         </div>
           {pokeSystemNode()}
@@ -1380,7 +1381,7 @@ export default function Play({ params }) {
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <button onClick={() => supabase.rpc("ftw_reset_to_lobby", { p_code: code })}
+            <button onClick={async () => { await supabase.rpc("ftw_reset_to_lobby", { p_code: code }); await loadState() }}
               style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
               Play Again
             </button>

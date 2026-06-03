@@ -316,6 +316,7 @@ export default function Play({ params }) {
     })
     if (error) { setSubmittingVote(false); changingVoteRef.current = false; return }
     await loadState()
+    setSubmittingVote(false)
     changingVoteRef.current = false
   }
 
@@ -433,6 +434,10 @@ export default function Play({ params }) {
               text: g.text,
               authorNames: g.playerIds.map(id => players.find(p => p.id === id)?.name).filter(Boolean),
               voteCount: g.voteCount,
+              voterNames: (snap.votes ?? [])
+                .filter(v => v.answer_id && g.answerIds.includes(v.answer_id))
+                .map(v => players.find(p => p.id === v.voter_id)?.name)
+                .filter(Boolean),
               isBonus: g.playerIds.length > 1,
             }))}
             notaCount={snapNotaVoters.length}

@@ -1362,7 +1362,14 @@ export default function Play({ params }) {
     const tie = right === wrong
 
     async function pickNextGame(gameSub) {
-      await supabase.from("ftw_games").update({ next_game: gameSub, next_game_picker_name: me?.name }).eq("code", code)
+    try {
+      await supabase.from("firsttoworst_games").update({ next_game: gameSub, next_game_picker_name: me?.name }).eq("code", code)
+      window.location.href = `https://${gameSub}.jackbrannen.com/?fromGame=firsttoworst&pickerName=${encodeURIComponent(me?.name || "")}`
+    } catch (error) {
+      console.error("[pickNextGame]", error)
+      alert("Failed to switch games. Try again.")
+    }
+  }).eq("code", code)
     window.location.href = `https://${gameSub}.jackbrannen.com/`
     }
 
@@ -1408,7 +1415,6 @@ export default function Play({ params }) {
         currentSub="firsttoworst"
         nextGame={game?.next_game}
         nextGamePickerName={game?.next_game_picker_name}
-        nextGameCode={game?.next_game_code}
         myName={me?.name}
       />
       </>

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "../lib/supabase"
 import { useSubmitNudge } from "../lib/useSubmitNudge"
 
@@ -60,11 +60,27 @@ async function createGame() {
 
 export default function Home() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [joinCode, setJoinCode] = useState("")
   const nudgeJoin = useSubmitNudge(joinCode, false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState("")
 
+
+  useEffect(() => {
+    const fromGame = searchParams.get("fromGame")
+    const pickerName = searchParams.get("pickerName")
+
+    if (fromGame && pickerName) {
+      setIsCreating(true)
+      createGame()
+        .then(code => router.push(`/${code}`))
+        .catch(e => {
+          setError(e?.message ?? "Failed to create game")
+          setIsCreating(false)
+        })
+    }
+  }, [searchParams, router])
   async function onCreate() {
     if (creating) return
     setCreating(true)

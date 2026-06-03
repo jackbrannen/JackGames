@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "../lib/supabase"
 import { useSubmitNudge } from "../lib/useSubmitNudge"
 
@@ -110,6 +110,7 @@ const DUMMY_CLUES_T2 = [
 
 export default function Home() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [errorMessage, setErrorMessage] = useState("")
   const [isCreating, setIsCreating] = useState(false)
   const [isDummy, setIsDummy] = useState(false)

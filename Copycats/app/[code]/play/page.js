@@ -933,7 +933,14 @@ export default function PlayPage({ params }) {
     const winner = sorted[0]
 
     async function pickNextGame(gameSub) {
-      await supabase.from("cc_games").update({ next_game: gameSub, next_game_picker_name: me?.name }).eq("code", code)
+    try {
+      await supabase.from("copycats_games").update({ next_game: gameSub, next_game_picker_name: me?.name }).eq("code", code)
+      window.location.href = `https://${gameSub}.jackbrannen.com/?fromGame=copycats&pickerName=${encodeURIComponent(me?.name || "")}`
+    } catch (error) {
+      console.error("[pickNextGame]", error)
+      alert("Failed to switch games. Try again.")
+    }
+  }).eq("code", code)
     window.location.href = `https://${gameSub}.jackbrannen.com/`
     }
 
@@ -987,7 +994,6 @@ export default function PlayPage({ params }) {
         currentSub="copycats"
         nextGame={game?.next_game}
         nextGamePickerName={game?.next_game_picker_name}
-        nextGameCode={game?.next_game_code}
         myName={me?.name}
       />
       </>

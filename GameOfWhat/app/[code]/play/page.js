@@ -348,6 +348,7 @@ export default function Play({ params }) {
   const myAnswerRecordEarly = answers.find(a => a.player_id === myPlayerId)
   const nudgeAnswer = useSubmitNudge(myAnswer, !!myAnswerRecordEarly)
   const nudgeQuestion = useSubmitNudge(roundQuestion, false)
+  const bonusMatchNames = useBonusMatch(myAnswerRecordEarly?.text, myPlayerId, answers, players)
 
   if (!game) {
     return (
@@ -613,7 +614,6 @@ export default function Play({ params }) {
   const myAnswerRecord = answers.find(a => a.player_id === myPlayerId)
   const hasSubmittedAnswer = !!myAnswerRecord
   const hasSkipped = myAnswerRecord?.skipped
-  const bonusMatchNames = useBonusMatch(myAnswerRecord?.text, myPlayerId, answers, players)
   const eligibleAnswerers = players.filter(p => p.id !== currentQuestion?.author_id)
   const waitingOnPlayers = eligibleAnswerers.filter(p => !answers.some(a => a.player_id === p.id))
 

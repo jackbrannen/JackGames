@@ -19,6 +19,7 @@ const TEST_CLUES = [
 ]
 
 async function createTestGame() {
+  const { supabase } = await import("../lib/supabase")
   const code = Math.random().toString(36).slice(2, 8).toUpperCase()
   const { error: gameError } = await supabase
     .from("reversecharades_games")

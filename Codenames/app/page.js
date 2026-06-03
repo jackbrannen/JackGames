@@ -88,6 +88,7 @@ export default function Home() {
     setError("")
     setIsCreating(true)
     try {
+      const { supabase } = await import("../lib/supabase")
       const code = await createGame()
 
       // Insert 4 bots: 2 per team, 1 cluegiver per team

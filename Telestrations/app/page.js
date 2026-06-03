@@ -45,6 +45,7 @@ function randomCode() {
 }
 
 async function createGame(isDummy = false) {
+  const { supabase } = await import("../lib/supabase")
   for (let attempt = 1; attempt <= 10; attempt++) {
     const code = randomCode()
     const { count, error: checkError } = await supabase

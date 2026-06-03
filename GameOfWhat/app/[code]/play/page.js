@@ -12,6 +12,7 @@ import useTypingPresence from "../../../lib/useTypingPresence"
 import useOnlinePresence from "../../../lib/useOnlinePresence"
 import FooterButton from "../../../components/FooterButton"
 import WaitingList from "../../../components/WaitingList"
+import { useBonusMatch, formatMatchNames } from "../../../lib/useBonusMatch"
 import TextEntry from "../../../components/TextEntry"
 import Selections from "../../../components/Selections"
 import RandomIdeas from "../../../components/RandomIdeas"
@@ -72,7 +73,6 @@ export default function Play({ params }) {
   const [roundQuestion, setRoundQuestion] = useState("")
   const [gameOverPlayers, setGameOverPlayers] = useState(null)
   const [showGameModal, setShowGameModal] = useState(false)
-  const [bonusMatchName, setBonusMatchName] = useState(null)
   const [instructions, setInstructions] = useState("")
   const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
   const [pokeJustSent, setPokeJustSent] = useState(null)
@@ -289,18 +289,6 @@ export default function Play({ params }) {
       p_skipped: false,
     })
     if (error) throw error
-    if (myAnswer.trim()) {
-      const myText = myAnswer.trim().toLowerCase()
-      const { data: freshAnswers } = await supabase
-        .from("gow_answers").select("player_id,text")
-        .eq("question_id", currentQuestion.id).eq("skipped", false)
-      const match = freshAnswers?.find(a => a.player_id !== myPlayerId && a.text?.trim().toLowerCase() === myText)
-      if (match) {
-        const matchPlayer = players.find(p => p.id === match.player_id)
-        setBonusMatchName(matchPlayer?.name || "someone")
-        setTimeout(() => setBonusMatchName(null), 4000)
-      }
-    }
     await loadState()
   }
 
@@ -616,6 +604,7 @@ export default function Play({ params }) {
   const myAnswerRecord = answers.find(a => a.player_id === myPlayerId)
   const hasSubmittedAnswer = !!myAnswerRecord
   const hasSkipped = myAnswerRecord?.skipped
+  const bonusMatchNames = useBonusMatch(myAnswerRecord?.text, myPlayerId, answers, players)
   const eligibleAnswerers = players.filter(p => p.id !== currentQuestion?.author_id)
   const waitingOnPlayers = eligibleAnswerers.filter(p => !answers.some(a => a.player_id === p.id))
 
@@ -695,9 +684,9 @@ export default function Play({ params }) {
               </div>
             ) : hasSubmittedAnswer ? (
               <div>
-                {bonusMatchName && (
+                {bonusMatchNames.length > 0 && (
                   <div style={{ background: "#FBDF54", color: "#000", padding: "10px 16px", fontSize: 14, fontWeight: 800, marginBottom: 12 }}>
-                    Same answer as {bonusMatchName}! +1 bonus
+                    Same answer as {formatMatchNames(bonusMatchNames)} · +1 bonus
                   </div>
                 )}
                 <div style={{ fontSize: 15, fontWeight: 700, opacity: 0.65, marginBottom: 20 }}>

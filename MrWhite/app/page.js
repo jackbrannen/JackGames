@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useSubmitNudge } from "../lib/useSubmitNudge"
 
 const BG = "#2C2540"
@@ -54,6 +54,7 @@ async function createGame() {
 
 export default function Home() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isCreating, setIsCreating] = useState(false)
   const [joinCode, setJoinCode] = useState("")
   const nudgeJoin = useSubmitNudge(joinCode, false)

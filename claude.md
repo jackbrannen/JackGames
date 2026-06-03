@@ -129,6 +129,8 @@ The free tier allows **100 deployments per day across all projects**. With 11 ga
 
 ## Workflow
 
+- **Always read the spec first.** Before implementing any feature, search tasks.md and this file for the spec. Implement exactly what it says. If the spec requires something complex, ask before deviating: "Spec says X, but that requires Y — should I do Z instead?" Never shortcut spec requirements without asking.
+- **Never copy code to all 12 games without testing the template first.** When creating a pattern to copy (API endpoints, shared hooks, etc.): (1) build and test locally in one game; (2) verify the build passes; (3) test the feature works; (4) only then copy to the other 11. Bugs caught in step 1 prevent 11 cascading failures.
 - If you ever have questions, ask me rather than guessing.
 - If I ask for something that seems unwise, let me know and explain why it might be a bad idea.
 - **Never navigate above `/Users/jack/Library/CloudStorage/Dropbox-Personal/Claude/Games`.** All file reads, writes, edits, and shell commands must stay within this directory and its subdirectories.

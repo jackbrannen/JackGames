@@ -6,7 +6,6 @@ import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
-import GameModal from "../../../components/GameModal"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 
 const BG = "#307977"
@@ -394,7 +393,6 @@ export default function Play({ params }) {
   const [submittingVote, setSubmittingVote] = useState(false)
 
   const [markingReady, setMarkingReady] = useState(false)
-  const [showGameModal, setShowGameModal] = useState(false)
   const [bonusMatchName, setBonusMatchName] = useState(null)
   const [instructions, setInstructions] = useState("")
 

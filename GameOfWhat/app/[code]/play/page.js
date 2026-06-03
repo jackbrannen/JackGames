@@ -6,7 +6,6 @@ import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
-import GameModal from "../../../components/GameModal"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import useTypingPresence from "../../../lib/useTypingPresence"
 import useOnlinePresence from "../../../lib/useOnlinePresence"
@@ -72,7 +71,6 @@ export default function Play({ params }) {
   const lastFetchedResultsIdRef = useRef(null)
   const [roundQuestion, setRoundQuestion] = useState("")
   const [gameOverPlayers, setGameOverPlayers] = useState(null)
-  const [showGameModal, setShowGameModal] = useState(false)
   const [instructions, setInstructions] = useState("")
   const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
   const [pokeJustSent, setPokeJustSent] = useState(null)
@@ -477,7 +475,6 @@ export default function Play({ params }) {
           players={finalPlayers}
           myPlayerId={myPlayerId}
           onPlayAgain={resetGame}
-          onPlayAnotherGame={() => setShowGameModal(true)}
           bottomPad={BOTTOM_PAD}
           colors={{ yellow: YELLOW, wl: WARM_LIGHT }}
         />

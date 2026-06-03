@@ -7,7 +7,6 @@ import Footer, { FOOTER_H } from "../../../components/Footer"
 import FooterButton from "../../../components/FooterButton"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
-import GameModal from "../../../components/GameModal"
 import { playYourTurn } from "../../../lib/sounds"
 
 const T1         = "#3378FF"  // page background blue
@@ -101,7 +100,6 @@ export default function Play({ params }) {
   const [manualT2, setManualT2] = useState("0")
   const [roundsTotal, setRoundsTotal] = useState("3")
   const [menuOpen, setMenuOpen] = useState(false)
-  const [showGameModal, setShowGameModal] = useState(false)
   const [instructions, setInstructions] = useState("")
   const endingRef = useRef(false)
   const prevRunningRef = useRef(false)

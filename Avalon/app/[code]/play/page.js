@@ -6,7 +6,6 @@ import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
-import GameModal from "../../../components/GameModal"
 
 const BG         = "#0F1923"
 const CARD       = "#1C2B3A"
@@ -156,7 +155,6 @@ export default function Play({ params }) {
   const [cardPhase, setCardPhase]       = useState("unset")
   const [acting, setActing]             = useState(false)
   const [animReady, setAnimReady]       = useState(false)
-  const [showGameModal, setShowGameModal] = useState(false)
   const [instructions, setInstructions] = useState("")
   const soundTriggerRef = useRef(null)
 

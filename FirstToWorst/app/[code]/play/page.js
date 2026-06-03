@@ -6,7 +6,6 @@ import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
-import GameModal from "../../../components/GameModal"
 import FooterButton from "../../../components/FooterButton"
 import WaitingList from "../../../components/WaitingList"
 import TextEntry from "../../../components/TextEntry"
@@ -431,7 +430,6 @@ export default function Play({ params }) {
 
   // Subject watching
   const [watchThanks, setWatchThanks] = useState(false)
-  const [showGameModal, setShowGameModal] = useState(false)
 
   const prevGuessRound = useRef(-1)
   const prevLastMoveRef = useRef(null)

@@ -6,7 +6,6 @@ import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
-import GameModal from "../../../components/GameModal"
 
 const BG = "#C0B298"
 const TAN = "#C4924A"
@@ -89,7 +88,6 @@ export default function Play({ params }) {
   const [revealFeedback, setRevealFeedback] = useState(null)
   const [showClueRules, setShowClueRules] = useState(false)
   const [showColors, setShowColors] = useState(true)
-  const [showGameModal, setShowGameModal] = useState(false)
   const [instructions, setInstructions] = useState("")
   const loadEpochRef = useRef(0)
 

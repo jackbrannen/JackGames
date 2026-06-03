@@ -6,7 +6,6 @@ import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
-import GameModal from "../../../components/GameModal"
 import CARDS from "../../../lib/cards_data.json"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import { SLOT_NAMES, LEAF_NAMES, rotateCW, scoreGuess } from "../../../lib/clover.js"
@@ -399,7 +398,6 @@ export default function PlayPage({ params }) {
   const [boards, setBoards]         = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
   const [loading, setLoading]       = useState(true)
-  const [showGameModal, setShowGameModal] = useState(false)
 
   const [localSlots, setLocalSlots] = useState({ top: null, right: null, bottom: null, left: null })
   const [localPool, setLocalPool]   = useState([])

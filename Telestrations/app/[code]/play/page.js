@@ -7,7 +7,6 @@ import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
-import GameModal from "../../../components/GameModal"
 
 const BG = "#2B0F6B"
 const YELLOW = "#FBDF54"
@@ -438,7 +437,6 @@ export default function Play({ params }) {
 
   // Timer
   const [timeLeft, setTimeLeft] = useState(null)
-  const [showGameModal, setShowGameModal] = useState(false)
   const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
   const [pokeJustSent, setPokeJustSent] = useState(null)
   const [instructions, setInstructions] = useState("")

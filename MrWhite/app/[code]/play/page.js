@@ -6,7 +6,6 @@ import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
-import GameModal from "../../../components/GameModal"
 
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
@@ -55,7 +54,6 @@ export default function Play({ params }) {
   const [confirmElimination, setConfirmElimination] = useState(false)
   const [eliminating, setEliminating] = useState(false)
   const [finishing, setFinishing] = useState(false)
-  const [showGameModal, setShowGameModal] = useState(false)
   const [instructions, setInstructions] = useState("")
   const [menuOpen, setMenuOpen] = useState(false)
 

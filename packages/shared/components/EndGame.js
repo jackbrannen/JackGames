@@ -93,14 +93,12 @@ export default function EndGame({
             Play Again
           </button>
         )}
-        {onPlayAnotherGame && (
-          <button
-            onClick={onPlayAnotherGame}
-            style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%" }}
-          >
-            Play Another Game
-          </button>
-        )}
+        <a
+          href="https://games.jackbrannen.com"
+          style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%", display: "block", textAlign: "center", textDecoration: "none" }}
+        >
+          Play Another Game
+        </a>
       </div>
 
       {belowButtons}

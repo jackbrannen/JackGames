@@ -6,7 +6,6 @@ import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
-import GameModal from "../../../components/GameModal"
 
 const BG = "#1A3A5C"
 const YELLOW = "#FBDF54"
@@ -535,7 +534,6 @@ export default function Play({ params }) {
   const transitionTimerRef = useRef(null)
 
   const [selectedChainOwner, setSelectedChainOwner] = useState(null)
-  const [showGameModal, setShowGameModal] = useState(false)
   const [instructions, setInstructions] = useState("")
 
   const prevPhaseRef = useRef(null)

@@ -6,7 +6,6 @@ import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
-import GameModal from "../../../components/GameModal"
 
 const PRIMARY = "#974344"
 const DARK    = "#803946"
@@ -146,7 +145,6 @@ export default function Play({ params }) {
   const [pendingCount, setPendingCount] = useState(0)
   const [nowMs, setNowMs] = useState(Date.now())
   const [acting, setActing] = useState(false)
-  const [showGameModal, setShowGameModal] = useState(false)
   const [instructions, setInstructions] = useState("")
   const endingRef = useRef(false)
   const soundTriggerRef = useRef(null)

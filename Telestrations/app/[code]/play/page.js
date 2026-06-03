@@ -917,17 +917,6 @@ export default function Play({ params }) {
     )
   }
 
-  async function pickNextGame(gameSub) {
-    try {
-      await supabase.from("telestrations_games").update({ next_game: gameSub, next_game_picker_name: me?.name }).eq("code", code)
-      window.location.href = `https://${gameSub}.jackbrannen.com/?fromGame=telestrations&pickerName=${encodeURIComponent(me?.name || "")}`
-    } catch (error) {
-      console.error("[pickNextGame]", error)
-      alert("Failed to switch games. Try again.")
-    }
-  }).eq("code", code)
-    window.location.href = `https://${gameSub}.jackbrannen.com/`
-  }
 
   // ── Finished ──────────────────────────────────────────────────────────────
 
@@ -948,10 +937,9 @@ export default function Play({ params }) {
               onClick={() => supabase.rpc("tel_reset_game", { p_code: code })}
               style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}
             >Play Again</button>
-            <button
-              onClick={() => setShowGameModal(true)}
-              style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%" }}
-            >Play Another Game</button>
+            <a href="https://games.jackbrannen.com"
+              style={{ display: "block", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%", textAlign: "center", textDecoration: "none" }}
+            >Play Another Game</a>
           </div>
         </div>
 
@@ -1000,10 +988,10 @@ export default function Play({ params }) {
 
         {/* Play another game */}
         <div style={{ padding: "0 24px 48px" }}>
-          <button onClick={() => setShowGameModal(true)}
-            style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
+          <a href="https://games.jackbrannen.com"
+            style={{ display: "block", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%", textAlign: "center", textDecoration: "none" }}>
             Play Another Game
-          </button>
+          </a>
         </div>
 
         {/* Chain detail modal */}
@@ -1046,15 +1034,6 @@ export default function Play({ params }) {
         )}
       </div>
       {pokeSystemNode()}
-      <GameModal
-        open={showGameModal}
-        onClose={() => setShowGameModal(false)}
-        onSelect={sub => pickNextGame(sub)}
-        currentSub="telestrations"
-        nextGame={game?.next_game}
-        nextGamePickerName={game?.next_game_picker_name}
-        myName={me?.name}
-      />
     </>
     )
   }

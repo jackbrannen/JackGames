@@ -369,17 +369,6 @@ export default function Play({ params }) {
     await loadState()
   }
 
-  async function pickNextGame(gameSub) {
-    try {
-      await supabase.from("fishbowl_games").update({ next_game: gameSub, next_game_picker_name: me?.name }).eq("code", code)
-      window.location.href = `https://${gameSub}.jackbrannen.com/?fromGame=fishbowl&pickerName=${encodeURIComponent(me?.name || "")}`
-    } catch (error) {
-      console.error("[pickNextGame]", error)
-      alert("Failed to switch games. Try again.")
-    }
-  }).eq("code", code)
-    window.location.href = `https://${gameSub}.jackbrannen.com/`
-  }
 
   async function doPlayAgain() {
     setPlayAgainError(null)
@@ -656,10 +645,10 @@ export default function Play({ params }) {
             ))}
 
             <div style={{ marginTop: 16 }}>
-              <button onClick={() => setShowGameModal(true)}
-                style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
+              <a href="https://games.jackbrannen.com"
+                style={{ display: "block", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%", textAlign: "center", textDecoration: "none" }}>
                 Play Another Game
-              </button>
+              </a>
             </div>
           </div>
         )}
@@ -974,15 +963,6 @@ export default function Play({ params }) {
           </Footer>
         )}
       </>}
-      <GameModal
-        open={showGameModal}
-        onClose={() => setShowGameModal(false)}
-        onSelect={sub => pickNextGame(sub)}
-        currentSub="fishbowl"
-        nextGame={game?.next_game}
-        nextGamePickerName={game?.next_game_picker_name}
-        myName={me?.name}
-      />
     </>
   )
 }

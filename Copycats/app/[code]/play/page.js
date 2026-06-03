@@ -930,74 +930,7 @@ export default function PlayPage({ params }) {
     const sorted = [...players].sort((a, b) => b.score - a.score)
     const winner = sorted[0]
 
-    async function pickNextGame(gameSub) {
-    try {
-      await supabase.from("copycats_games").update({ next_game: gameSub, next_game_picker_name: me?.name }).eq("code", code)
-      window.location.href = `https://${gameSub}.jackbrannen.com/?fromGame=copycats&pickerName=${encodeURIComponent(me?.name || "")}`
-    } catch (error) {
-      console.error("[pickNextGame]", error)
-      alert("Failed to switch games. Try again.")
-    }
-  }).eq("code", code)
-    window.location.href = `https://${gameSub}.jackbrannen.com/`
-    }
-
-    return (
-      <>
-      <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-        <div style={{ background: DARK, padding: "20px", textAlign: "center" }}>
-          <h1 style={{ fontSize: 36, fontWeight: 900, color: "white" }}>Game Over</h1>
-        </div>
-        <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
-          <Section label="Final Scores">
-            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-              {sorted.map((p, i) => (
-                <div key={p.id} style={{ display: "flex" }}>
-                  <div style={{ background: DARK, padding: "14px 0", minWidth: 48, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900 }}>
-                    {i + 1}
-                  </div>
-                  <div style={{ background: MID, flex: 1, padding: "14px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div>
-                      <span style={{ fontSize: 17, fontWeight: 700 }}>{p.name}</span>
-                      
-                      {p.id === winner.id && (
-                        <div style={{ fontSize: 11, fontWeight: 800, color: YELLOW, textTransform: "uppercase", letterSpacing: "0.12em", marginTop: 2 }}>
-                          Winner
-                        </div>
-                      )}
-                    </div>
-                    <span style={{ fontSize: 24, fontWeight: 900, color: YELLOW }}>{p.score} pts</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Section>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <button onClick={() => supabase.rpc("cc_reset_to_lobby", { p_code: code })}
-              style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
-              Play Again
-            </button>
-            <button onClick={() => setShowGameModal(true)}
-              style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%" }}>
-              Play Another Game
-            </button>
-          </div>
-        </div>
-      </div>
-        {pokeSystemNode()}
-      <GameModal
-        open={showGameModal}
-        onClose={() => setShowGameModal(false)}
-        onSelect={sub => pickNextGame(sub)}
-        currentSub="copycats"
-        nextGame={game?.next_game}
-        nextGamePickerName={game?.next_game_picker_name}
-        myName={me?.name}
-      />
-      </>
-    )
-  }
-
+  
   return (
     <>
     <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>

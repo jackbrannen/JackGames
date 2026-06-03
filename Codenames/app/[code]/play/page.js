@@ -226,17 +226,6 @@ export default function Play({ params }) {
     router.replace(`/${code}`)
   }
 
-  async function pickNextGame(gameSub) {
-    try {
-      await supabase.from("codenames_games").update({ next_game: gameSub, next_game_picker_name: me?.name }).eq("code", code)
-      window.location.href = `https://${gameSub}.jackbrannen.com/?fromGame=codenames&pickerName=${encodeURIComponent(me?.name || "")}`
-    } catch (error) {
-      console.error("[pickNextGame]", error)
-      alert("Failed to switch games. Try again.")
-    }
-  }).eq("code", code)
-    window.location.href = `https://${gameSub}.jackbrannen.com/`
-  }
 
   if (!game) {
     return (
@@ -426,10 +415,10 @@ export default function Play({ params }) {
             >
               Play Again
             </button>
-            <button onClick={() => setShowGameModal(true)}
-              style={{ background: TEXT, color: "white", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
+            <a href="https://games.jackbrannen.com"
+              style={{ display: "block", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%", textAlign: "center", textDecoration: "none" }}>
               Play Another Game
-            </button>
+            </a>
           </div>
         )}
 
@@ -622,15 +611,6 @@ export default function Play({ params }) {
       )}
     </div>
       {pokeSystemNode}
-      <GameModal
-        open={showGameModal}
-        onClose={() => setShowGameModal(false)}
-        onSelect={sub => pickNextGame(sub)}
-        currentSub="codenames"
-        nextGame={game?.next_game}
-        nextGamePickerName={game?.next_game_picker_name}
-        myName={me?.name}
-      />
     </>
   )
 }

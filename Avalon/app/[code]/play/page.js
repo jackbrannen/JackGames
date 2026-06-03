@@ -280,17 +280,6 @@ export default function Play({ params }) {
     setActing(false)
   }
 
-  async function pickNextGame(gameSub) {
-    try {
-      await supabase.from("avalon_games").update({ next_game: gameSub, next_game_picker_name: me?.name }).eq("code", code)
-      window.location.href = `https://${gameSub}.jackbrannen.com/?fromGame=avalon&pickerName=${encodeURIComponent(me?.name || "")}`
-    } catch (error) {
-      console.error("[pickNextGame]", error)
-      alert("Failed to switch games. Try again.")
-    }
-  }).eq("code", code)
-    window.location.href = `https://${gameSub}.jackbrannen.com/`
-  }
 
   // ─── shared components ────────────────────────────────────────
 
@@ -973,10 +962,10 @@ export default function Play({ params }) {
           />
 
           <div style={{ marginTop: 32 }}>
-            <button onClick={() => setShowGameModal(true)}
-              style={{ background: GOLD, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
+            <a href="https://games.jackbrannen.com"
+              style={{ display: "block", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%", textAlign: "center", textDecoration: "none" }}>
               Play Another Game
-            </button>
+            </a>
           </div>
         </div>
       </div>
@@ -1019,15 +1008,6 @@ export default function Play({ params }) {
       )}
     </div>
       {pokeSystemNode}
-      <GameModal
-        open={showGameModal}
-        onClose={() => setShowGameModal(false)}
-        onSelect={sub => pickNextGame(sub)}
-        currentSub="avalon"
-        nextGame={game?.next_game}
-        nextGamePickerName={game?.next_game_picker_name}
-        myName={me?.name}
-      />
     </>
   )
 }

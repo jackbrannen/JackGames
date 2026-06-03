@@ -1359,66 +1359,7 @@ export default function Play({ params }) {
     const groupWon = right > wrong
     const tie = right === wrong
 
-    async function pickNextGame(gameSub) {
-    try {
-      await supabase.from("firsttoworst_games").update({ next_game: gameSub, next_game_picker_name: me?.name }).eq("code", code)
-      window.location.href = `https://${gameSub}.jackbrannen.com/?fromGame=firsttoworst&pickerName=${encodeURIComponent(me?.name || "")}`
-    } catch (error) {
-      console.error("[pickNextGame]", error)
-      alert("Failed to switch games. Try again.")
-    }
-  }).eq("code", code)
-    window.location.href = `https://${gameSub}.jackbrannen.com/`
-    }
-
-    return (
-      <>
-      <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
-        <div style={{ flex: 1, overflowY: "auto", padding: "40px 24px", paddingBottom: BOTTOM_PAD }}>
-          <div style={{ fontSize: "clamp(52px, 15vw, 80px)", fontWeight: 900, lineHeight: 0.9, marginBottom: 28 }}>
-            Game<br />Over
-          </div>
-
-          <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 16 }}>
-            Final Score
-          </div>
-
-          <Scoreboard right={right} wrong={wrong} />
-
-          <p style={{ fontSize: 16, fontWeight: 600, opacity: 0.65, marginBottom: 40, lineHeight: 1.5 }}>
-            {tie
-              ? `Exactly even — ${right} right, ${wrong} wrong.`
-              : groupWon
-                ? `You got more right than wrong. You know each other well.`
-                : `More wrong than right. The words had you stumped.`}
-          </p>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <button onClick={() => supabase.rpc("ftw_reset_to_lobby", { p_code: code })}
-              style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
-              Play Again
-            </button>
-            <button onClick={() => setShowGameModal(true)}
-              style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%" }}>
-              Play Another Game
-            </button>
-          </div>
-        </div>
-      </div>
-        {pokeSystemNode()}
-      <GameModal
-        open={showGameModal}
-        onClose={() => setShowGameModal(false)}
-        onSelect={sub => pickNextGame(sub)}
-        currentSub="firsttoworst"
-        nextGame={game?.next_game}
-        nextGamePickerName={game?.next_game_picker_name}
-        myName={me?.name}
-      />
-      </>
-    )
-  }
-
+  
   return (
     <>
     <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>

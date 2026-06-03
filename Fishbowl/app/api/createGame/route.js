@@ -7,6 +7,16 @@ function randomCode() {
   return words[Math.floor(Math.random() * words.length)] + words[Math.floor(Math.random() * words.length)]
 }
 
+export async function OPTIONS() {
+  return new Response(null, {
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST",
+      "Access-Control-Allow-Headers": "Content-Type"
+    }
+  })
+}
+
 export async function POST() {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -29,10 +39,15 @@ export async function POST() {
         .select("code")
         .single()
       if (insertError) throw insertError
-      return Response.json({ code: String(data.code).toUpperCase() })
+      return Response.json({ code: String(data.code).toUpperCase() }, {
+        headers: { "Access-Control-Allow-Origin": "*" }
+      })
     }
     throw new Error("unable_to_allocate_game_code")
   } catch (error) {
-    return Response.json({ error: error?.message ?? "unknown" }, { status: 500 })
+    return Response.json({ error: error?.message ?? "unknown" }, {
+      status: 500,
+      headers: { "Access-Control-Allow-Origin": "*" }
+    })
   }
 }

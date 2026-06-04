@@ -42,7 +42,7 @@ are wired in all 12 games and omitted from the table.
 | HomeScreen       | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
 | Lobby            |    | ✓   |    |     |    |    |     |    |    |    |    |    |
 | EndGame          | ✓  | ✓   | ·  | ·   | ✓  | ·  | ·   | ✓  | ✓  | ✓  | ·  | ·  |
-| Results          |    | ✓   |    |     |    |    |     |    |    |    |    |    |
+| Results          | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
 | **Dummy Games**  | ✓  | ✓   | ·  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ·  | ·  |
 | **Online pres.** |    | ✓   |    |     |    |    |     |    |    |    |    |    |
 

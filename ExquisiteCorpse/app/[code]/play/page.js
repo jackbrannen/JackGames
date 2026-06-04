@@ -8,6 +8,7 @@ import StatusBar from "../../../components/StatusBar"
 import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT } from "../../../components/styles"
 import FooterButton from "../../../components/FooterButton"
 import WaitingList from "../../../components/WaitingList"
+import Results from "../../../components/Results"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 

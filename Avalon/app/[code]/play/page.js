@@ -9,6 +9,7 @@ import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT
 import FooterButton from "../../../components/FooterButton"
 import Selections from "../../../components/Selections"
 import WaitingList from "../../../components/WaitingList"
+import Results from "../../../components/Results"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import FooterButton from "../../../components/FooterButton"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
@@ -66,17 +67,6 @@ function BigQuestion({ question }) {
   )
 }
 
-function PrimaryBtn({ onClick, disabled, loading, label, loadingLabel, nudge }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled || loading}
-      style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "20px", width: "100%", animation: nudge ? "nudgePulse 1.0s ease-in-out infinite" : "none" }}
-    >
-      {loading ? loadingLabel : label}
-    </button>
-  )
-}
 
 function SecondaryBtn({ onClick, disabled, children, style }) {
   return (
@@ -160,19 +150,19 @@ export default function PlayPage({ params }) {
 
   // question writing
   const [myQuestion, setMyQuestion] = useState("")
-  const [questionLoading, setQuestionLoading] = useState(false)
+
 
   // answering
   const [myAnswer, setMyAnswer] = useState("")
-  const [answerLoading, setAnswerLoading] = useState(false)
+
   const [answerError, setAnswerError] = useState("")
 
   // voting
   const [selectedVote, setSelectedVote] = useState(null)
-  const [voteLoading, setVoteLoading] = useState(false)
+
 
   // results ready-up
-  const [readyLoading, setReadyLoading] = useState(false)
+
 
   const channelRef = useRef(null)
   const typingTimerRef = useRef(null)
@@ -363,14 +353,12 @@ export default function PlayPage({ params }) {
     }
 
     async function submitQuestion() {
-      if (questionLoading || !myQuestion.trim()) return
-      setQuestionLoading(true)
       const { error } = await supabase.rpc("cc_submit_question", {
         p_code: code,
         p_player_id: myId,
         p_question: myQuestion.trim(),
       })
-      if (error) { setQuestionLoading(false); return }
+      if (error) throw error
       await loadState()
     }
 
@@ -388,27 +376,22 @@ export default function PlayPage({ params }) {
             </p>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <AnswerTextarea
-              value={myQuestion}
-              onChange={v => { setMyQuestion(v); trackTyping() }}
-              placeholder={`Your question for ${myTarget?.name ?? "them"}…`}
-            />
-            <PrimaryBtn
-              onClick={submitQuestion}
-              loading={questionLoading}
-              disabled={!myQuestion.trim()}
-              label="Submit Question"
-              loadingLabel="Submitting…"
-            />
-          </div>
+          <AnswerTextarea
+            value={myQuestion}
+            onChange={v => { setMyQuestion(v); trackTyping() }}
+            placeholder={`Your question for ${myTarget?.name ?? "them"}…`}
+          />
 
           <Section label="Waiting for everyone…">
             <WaitingList players={players} doneIds={submittedIds} myPlayerId={myId} onPoke={sendInlinePoke} typingPlayerIds={typingPlayerIds} pokeCooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
           </Section>
         </div>
       </div>
-        {pokeSystemNode()}
+        {pokeSystemNode(
+          <FooterButton onClick={submitQuestion} disabled={!myQuestion.trim()}>
+            Submit Question
+          </FooterButton>
+        )}
       </>
     )
   }
@@ -419,8 +402,6 @@ export default function PlayPage({ params }) {
     const answeredIds = roundAnswers.map(a => a.player_id)
 
     async function submitAnswer() {
-      if (answerLoading || !myAnswer.trim()) return
-      setAnswerLoading(true)
       setAnswerError("")
       const myText = myAnswer.trim().toLowerCase()
       const { error } = await supabase.rpc("cc_submit_answer", {
@@ -431,8 +412,7 @@ export default function PlayPage({ params }) {
       })
       if (error) {
         setAnswerError(error.message || "Something went wrong.")
-        setAnswerLoading(false)
-        return
+        throw error
       }
       const { data: freshAnswers } = await supabase
         .from("cc_answers").select("player_id,answer")
@@ -535,14 +515,6 @@ export default function PlayPage({ params }) {
                 onChange={v => { setMyAnswer(v); trackTyping() }}
                 placeholder="Your answer…"
               />
-              <PrimaryBtn
-                onClick={submitAnswer}
-                loading={answerLoading}
-                disabled={!myAnswer.trim()}
-                label="Submit Answer"
-                loadingLabel="Submitting…"
-                nudge={nudgeAnswer}
-              />
               {!!answerError && <p style={{ fontSize: 14, fontWeight: 600, color: YELLOW }}>{answerError}</p>}
             </div>
             <Section label="Waiting for everyone…">
@@ -550,7 +522,11 @@ export default function PlayPage({ params }) {
             </Section>
           </div>
         </div>
-          {pokeSystemNode()}
+          {pokeSystemNode(
+            <FooterButton onClick={submitAnswer} disabled={!myAnswer.trim()} nudge={nudgeAnswer}>
+              Submit Answer
+            </FooterButton>
+          )}
         </>
       )
     }
@@ -576,14 +552,6 @@ export default function PlayPage({ params }) {
               onChange={v => { setMyAnswer(v); trackTyping() }}
               placeholder={`Fake ${roundTarget?.name}'s answer…`}
             />
-            <PrimaryBtn
-              onClick={submitAnswer}
-              loading={answerLoading}
-              disabled={!myAnswer.trim()}
-              label="Submit Answer"
-              loadingLabel="Submitting…"
-              nudge={nudgeAnswer}
-            />
             {!!answerError && <p style={{ fontSize: 14, fontWeight: 600, color: YELLOW }}>{answerError}</p>}
           </div>
           <Section label="Waiting for everyone…">
@@ -591,7 +559,11 @@ export default function PlayPage({ params }) {
           </Section>
         </div>
       </div>
-        {pokeSystemNode()}
+        {pokeSystemNode(
+          <FooterButton onClick={submitAnswer} disabled={!myAnswer.trim()} nudge={nudgeAnswer}>
+            Submit Answer
+          </FooterButton>
+        )}
       </>
     )
   }
@@ -664,15 +636,13 @@ export default function PlayPage({ params }) {
     }
 
     async function submitVote() {
-      if (voteLoading || !selectedVote) return
-      setVoteLoading(true)
       const { error } = await supabase.rpc("cc_submit_vote", {
         p_code: code,
         p_voter_id: myId,
         p_round: current_round,
         p_voted_for_player_id: selectedVote,
       })
-      if (error) { setVoteLoading(false); return }
+      if (error) throw error
       await loadState()
     }
 
@@ -720,16 +690,13 @@ export default function PlayPage({ params }) {
               )
             })}
           </div>
-          <PrimaryBtn
-            onClick={submitVote}
-            loading={voteLoading}
-            disabled={!selectedVote}
-            label="That's the Real One"
-            loadingLabel="Submitting…"
-          />
         </div>
       </div>
-        {pokeSystemNode()}
+        {pokeSystemNode(
+          <FooterButton onClick={submitVote} disabled={!selectedVote}>
+            That's the Real One
+          </FooterButton>
+        )}
       </>
     )
   }
@@ -780,13 +747,11 @@ export default function PlayPage({ params }) {
     const totalCount = players.length
 
     async function markReady() {
-      if (readyLoading || iReady) return
-      setReadyLoading(true)
       const { error } = await supabase.rpc("cc_mark_ready", {
         p_code: code,
         p_player_id: myId,
       })
-      if (error) { setReadyLoading(false); return }
+      if (error) throw error
       await loadState()
     }
 
@@ -919,7 +884,9 @@ export default function PlayPage({ params }) {
         {pokeSystemNode(
           iReady
             ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.65)" }}>{readyCount} / {totalCount} ready…</div>
-            : <button onClick={markReady} disabled={readyLoading} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900 }}>{readyLoading ? "…" : current_round + 1 < players.length ? "Next Round" : "See Final Scores"}</button>
+            : <FooterButton onClick={markReady}>
+              {current_round + 1 < players.length ? "Next Round" : "See Final Scores"}
+            </FooterButton>
         )}
       </>
     )

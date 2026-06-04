@@ -353,7 +353,7 @@ export default function Play({ params }) {
   if (!game) {
     return (
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 18, fontWeight: 700 }}>Loading…</p>
+        <p style={{ color: `rgba(255,255,255,${OPACITY.muted})`, fontSize: FONT_SIZE.bodyLg, fontWeight: FONT_WEIGHT.bold }}>Loading…</p>
       </div>
     )
   }
@@ -489,36 +489,36 @@ export default function Play({ params }) {
       <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
         <div style={{ flex: 1, overflowY: "auto", padding: "40px 24px", paddingBottom: BOTTOM_PAD }}>
         {game.round_index > 0 && (
-          <div style={{ fontSize: 13, fontWeight: 800, opacity: 0.75, marginBottom: 12 }}>
+          <div style={{ fontSize: FONT_SIZE.min, fontWeight: FONT_WEIGHT.heavy, opacity: OPACITY.moderate, marginBottom: 12 }}>
             Round {game.round_index} complete
           </div>
         )}
-        <div style={{ fontSize: "clamp(44px, 12vw, 72px)", fontWeight: 900, lineHeight: 1, marginBottom: 8, whiteSpace: "nowrap" }}>
+        <div style={{ fontSize: "clamp(44px, 12vw, 72px)", fontWeight: FONT_WEIGHT.black, lineHeight: 1, marginBottom: 8, whiteSpace: "nowrap" }}>
           Round {game.round_index + 1}
         </div>
-        <div style={{ fontSize: 16, fontWeight: 700, opacity: 0.65, marginBottom: 40 }}>
+        <div style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold, opacity: OPACITY.muted, marginBottom: 40 }}>
           of {game.rounds_total}
         </div>
 
         {game.round_index > 0 && (
           <>
-            <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 16 }}>
+            <div style={{ ...STYLE.sectionHeader, marginBottom: 16 }}>
               Scores
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 40 }}>
               {sortedPlayers.map((p, i) => (
                 <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                  <div style={{ background: i === 0 ? YELLOW : WARM_LIGHT, color: i === 0 ? "#000" : "white", fontSize: 24, fontWeight: 900, minWidth: 56, textAlign: "center", padding: "10px 0" }}>
+                  <div style={{ background: i === 0 ? YELLOW : WARM_LIGHT, color: i === 0 ? "#000" : "white", fontSize: 24, fontWeight: FONT_WEIGHT.black, minWidth: 56, textAlign: "center", padding: "10px 0" }}>
                     {p.score}
                   </div>
-                  <span style={{ fontSize: 20, fontWeight: 700, color: p.id === myPlayerId ? YELLOW : "white" }}>{p.name}</span>
+                  <span style={{ fontSize: FONT_SIZE.heading, fontWeight: FONT_WEIGHT.bold, color: p.id === myPlayerId ? YELLOW : "white" }}>{p.name}</span>
                 </div>
               ))}
             </div>
           </>
         )}
 
-        <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 14 }}>
+        <div style={{ ...STYLE.sectionHeader, marginBottom: 14 }}>
           Round {game.round_index + 1} Questions
         </div>
         <div style={{ marginBottom: 20 }}>
@@ -561,13 +561,13 @@ export default function Play({ params }) {
         )}
 
         {me && myNextQuestion && !allNextQuestionsIn && (
-          <div style={{ fontSize: 16, fontWeight: 700, opacity: 0.65 }}>
+          <div style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold, opacity: OPACITY.muted }}>
             Your question is in. Waiting for others…
           </div>
         )}
 
         {allNextQuestionsIn && (
-          <div style={{ fontSize: 16, fontWeight: 700, opacity: 0.65 }}>
+          <div style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold, opacity: OPACITY.muted }}>
             All questions in. Starting round…
           </div>
         )}
@@ -644,10 +644,10 @@ export default function Play({ params }) {
         {/* Question */}
         {currentQuestion && (
           <div style={{ marginBottom: 28 }}>
-            <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 10 }}>
+            <div style={{ ...STYLE.sectionHeader, marginBottom: 10 }}>
               {questionAuthor ? `${questionAuthor.name}'s question` : "Question"}
             </div>
-            <div style={{ fontSize: "clamp(22px, 6vw, 32px)", fontWeight: 800, lineHeight: 1.25 }}>
+            <div style={{ fontSize: "clamp(22px, 6vw, 32px)", fontWeight: FONT_WEIGHT.heavy, lineHeight: 1.25 }}>
               {currentQuestion.text}
             </div>
           </div>
@@ -658,7 +658,7 @@ export default function Play({ params }) {
           <>
             {isQuestionAuthor ? (
               <div>
-                <div style={{ fontSize: 15, fontWeight: 700, opacity: 0.65, marginBottom: 20 }}>
+                <div style={{ fontSize: 15, fontWeight: FONT_WEIGHT.bold, opacity: OPACITY.muted, marginBottom: 20 }}>
                   This is your question — sit back while others answer.
                 </div>
                 <WaitingList
@@ -674,12 +674,12 @@ export default function Play({ params }) {
             ) : hasSubmittedAnswer ? (
               <div>
                 {bonusMatchNames.length > 0 && (
-                  <div style={{ background: "#FBDF54", color: "#000", padding: "10px 16px", fontSize: 14, fontWeight: 800, marginBottom: 12 }}>
+                  <div style={{ background: "#FBDF54", color: "#000", padding: "10px 16px", fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.heavy, marginBottom: 12 }}>
                     Same answer as {formatMatchNames(bonusMatchNames)} · +1 bonus
                   </div>
                 )}
-                <div style={{ fontSize: 15, fontWeight: 700, opacity: 0.65, marginBottom: 20 }}>
-                  Your answer: <span style={{ opacity: 1, color: "white" }}>{hasSkipped ? "(skipped)" : myAnswerRecord?.text}</span>
+                <div style={{ fontSize: 15, fontWeight: FONT_WEIGHT.bold, opacity: OPACITY.muted, marginBottom: 20 }}>
+                  Your answer: <span style={{ opacity: OPACITY.full, color: "white" }}>{hasSkipped ? "(skipped)" : myAnswerRecord?.text}</span>
                 </div>
                 <WaitingList
                   players={eligibleAnswerers.map(p => ({ name: p.name, done: answers.some(a => a.player_id === p.id), typing: typingPlayerIds.has(p.id), away: isAway(p.id) }))}
@@ -712,7 +712,7 @@ export default function Play({ params }) {
         {/* VOTING PHASE */}
         {phase === "voting" && (
           <>
-            <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.65, marginBottom: 16 }}>
+            <div style={{ fontSize: FONT_SIZE.min, fontWeight: FONT_WEIGHT.bold, opacity: OPACITY.muted, marginBottom: 16 }}>
               {myVoteId ? "Vote cast — tap ✕ to change:" : "Vote for your favorite:"}
             </div>
             <div style={{ marginBottom: 24 }}>
@@ -737,7 +737,7 @@ export default function Play({ params }) {
                         flex: 1,
                         background: isNota ? YELLOW : WARM_LIGHT,
                         color: isNota ? "#000" : "rgba(255,255,255,0.5)",
-                        fontSize: 15, fontWeight: 700, padding: "16px 20px",
+                        fontSize: 15, fontWeight: FONT_WEIGHT.bold, padding: "16px 20px",
                         textAlign: "left", display: "block",
                         opacity: myVoteId && !isNota && !changingVoteRef.current ? 0.45 : 1,
                       }}
@@ -748,7 +748,7 @@ export default function Play({ params }) {
                       <button
                         onClick={handleDeselect}
                         disabled={submittingVote}
-                        style={{ background: "#4A123B", color: YELLOW, fontSize: 22, fontWeight: 900, padding: "16px 24px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                        style={{ background: "#4A123B", color: YELLOW, fontSize: 22, fontWeight: FONT_WEIGHT.black, padding: "16px 24px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
                       >
                         ✕
                       </button>
@@ -760,7 +760,7 @@ export default function Play({ params }) {
 
             {/* Who has voted */}
             <div style={{ marginTop: 28 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.5, marginBottom: 10 }}>
+              <div style={{ fontSize: FONT_SIZE.eyebrow, fontWeight: FONT_WEIGHT.heavy, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.5, marginBottom: 10 }}>
                 Votes in
               </div>
               <WaitingList

@@ -11,6 +11,7 @@ import Notifications from "../../../components/Notifications"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import EndGame from "../../../components/EndGame"
 import Results from "../../../components/Results"
+import StatusBar from "../../../components/StatusBar"
 import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT } from "../../../components/styles"
 
 const BG         = "#5C2D8C"
@@ -52,13 +53,7 @@ function Section({ label, children, style }) {
   )
 }
 
-function TopBar({ children }) {
-  return (
-    <div style={{ background: DARK, padding: `${SPACE.sm - 4}px ${SPACE.md}px`, ...STYLE.eyebrow, color: `rgba(255,255,255,${OPACITY.moderate})` }}>
-      {children}
-    </div>
-  )
-}
+// TopBar removed - now using shared StatusBar component
 
 function BigQuestion({ question }) {
   return (
@@ -338,7 +333,7 @@ export default function PlayPage({ params }) {
     if (iSubmitted) {
       return (
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-          <TopBar>Write Your Questions</TopBar>
+          <StatusBar dark={DARK} label="Write Your Questions" />
           <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div style={{ textAlign: "center", padding: "32px 0" }}>
               <p style={{ fontSize: 20, fontWeight: 700, color: "white", marginBottom: 8 }}>Question submitted!</p>
@@ -365,7 +360,7 @@ export default function PlayPage({ params }) {
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-        <TopBar>Write Your Questions</TopBar>
+        <StatusBar dark={DARK} label="Write Your Questions" />
         <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
           <div>
             <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 6 }}>
@@ -432,7 +427,7 @@ export default function PlayPage({ params }) {
       return (
         <>
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-          <TopBar>Round {current_round + 1} of {players.length}</TopBar>
+          <StatusBar dark={DARK} label={`Round ${current_round + 1} of ${players.length}`} />
           <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div>
               <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
@@ -469,7 +464,7 @@ export default function PlayPage({ params }) {
       return (
         <>
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-          <TopBar>Round {current_round + 1} of {players.length}</TopBar>
+          <StatusBar dark={DARK} label={`Round ${current_round + 1} of ${players.length}`} />
           <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div>
               <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
@@ -498,7 +493,7 @@ export default function PlayPage({ params }) {
       return (
         <>
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-          <TopBar>Round {current_round + 1} of {players.length}</TopBar>
+          <StatusBar dark={DARK} label={`Round ${current_round + 1} of ${players.length}`} />
           <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div>
               <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
@@ -535,7 +530,7 @@ export default function PlayPage({ params }) {
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-        <TopBar>Round {current_round + 1} of {players.length}</TopBar>
+        <StatusBar dark={DARK} label={`Round ${current_round + 1} of ${players.length}`} />
         <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
           <div>
             <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
@@ -587,7 +582,7 @@ export default function PlayPage({ params }) {
     if (iAmTarget) {
       return (
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-          <TopBar>Round {current_round + 1} of {players.length}</TopBar>
+          <StatusBar dark={DARK} label={`Round ${current_round + 1} of ${players.length}`} />
           <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div>
               <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 4 }}>Stay quiet!</p>
@@ -636,7 +631,7 @@ export default function PlayPage({ params }) {
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-        <TopBar>Round {current_round + 1} of {players.length}</TopBar>
+        <StatusBar dark={DARK} label={`Round ${current_round + 1} of ${players.length}`} />
         <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
           <div>
             <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
@@ -723,7 +718,7 @@ export default function PlayPage({ params }) {
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-        <TopBar>Round {current_round + 1} of {players.length} · Results</TopBar>
+        <StatusBar dark={DARK} label={`Round ${current_round + 1} of ${players.length} · Results`} />
         <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: GAP.section, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
           {/* Question context */}
           <p style={{ fontSize: 14, color: "rgba(255,255,255,0.65)", lineHeight: 1.5 }}>

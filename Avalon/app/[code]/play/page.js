@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import Selections from "../../../components/Selections"
+import WaitingList from "../../../components/WaitingList"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 
@@ -533,20 +534,12 @@ export default function Play({ params }) {
             Players
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            {players.map(p => (
-              <div key={p.id} style={{ background: CARD, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, background: p.ready ? GOOD : "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  {p.ready && <span style={{ fontSize: 13, fontWeight: 900, color: "#fff" }}>✓</span>}
-                </div>
-                <span style={{ fontSize: 16, fontWeight: 700, flex: 1 }}>
-                  {p.name}
-                  
-                </span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: p.ready ? GOOD : "rgba(232,220,200,0.3)" }}>
-                  {p.ready ? "Ready" : "Not ready"}
-                </span>
-              </div>
-            ))}
+            <WaitingList
+              players={players.map(p => ({ name: p.name, done: !!p.ready }))}
+              myName={me?.name}
+              colors={{ mid: CARD }}
+              showCount={false}
+            />
           </div>
         </div>
       </div>

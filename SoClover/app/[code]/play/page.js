@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import FooterButton from "../../../components/FooterButton"
+import WaitingList from "../../../components/WaitingList"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import CARDS from "../../../lib/cards_data.json"
@@ -873,32 +874,14 @@ export default function PlayPage({ params }) {
               {submittedCount} / {totalCount} ready
             </div>
             <div style={{ fontSize: 16, color: MUTED }}>Waiting for everyone to submit their clues…</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 3, width: "100%", maxWidth: 320 }}>
-              {players.map((p, i) => {
-                const done = !!p.clues_submitted
-                const isMe = p.id === myPlayerId
-                return (
-                  <div key={p.id} style={{ display: "flex" }}>
-                    <div style={{ width: 48, background: COOL_DARK, display: "flex", alignItems: "center", justifyContent: "center", padding: "10px 0", fontSize: 16, fontWeight: 900, color: WHITE }}>{i + 1}</div>
-                    <div style={{ flex: 1, background: MID_DARK, padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={{ fontSize: 16 }}>{done ? "✅" : "⬜"}</span>
-                      <span style={{ fontSize: 16, fontWeight: 700, color: WHITE, flex: 1 }}>
-                        {p.name}
-                        
-                        {!done && typingPlayerIds.has(p.id) && <span style={{ fontSize: 14, marginLeft: 6 }}>💬</span>}
-                      </span>
-                      {!done && !isMe && (
-                        pokeJustSent === p.name ? (
-                          <span style={{ fontSize: 18, color: "#12BAAA", fontWeight: 700 }}>✓</span>
-                        ) : !pokeCooldownActive ? (
-                          <button onClick={() => sendInlinePoke(p.name)} style={{ background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 20, padding: "0 4px", lineHeight: 1 }}>👉</button>
-                        ) : null
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            <WaitingList
+              players={players.map(p => ({ name: p.name, done: !!p.clues_submitted, typing: typingPlayerIds.has(p.id) }))}
+              myName={me?.name}
+              colors={{ mid: MID_DARK }}
+              onPoke={sendInlinePoke}
+              cooldownActive={pokeCooldownActive}
+              pokeJustSent={pokeJustSent}
+            />
           </div>
         </div>
       )

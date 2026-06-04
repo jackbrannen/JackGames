@@ -6,6 +6,7 @@ import { supabase } from "../../../lib/supabase"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import FooterButton from "../../../components/FooterButton"
+import WaitingList from "../../../components/WaitingList"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 
@@ -1211,28 +1212,13 @@ export default function Play({ params }) {
               Waiting for {formatPendingNames(pendingDrawers)} to draw.
             </p>
           )}
-          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {players.map(p => {
-              const done = submittedPlayerIds.has(p.id)
-              const isMe = p.id === myPlayerId
-              return (
-                <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.08)", padding: "12px 16px" }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: done ? "#12BAAA" : "rgba(255,255,255,0.2)", flexShrink: 0 }} />
-                  <span style={{ fontSize: 16, fontWeight: 700, flex: 1 }}>
-                    {p.name}
-                    
-                  </span>
-                  {!done && !isMe && (
-                    pokeJustSent === p.name ? (
-                      <span style={{ fontSize: 18, color: "#12BAAA", fontWeight: 700 }}>✓</span>
-                    ) : !pokeCooldownActive ? (
-                      <button onClick={() => sendInlinePoke(p.name)} style={{ background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 20, padding: "0 4px", lineHeight: 1 }}>👉</button>
-                    ) : null
-                  )}
-                </div>
-              )
-            })}
-          </div>
+          <WaitingList
+            players={players.map(p => ({ name: p.name, done: submittedPlayerIds.has(p.id) }))}
+            myName={me?.name}
+            onPoke={sendInlinePoke}
+            cooldownActive={pokeCooldownActive}
+            pokeJustSent={pokeJustSent}
+          />
         </div>
         {pokeSystemNode()}
         </>
@@ -1290,29 +1276,13 @@ export default function Play({ params }) {
             Waiting for {formatPendingNames(pendingWriters)} to write.
           </p>
         )}
-        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          {players.map(p => {
-            const done = submittedPlayerIds.has(p.id)
-            const isMe = p.id === myPlayerId
-            return (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,0.08)", padding: "12px 16px" }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: done ? "#12BAAA" : "rgba(255,255,255,0.2)", flexShrink: 0 }} />
-                <span style={{ fontSize: 16, fontWeight: 700, flex: 1 }}>
-                  {p.name}
-                  
-                  {!done && typingPlayerIds.has(p.id) && <span style={{ fontSize: 14, marginLeft: 6 }}>💬</span>}
-                </span>
-                {!done && !isMe && (
-                  pokeJustSent === p.name ? (
-                    <span style={{ fontSize: 18, color: "#12BAAA", fontWeight: 700 }}>✓</span>
-                  ) : !pokeCooldownActive ? (
-                    <button onClick={() => sendInlinePoke(p.name)} style={{ background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 20, padding: "0 4px", lineHeight: 1 }}>👉</button>
-                  ) : null
-                )}
-              </div>
-            )
-          })}
-        </div>
+        <WaitingList
+          players={players.map(p => ({ name: p.name, done: submittedPlayerIds.has(p.id), typing: typingPlayerIds.has(p.id) }))}
+          myName={me?.name}
+          onPoke={sendInlinePoke}
+          cooldownActive={pokeCooldownActive}
+          pokeJustSent={pokeJustSent}
+        />
       </div>
       {pokeSystemNode()}
       </>

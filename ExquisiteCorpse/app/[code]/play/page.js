@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import FooterButton from "../../../components/FooterButton"
+import WaitingList from "../../../components/WaitingList"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 
@@ -543,6 +544,16 @@ export default function Play({ params }) {
 
   const me = players.find(p => p.id === myPlayerId)
 
+  const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
+  const [pokeJustSent, setPokeJustSent] = useState(null)
+  async function sendInlinePoke(targetName) {
+    if (!me || pokeCooldownActive) return
+    setPokeCooldownActive(true); setPokeJustSent(targetName)
+    await supabase.from("pokes").insert({ room_code: code, from_player: me.name, to_player: targetName, message: "👉" })
+    setTimeout(() => setPokeJustSent(null), 2000)
+    setTimeout(() => setPokeCooldownActive(false), 10000)
+  }
+
   const [menuOpen, setMenuOpen] = useState(false)
   const pokeSystemNode = (footer = null) => me ? (
     <>
@@ -970,11 +981,18 @@ export default function Play({ params }) {
 
   // Waiting screen (submitted, others still drawing)
   if (myDrawingSubmitted) {
+    const submittedPlayerIds = new Set(drawings.filter(d => d.round_number === currentRound).map(d => d.author_id))
     return (
       <>
-      <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 24px", textAlign: "center" }}>
-        <p style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Waiting for everyone to finish…</p>
-        <p style={{ fontSize: 13, opacity: 0.35, fontWeight: 700 }}>{stepProgress}</p>
+      <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", padding: "40px 24px", paddingBottom: BOTTOM_PAD }}>
+        <p style={{ fontSize: 22, fontWeight: 800, marginBottom: 24 }}>Waiting for everyone to finish…</p>
+        <WaitingList
+          players={players.map(p => ({ name: p.name, done: submittedPlayerIds.has(p.id) }))}
+          myName={me?.name}
+          onPoke={sendInlinePoke}
+          cooldownActive={pokeCooldownActive}
+          pokeJustSent={pokeJustSent}
+        />
       </div>
         {pokeSystemNode()}
       </>

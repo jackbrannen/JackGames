@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT } from "../../../components/styles"
 import FooterButton from "../../../components/FooterButton"
 import WaitingList from "../../../components/WaitingList"
 import Menu from "../../../components/Menu"
@@ -950,7 +951,7 @@ export default function Play({ params }) {
           <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.4, marginBottom: 14 }}>
             All Telestrations
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: GAP.result }}>
             {allChains.map(chain => {
               const firstDrawing = chain.steps.find(s => s.step_type === "drawing")
               const firstSentence = chain.steps.find(s => s.step_type === "text")

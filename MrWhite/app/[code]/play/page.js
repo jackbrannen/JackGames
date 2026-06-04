@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT } from "../../../components/styles"
 import FooterButton from "../../../components/FooterButton"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
@@ -269,7 +270,7 @@ export default function Play({ params }) {
             </p>
           )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: GAP.card }}>
             <div style={{ display: "flex" }}>
               <div style={{ padding: "16px 18px", background: DARK, minWidth: 130, fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.65, flexShrink: 0 }}>
                 Real word

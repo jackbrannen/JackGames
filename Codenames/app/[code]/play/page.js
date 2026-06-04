@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT } from "../../../components/styles"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import EndGame from "../../../components/EndGame"
@@ -249,7 +250,7 @@ export default function Play({ params }) {
     const blueWins = game.winning_team === "blue"
 
     const teamAbove = (
-      <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 32 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: GAP.card, marginBottom: 32 }}>
         {[
           { label: "Red", color: RED_COLOR, teamPlayers: redPlayers, winner: redWins },
           { label: "Blue", color: BLUE_COLOR, teamPlayers: bluePlayers, winner: blueWins },
@@ -308,7 +309,7 @@ export default function Play({ params }) {
       )}
 
       {/* Header bar */}
-      <div style={{ background: "rgba(0,0,0,0.18)", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexShrink: 0 }}>
+      <div style={{ background: "rgba(0,0,0,0.18)", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: GAP.result, flexShrink: 0 }}>
         {game.phase === "finished" ? (
           <div style={{ fontSize: 22, fontWeight: 900, color: winnerColor, textTransform: "uppercase", letterSpacing: "0.06em" }}>
             {teamLabel(game.winning_team)} Wins!
@@ -318,7 +319,7 @@ export default function Play({ params }) {
             <div style={{ background: turnColor, color: "white", fontSize: 13, fontWeight: 900, padding: "4px 10px", textTransform: "uppercase", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>
               {teamLabel(game.turn_team)}'s Turn
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: GAP.selection, flexShrink: 0 }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: TEXT, opacity: 0.55, whiteSpace: "nowrap" }}>Needed to win:</span>
               <span style={{ background: RED_COLOR, color: "white", fontSize: 12, fontWeight: 800, padding: "3px 7px" }}>Red {redLeft}</span>
               <span style={{ background: BLUE_COLOR, color: "white", fontSize: 12, fontWeight: 800, padding: "3px 7px" }}>Blue {blueLeft}</span>
@@ -485,7 +486,7 @@ export default function Play({ params }) {
                     ?
                   </button>
                 </div>
-                <div style={{ display: "flex", gap: 6, marginBottom: 10, justifyContent: "space-between" }}>
+                <div style={{ display: "flex", gap: GAP.selection, marginBottom: 10, justifyContent: "space-between" }}>
                   {[1,2,3,4,5,6,7,8,9].map(n => (
                     <button
                       key={n}
@@ -587,11 +588,11 @@ export default function Play({ params }) {
               <button onClick={() => setShowClueRules(false)} style={{ background: "none", color: TEXT, fontSize: 22, fontWeight: 700, padding: "4px 8px", lineHeight: 1 }}>✕</button>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
-              <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+              <div style={{ display: "flex", gap: GAP.result, marginBottom: 16 }}>
                 <span style={{ fontSize: 20, color: "#1A6B1A", flexShrink: 0, marginTop: 1 }}>✓</span>
                 <div style={{ fontSize: 15, fontWeight: 700, color: TEXT, lineHeight: 1.5 }}>Any one-word clue is allowed.</div>
               </div>
-              <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+              <div style={{ display: "flex", gap: GAP.result, marginBottom: 20 }}>
                 <span style={{ fontSize: 20, color: "#1A6B1A", flexShrink: 0, marginTop: 1 }}>✓</span>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: TEXT, lineHeight: 1.5, marginBottom: 6 }}>Compound words are okay:</div>
@@ -602,7 +603,7 @@ export default function Play({ params }) {
                   </ul>
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+              <div style={{ display: "flex", gap: GAP.result, marginBottom: 16 }}>
                 <span style={{ fontSize: 20, color: RED_COLOR, flexShrink: 0, marginTop: 1 }}>✗</span>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: TEXT, lineHeight: 1.5, marginBottom: 6 }}>You can't use phrases, sayings, or random combos:</div>
@@ -613,15 +614,15 @@ export default function Play({ params }) {
                   </ul>
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+              <div style={{ display: "flex", gap: GAP.result, marginBottom: 16 }}>
                 <span style={{ fontSize: 20, color: RED_COLOR, flexShrink: 0, marginTop: 1 }}>✗</span>
                 <div style={{ fontSize: 15, fontWeight: 700, color: TEXT, lineHeight: 1.5 }}>You can't use any words from the board.</div>
               </div>
-              <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+              <div style={{ display: "flex", gap: GAP.result, marginBottom: 16 }}>
                 <span style={{ fontSize: 20, color: RED_COLOR, flexShrink: 0, marginTop: 1 }}>✗</span>
                 <div style={{ fontSize: 15, fontWeight: 700, color: TEXT, lineHeight: 1.5 }}>Clues must relate to the meaning of the words on the board, not their position, spelling, etc.</div>
               </div>
-              <div style={{ display: "flex", gap: 12 }}>
+              <div style={{ display: "flex", gap: GAP.result }}>
                 <span style={{ fontSize: 20, color: RED_COLOR, flexShrink: 0, marginTop: 1 }}>✗</span>
                 <div style={{ fontSize: 15, fontWeight: 700, color: TEXT, lineHeight: 1.5 }}>You can't add additional commentary, like "Only Sarah will get this" or "this one is a stretch."</div>
               </div>

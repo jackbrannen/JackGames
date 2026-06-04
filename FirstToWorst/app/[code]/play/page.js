@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT } from "../../../components/styles"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import FooterButton from "../../../components/FooterButton"
@@ -360,7 +361,7 @@ function TopBar({ left, right }) {
 
 function Scoreboard({ right, wrong }) {
   return (
-    <div style={{ display: "flex", gap: 3, marginBottom: 24 }}>
+    <div style={{ display: "flex", gap: GAP.card, marginBottom: 24 }}>
       <div style={{ flex: 1, background: DARK, padding: "14px 10px", textAlign: "center" }}>
         <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", color: GREEN, marginBottom: 6 }}>Right</div>
         <div style={{ fontSize: 48, fontWeight: 900, color: "white", lineHeight: 1 }}>{right}</div>
@@ -1070,7 +1071,7 @@ export default function Play({ params }) {
             Drag to put them in order, first to worst. Only you can see this.
           </p>
 
-          <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
+          <div style={{ display: "flex", gap: GAP.result, marginBottom: 24 }}>
             <SpectrumBar listHeight={listH} />
             <div style={{ flex: 1 }}>
               {rankingItems && (
@@ -1219,7 +1220,7 @@ export default function Play({ params }) {
                 Group&rsquo;s current order
               </div>
 
-              <div style={{ display: "flex", gap: 12 }}>
+              <div style={{ display: "flex", gap: GAP.result }}>
                 <SpectrumBar listHeight={listH} />
                 <div style={{ flex: 1 }}>
                   {groupItems && (
@@ -1251,7 +1252,7 @@ export default function Play({ params }) {
               Arrange from {subjectPlayer?.name}&rsquo;s first to worst.
             </p>
 
-            <div style={{ display: "flex", gap: 12, marginBottom: 20 }}>
+            <div style={{ display: "flex", gap: GAP.result, marginBottom: 20 }}>
               <SpectrumBar listHeight={listH} />
               <div style={{ flex: 1 }}>
                 {groupItems && (

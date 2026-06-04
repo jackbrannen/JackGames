@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT } from "../../../components/styles"
 import FooterButton from "../../../components/FooterButton"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
@@ -114,7 +115,7 @@ function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
       alignItems: "center",
       flexShrink: 0,
     }}>
-      <div style={{ display: "flex", gap: 20 }}>
+      <div style={{ display: "flex", gap: SPACE.md }}>
         {[["A", game.team_a_score ?? 0], ["B", game.team_b_score ?? 0]].map(([t, score]) => (
           <div key={t}>
             <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.65, marginBottom: 2 }}>
@@ -343,7 +344,7 @@ export default function Play({ params }) {
             Note: {teamLabel(winner)} had one more turn than {teamLabel(winner === "A" ? "B" : "A")}.
           </div>
         )}
-        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: GAP.card }}>
           {[["A", aScore], ["B", bScore]].map(([t, score]) => {
             const isWinner = winner === t
             const turns = t === "A" ? game.team_a_turns : game.team_b_turns
@@ -398,7 +399,7 @@ export default function Play({ params }) {
 
         {/* Score bar */}
         <div style={{ padding: "16px 20px", background: DARK, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexShrink: 0 }}>
-          <div style={{ display: "flex", gap: 24 }}>
+          <div style={{ display: "flex", gap: GAP.section }}>
             {[["A", game.team_a_score ?? 0], ["B", game.team_b_score ?? 0]].map(([t, score]) => (
               <div key={t}>
                 <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.65, marginBottom: 2 }}>

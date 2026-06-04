@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT } from "../../../components/styles"
 import FooterButton from "../../../components/FooterButton"
 import WaitingList from "../../../components/WaitingList"
 import Menu from "../../../components/Menu"
@@ -247,7 +248,7 @@ function StripCell({ leafName, side, ls, cs, wordA, wordB, clue, showClues, onCl
 
   if (side === "top" || side === "bottom") {
     return (
-      <div style={{ width: 2 * cs, height: ls, background: COOL_DARK, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "0 10px" }}>
+      <div style={{ width: 2 * cs, height: ls, background: COOL_DARK, display: "flex", alignItems: "center", justifyContent: "center", gap: GAP.selection, padding: "0 10px" }}>
         {innerContent}
       </div>
     )
@@ -256,7 +257,7 @@ function StripCell({ leafName, side, ls, cs, wordA, wordB, clue, showClues, onCl
   const rotDeg = side === "left" ? -90 : 90
   return (
     <div style={{ width: ls, height: 2 * cs, background: COOL_DARK, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
-      <div style={{ width: 2 * cs, height: ls, flexShrink: 0, transform: `rotate(${rotDeg}deg)`, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "0 10px" }}>
+      <div style={{ width: 2 * cs, height: ls, flexShrink: 0, transform: `rotate(${rotDeg}deg)`, display: "flex", alignItems: "center", justifyContent: "center", gap: GAP.selection, padding: "0 10px" }}>
         {innerContent}
       </div>
     </div>
@@ -868,7 +869,7 @@ export default function PlayPage({ params }) {
       return (
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <StatusBar code={code} label="WRITING CLUES" />
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, gap: 20 }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, gap: SPACE.md }}>
             <div style={{ fontSize: 40 }}>⏳</div>
             <div style={{ fontSize: 22, fontWeight: 900, color: WHITE }}>
               {submittedCount} / {totalCount} ready
@@ -892,7 +893,7 @@ export default function PlayPage({ params }) {
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
         <StatusBar code={code} label="ARRANGE YOUR BOARD" />
 
-        <div style={{ flex: 1, padding: `0 0 ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+        <div style={{ flex: 1, padding: `0 0 ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: GAP.result }}>
           <CloverBoard
             slots={localSlots}
             clues={localClues}
@@ -1049,7 +1050,7 @@ export default function PlayPage({ params }) {
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
         <StatusBar code={code} label={`BOARD ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`} />
 
-        <div style={{ flex: 1, padding: `12px 0 ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+        <div style={{ flex: 1, padding: `12px 0 ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: GAP.result }}>
           <div style={{ fontSize: 13, color: MUTED, textAlign: "center" }}>{hint}</div>
 
           {amOwner && (
@@ -1127,7 +1128,7 @@ export default function PlayPage({ params }) {
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
         <StatusBar code={code} label="FINAL SCORE" />
-        <div style={{ flex: 1, padding: `24px 16px ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 24, width: "100%" }}>
+        <div style={{ flex: 1, padding: `24px 16px ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: GAP.section, width: "100%" }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: 56, marginBottom: 8 }}>🍀</div>
             <div style={{ fontSize: 48, fontWeight: 900, color: ACCENT }}>{totalPts}</div>
@@ -1136,7 +1137,7 @@ export default function PlayPage({ params }) {
 
           <div style={{ width: "100%", maxWidth: 360 }}>
             <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 8 }}>Board Results</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: GAP.card }}>
               {(game.player_order ?? []).map((pid, i) => {
                 const board = boards.find(b => b.player_id === pid)
                 const owner = playerMap[pid]

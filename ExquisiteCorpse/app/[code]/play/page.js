@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT } from "../../../components/styles"
 import FooterButton from "../../../components/FooterButton"
 import WaitingList from "../../../components/WaitingList"
 import Menu from "../../../components/Menu"
@@ -345,7 +346,7 @@ function DrawingCanvas({ peekImageUrl, peekFoldPct, onExport, onFirstMark }) {
   return (
     <div ref={containerRef}>
       {/* Tool bar */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 0 8px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: GAP.selection, padding: "10px 0 8px" }}>
         <button
           onClick={() => handleSetTool("pen")}
           style={{ background: toolMode === "pen" ? YELLOW : WARM_LIGHT, color: toolMode === "pen" ? "#000" : "white", width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
@@ -837,7 +838,7 @@ export default function Play({ params }) {
           <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.4, marginBottom: 14 }}>
             All Chains
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: GAP.result }}>
             {allChains.map(chain => {
               const firstDrawing = chain.drawings[0]
               return (

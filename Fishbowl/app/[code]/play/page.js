@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT } from "../../../components/styles"
 import FooterButton from "../../../components/FooterButton"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
@@ -400,7 +401,7 @@ export default function Play({ params }) {
     const team2Players = players.filter(p => p.team === 2)
 
     const teamAbove = (
-      <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 32 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: GAP.card, marginBottom: 32 }}>
         {[
           { label: "Boys", color: BOYS, score: t1Score, names: team1Players.map(p => p.name), winner: t1Wins },
           { label: "Girls", color: GIRLS, score: t2Score, names: team2Players.map(p => p.name), winner: t2Wins },
@@ -614,7 +615,7 @@ export default function Play({ params }) {
           )}
         </div>
 
-        <div style={{ display: "flex", gap: 20, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: SPACE.md, alignItems: "center" }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.75, marginBottom: 2 }}>Boys</div>
             <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, color: currentActor?.team === 1 && game.phase !== "finished" ? YELLOW : "white" }}>
@@ -720,7 +721,7 @@ export default function Play({ params }) {
 
             {!game.turn_running ? (
               /* Pre-turn or paused */
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, textAlign: "center" }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: GAP.section, textAlign: "center" }}>
                 {isPaused ? (
                   /* PAUSED */
                   <>
@@ -879,7 +880,7 @@ export default function Play({ params }) {
                 {onDeck.slice(1).map((p, idx) => (
                   <div
                     key={`${p.id}-${idx}`}
-                    style={{ padding: "14px 0", borderBottom: "1px solid rgba(255,255,255,0.12)", display: "flex", alignItems: "center", gap: 12 }}
+                    style={{ padding: "14px 0", borderBottom: "1px solid rgba(255,255,255,0.12)", display: "flex", alignItems: "center", gap: GAP.result }}
                   >
                     <div style={{ width: 10, height: 10, borderRadius: "50%", background: p.team === 1 ? BOYS : GIRLS, flexShrink: 0, outline: "2px solid rgba(255,255,255,0.3)" }} />
                     <span style={{ fontSize: 20, fontWeight: 700 }}>{p.name}</span>
@@ -912,17 +913,17 @@ export default function Play({ params }) {
           onResetToLobby={async () => { await supabase.rpc("reset_game_for_replay", { p_code: code }); await loadState() }}
           settingsContent={<>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+              <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: GAP.selection }}>
                 Boys
                 <input value={manualT1} onChange={e => setManualT1(e.target.value)}
                   style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }} />
               </label>
-              <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+              <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: GAP.selection }}>
                 Girls
                 <input value={manualT2} onChange={e => setManualT2(e.target.value)}
                   style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }} />
               </label>
-              <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+              <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: GAP.selection }}>
                 Rounds
                 <input value={roundsTotal} onChange={e => setRoundsTotal(e.target.value)}
                   style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }} />

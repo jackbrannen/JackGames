@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT } from "../../../components/styles"
 import FooterButton from "../../../components/FooterButton"
 import Selections from "../../../components/Selections"
 import WaitingList from "../../../components/WaitingList"
@@ -841,7 +842,7 @@ export default function Play({ params }) {
           <div style={{ height: 4, background: WARM_LIGHT, marginBottom: 10 }}>
             <div style={{ height: "100%", width: `${pct}%`, background: urgent ? "#F97316" : ACCENT, transition: "width 0.5s linear" }} />
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: GAP.result }}>
             <div>
               <div style={{ fontSize: 20, fontWeight: 900, lineHeight: 1.2 }}>{me.prompt}</div>
               <div style={{ fontSize: 13, opacity: 0.65, fontWeight: 600, marginTop: 3 }}>No letters or numbers</div>
@@ -1140,7 +1141,7 @@ export default function Play({ params }) {
             <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 10 }}>
               Scores
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: GAP.card }}>
               {[...players].sort((a, b) => b.score - a.score).map((p, i) => (
                 <div key={p.id} style={{ display: "flex" }}>
                   <div style={{

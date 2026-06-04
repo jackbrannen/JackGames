@@ -11,7 +11,7 @@ import Notifications from "../../../components/Notifications"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import EndGame from "../../../components/EndGame"
 import Results from "../../../components/Results"
-import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD } from "../../../components/styles"
+import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT } from "../../../components/styles"
 
 const BG         = "#5C2D8C"
 const YELLOW     = "#FBDF54"

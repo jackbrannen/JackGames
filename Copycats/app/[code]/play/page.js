@@ -42,7 +42,7 @@ function codeSeed(code, round) {
 function Section({ label, children, style }) {
   return (
     <div style={style}>
-      <div style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.65)", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: 10 }}>
+      <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 16 }}>
         {label}
       </div>
       {children}
@@ -731,7 +731,7 @@ export default function PlayPage({ params }) {
           {/* Real answer */}
           {targetAnswer && (
             <div>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.65)", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: 8 }}>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 16 }}>
                 {roundTarget?.name}'s real answer
               </div>
               <div style={{ background: GREEN, padding: "16px 20px" }}>

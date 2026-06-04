@@ -227,8 +227,8 @@ input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.6); opacit
 
 ### Typography
 - Minimum font size: **13px** (non-negotiable)
-- **Section headers** — `fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)"`. No uppercase, no letter-spacing. This applies everywhere a label titles a section of content (Players, Join Game, Scores, etc.)
-- **Eyebrow / metadata labels** inside colored header bands (e.g. "ROUND 2 OF 5" above a bigger title) — `fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.75`. These are progress indicators, not section titles.
+- **Section headers** — `fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)"`. No uppercase, no letter-spacing. This applies everywhere a label titles a section of content. Examples: "Players", "Join Game", "Scores", "Everyone's answers", "Points this round", "Sarah's real answer". **Never use uppercase + letter-spacing for section headers** — that is eyebrow style only.
+- **Eyebrow / metadata labels** inside colored header bands (e.g. "ROUND 2 OF 5" above a bigger title) — `fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.75`. These are progress indicators inside status bars, not section titles. Only use this style for phase/round progress at the top of the screen.
 - Headings: 20–28px, weight 900
 - Use `clamp()` for responsive sizing where appropriate
 - Body text: 16–18px, weight 400–500

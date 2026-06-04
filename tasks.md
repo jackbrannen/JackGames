@@ -16,7 +16,7 @@ are wired in all 12 games and omitted from the table.
 | Selections       |    | ✓   |    |     |    |    |     |    |    |    |    |    |
 | HomeScreen       |    | ✓   |    |     |    |    |     |    |    |    |    |    |
 | Lobby            |    | ✓   |    |     |    |    |     |    |    |    |    |    |
-| EndGame          |    | ✓   |    |     |    |    |     |    |    |    |    |    |
+| EndGame          | ✓  | ✓   | ·  | ·   | ✓  | ·  | ·   | ✓  | ✓  | ✓  | ·  | ·  |
 | Results          |    | ✓   |    |     |    |    |     |    |    |    |    |    |
 | **Dummy Games**  | ✓  | ✓   | ·  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ·  | ·  |
 | **Online pres.** |    | ✓   |    |     |    |    |     |    |    |    |    |    |
@@ -62,10 +62,10 @@ Each game's dummy game implementation must:
 - ~~Back to lobby from hamburger menu doesn't work~~ ✓ (all 12 games)
 - ~~FTW dummy game~~ ✓ (auto-join + pre-fill word fields)
 - ~~GOW Selections: pressing ✕ to deselect then blocked re-selection~~ ✓
-- GOW voting typing indicator: bubble now clears when player stops typing
-- GOW submit nudge: wired to question field; FTW submit nudge wired to word fields
-- GOW results: all players now see results screen (50%+ ready to advance)
-- GOW answering/voting: WaitingList shown to all players waiting
+- ~~GOW voting typing indicator: bubble now clears when player stops typing~~ ✓
+- ~~GOW submit nudge: wired to question field; FTW submit nudge wired to word fields~~ ✓
+- ~~GOW results: all players now see results screen (50%+ ready to advance)~~ ✓
+- ~~GOW answering/voting: WaitingList shown to all players waiting~~ ✓
 - ~~FTW: eliminate the page with the "Let's Do This" button that starts rounds. Unnecessary.~~ ✓
 - ~~FTW: play again button doesn't work~~ ✓
 - Change the "play another game" component for all games: When a player picks it, they open the other games modal. When they pick one, it jumps them into the lobby. Then other players, still on the end game screen of the previous game, get a pop-up saying, "[Name] wants to start a game of [game name]" with a "Join" button. Pressing join opens a link to that game (with the specific room name in the URL already) so it just drops them into the lobby. Or they can X out of the modal if they prefer.

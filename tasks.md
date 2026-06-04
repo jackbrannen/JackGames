@@ -1,3 +1,28 @@
+## Component Style Guide Compliance
+
+Status of shared components matching StyleGuide/ (localhost:3099):
+
+| Component | Locked to Style Guide? | Notes |
+|-----------|------------------------|-------|
+| HomeScreen | ✅ Yes | Matches style guide exactly (proper casing, spacing) |
+| Results | ✅ Yes | Single card for answers (gap: 12), two-column for scores (gap: 3) |
+| EndGame | ✅ Yes | Game Over heading, score cards, Play Again button |
+| Footer | ✅ Yes | 56px sticky bar with hamburger + action buttons |
+| FooterButton | ✅ Yes | Auto-loading state, primary/secondary/danger variants |
+| Menu | ✅ Yes | Slide-up drawer with Players, Poke, Message tiles |
+| Notifications | ✅ Yes | Top-fixed strips for pokes/messages |
+| WaitingList | ⚠️ Partial | Needs verification against style guide |
+| Selections | ⚠️ Partial | Needs verification against style guide |
+| StatusBar | ❌ No | Needs audit |
+| TextEntry | ❌ No | Needs audit |
+| RandomIdeas | ❌ No | Needs audit |
+| Lobby | ❌ No | Only GOW uses it, needs verification |
+| GameModal | ✅ Yes | End-game picker modal |
+
+**Next cleanup:** Audit and fix ⚠️ and ❌ components to match style guide.
+
+---
+
 ## Component & Feature Rollout
 
 ✓ = wired in game's app pages · — = not yet · · = not applicable to this game
@@ -29,6 +54,10 @@ EC=Exquisite Corpse, MW=Mr. White
 Each game's dummy game implementation must:
 1. **Auto-join** — use saved profile username to join the lobby automatically
 2. **Pre-fill text fields** — fill input fields with random ideas when the relevant phase starts
+
+### Rollout To-Do
+
+- [ ] **HomeScreen rollout to 10 games** — Copycats and GOW done. Remaining: Fishbowl, Avalon, FirstToWorst, Drawful, SoClover, Telestrations, Codenames, ReverseCharades, ExquisiteCorpse, MrWhite. Each needs: (1) import HomeScreen, (2) extract colors (BG, YELLOW, WARM_LIGHT), (3) replace custom JSX with HomeScreen component. See `/tmp/homescreen_refactor.txt` for game-specific colors and subtitles.
 
 ### Components still to build
 - [ ] **Duplicate detection** — works with TextEntry. Three modes: (1) within one player's fields — useDuplicates hook built ✓; (2) between players for bonus points (Drawful, GameOfWhat) — show bonus on submission (GOW: working ad-hoc in submitAnswer); (3) between players to block (Fishbowl, ReverseCharades) — highlight and block. Modes 2-3 are game-specific (need DB data).

@@ -7,6 +7,7 @@ import Footer, { FOOTER_H } from "../../../components/Footer"
 import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT } from "../../../components/styles"
 import FooterButton from "../../../components/FooterButton"
 import WaitingList from "../../../components/WaitingList"
+import StatusBar from "../../../components/StatusBar"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import CARDS from "../../../lib/cards_data.json"
@@ -868,7 +869,7 @@ export default function PlayPage({ params }) {
     if (submitted) {
       return (
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-          <StatusBar code={code} label="WRITING CLUES" />
+          <StatusBar dark={COOL_DARK} label="WRITING CLUES" />
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, gap: SPACE.md }}>
             <div style={{ fontSize: 40 }}>⏳</div>
             <div style={{ fontSize: 22, fontWeight: 900, color: WHITE }}>
@@ -891,7 +892,7 @@ export default function PlayPage({ params }) {
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-        <StatusBar code={code} label="ARRANGE YOUR BOARD" />
+        <StatusBar dark={COOL_DARK} label="ARRANGE YOUR BOARD" />
 
         <div style={{ flex: 1, padding: `0 0 ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: GAP.result }}>
           <CloverBoard
@@ -973,7 +974,7 @@ export default function PlayPage({ params }) {
       return (
         <>
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-          <StatusBar code={code} label={`BOARD ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`} />
+          <StatusBar dark={COOL_DARK} label={`BOARD ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`} />
           <div style={{ flex: 1, padding: `16px 16px ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
             <div style={{ fontSize: 17, fontWeight: 900, color: WHITE }}>
               {lockedSlots.size} / 4 correct — attempt 2 coming up
@@ -1006,7 +1007,7 @@ export default function PlayPage({ params }) {
       return (
         <>
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-          <StatusBar code={code} label={`BOARD ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`} />
+          <StatusBar dark={COOL_DARK} label={`BOARD ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`} />
           <div style={{ flex: 1, padding: `16px 16px ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: 48, marginBottom: 4 }}>{perfect ? "🎉" : pts >= 3 ? "✨" : "💪"}</div>
@@ -1048,7 +1049,7 @@ export default function PlayPage({ params }) {
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-        <StatusBar code={code} label={`BOARD ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`} />
+        <StatusBar dark={COOL_DARK} label={`BOARD ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`} />
 
         <div style={{ flex: 1, padding: `12px 0 ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: GAP.result }}>
           <div style={{ fontSize: 13, color: MUTED, textAlign: "center" }}>{hint}</div>
@@ -1127,7 +1128,7 @@ export default function PlayPage({ params }) {
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-        <StatusBar code={code} label="FINAL SCORE" />
+        <StatusBar dark={COOL_DARK} label="FINAL SCORE" />
         <div style={{ flex: 1, padding: `24px 16px ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: GAP.section, width: "100%" }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: 56, marginBottom: 8 }}>🍀</div>
@@ -1180,13 +1181,7 @@ export default function PlayPage({ params }) {
 }
 
 // ─── Shared components ────────────────────────────────────────────────────────
-function StatusBar({ label }) {
-  return (
-    <div style={{ background: COOL_DARK, padding: "14px 20px" }}>
-      <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", color: MUTED }}>{label}</div>
-    </div>
-  )
-}
+// StatusBar removed - now using shared StatusBar component
 
 function DragOverlay({ dragCard, dragPos, cs, boardRotation = 0 }) {
   if (!dragCard || !dragPos) return null

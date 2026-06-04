@@ -4,11 +4,14 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { pick25Words } from "../lib/words"
 import { useSubmitNudge } from "../lib/useSubmitNudge"
+import HomeScreen from "../components/HomeScreen"
 
 const BG = "#C0B298"
 const TAN = "#C4924A"
 const RED = "#CC2222"
 const BLUE = "#1E50B5"
+const YELLOW = "#FBDF54"
+const WARM_LIGHT = "#D4C8B0"
 
 const WORDS_A = [
   "AMBER","CEDAR","CRIMSON","DAGGER","EMBER","FALCON","GLACIER","HARBOR","INDIGO","JASPER",
@@ -126,110 +129,19 @@ export default function Home() {
   }
 
   return (
-    <div style={{
-      minHeight: "100dvh",
-      background: BG,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "40px 24px",
-    }}>
-      <h1 style={{
-        fontSize: "clamp(48px, 14vw, 88px)",
-        fontWeight: 900,
-        color: "#1A1008",
-        letterSpacing: "-2px",
-        lineHeight: 0.9,
-        textAlign: "center",
-        marginBottom: 12,
-      }}>
-        Code<br />Names
-      </h1>
-
-      <p style={{
-        color: "rgba(0,0,0,0.4)",
-        fontSize: 13,
-        fontWeight: 700,
-        textAlign: "center",
-        marginBottom: 56,
-        letterSpacing: "0.1em",
-        textTransform: "uppercase",
-      }}>
-        4+ Players
-      </p>
-
-      <div style={{ width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", gap: 8 }}>
-        <button
-          onClick={onCreateClick}
-          disabled={isCreating}
-          style={{
-            background: TAN,
-            color: "#000",
-            fontSize: 22,
-            fontWeight: 900,
-            padding: "22px 40px",
-            width: "100%",
-            display: "block",
-          }}
-        >
-          {isCreating ? "Creating…" : "Create Game"}
-        </button>
-
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="text"
-            placeholder="Room code"
-            value={joinCode}
-            onChange={e => setJoinCode(e.target.value.toUpperCase())}
-            onKeyDown={e => { if (e.key === "Enter") onJoin() }}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              background: "rgba(0,0,0,0.1)",
-              color: "#1A1008",
-              fontSize: 18,
-              fontWeight: 800,
-              padding: "18px 16px",
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-            }}
-          />
-          <button
-            onClick={onJoin}
-            style={{
-              background: "rgba(0,0,0,0.1)",
-              color: "#1A1008",
-              fontSize: 18,
-              fontWeight: 900,
-              padding: "18px 20px",
-              flexShrink: 0,
-              animation: nudgeJoin ? "nudgePulse 1.5s ease-in-out infinite" : "none",
-            }}
-          >
-            Join
-          </button>
-        </div>
-      </div>
-
-      {!!error && (
-        <p style={{ color: TAN, marginTop: 20, fontSize: 14, fontWeight: 600, textAlign: "center" }}>
-          Error: {error}
-        </p>
-      )}
-
-      <button
-        onClick={createDummyGame}
-        disabled={isCreating}
-        style={{
-          position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
-          background: "rgba(0,0,0,0.08)", color: "rgba(0,0,0,0.35)",
-          fontSize: 11, fontWeight: 700, padding: "8px 16px",
-          letterSpacing: "0.1em", textTransform: "uppercase", whiteSpace: "nowrap",
-        }}
-      >
-        Dummy Game
-      </button>
-    </div>
+    <HomeScreen
+      title={<>Code<br />Names</>}
+      subtitle="Teams · Clues · Guessing"
+      onCreate={onCreateClick}
+      isCreating={isCreating}
+      joinCode={joinCode}
+      onJoinCodeChange={setJoinCode}
+      onJoin={onJoin}
+      nudgeJoin={nudgeJoin}
+      error={error}
+      onDummyGame={createDummyGame}
+      isDummy={isCreating}
+      colors={{ bg: BG, wl: WARM_LIGHT, yellow: TAN }}
+    />
   )
 }

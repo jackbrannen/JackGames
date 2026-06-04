@@ -4,10 +4,13 @@ import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { randomCode } from "../lib/words"
 import { useSubmitNudge } from "../lib/useSubmitNudge"
+import HomeScreen from "../components/HomeScreen"
 
+const BG = "#974344"
 const PRIMARY = "#974344"
 const DARK    = "#803946"
 const WARM    = "#AE5C4D"
+const WARM_LIGHT = "#B85556"
 const YELLOW  = "#FBDF54"
 
 const TEST_CLUES = [
@@ -103,130 +106,33 @@ export default function Home() {
     }
   }
 
+  async function handleDummyClick() {
+    if (testCreating) return
+    setError("")
+    setTestCreating(true)
+    try {
+      const code = await createTestGame()
+      router.push(`/${code}`)
+    } catch (e) {
+      setError(e.message ?? "unknown error")
+      setTestCreating(false)
+    }
+  }
+
   return (
-    <div style={{
-      minHeight: "100dvh",
-      background: PRIMARY,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "40px 24px",
-    }}>
-      <h1 style={{
-        fontSize: "clamp(52px, 16vw, 96px)",
-        fontWeight: 900,
-        color: "white",
-        letterSpacing: "-3px",
-        lineHeight: 0.9,
-        textAlign: "center",
-        marginBottom: 16,
-      }}>
-        Reverse<br />Charades
-      </h1>
-
-      <p style={{
-        color: "rgba(255,255,255,0.55)",
-        fontSize: 14,
-        fontWeight: 700,
-        textTransform: "uppercase",
-        letterSpacing: "0.18em",
-        textAlign: "center",
-        marginBottom: 64,
-      }}>
-        Party Acting Game
-      </p>
-
-      <div style={{ width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", gap: 8 }}>
-        <button
-          onClick={onCreateClick}
-          disabled={creating}
-          style={{
-            background: YELLOW,
-            color: "#000",
-            fontSize: 22,
-            fontWeight: 900,
-            padding: "22px 40px",
-            width: "100%",
-          }}
-        >
-          {creating ? "Creating…" : "Create Game"}
-        </button>
-
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="text"
-            placeholder="Room code"
-            value={joinCode}
-            onChange={e => setJoinCode(e.target.value.toUpperCase())}
-            onKeyDown={e => { if (e.key === "Enter" && joinCode.trim()) router.push(`/${joinCode.trim()}`) }}
-            style={{
-              flex: 1,
-              background: WARM,
-              color: "white",
-              fontSize: 18,
-              fontWeight: 800,
-              padding: "18px 16px",
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-              minWidth: 0,
-            }}
-          />
-          <button
-            onClick={() => { if (joinCode.trim()) router.push(`/${joinCode.trim()}`) }}
-            style={{
-              background: WARM,
-              color: "white",
-              fontSize: 18,
-              fontWeight: 900,
-              padding: "18px 20px",
-              flexShrink: 0,
-              animation: nudgeJoin ? "nudgePulse 1.5s ease-in-out infinite" : "none",
-            }}
-          >
-            Join
-          </button>
-        </div>
-
-      </div>
-
-      <button
-        onClick={async () => {
-          if (testCreating) return
-          setError("")
-          setTestCreating(true)
-          try {
-            const code = await createTestGame()
-            router.push(`/${code}`)
-          } catch (e) {
-            setError(e.message ?? "unknown error")
-            setTestCreating(false)
-          }
-        }}
-        disabled={testCreating}
-        style={{
-          position: "fixed",
-          bottom: 20,
-          left: "50%",
-          transform: "translateX(-50%)",
-          background: DARK,
-          color: "rgba(255,255,255,0.35)",
-          fontSize: 11,
-          fontWeight: 700,
-          padding: "8px 16px",
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {testCreating ? "Setting up…" : "Dummy Game"}
-      </button>
-
-      {!!error && (
-        <p style={{ color: YELLOW, marginTop: 20, fontSize: 15, textAlign: "center", fontWeight: 600 }}>
-          Error: {error}
-        </p>
-      )}
-    </div>
+    <HomeScreen
+      title={<>Reverse<br />Charades</>}
+      subtitle="Group acts · One guesses"
+      onCreate={onCreateClick}
+      isCreating={creating}
+      joinCode={joinCode}
+      onJoinCodeChange={setJoinCode}
+      onJoin={() => { if (joinCode.trim()) router.push(`/${joinCode.trim()}`) }}
+      nudgeJoin={nudgeJoin}
+      error={error}
+      onDummyGame={handleDummyClick}
+      isDummy={testCreating}
+      colors={{ bg: BG, wl: WARM_LIGHT, yellow: YELLOW }}
+    />
   )
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useSubmitNudge } from "../lib/useSubmitNudge"
+import HomeScreen from "../components/HomeScreen"
 
 const BG = "#2C2540"
 const WARM_LIGHT = "#464171"
@@ -94,110 +95,19 @@ export default function Home() {
   }
 
   return (
-    <div style={{
-      minHeight: "100dvh",
-      background: BG,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "40px 24px",
-    }}>
-      <h1 style={{
-        fontSize: "clamp(40px, 12vw, 80px)",
-        fontWeight: 900,
-        color: "white",
-        letterSpacing: "-2px",
-        lineHeight: 0.92,
-        textAlign: "center",
-        marginBottom: 12,
-      }}>
-        Mr.<br />White
-      </h1>
-
-      <p style={{
-        color: "rgba(255,255,255,0.45)",
-        fontSize: 14,
-        fontWeight: 700,
-        textAlign: "center",
-        marginBottom: 56,
-        letterSpacing: "0.1em",
-        textTransform: "uppercase",
-      }}>
-        Social deduction word game.
-      </p>
-
-      <div style={{ width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", gap: 8 }}>
-        <button
-          onClick={onCreateClick}
-          disabled={isCreating}
-          style={{
-            background: YELLOW,
-            color: "#000",
-            fontSize: 22,
-            fontWeight: 900,
-            padding: "22px 40px",
-            width: "100%",
-            display: "block",
-          }}
-        >
-          {isCreating ? "Creating…" : "Create Game"}
-        </button>
-
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="text"
-            placeholder="Room code"
-            value={joinCode}
-            onChange={e => setJoinCode(e.target.value.toUpperCase())}
-            onKeyDown={e => { if (e.key === "Enter") onJoin() }}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              background: WARM_LIGHT,
-              color: "white",
-              fontSize: 18,
-              fontWeight: 800,
-              padding: "18px 16px",
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-            }}
-          />
-          <button
-            onClick={onJoin}
-            style={{
-              background: WARM_LIGHT,
-              color: "white",
-              fontSize: 18,
-              fontWeight: 900,
-              padding: "18px 20px",
-              flexShrink: 0,
-              animation: nudgeJoin ? "nudgePulse 1.5s ease-in-out infinite" : "none",
-            }}
-          >
-            Join
-          </button>
-        </div>
-      </div>
-
-      {!!error && (
-        <p style={{ color: YELLOW, marginTop: 20, fontSize: 14, fontWeight: 600, textAlign: "center" }}>
-          Error: {error}
-        </p>
-      )}
-
-      <button
-        onClick={onCreateClick}
-        disabled={isCreating}
-        style={{
-          position: "fixed", bottom: 20, left: "50%", transform: "translateX(-50%)",
-          background: WARM_LIGHT, color: "rgba(255,255,255,0.65)",
-          fontSize: 11, fontWeight: 700, padding: "8px 16px",
-          letterSpacing: "0.1em", textTransform: "uppercase", whiteSpace: "nowrap",
-        }}
-      >
-        {isCreating ? "Setting up…" : "Dummy Game"}
-      </button>
-    </div>
+    <HomeScreen
+      title={<>Mr.<br />White</>}
+      subtitle="Deduce · Deceive · Discover"
+      onCreate={onCreateClick}
+      isCreating={isCreating}
+      joinCode={joinCode}
+      onJoinCodeChange={setJoinCode}
+      onJoin={onJoin}
+      nudgeJoin={nudgeJoin}
+      error={error}
+      onDummyGame={onCreateClick}
+      isDummy={isCreating}
+      colors={{ bg: BG, wl: WARM_LIGHT, yellow: YELLOW }}
+    />
   )
 }

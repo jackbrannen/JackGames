@@ -11,12 +11,12 @@ Status of shared components matching StyleGuide/ (localhost:3099):
 | FooterButton | ✅ Yes | Auto-loading state, primary/secondary/danger variants |
 | Menu | ✅ Yes | Slide-up drawer with Players, Poke, Message tiles |
 | Notifications | ✅ Yes | Top-fixed strips for pokes/messages |
-| WaitingList | ⚠️ Partial | Needs verification against style guide |
-| Selections | ⚠️ Partial | Needs verification against style guide |
-| StatusBar | ❌ No | Needs audit |
-| TextEntry | ❌ No | Needs audit |
-| RandomIdeas | ❌ No | Needs audit |
-| Lobby | ❌ No | Only GOW uses it, needs verification |
+| WaitingList | ✅ Yes | Verified matches style guide (gap:3, fontSize:16, padding:13px 16px) |
+| Selections | ✅ Yes | Now matches style guide (gap:6, fontSize:16, fontWeight varies, inline ✕) |
+| StatusBar | ✅ Yes | Now uses FONT_SIZE, FONT_WEIGHT, OPACITY constants |
+| TextEntry | ✅ Yes | Now uses FONT_SIZE, FONT_WEIGHT constants |
+| RandomIdeas | ✅ Yes | Now uses FONT_SIZE, FONT_WEIGHT, OPACITY constants |
+| Lobby | ⚠️ Partial | Partially updated with constants (player names, section headers); many inline values remain |
 | GameModal | ✅ Yes | End-game picker modal |
 
 **Next cleanup:** Audit and fix ⚠️ and ❌ components to match style guide.

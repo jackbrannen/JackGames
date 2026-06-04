@@ -13,6 +13,8 @@
     <StatusBar label={`Round ${game.round_index + 1} of ${game.rounds_total}`} dark={DARK} />
 */
 
+import { FONT_SIZE, FONT_WEIGHT, OPACITY } from "./styles"
+
 export default function StatusBar({ label, dark = "#000", right }) {
   return (
     <div style={{
@@ -23,11 +25,11 @@ export default function StatusBar({ label, dark = "#000", right }) {
       alignItems: "center",
       justifyContent: "space-between",
     }}>
-      <div style={{ fontSize: 13, fontWeight: 800, opacity: 0.75, color: "white" }}>
+      <div style={{ fontSize: FONT_SIZE.min, fontWeight: FONT_WEIGHT.heavy, opacity: OPACITY.moderate, color: "white" }}>
         {label}
       </div>
       {right && (
-        <div style={{ fontSize: 13, fontWeight: 800, color: "white" }}>
+        <div style={{ fontSize: FONT_SIZE.min, fontWeight: FONT_WEIGHT.heavy, color: "white" }}>
           {right}
         </div>
       )}

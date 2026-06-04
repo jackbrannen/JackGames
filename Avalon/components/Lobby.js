@@ -47,13 +47,14 @@
 */
 
 import { useState } from "react"
+import { FONT_SIZE, FONT_WEIGHT, OPACITY, STYLE } from "./styles"
 
 function PlayerRow({ p, myPlayerId, mid }) {
   return (
     <div style={{ padding: "13px 16px", background: mid, display: "flex", alignItems: "center" }}>
-      <div style={{ fontSize: 17, fontWeight: 700 }}>
+      <div style={{ fontSize: FONT_SIZE.sectionHeader, fontWeight: FONT_WEIGHT.bold }}>
         {p.name}
-        {p.id === myPlayerId && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
+        {p.id === myPlayerId && <span style={{ fontSize: 12, opacity: OPACITY.muted, marginLeft: 6 }}>you</span>}
       </div>
     </div>
   )
@@ -148,10 +149,10 @@ export default function Lobby({
 
       {/* Player list */}
       <div style={{ padding: "28px 24px 0" }}>
-        <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 4 }}>
+        <div style={{ ...STYLE.sectionHeader, marginBottom: 4 }}>
           Players
         </div>
-        <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.65, marginBottom: 12 }}>
+        <div style={{ fontSize: FONT_SIZE.min, fontWeight: FONT_WEIGHT.bold, opacity: OPACITY.muted, marginBottom: 12 }}>
           {players.length} {players.length === 1 ? "player" : "players"}
         </div>
         {players.length === 0 && (

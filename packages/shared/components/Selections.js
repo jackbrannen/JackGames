@@ -11,22 +11,19 @@
     options       { id, text, isMine? }[]   — list of choices
     selectedId    string | null             — currently selected option id
     onSelect      (id) => void              — called when player picks an option
-    onDeselect    () => void                — called when player taps ✕
+    onDeselect    () => void                — called when player taps selected item or ✕
     disabled      bool                      — disables all interaction
     colors        {
                     bg,           // unselected row background
                     selectedBg,   // selected row background (default #FBDF54)
                     selectedText, // selected row text color (default #000)
-                    deselectBg,   // ✕ button background (darker shade)
-                    deselectText, // ✕ button text color (default selectedBg)
-                    mineLabel?,   // label text color when unflashed (default rgba white 0.65)
                     flash?,       // flash color on own-item tap (default rgba red 0.25)
-                    mineBg?,      // own-item background (default rgba white 0.05 — visually dim)
+                    mineBg?,      // own-item background (default rgba white 0.05)
                     mineText?,    // own-item text color (default rgba white 0.4)
                   }
-    mineLabel     string  — label under own item (default "Your answer — can't vote for yourself")
-    gap           number  — gap between rows in px (default 10)
-    fontSize      number  — text size in px (default 18)
+    mineLabel     string  — label shown below own item when tapped (default "Your answer — can't vote for yourself")
+    gap           number  — gap between rows in px (default 6)
+    fontSize      number  — text size in px (default 16)
 
   Usage (GameOfWhat voting):
     <Selections
@@ -59,8 +56,8 @@ export default function Selections({
   disabled = false,
   colors = {},
   mineLabel = "Your answer — you can't vote for yourself",
-  gap = 10,
-  fontSize = 18,
+  gap = 6,
+  fontSize = 16,
 }) {
   const [flashId, setFlashId] = useState(null)
 
@@ -68,14 +65,10 @@ export default function Selections({
     bg = "rgba(255,255,255,0.12)",
     selectedBg = "#FBDF54",
     selectedText = "#000",
-    deselectBg = "rgba(0,0,0,0.3)",
-    deselectText,
     flash = "rgba(255,80,80,0.25)",
     mineBg = "rgba(255,255,255,0.05)",
     mineText = "rgba(255,255,255,0.4)",
   } = colors
-
-  const derivedDeselectText = deselectText ?? selectedBg
 
   // Put own items last
   const sorted = [...options].sort((a, b) => (a.isMine ? 1 : 0) - (b.isMine ? 1 : 0))
@@ -87,8 +80,12 @@ export default function Selections({
       setTimeout(() => setFlashId(null), 500)
       return
     }
-    if (selectedId === opt.id) return
-    onSelect?.(opt.id)
+    const nowSelected = selectedId === opt.id
+    if (nowSelected) {
+      onDeselect?.()
+    } else {
+      onSelect?.(opt.id)
+    }
   }
 
   return (
@@ -100,53 +97,43 @@ export default function Selections({
 
         return (
           <div key={opt.id}>
-            <div style={{ display: "flex", alignItems: "stretch" }}>
-              <button
-                onClick={() => handleTap(opt)}
-                disabled={disabled && !opt.isMine}
-                style={{
-                  flex: 1,
-                  background: isSelected ? selectedBg : isFlashing ? flash : opt.isMine ? mineBg : bg,
-                  color: isSelected ? selectedText : opt.isMine ? mineText : "white",
-                  fontSize,
-                  fontWeight: 700,
-                  padding: "18px 20px",
-                  textAlign: "left",
-                  display: "block",
-                  opacity: dimmed ? 0.45 : 1,
-                  transition: "opacity 200ms",
-                }}
-              >
+            <button
+              onClick={() => handleTap(opt)}
+              disabled={disabled && !opt.isMine}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                width: "100%",
+                padding: "18px 16px",
+                textAlign: "left",
+                background: isSelected ? selectedBg : isFlashing ? flash : opt.isMine ? mineBg : bg,
+                color: isSelected ? selectedText : opt.isMine ? mineText : "white",
+                opacity: opt.isMine ? 1 : dimmed ? 0.45 : 1,
+                transition: "opacity 200ms",
+              }}
+            >
+              <span style={{ fontSize, fontWeight: isSelected ? 700 : 500, flex: 1 }}>
                 {opt.text}
-              </button>
+              </span>
               {isSelected && (
-                <button
-                  onClick={() => onDeselect?.()}
-                  disabled={disabled}
-                  style={{
-                    background: deselectBg,
-                    color: derivedDeselectText,
-                    fontSize: 22,
-                    fontWeight: 900,
-                    padding: "18px 24px",
-                    flexShrink: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
+                <span style={{ fontSize: 18, marginLeft: 12, flexShrink: 0, fontWeight: 900 }}>
                   ✕
-                </button>
+                </span>
               )}
-            </div>
-            {opt.isMine && (
+              {opt.isMine && (
+                <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.6, marginLeft: 12 }}>
+                  your answer
+                </span>
+              )}
+            </button>
+            {opt.isMine && isFlashing && (
               <div style={{
                 fontSize: 13,
                 fontWeight: 700,
-                color: isFlashing ? (colors.flash ?? "#F04F52") : "rgba(255,255,255,0.65)",
+                color: colors.flash ?? "#F04F52",
                 marginTop: 4,
                 marginLeft: 2,
-                transition: "color 150ms",
               }}>
                 {mineLabel}
               </div>

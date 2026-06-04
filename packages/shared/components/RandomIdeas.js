@@ -42,6 +42,7 @@
 */
 
 import { useState } from "react"
+import { FONT_SIZE, FONT_WEIGHT, OPACITY } from "./styles"
 
 export default function RandomIdeas({
   bg = "rgba(255,255,255,0.15)",
@@ -84,7 +85,7 @@ export default function RandomIdeas({
           disabled={loading}
           style={{
             background: bg, color: "white",
-            fontSize: 15, fontWeight: 800,
+            fontSize: 15, fontWeight: FONT_WEIGHT.heavy,
             padding: "14px 18px", display: "block", width: "100%",
             marginBottom: chips.length ? 12 : 0,
           }}
@@ -93,8 +94,8 @@ export default function RandomIdeas({
         </button>
       ) : (
         <div style={{
-          fontSize: 13, fontWeight: 600,
-          color: "rgba(255,255,255,0.25)",
+          fontSize: FONT_SIZE.min, fontWeight: FONT_WEIGHT.semibold,
+          color: `rgba(255,255,255,${OPACITY.disabled})`,
           padding: "12px 18px", background: bg,
           marginBottom: chips.length ? 12 : 0,
         }}>
@@ -109,7 +110,7 @@ export default function RandomIdeas({
               onClick={() => onIdeaClick?.(chip.text)}
               style={{
                 padding: "7px 14px", borderRadius: 999,
-                fontSize: 14, fontWeight: 700,
+                fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.bold,
                 background: chip.isName ? "rgba(251,223,84,0.12)" : bg,
                 color: chip.isName ? yellow : "white",
                 border: chip.isName ? "1px solid rgba(251,223,84,0.3)" : "1px solid rgba(255,255,255,0.15)",

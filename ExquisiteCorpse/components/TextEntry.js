@@ -41,6 +41,7 @@
 */
 
 import { useRef } from "react"
+import { FONT_SIZE, FONT_WEIGHT } from "./styles"
 
 export default function TextEntry({
   value = "",
@@ -51,7 +52,7 @@ export default function TextEntry({
   multiline = true,
   rows = 3,
   bg = "rgba(255,255,255,0.15)",
-  fontSize = 20,
+  fontSize = FONT_SIZE.heading,
   disabled = false,
   autoFocus = false,
   inputRef,
@@ -88,7 +89,7 @@ export default function TextEntry({
       background: bg,
       color: "white",
       fontSize,
-      fontWeight: 600,
+      fontWeight: FONT_WEIGHT.semibold,
       padding: "16px 18px",
       width: "100%",
       display: "block",

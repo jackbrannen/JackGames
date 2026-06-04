@@ -10,6 +10,7 @@ import Notifications from "../../../components/Notifications"
 import FooterButton from "../../../components/FooterButton"
 import WaitingList from "../../../components/WaitingList"
 import TextEntry from "../../../components/TextEntry"
+import StatusBar from "../../../components/StatusBar"
 import { useDuplicates } from "../../../lib/useDuplicates"
 import useTypingPresence from "../../../lib/useTypingPresence"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
@@ -343,20 +344,7 @@ function SpectrumBar({ listHeight }) {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function TopBar({ left, right }) {
-  return (
-    <div style={{ padding: "14px 20px", background: DARK, display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-      <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.75 }}>
-        {left}
-      </div>
-      {right && (
-        <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.75 }}>
-          {right}
-        </div>
-      )}
-    </div>
-  )
-}
+// TopBar removed - now using shared StatusBar component
 
 
 function Scoreboard({ right, wrong }) {
@@ -712,7 +700,7 @@ export default function Play({ params }) {
       return (
         <>
         <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
-          <TopBar left="First to Worst" />
+          <StatusBar dark={DARK} label="First to Worst" />
           <div style={{ padding: "32px 24px", paddingBottom: BOTTOM_PAD }}>
             <div style={{ fontSize: "clamp(32px, 9vw, 52px)", fontWeight: 900, lineHeight: 1, marginBottom: 8 }}>
               Sitting out
@@ -742,7 +730,7 @@ export default function Play({ params }) {
       return (
         <>
         <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
-          <TopBar left="First to Worst" />
+          <StatusBar dark={DARK} label="First to Worst" />
           <div style={{ padding: "32px 24px", paddingBottom: BOTTOM_PAD }}>
             <div style={{ fontSize: "clamp(32px, 9vw, 52px)", fontWeight: 900, lineHeight: 1, marginBottom: 8 }}>
               Waiting for<br />everyone…
@@ -923,7 +911,7 @@ export default function Play({ params }) {
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
-        <TopBar left="First to Worst" />
+        <StatusBar dark={DARK} label="First to Worst" />
         <div style={{ flex: 1, overflowY: "auto", padding: "28px 24px", paddingBottom: BOTTOM_PAD }}>
 
           <div style={{ fontSize: "clamp(28px, 8vw, 40px)", fontWeight: 900, lineHeight: 1, marginBottom: 10 }}>
@@ -994,7 +982,7 @@ export default function Play({ params }) {
       return (
         <>
         <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
-          <TopBar left="First to Worst" />
+          <StatusBar dark={DARK} label="First to Worst" />
           <div style={{ padding: "32px 24px", paddingBottom: BOTTOM_PAD }}>
             <div style={{ fontSize: "clamp(32px, 9vw, 52px)", fontWeight: 900, lineHeight: 1, marginBottom: 8 }}>
               Sitting out
@@ -1024,7 +1012,7 @@ export default function Play({ params }) {
       return (
         <>
         <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
-          <TopBar left="First to Worst" />
+          <StatusBar dark={DARK} label="First to Worst" />
           <div style={{ padding: "32px 24px", paddingBottom: BOTTOM_PAD }}>
             <div style={{ fontSize: "clamp(32px, 9vw, 52px)", fontWeight: 900, lineHeight: 1, marginBottom: 32 }}>
               Waiting for<br />everyone…
@@ -1061,7 +1049,7 @@ export default function Play({ params }) {
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
-        <TopBar left="First to Worst" />
+        <StatusBar dark={DARK} label="First to Worst" />
         <div style={{ flex: 1, overflowY: "auto", padding: "24px 24px", paddingBottom: BOTTOM_PAD }}>
 
           <div style={{ fontSize: "clamp(26px, 8vw, 40px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 10 }}>
@@ -1117,7 +1105,7 @@ export default function Play({ params }) {
         return (
           <>
           <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
-            <TopBar left={roundLabel} right={scoreRight} />
+            <StatusBar dark={DARK} label={roundLabel} right={scoreRight} />
             <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "40px 24px", paddingBottom: BOTTOM_PAD, textAlign: "center" }}>
               <div style={{ fontSize: "clamp(36px, 10vw, 56px)", fontWeight: 900, lineHeight: 1, marginBottom: 20 }}>
                 Your words are up!
@@ -1144,7 +1132,7 @@ export default function Play({ params }) {
       return (
         <>
         <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
-          <TopBar left={roundLabel} right={scoreRight} />
+          <StatusBar dark={DARK} label={roundLabel} right={scoreRight} />
           <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "40px 24px", paddingBottom: BOTTOM_PAD, textAlign: "center" }}>
             <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.75, marginBottom: 16 }}>
               {roundLabel}
@@ -1205,7 +1193,7 @@ export default function Play({ params }) {
         return (
           <>
           <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
-            <TopBar left={roundLabel} right={scoreRight} />
+            <StatusBar dark={DARK} label={roundLabel} right={scoreRight} />
             <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "28px 24px", paddingBottom: BOTTOM_PAD }}>
               <div style={{ fontSize: "clamp(28px, 8vw, 44px)", fontWeight: 900, lineHeight: 1, marginBottom: 8 }}>
                 {isWatcher ? "Watching" : "Stay quiet!"}
@@ -1242,7 +1230,7 @@ export default function Play({ params }) {
       return (
         <>
         <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
-          <TopBar left={roundLabel} right={scoreRight} />
+          <StatusBar dark={DARK} label={roundLabel} right={scoreRight} />
           <div style={{ flex: 1, overflowY: "auto", padding: "24px 24px", paddingBottom: BOTTOM_PAD }}>
 
             <div style={{ fontSize: "clamp(26px, 8vw, 40px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 4 }}>
@@ -1317,7 +1305,7 @@ export default function Play({ params }) {
       return (
         <>
         <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
-          <TopBar left={roundLabel} right={scoreRight} />
+          <StatusBar dark={DARK} label={roundLabel} right={scoreRight} />
           <div style={{ flex: 1, overflowY: "auto", padding: "24px 24px" }}>
 
             <div style={{ fontSize: "clamp(26px, 8vw, 40px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 20 }}>

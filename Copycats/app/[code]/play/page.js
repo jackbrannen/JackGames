@@ -11,6 +11,7 @@ import Notifications from "../../../components/Notifications"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import EndGame from "../../../components/EndGame"
 import Results from "../../../components/Results"
+import TextEntry from "../../../components/TextEntry"
 import StatusBar from "../../../components/StatusBar"
 import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT } from "../../../components/styles"
 

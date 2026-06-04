@@ -6,6 +6,7 @@ import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
+import EndGame from "../../../components/EndGame"
 
 const PRIMARY = "#974344"
 const DARK    = "#803946"
@@ -334,67 +335,51 @@ export default function Play({ params }) {
     const loserTurns = winner === "A" ? game.team_b_turns : game.team_a_turns
     const turnImbalance = !tied && winnerTurns != null && loserTurns != null && winnerTurns > loserTurns
 
-    return (
-      <>
-      <div style={{ minHeight: "100dvh", background: PRIMARY, color: "white", padding: "40px 24px 80px" }}>
-        <div style={{ fontSize: "clamp(56px, 16vw, 88px)", fontWeight: 900, textTransform: "uppercase", lineHeight: 0.9, marginBottom: 32 }}>
-          Game<br />Over
-        </div>
-
-        {/* Winner */}
-        <div style={{ background: DARK, padding: "24px", marginBottom: 16 }}>
-          <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.65, marginBottom: 8 }}>
-            {tied ? "Result" : "Winner"}
-          </div>
-          <div style={{ fontSize: 44, fontWeight: 900, lineHeight: 1, color: tied ? "white" : YELLOW }}>
-            {tied ? "It's a tie!" : `${teamLabel(winner)} wins`}
-          </div>
-          <div style={{ fontSize: 22, fontWeight: 700, opacity: 0.65, marginTop: 6 }}>
-            {aScore} – {bScore}
-          </div>
-        </div>
-
+    const teamAbove = (
+      <div style={{ marginBottom: 32 }}>
         {turnImbalance && (
-          <div style={{ background: MID, padding: "14px 18px", marginBottom: 16, fontSize: 14, fontWeight: 600, opacity: 0.85, borderLeft: `4px solid ${YELLOW}` }}>
+          <div style={{ background: MID, padding: "14px 18px", marginBottom: 12, fontSize: 14, fontWeight: 600, opacity: 0.85, borderLeft: `4px solid ${YELLOW}` }}>
             Note: {teamLabel(winner)} had one more turn than {teamLabel(winner === "A" ? "B" : "A")}.
           </div>
         )}
-
-        {/* Scores */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 40 }}>
-          {[["A", aScore], ["B", bScore]].map(([t, score]) => (
-            <div key={t} style={{ background: MID, overflow: "hidden" }}>
-              <div style={{
-                background: teamColor(t),
-                color: teamTextColor(t),
-                fontSize: 12, fontWeight: 900,
-                padding: "7px 12px",
-                textTransform: "uppercase",
-                letterSpacing: "0.08em",
-              }}>
-                {teamLabel(t)}
-              </div>
-              <div style={{ padding: "16px 12px" }}>
-                <div style={{ fontSize: 48, fontWeight: 900, lineHeight: 1 }}>{score}</div>
-                <div style={{ fontSize: 13, opacity: 0.65, fontWeight: 600, marginTop: 4 }}>
-                  {t === "A" ? game.team_a_turns : game.team_b_turns} turn{(t === "A" ? game.team_a_turns : game.team_b_turns) !== 1 ? "s" : ""}
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          {[["A", aScore], ["B", bScore]].map(([t, score]) => {
+            const isWinner = winner === t
+            const turns = t === "A" ? game.team_a_turns : game.team_b_turns
+            const teamPlayers = players.filter(p => p.team === t)
+            return (
+              <div key={t} style={{ display: "flex" }}>
+                <div style={{ padding: "13px 0", minWidth: 48, flexShrink: 0, background: teamColor(t), fontSize: 18, fontWeight: 900, color: teamTextColor(t), display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {score}
+                </div>
+                <div style={{ padding: "13px 16px", flex: 1, background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ fontSize: 17, fontWeight: 700 }}>{teamLabel(t)}</div>
+                    <div style={{ fontSize: 12, opacity: 0.65, marginTop: 2 }}>
+                      {teamPlayers.map(p => p.name).join(", ")}
+                      {turns != null ? ` · ${turns} turn${turns !== 1 ? "s" : ""}` : ""}
+                    </div>
+                  </div>
+                  {isWinner && <span style={{ fontSize: 11, fontWeight: 800, color: YELLOW, textTransform: "uppercase", letterSpacing: "0.1em" }}>Winner</span>}
+                  {tied && <span style={{ fontSize: 11, fontWeight: 800, opacity: 0.65, textTransform: "uppercase", letterSpacing: "0.1em" }}>Tied</span>}
                 </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
+      </div>
+    )
 
-        <button
-          onClick={doResetGame}
-          style={{ background: YELLOW, color: "#000", fontSize: 22, fontWeight: 900, padding: "22px 32px", width: "100%", display: "block", marginBottom: 32 }}
-        >
-          Play Again
-        </button>
-
-        <a href="https://games.jackbrannen.com"
-          style={{ display: "block", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%", textAlign: "center", textDecoration: "none" }}>
-          Play Another Game
-        </a>
+    return (
+      <>
+      <div style={{ minHeight: "100dvh", background: PRIMARY, color: "white", display: "flex", flexDirection: "column" }}>
+        <EndGame
+          players={[]}
+          onPlayAgain={doResetGame}
+          bottomPad={BOTTOM_PAD}
+          colors={{ yellow: YELLOW, wl: MID }}
+          aboveScores={teamAbove}
+        />
       </div>
         {pokeSystemNode}
       </>

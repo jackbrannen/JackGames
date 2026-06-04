@@ -209,6 +209,19 @@ All pages use `"use client"`. No SSR. No component library — inline styles onl
 
 **Style Guide:** The canonical UI reference is the interactive style guide at `StyleGuide/` (localhost:3099 when running). When implementing UI elements (typography, cards, buttons, colors), always reference the style guide first — it shows the exact markup, spacing, and colors for each pattern. The rules below supplement the style guide with implementation notes.
 
+**Design Constants:** All games must import design constants from `components/styles.js`:
+```js
+import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD } from "../components/styles"
+```
+
+**Never use magic numbers in inline styles.** Use constants:
+- Typography: `FONT_SIZE.body`, `FONT_WEIGHT.bold`, `OPACITY.normal`
+- Section headers: `STYLE.sectionHeader` (fontSize: 17, fontWeight: 800, opacity: 0.85)
+- Eyebrow labels: `STYLE.eyebrow` (13px uppercase with letter-spacing)
+- Gaps: `GAP.card` (3), `GAP.selection` (6), `GAP.result` (12), `GAP.section` (24)
+- Card layouts: `STYLE.cardLeft(darkColor)`, `STYLE.cardRight(midColor)`, `STYLE.well(midColor)`
+- Spacing: `SPACE.xs` (8), `SPACE.sm` (16), `SPACE.lg` (24), etc.
+
 ### CSS Reset (copy verbatim into every new game's `globals.css`)
 ```css
 * { box-sizing: border-box; margin: 0; padding: 0; }

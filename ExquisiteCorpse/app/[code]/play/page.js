@@ -10,6 +10,7 @@ import FooterButton from "../../../components/FooterButton"
 import WaitingList from "../../../components/WaitingList"
 import Results from "../../../components/Results"
 import TextEntry from "../../../components/TextEntry"
+import RandomIdeas from "../../../components/RandomIdeas"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 

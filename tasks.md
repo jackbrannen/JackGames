@@ -37,7 +37,7 @@ are wired in all 12 games and omitted from the table.
 | WaitingList      | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
 | StatusBar        | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
 | TextEntry        | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
-| RandomIdeas      |    | ✓   |    |     |    |    |     |    |    |    |    |    |
+| RandomIdeas      | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
 | Selections       | ·  | ✓   | ✓  | ·   | ✓  | ·  | ·   | ✓  | ·  | ·  | ·  | ·  |
 | HomeScreen       | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
 | Lobby            |    | ✓   |    |     |    |    |     |    |    |    |    |    |

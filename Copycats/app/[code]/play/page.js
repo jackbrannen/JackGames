@@ -10,6 +10,7 @@ import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import EndGame from "../../../components/EndGame"
+import { STYLE } from "../../../components/styles"
 
 const BG         = "#5C2D8C"
 const YELLOW     = "#FBDF54"
@@ -42,7 +43,7 @@ function codeSeed(code, round) {
 function Section({ label, children, style }) {
   return (
     <div style={style}>
-      <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 16 }}>
+      <div style={{ ...STYLE.sectionHeader, marginBottom: 16 }}>
         {label}
       </div>
       {children}
@@ -52,7 +53,7 @@ function Section({ label, children, style }) {
 
 function TopBar({ children }) {
   return (
-    <div style={{ background: DARK, padding: "12px 20px", fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.75)", textTransform: "uppercase", letterSpacing: "0.15em" }}>
+    <div style={{ background: DARK, padding: "12px 20px", ...STYLE.eyebrow, color: "rgba(255,255,255,0.75)" }}>
       {children}
     </div>
   )
@@ -731,7 +732,7 @@ export default function PlayPage({ params }) {
           {/* Real answer */}
           {targetAnswer && (
             <div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 16 }}>
+              <div style={{ ...STYLE.sectionHeader, marginBottom: 16 }}>
                 {roundTarget?.name}'s real answer
               </div>
               <div style={{ background: GREEN, padding: "16px 20px" }}>

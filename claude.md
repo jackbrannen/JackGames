@@ -207,6 +207,8 @@ All pages use `"use client"`. No SSR. No component library — inline styles onl
 
 ## UI Design System
 
+**Style Guide:** The canonical UI reference is the interactive style guide at `StyleGuide/` (localhost:3099 when running). When implementing UI elements (typography, cards, buttons, colors), always reference the style guide first — it shows the exact markup, spacing, and colors for each pattern. The rules below supplement the style guide with implementation notes.
+
 ### CSS Reset (copy verbatim into every new game's `globals.css`)
 ```css
 * { box-sizing: border-box; margin: 0; padding: 0; }

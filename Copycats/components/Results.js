@@ -5,6 +5,9 @@
   Shows answer groups with vote counts, authors, and optional bonus/correct
   labels. Below the answers: overall game scores sorted descending.
 
+  Answer cards: single card (mid-dark bg) with badge + content inside, gap: 12 between cards.
+  Scores: two-column split design (left block + right block), gap: 3 between rows.
+
   Props:
     question     { text, authorName }  — displayed above answers (omit to hide)
     items        { id, text, authorNames[], voteCount, voterNames[]?, isBonus?, isCorrect? }[]
@@ -68,7 +71,7 @@ export default function Results({
       )}
 
       {/* Answer groups */}
-      <div style={{ display: "flex", flexDirection: "column", gap, marginBottom: 28 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 28 }}>
         {items.map(item => {
           const pts = item.voteCount ?? 0
           return (

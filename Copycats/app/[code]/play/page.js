@@ -10,6 +10,7 @@ import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import EndGame from "../../../components/EndGame"
+import Results from "../../../components/Results"
 import { STYLE } from "../../../components/styles"
 
 const BG         = "#5C2D8C"
@@ -831,12 +832,16 @@ export default function PlayPage({ params }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
               {[...players].sort((a, b) => b.score - a.score).map((p, i) => (
                 <div key={p.id} style={{ display: "flex" }}>
-                  <div style={{ background: DARK, padding: "12px 0", minWidth: 48, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900 }}>
-                    {i + 1}
+                  <div style={{
+                    background: i === 0 ? YELLOW : "rgba(255,255,255,0.15)",
+                    color: i === 0 ? "#000" : "rgba(255,255,255,0.75)",
+                    fontSize: 20, fontWeight: 900,
+                    minWidth: 52, textAlign: "center", padding: "10px 0", flexShrink: 0,
+                  }}>
+                    {p.score}
                   </div>
-                  <div style={{ background: MID, flex: 1, padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: 16, fontWeight: 700 }}>{p.name}</span>
-                    <span style={{ fontSize: 18, fontWeight: 900, color: YELLOW }}>{p.score}</span>
+                  <div style={{ background: MID, padding: "10px 16px", flex: 1, display: "flex", alignItems: "center" }}>
+                    <span style={{ fontSize: 17, fontWeight: 700 }}>{p.name}</span>
                   </div>
                 </div>
               ))}

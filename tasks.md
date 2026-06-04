@@ -39,7 +39,7 @@ are wired in all 12 games and omitted from the table.
 | TextEntry        |    | ✓   |    | ✓   |    |    |     |    |    |    |    |    |
 | RandomIdeas      |    | ✓   |    |     |    |    |     |    |    |    |    |    |
 | Selections       | ·  | ✓   | ✓  | ·   | ✓  | ·  | ·   | ✓  | ·  | ·  | ·  | ·  |
-| HomeScreen       |    | ✓   |    |     |    |    |     | ✓  |    |    |    |    |
+| HomeScreen       | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  |     | ✓  |    |    |    |    |
 | Lobby            |    | ✓   |    |     |    |    |     |    |    |    |    |    |
 | EndGame          | ✓  | ✓   | ·  | ·   | ✓  | ·  | ·   | ✓  | ✓  | ✓  | ·  | ·  |
 | Results          |    | ✓   |    |     |    |    |     |    |    |    |    |    |
@@ -57,7 +57,7 @@ Each game's dummy game implementation must:
 
 ### Rollout To-Do
 
-- [ ] **HomeScreen rollout to 10 games** — Copycats and GOW done. Remaining: Fishbowl, Avalon, FirstToWorst, Drawful, SoClover, Telestrations, Codenames, ReverseCharades, ExquisiteCorpse, MrWhite. Each needs: (1) import HomeScreen, (2) extract colors (BG, YELLOW, WARM_LIGHT), (3) replace custom JSX with HomeScreen component. See `/tmp/homescreen_refactor.txt` for game-specific colors and subtitles.
+- [ ] **HomeScreen rollout to 5 remaining games** — 7 of 12 done (Copycats, GOW, Fishbowl, Avalon, FirstToWorst, Drawful, SoClover). Remaining: Telestrations, Codenames, ReverseCharades, ExquisiteCorpse, MrWhite. Some need missing color constants added first. Colors documented in `/tmp/homescreen_colors.txt`. Note: Avalon uses GOLD, Drawful uses ACCENT (both intentional).
 
 - [ ] **Replace inline typography with constants in all game pages** — GameOfWhat done. Remaining 11 games need same pattern: replace inline fontSize/fontWeight/opacity values with FONT_SIZE/FONT_WEIGHT/OPACITY/STYLE constants. Focus on play pages first (app/[code]/play/page.js), then lobby pages.
 

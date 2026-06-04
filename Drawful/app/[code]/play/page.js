@@ -537,6 +537,13 @@ export default function Play({ params }) {
     submitDrawing(true)
   }, [timerExpired, me?.drawing_url])
 
+  // Dummy game: auto-submit solid color drawing after 1s
+  useEffect(() => {
+    if (!game?.is_dummy || !me || game?.phase !== "drawing" || me.drawing_url || submittingDrawing) return
+    const t = setTimeout(() => submitDrawing(true), 1000)
+    return () => clearTimeout(t)
+  }, [game?.is_dummy, game?.phase, me?.id, me?.drawing_url, submittingDrawing])
+
   // ── Derived state ─────────────────────────────────────────────────────────
 
   const n = players.length

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import FooterButton from "../../../components/FooterButton"
 import Selections from "../../../components/Selections"
 import WaitingList from "../../../components/WaitingList"
 import Menu from "../../../components/Menu"
@@ -155,7 +156,6 @@ export default function Play({ params }) {
   const [selected, setSelected]         = useState([])
   const [target, setTarget]             = useState(null)
   const [cardPhase, setCardPhase]       = useState("unset")
-  const [acting, setActing]             = useState(false)
   const [animReady, setAnimReady]       = useState(false)
   const [instructions, setInstructions] = useState("")
   const soundTriggerRef = useRef(null)
@@ -222,6 +222,69 @@ export default function Play({ params }) {
   const hasSeenRole  = cardPhase !== "unset"
 
   const [menuOpen, setMenuOpen] = useState(false)
+
+  // Compute footer buttons based on phase
+  let footerButtons = null
+  if (me && phase === "role_reveal" && !me.ready && cardPhase !== "unset") {
+    footerButtons = (
+      <FooterButton
+        variant="primary"
+        onClick={() => rpc("mark_avalon_ready", { p_code: code, p_player_id: myId })}
+      >
+        I'm ready to play
+      </FooterButton>
+    )
+  } else if (me && phase === "propose" && me.id === game?.leader_id) {
+    const selected = players.filter(p => (game?.selected_ids ?? []).includes(p.id))
+    const questSize = (QUEST_SIZES[game?.player_count ?? 5] ?? [2,3,2,3,3])[(game?.quest_number ?? 1) - 1]
+    footerButtons = (
+      <FooterButton
+        variant="primary"
+        onClick={() => rpc("submit_avalon_proposal", { p_code: code, p_leader_id: me.id, p_player_ids: selected.map(p => p.id) })}
+        disabled={selected.length !== questSize}
+      >
+        Propose Team ({selected.length}/{questSize})
+      </FooterButton>
+    )
+  } else if (me && phase === "result") {
+    const goodWins = (game?.quest_results ?? []).filter(r => r === "success").length
+    const evilWins = (game?.quest_results ?? []).filter(r => r === "fail").length
+    const nextLabel = goodWins >= 3 || evilWins >= 3 ? "Continue to Results" : "Next Quest"
+    footerButtons = (
+      <FooterButton variant="primary" onClick={() => rpc("advance_avalon_quest", { p_code: code })}>
+        {nextLabel}
+      </FooterButton>
+    )
+  } else if (me && phase === "assassination" && me.role === "assassin" && target) {
+    footerButtons = (
+      <FooterButton
+        variant="danger"
+        onClick={() => rpc("submit_avalon_assassination", { p_code: code, p_target_id: target })}
+      >
+        Assassinate
+      </FooterButton>
+    )
+  } else if (me && phase === "finished") {
+    footerButtons = (
+      <FooterButton
+        variant="secondary"
+        onClick={async () => {
+          await supabase.from("avalon_games").update({
+            phase: "lobby", quest_results: [], winning_team: null,
+            proposed_ids: [], reject_count: 0, quest_number: 1,
+            leader_id: null, player_count: null, reveal_at: null,
+          }).eq("code", code)
+          await supabase.from("avalon_players").update({
+            role: null, team: null, seat: null, submitted_card: null, ready: false,
+          }).eq("game_code", code)
+          router.replace(`/${code}`)
+        }}
+      >
+        Play Again
+      </FooterButton>
+    )
+  }
+
   const pokeSystemNode = me ? (
     <>
       <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />
@@ -238,7 +301,9 @@ export default function Play({ params }) {
         rules={instructions ? [["How to Play", instructions]] : null}
         onResetToLobby={async () => { await supabase.rpc("avalon_reset_to_lobby", { p_code: code }); await loadState() }}
       />
-      <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} />
+      <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
+        {footerButtons}
+      </Footer>
     </>
   ) : null
 
@@ -275,11 +340,9 @@ export default function Play({ params }) {
   const showMenuBar = ["propose", "vote", "mission", "result", "assassination"].includes(phase)
 
   async function rpc(fn, args = {}) {
-    if (acting) return
-    setActing(true)
-    await supabase.rpc(fn, args)
+    const { error } = await supabase.rpc(fn, args)
+    if (error) throw error
     await refresh()
-    setActing(false)
   }
 
 
@@ -364,24 +427,6 @@ export default function Play({ params }) {
     )
   }
 
-  function BigBtn({ label, onClick, disabled, color = GOLD, textColor = "#000" }) {
-    return (
-      <>
-      <button
-        onClick={onClick}
-        disabled={disabled}
-        style={{
-          background: disabled ? WARM_LIGHT : color,
-          color: disabled ? "rgba(232,220,200,0.25)" : textColor,
-          fontSize: 20, fontWeight: 900, padding: "18px", width: "100%", display: "block",
-        }}
-      >
-        {label}
-      </button>
-        {pokeSystemNode}
-      </>
-    )
-  }
 
   // Role card content (shared between role reveal card and modal)
   function RoleCardBody() {
@@ -497,7 +542,12 @@ export default function Play({ params }) {
               style={{ background: CARD, padding: 24, marginBottom: 20 }}
             >
               {cardPhase === "unset" ? (
-                <BigBtn label="Reveal My Role" onClick={handleReveal} />
+                <button
+                  onClick={handleReveal}
+                  style={{ background: GOLD, color: "#000", fontSize: 20, fontWeight: 900, padding: "18px", width: "100%", display: "block" }}
+                >
+                  Reveal My Role
+                </button>
               ) : (
                 <>
                   <RoleCardBody />
@@ -515,20 +565,12 @@ export default function Play({ params }) {
             </div>
           )}
 
-          <div style={{ marginBottom: 20 }}>
-            {!amReady ? (
-              <BigBtn
-                label={acting ? "…" : "I'm ready to play"}
-                onClick={() => rpc("mark_avalon_ready", { p_code: code, p_player_id: myId })}
-                disabled={acting || cardPhase === "unset"}
-              />
-            ) : (
-              <div style={{ background: "rgba(74,143,212,0.1)", border: `2px solid ${GOOD}`, padding: "16px 20px", textAlign: "center" }}>
-                <div style={{ fontSize: 17, fontWeight: 900, color: GOOD }}>You're ready!</div>
-                <div style={{ fontSize: 13, color: "rgba(232,220,200,0.45)", marginTop: 4 }}>Waiting for everyone…</div>
-              </div>
-            )}
-          </div>
+          {amReady && (
+            <div style={{ background: "rgba(74,143,212,0.1)", border: `2px solid ${GOOD}`, padding: "16px 20px", textAlign: "center", marginBottom: 20 }}>
+              <div style={{ fontSize: 17, fontWeight: 900, color: GOOD }}>You're ready!</div>
+              <div style={{ fontSize: 13, color: "rgba(232,220,200,0.45)", marginTop: 4 }}>Waiting for everyone…</div>
+            </div>
+          )}
 
           <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(232,220,200,0.35)", marginBottom: 10 }}>
             Players
@@ -603,13 +645,6 @@ export default function Play({ params }) {
             ))}
           </div>
 
-          {amLeader && (
-            <BigBtn
-              label={acting ? "Submitting…" : `Propose Team (${selected.length}/${questSize})`}
-              disabled={selected.length !== questSize || acting}
-              onClick={() => rpc("submit_avalon_proposal", { p_code: code, p_leader_id: me.id, p_player_ids: selected })}
-            />
-          )}
         </div>
       </div>
     )
@@ -790,13 +825,7 @@ export default function Play({ params }) {
             {lastResult === "success" ? "Quest Succeeded" : "Quest Failed"}
           </div>
 
-          <BigBtn
-            label={nextLabel}
-            onClick={() => rpc("advance_avalon_quest", { p_code: code })}
-            disabled={acting}
-          />
-
-          {/* Score below button */}
+          {/* Score */}
           <div style={{ textAlign: "center", marginTop: 28 }}>
             <div style={{ fontSize: 28, fontWeight: 900 }}>
               <span style={{ color: GOOD }}>Loyal Servants: {goodWins}</span>
@@ -835,13 +864,6 @@ export default function Play({ params }) {
                   colors={{ bg: CARD, selectedBg: EVIL, selectedText: "#fff", deselectBg: "#6B0000", deselectText: "#fff" }}
                 />
               </div>
-              <BigBtn
-                label={acting ? "…" : "Assassinate"}
-                color={EVIL}
-                textColor="#fff"
-                disabled={!target || acting}
-                onClick={() => rpc("submit_avalon_assassination", { p_code: code, p_target_id: target })}
-              />
             </>
           ) : (
             <div style={{ background: "rgba(170,34,34,0.1)", border: `1px solid rgba(170,34,34,0.35)`, padding: "20px 18px" }}>
@@ -924,24 +946,7 @@ export default function Play({ params }) {
             ))}
           </div>
 
-          <BigBtn
-            label="Play Again"
-            color={WARM_LIGHT}
-            textColor={TEXT}
-            onClick={async () => {
-              await supabase.from("avalon_games").update({
-                phase: "lobby", quest_results: [], winning_team: null,
-                proposed_ids: [], reject_count: 0, quest_number: 1,
-                leader_id: null, player_count: null, reveal_at: null,
-              }).eq("code", code)
-              await supabase.from("avalon_players").update({
-                role: null, team: null, seat: null, submitted_card: null, ready: false,
-              }).eq("game_code", code)
-              router.replace(`/${code}`)
-            }}
-          />
-
-          <div style={{ marginTop: 32 }}>
+          <div style={{ marginTop: 16 }}>
             <a href="https://games.jackbrannen.com"
               style={{ display: "block", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%", textAlign: "center", textDecoration: "none" }}>
               Play Another Game

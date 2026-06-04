@@ -35,7 +35,7 @@ are wired in all 12 games and omitted from the table.
 |------------------|----|-----|----|-----|----|----|-----|----|----|----|----|-----|
 | FooterButton     | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ·  | ✓  | ✓  | ✓  |
 | WaitingList      |    | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  |    |    | ✓  |    |
-| StatusBar        |    | ✓   |    |     |    | ✓  |     | ✓  |    |    |    |    |
+| StatusBar        |    | ✓   |    | ✓   |    | ✓  |     | ✓  |    |    |    |    |
 | TextEntry        |    | ✓   |    | ✓   |    |    |     |    |    |    |    |    |
 | RandomIdeas      |    | ✓   |    |     |    |    |     |    |    |    |    |    |
 | Selections       | ·  | ✓   | ✓  | ·   | ✓  | ·  | ·   | ✓  | ·  | ·  | ·  | ·  |

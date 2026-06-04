@@ -742,111 +742,38 @@ export default function PlayPage({ params }) {
             </div>
           )}
 
-          {/* All answers — deduped by text */}
-          {(() => {
-            const groups = []
-            for (const a of shuffled) {
-              const key = (a.answer || "").trim().toLowerCase()
-              const existing = groups.find(g => g.key === key)
-              if (existing) {
-                existing.playerIds.push(a.player_id)
-              } else {
-                groups.push({ key, answer: a.answer, playerIds: [a.player_id] })
-              }
-            }
-            return (
-              <Section label="Everyone's answers">
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {groups.map(group => {
-                    const isReal = group.playerIds.includes(roundTarget?.id)
-                    const authors = group.playerIds.map(id => players.find(p => p.id === id)?.name).filter(Boolean)
-                    const votersForGroup = roundVotes.filter(v => group.playerIds.includes(v.voted_for_player_id))
-                    const voterNames = votersForGroup.map(v => players.find(p => p.id === v.voter_id)?.name).filter(Boolean)
-                    return (
-                      <div key={group.key} style={{ background: isReal ? `${GREEN}33` : MID, padding: "14px 16px", borderLeft: isReal ? `4px solid ${GREEN}` : "4px solid transparent" }}>
-                        <p style={{ fontSize: 16, fontWeight: 500, color: "white", lineHeight: 1.4, marginBottom: 6 }}>{group.answer}</p>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: isReal ? GREEN : YELLOW }}>{authors.join(" & ")}</span>
-                          {isReal && voterNames.length > 0 && (
-                            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.65)" }}>· spotted by {voterNames.join(", ")}</span>
-                          )}
-                          {!isReal && voterNames.length > 0 && (
-                            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.65)" }}>· fooled {voterNames.join(", ")}</span>
-                          )}
-                          {!isReal && voterNames.length === 0 && (
-                            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)" }}>· no one fooled</span>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </Section>
-            )
-          })()}
-
-          {/* Points this round */}
-          <Section label="Points this round">
-            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-              {players.map(p => {
-                const d = deltas[p.id] ?? 0
-                const isTargetPlayer = p.id === roundTarget?.id
-                const details = []
-                if (!isTargetPlayer) {
-                  const myVoteRow = roundVotes.find(v => v.voter_id === p.id)
-                  if (myVoteRow) {
-                    const myVotedText = answerByPlayer[myVoteRow.voted_for_player_id]
-                    const votedCorrect = myVoteRow.voted_for_player_id === roundTarget?.id ||
-                      (myVotedText && targetText && myVotedText === targetText)
-                    if (votedCorrect) details.push("spotted the real answer")
-                  }
-                  const fooledVoterNames = roundVotes.filter(v => v.voted_for_player_id === p.id).map(v => players.find(x => x.id === v.voter_id)?.name).filter(Boolean)
-                  if (fooledVoterNames.length > 0) details.push(`fooled ${fooledVoterNames.join(", ")}`)
-                  const myAnswerText = answerByPlayer[p.id]
-                  if (myAnswerText) {
-                    const matchedNames = players
-                      .filter(other => other.id !== p.id && answerByPlayer[other.id] === myAnswerText)
-                      .map(other => other.name)
-                    if (matchedNames.length > 0) details.push(`matched ${matchedNames.join(", ")}'s answer`)
-                  }
+          <Results
+            items={(() => {
+              // Group answers by text (dedup)
+              const groups = []
+              for (const a of shuffled) {
+                const key = (a.answer || "").trim().toLowerCase()
+                const existing = groups.find(g => g.key === key)
+                if (existing) {
+                  existing.playerIds.push(a.player_id)
+                } else {
+                  groups.push({ key, answer: a.answer, playerIds: [a.player_id] })
                 }
-                return (
-                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 0 }}>
-                    <div style={{ background: DARK, padding: "12px 14px", minWidth: 52, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <span style={{ fontSize: 18, fontWeight: 900, color: d > 0 ? YELLOW : "rgba(255,255,255,0.4)" }}>
-                        {d > 0 ? `+${d}` : "+0"}
-                      </span>
-                    </div>
-                    <div style={{ background: MID, flex: 1, padding: "12px 16px" }}>
-                      <span style={{ fontSize: 16, fontWeight: 700 }}>{p.name}</span>
-                      {details.length > 0 && <span style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", marginLeft: 8 }}>{details.join(" · ")}</span>}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </Section>
-
-          {/* Running totals */}
-          <Section label="Running Totals">
-            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-              {[...players].sort((a, b) => b.score - a.score).map((p, i) => (
-                <div key={p.id} style={{ display: "flex" }}>
-                  <div style={{
-                    background: i === 0 ? YELLOW : "rgba(255,255,255,0.15)",
-                    color: i === 0 ? "#000" : "rgba(255,255,255,0.75)",
-                    fontSize: 20, fontWeight: 900,
-                    minWidth: 52, textAlign: "center", padding: "10px 0", flexShrink: 0,
-                  }}>
-                    {p.score}
-                  </div>
-                  <div style={{ background: MID, padding: "10px 16px", flex: 1, display: "flex", alignItems: "center" }}>
-                    <span style={{ fontSize: 17, fontWeight: 700 }}>{p.name}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Section>
+              }
+              // Convert to Results format
+              return groups
+                .filter(g => !g.playerIds.includes(roundTarget?.id)) // exclude real answer (shown separately)
+                .map(group => {
+                  const votersForGroup = roundVotes.filter(v => group.playerIds.includes(v.voted_for_player_id))
+                  return {
+                    id: group.key,
+                    text: group.answer,
+                    authorNames: group.playerIds.map(id => players.find(p => p.id === id)?.name).filter(Boolean),
+                    voterNames: votersForGroup.map(v => players.find(p => p.id === v.voter_id)?.name).filter(Boolean),
+                    voteCount: votersForGroup.length,
+                    isBonus: group.playerIds.length > 1,
+                  }
+                })
+                .sort((a, b) => b.voteCount - a.voteCount)
+            })()}
+            scores={[...players].sort((a, b) => b.score - a.score).map(p => ({ name: p.name, score: p.score }))}
+            colors={{ card: MID, yellow: YELLOW, dim: "rgba(255,255,255,0.15)" }}
+          />
         </div>
 
       </div>

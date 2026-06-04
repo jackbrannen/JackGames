@@ -59,6 +59,8 @@ Each game's dummy game implementation must:
 
 - [ ] **HomeScreen rollout to 10 games** — Copycats and GOW done. Remaining: Fishbowl, Avalon, FirstToWorst, Drawful, SoClover, Telestrations, Codenames, ReverseCharades, ExquisiteCorpse, MrWhite. Each needs: (1) import HomeScreen, (2) extract colors (BG, YELLOW, WARM_LIGHT), (3) replace custom JSX with HomeScreen component. See `/tmp/homescreen_refactor.txt` for game-specific colors and subtitles.
 
+- [ ] **Replace inline typography with constants in all game pages** — GameOfWhat done. Remaining 11 games need same pattern: replace inline fontSize/fontWeight/opacity values with FONT_SIZE/FONT_WEIGHT/OPACITY/STYLE constants. Focus on play pages first (app/[code]/play/page.js), then lobby pages.
+
 ### Components still to build
 - [ ] **Duplicate detection** — works with TextEntry. Three modes: (1) within one player's fields — useDuplicates hook built ✓; (2) between players for bonus points (Drawful, GameOfWhat) — show bonus on submission (GOW: working ad-hoc in submitAnswer); (3) between players to block (Fishbowl, ReverseCharades) — highlight and block. Modes 2-3 are game-specific (need DB data).
 

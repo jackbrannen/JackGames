@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSubmitNudge } from "../lib/useSubmitNudge"
+import HomeScreen from "../components/HomeScreen"
 
 const WORDS_A = [
   "MAPLE","RIVER","OCEAN","SUNRISE","VELVET","COPPER","SILVER","EMBER","FOREST","CLOUD",
@@ -36,6 +37,8 @@ const WORDS_B = [
   "AURORA","HORIZON","SKYLINE","PARADE","CIRCUS","WONDER","VELVET","MAPLE"
 ]
 
+const BG = "#3378FF"
+const YELLOW = "#FBDF54"
 const WARM_LIGHT = "#3399FF"
 
 function randomCode() {
@@ -159,128 +162,19 @@ export default function Home() {
   }
 
   return (
-    <div style={{
-      minHeight: "100dvh",
-      background: "#3378FF",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "40px 24px",
-    }}>
-      <h1 style={{
-        fontSize: "clamp(72px, 22vw, 120px)",
-        fontWeight: 900,
-        color: "white",
-        letterSpacing: "-4px",
-        textTransform: "uppercase",
-        lineHeight: 0.88,
-        textAlign: "center",
-        marginBottom: 20,
-      }}>
-        Fish<br />bowl
-      </h1>
-
-      <p style={{
-        color: "rgba(255,255,255,0.55)",
-        fontSize: 14,
-        fontWeight: 700,
-        textTransform: "uppercase",
-        letterSpacing: "0.18em",
-        textAlign: "center",
-        marginBottom: 64,
-      }}>
-        Party Guessing Game
-      </p>
-
-      <div style={{ width: "100%", maxWidth: 400, display: "flex", flexDirection: "column", gap: 8 }}>
-        <button
-          onClick={onCreateClick}
-          disabled={isCreating}
-          style={{
-            background: "#FBDF54",
-            color: "#000",
-            fontSize: 22,
-            fontWeight: 900,
-            padding: "22px 40px",
-            width: "100%",
-            display: "block",
-          }}
-        >
-          {isCreating ? "Creating…" : "Create Game"}
-        </button>
-
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="text"
-            placeholder="Room code"
-            value={joinCode}
-            onChange={e => setJoinCode(e.target.value.toUpperCase())}
-            onKeyDown={e => { if (e.key === "Enter" && joinCode.trim()) router.push(`/${joinCode.trim()}`) }}
-            style={{
-              flex: 1,
-              background: WARM_LIGHT,
-              border: "none",
-              color: "white",
-              fontSize: 18,
-              fontWeight: 800,
-              padding: "18px 16px",
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-              outline: "none",
-              minWidth: 0,
-            }}
-          />
-          <button
-            onClick={() => { if (joinCode.trim()) router.push(`/${joinCode.trim()}`) }}
-            style={{
-              background: WARM_LIGHT,
-              color: "white",
-              fontSize: 18,
-              fontWeight: 900,
-              padding: "18px 20px",
-              flexShrink: 0,
-              animation: nudgeJoin ? "nudgePulse 1.5s ease-in-out infinite" : "none",
-            }}
-          >
-            Join
-          </button>
-        </div>
-      </div>
-
-      <button
-        onClick={onDummyClick}
-        disabled={isDummy}
-        style={{
-          position: "fixed",
-          bottom: 16,
-          left: "50%",
-          transform: "translateX(-50%)",
-          background: "transparent",
-          border: "none",
-          color: "rgba(255,255,255,0.3)",
-          fontSize: 11,
-          fontWeight: 600,
-          padding: "8px 16px",
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          cursor: "pointer",
-        }}
-      >
-        {isDummy ? "Setting up…" : "Dummy Game"}
-      </button>
-
-      {!!errorMessage && (
-        <p style={{
-          color: "#FBDF54",
-          marginTop: 20,
-          fontSize: 15,
-          textAlign: "center",
-          fontWeight: 600,
-        }}>
-          Error: {errorMessage}
-        </p>
-      )}
-    </div>
+    <HomeScreen
+      title="Fishbowl"
+      subtitle="Teams · Turns · Clues"
+      onCreate={onCreateClick}
+      isCreating={isCreating}
+      joinCode={joinCode}
+      onJoinCodeChange={setJoinCode}
+      onJoin={() => { if (joinCode.trim()) router.push(`/${joinCode.trim()}`) }}
+      nudgeJoin={nudgeJoin}
+      error={errorMessage}
+      onDummyGame={onDummyClick}
+      isDummy={isDummy}
+      colors={{ bg: BG, wl: WARM_LIGHT, yellow: YELLOW }}
+    />
   )
 }

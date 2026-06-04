@@ -760,16 +760,21 @@ export default function PlayPage({ params }) {
                 .filter(g => !g.playerIds.includes(roundTarget?.id)) // exclude real answer (shown separately)
                 .map(group => {
                   const votersForGroup = roundVotes.filter(v => group.playerIds.includes(v.voted_for_player_id))
+                  const isCorrect = group.key === targetText // matches real answer
+                  // In Copycats: correct answers don't score points for the author (voters get 2 pts instead)
+                  // Incorrect answers score 1 pt per voter for the author
+                  const voteCount = isCorrect ? 0 : votersForGroup.length
                   return {
                     id: group.key,
                     text: group.answer,
                     authorNames: group.playerIds.map(id => players.find(p => p.id === id)?.name).filter(Boolean),
                     voterNames: votersForGroup.map(v => players.find(p => p.id === v.voter_id)?.name).filter(Boolean),
-                    voteCount: votersForGroup.length,
+                    voteCount: voteCount,
                     isBonus: group.playerIds.length > 1,
+                    isCorrect: isCorrect,
                   }
                 })
-                .sort((a, b) => b.voteCount - a.voteCount)
+                .sort((a, b) => b.voteCount - a.voteCount || b.voterNames.length - a.voterNames.length)
             })()}
             scores={[...players].sort((a, b) => b.score - a.score).map(p => ({ name: p.name, score: p.score }))}
             colors={{ card: MID, yellow: YELLOW, dim: "rgba(255,255,255,0.15)" }}

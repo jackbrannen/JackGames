@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import FooterButton from "../../../components/FooterButton"
+import Selections from "../../../components/Selections"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
@@ -974,51 +975,20 @@ export default function Play({ params }) {
             <p style={{ fontSize: 16, opacity: 0.75, fontWeight: 600, textAlign: "center", paddingTop: 8 }}>
               Watch everyone vote.
             </p>
-          ) : hasVoted ? (
-            <div>
-              <p style={{ fontSize: 15, opacity: 0.7, fontWeight: 600, marginBottom: 20 }}>Waiting for everyone to vote…</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {dedupedAnswers.map(a => (
-                  <div key={a.id} style={{
-                    padding: "16px 18px", fontSize: 17, fontWeight: 700,
-                    background: a.id === myVote?.answer_id ? WARM_LIGHT : MID,
-                    border: a.id === myVote?.answer_id ? `2px solid ${ACCENT}` : "2px solid transparent",
-                    opacity: a.id === myVote?.answer_id ? 1 : 0.5,
-                  }}>
-                    {a.text}
-                    {a.id === myVote?.answer_id && <span style={{ fontSize: 12, color: ACCENT, marginLeft: 8 }}>← your vote</span>}
-                  </div>
-                ))}
-              </div>
-            </div>
           ) : (
-            <div>
-              <p style={{ fontSize: 16, opacity: 0.75, fontWeight: 600, marginBottom: 14 }}>
-                Pick what you think is the real answer.
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
-                {dedupedAnswers.map(a => {
-                  const isSelected = selectedAnswerId === a.id
-                  const isOwn = a.author_id === myPlayerId
-                  return (
-                    <button
-                      key={a.id}
-                      onClick={() => !isOwn && setSelectedAnswerId(a.id)}
-                      disabled={isOwn}
-                      style={{
-                        padding: "16px 18px", textAlign: "left",
-                        fontSize: 17, fontWeight: 700, color: "white",
-                        background: isSelected ? WARM_LIGHT : MID,
-                        border: isSelected ? `2px solid ${ACCENT}` : "2px solid rgba(255,255,255,0.12)",
-                        opacity: isOwn ? 0.35 : 1,
-                      }}
-                    >
-                      {a.text}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+            <>
+              {!hasVoted && <p style={{ fontSize: 16, opacity: 0.75, fontWeight: 600, marginBottom: 14 }}>Pick what you think is the real answer.</p>}
+              {hasVoted && <p style={{ fontSize: 15, opacity: 0.7, fontWeight: 600, marginBottom: 14 }}>Waiting for everyone to vote…</p>}
+              <Selections
+                options={dedupedAnswers.map(a => ({ id: a.id, text: a.text, isMine: a.author_id === myPlayerId }))}
+                selectedId={myVote?.answer_id ?? selectedAnswerId}
+                onSelect={id => setSelectedAnswerId(id)}
+                onDeselect={() => setSelectedAnswerId(null)}
+                disabled={hasVoted}
+                colors={{ bg: MID, selectedBg: ACCENT, selectedText: "#000", deselectBg: "#1C5250", deselectText: ACCENT }}
+                mineLabel="Your answer — can't vote for it"
+              />
+            </>
           )}
         </div>
       </div>

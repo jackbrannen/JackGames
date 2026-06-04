@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import Selections from "../../../components/Selections"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 
@@ -832,28 +833,14 @@ export default function Play({ params }) {
               <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.6, marginBottom: 20, color: "rgba(232,220,200,0.85)" }}>
                 If you successfully assassinate Merlin, your team wins the game.
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 1, marginBottom: 20 }}>
-                {goodPlayers.map(p => (
-                  <div
-                    key={p.id}
-                    onClick={() => setTarget(p.id)}
-                    style={{
-                      background: target === p.id ? "rgba(170,34,34,0.2)" : CARD,
-                      border: target === p.id ? `2px solid ${EVIL}` : "2px solid transparent",
-                      padding: "13px 16px",
-                      display: "flex", alignItems: "center", gap: 10,
-                      cursor: "pointer",
-                    }}
-                  >
-                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: target === p.id ? EVIL : "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      {target === p.id && <span style={{ fontSize: 13, color: "#fff", fontWeight: 900 }}>✗</span>}
-                    </div>
-                    <span style={{ fontSize: 16, fontWeight: 700 }}>
-                      {p.name}
-                      
-                    </span>
-                  </div>
-                ))}
+              <div style={{ marginBottom: 20 }}>
+                <Selections
+                  options={goodPlayers.map(p => ({ id: p.id, text: p.name }))}
+                  selectedId={target}
+                  onSelect={id => setTarget(id)}
+                  onDeselect={() => setTarget(null)}
+                  colors={{ bg: CARD, selectedBg: EVIL, selectedText: "#fff", deselectBg: "#6B0000", deselectText: "#fff" }}
+                />
               </div>
               <BigBtn
                 label={acting ? "…" : "Assassinate"}

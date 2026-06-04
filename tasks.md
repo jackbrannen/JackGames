@@ -13,7 +13,7 @@ are wired in all 12 games and omitted from the table.
 | StatusBar        |    | ✓   |    |     |    | ✓  |     |    |    |    |    |    |
 | TextEntry        |    | ✓   |    | ✓   |    |    |     |    |    |    |    |    |
 | RandomIdeas      |    | ✓   |    |     |    |    |     |    |    |    |    |    |
-| Selections       |    | ✓   |    |     |    |    |     |    |    |    |    |    |
+| Selections       |    | ✓   |    |     |    |    |     | ✓  |    |    |    |    |
 | HomeScreen       |    | ✓   |    |     |    |    |     |    |    |    |    |    |
 | Lobby            |    | ✓   |    |     |    |    |     |    |    |    |    |    |
 | EndGame          | ✓  | ✓   | ·  | ·   | ✓  | ·  | ·   | ✓  | ✓  | ✓  | ·  | ·  |

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import FooterButton from "../../../components/FooterButton"
+import Selections from "../../../components/Selections"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
@@ -200,11 +201,8 @@ export default function PlayPage({ params }) {
   // Reset per-round input state when round advances
   useEffect(() => {
     setMyAnswer("")
-    setAnswerLoading(false)
     setAnswerError("")
     setSelectedVote(null)
-    setVoteLoading(false)
-    setReadyLoading(false)
   }, [game?.current_round])
 
   async function loadState() {
@@ -258,6 +256,7 @@ export default function PlayPage({ params }) {
   const [instructions, setInstructions] = useState("")
   const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
   const [pokeJustSent, setPokeJustSent] = useState(null)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   if (!game || !myId) {
     return (
@@ -278,7 +277,6 @@ export default function PlayPage({ params }) {
     setTimeout(() => setPokeCooldownActive(false), 10000)
   }
 
-  const [menuOpen, setMenuOpen] = useState(false)
   const pokeSystemNode = (footer = null) => me ? (
     <>
       <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />
@@ -339,7 +337,7 @@ export default function PlayPage({ params }) {
       return (
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <TopBar>Write Your Questions</TopBar>
-          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto" }}>
+          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div style={{ textAlign: "center", padding: "32px 0" }}>
               <p style={{ fontSize: 20, fontWeight: 700, color: "white", marginBottom: 8 }}>Question submitted!</p>
               <p style={{ fontSize: 16, color: "rgba(255,255,255,0.65)" }}>Waiting for everyone else…</p>
@@ -366,7 +364,7 @@ export default function PlayPage({ params }) {
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
         <TopBar>Write Your Questions</TopBar>
-        <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto" }}>
+        <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
           <div>
             <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 6 }}>
               You're asking {myTarget?.name ?? "…"}.
@@ -433,7 +431,7 @@ export default function PlayPage({ params }) {
         <>
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <TopBar>Round {current_round + 1} of {players.length}</TopBar>
-          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto" }}>
+          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div>
               <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
                 {roundQuestioner?.name} asked you…
@@ -470,7 +468,7 @@ export default function PlayPage({ params }) {
         <>
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <TopBar>Round {current_round + 1} of {players.length}</TopBar>
-          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto" }}>
+          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div>
               <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
                 {roundQuestioner?.name} asked {roundTarget?.name}…
@@ -499,7 +497,7 @@ export default function PlayPage({ params }) {
         <>
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <TopBar>Round {current_round + 1} of {players.length}</TopBar>
-          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto" }}>
+          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div>
               <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
                 {roundQuestioner?.name} asked you…
@@ -536,7 +534,7 @@ export default function PlayPage({ params }) {
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
         <TopBar>Round {current_round + 1} of {players.length}</TopBar>
-        <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto" }}>
+        <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
           <div>
             <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
               {roundQuestioner?.name} asked {roundTarget?.name}…
@@ -588,7 +586,7 @@ export default function PlayPage({ params }) {
       return (
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <TopBar>Round {current_round + 1} of {players.length}</TopBar>
-          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto" }}>
+          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div>
               <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 4 }}>Stay quiet!</p>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.65)" }}>Everyone is deciding which answer is really yours.</p>
@@ -622,7 +620,7 @@ export default function PlayPage({ params }) {
       return (
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <TopBar>Round {current_round + 1} of {players.length}</TopBar>
-          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto" }}>
+          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div style={{ textAlign: "center", padding: "16px 0" }}>
               <p style={{ fontSize: 20, fontWeight: 700, color: "white", marginBottom: 8 }}>Vote submitted!</p>
               <p style={{ fontSize: 16, color: "rgba(255,255,255,0.65)" }}>Waiting for everyone…</p>
@@ -650,46 +648,25 @@ export default function PlayPage({ params }) {
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
         <TopBar>Round {current_round + 1} of {players.length}</TopBar>
-        <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto" }}>
+        <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
           <div>
             <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
               Which answer is {roundTarget?.name}'s?
             </p>
             <p style={{ fontSize: 14, color: "rgba(255,255,255,0.65)", marginBottom: 16 }}>"{roundQuestion}"</p>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {dedupedVotable.map(a => {
-              const isMyAnswer = myAnswerText && a.answer.trim().toLowerCase() === myAnswerText
-              const selected = selectedVote === a.player_id
-              if (isMyAnswer) {
-                return (
-                  <div key={a.player_id} style={{ background: MID, padding: "18px 20px", opacity: 0.5 }}>
-                    <p style={{ fontSize: 17, fontWeight: 500, color: "white", lineHeight: 1.4 }}>{a.answer}</p>
-                    <p style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", marginTop: 4 }}>Your answer — can't vote for it</p>
-                  </div>
-                )
-              }
-              return (
-                <button
-                  key={a.player_id}
-                  onClick={() => setSelectedVote(a.player_id)}
-                  style={{
-                    background: selected ? YELLOW : MID,
-                    color: selected ? "#000" : "white",
-                    fontSize: 17,
-                    fontWeight: selected ? 800 : 500,
-                    padding: "18px 20px",
-                    textAlign: "left",
-                    lineHeight: 1.4,
-                    border: selected ? "none" : "2px solid transparent",
-                  }}
-                >
-                  {a.answer}
-                  {selected && <span style={{ marginLeft: 8, fontWeight: 900 }}>✓</span>}
-                </button>
-              )
-            })}
-          </div>
+          <Selections
+            options={dedupedVotable.map(a => ({
+              id: a.player_id,
+              text: a.answer,
+              isMine: !!(myAnswerText && a.answer.trim().toLowerCase() === myAnswerText),
+            }))}
+            selectedId={selectedVote}
+            onSelect={id => setSelectedVote(id)}
+            onDeselect={() => setSelectedVote(null)}
+            colors={{ bg: MID, selectedBg: YELLOW, selectedText: "#000", deselectBg: DARK, deselectText: YELLOW }}
+            mineLabel="Your answer — can't vote for it"
+          />
         </div>
       </div>
         {pokeSystemNode(

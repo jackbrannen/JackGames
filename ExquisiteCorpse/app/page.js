@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { useSubmitNudge } from "../lib/useSubmitNudge"
 
 const BG = "#1A3A5C"
@@ -74,7 +74,6 @@ async function createGame(isDummy = false) {
 
 export default function Home() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const [isCreating, setIsCreating] = useState(false)
   const [joinCode, setJoinCode] = useState("")
   const nudgeJoin = useSubmitNudge(joinCode, false)
@@ -82,8 +81,9 @@ export default function Home() {
 
 
   useEffect(() => {
-    const fromGame = searchParams.get("fromGame")
-    const pickerName = searchParams.get("pickerName")
+    const params = new URLSearchParams(window.location.search)
+    const fromGame = params.get("fromGame")
+    const pickerName = params.get("pickerName")
 
     if (fromGame && pickerName) {
       setIsCreating(true)
@@ -94,7 +94,7 @@ export default function Home() {
           setIsCreating(false)
         })
     }
-  }, [searchParams, router])
+  }, [])
   async function onCreateClick() {
     if (isCreating) return
     setError("")

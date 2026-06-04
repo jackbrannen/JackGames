@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import FooterButton from "../../../components/FooterButton"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import EndGame from "../../../components/EndGame"
@@ -433,13 +434,9 @@ export default function Play({ params }) {
           </div>
 
           {amGuesser ? (
-            <button
-              onClick={doStartTurn}
-              disabled={acting}
-              style={{ background: YELLOW, color: "#000", fontSize: 24, fontWeight: 900, padding: "24px 32px", width: "100%", display: "block" }}
-            >
-              {acting ? "Starting…" : "Start"}
-            </button>
+            <FooterButton onClick={doStartTurn} bg={YELLOW} textColor="#000" style={{ padding: "24px 32px", fontSize: 24 }}>
+              Start
+            </FooterButton>
           ) : (
             <div style={{ fontSize: 16, fontWeight: 600, opacity: 0.45 }}>
               Waiting for {guesser?.name ?? "the guesser"}…
@@ -503,30 +500,24 @@ export default function Play({ params }) {
           </div>
 
           <div style={{ padding: "16px 20px", paddingBottom: "max(20px, env(safe-area-inset-bottom, 20px))", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
-            <button
-              onClick={doCorrect}
-              disabled={acting || !currentClue}
-              style={{ background: YELLOW, color: "#000", fontSize: 28, fontWeight: 900, padding: "28px 16px", width: "100%", display: "block" }}
-            >
+            <FooterButton onClick={doCorrect} disabled={!currentClue} bg={YELLOW} textColor="#000" style={{ padding: "28px 16px", fontSize: 28 }}>
               ✓ Correct
-            </button>
-            <button
+            </FooterButton>
+            <FooterButton
               onClick={doSkip}
               disabled={skipDisabled}
+              bg={skipDisabled ? MID : WARM}
+              textColor="white"
               style={{
-                background: skipDisabled ? MID : WARM,
-                color: "white",
+                padding: "18px 16px",
                 fontSize: 18,
                 fontWeight: 800,
-                padding: "18px 16px",
-                width: "100%",
-                display: "block",
                 textDecoration: (game.skip_limit > 0 && game.skips_this_turn >= game.skip_limit) ? "line-through" : "none",
               }}
             >
               {game.skip_penalty < 0 ? `Skip (${game.skip_penalty})` : "Skip"}
               {game.skip_limit > 0 && ` · ${game.skips_this_turn ?? 0}/${game.skip_limit} used`}
-            </button>
+            </FooterButton>
           </div>
         </div>
       )

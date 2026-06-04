@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import FooterButton from "../../../components/FooterButton"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 
@@ -921,8 +922,8 @@ export default function Play({ params }) {
         {pokeSystemNode(
           amPresenter
             ? (!allStepsRevealed
-                ? <button onClick={handleAdvanceReveal} disabled={advancing} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900 }}>Reveal</button>
-                : <button onClick={handleNextChain} disabled={advancing} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900 }}>{isLastChain ? "Finish →" : "Next chain →"}</button>)
+                ? <FooterButton onClick={handleAdvanceReveal} bg={YELLOW} textColor="#000">Reveal</FooterButton>
+                : <FooterButton onClick={handleNextChain} bg={YELLOW} textColor="#000">{isLastChain ? "Finish →" : "Next chain →"}</FooterButton>)
             : null
         )}
       </>

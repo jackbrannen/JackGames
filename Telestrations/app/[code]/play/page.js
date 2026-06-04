@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import FooterButton from "../../../components/FooterButton"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 
@@ -1161,7 +1162,9 @@ export default function Play({ params }) {
       </div>
       {pokeSystemNode(
         allStepsRevealed
-          ? <button onClick={handleNextChain} disabled={advancing} style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900 }}>{isLastChain ? "Finish →" : "Next telestration →"}</button>
+          ? <FooterButton onClick={handleNextChain} bg={YELLOW} textColor="#000">
+              {isLastChain ? "Finish →" : "Next telestration →"}
+            </FooterButton>
           : null
       )}
       </>

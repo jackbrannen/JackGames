@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import FooterButton from "../../../components/FooterButton"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
@@ -831,9 +832,9 @@ export default function Play({ params }) {
         </div>
       </div>
         {pokeSystemNode(
-          <button onClick={() => submitDrawing(false)} disabled={submittingDrawing} style={{ flex: 1, height: "100%", background: ACCENT, color: "#000", fontSize: 16, fontWeight: 900 }}>
-            {submittingDrawing ? "Submitting…" : "Done Drawing"}
-          </button>
+          <FooterButton onClick={() => submitDrawing(false)} disabled={submittingDrawing} bg={ACCENT} textColor="#000">
+            Done Drawing
+          </FooterButton>
         )}
       </>
     )
@@ -926,9 +927,9 @@ export default function Play({ params }) {
       </div>
         {pokeSystemNode(
           !amArtist && !isWaiting
-            ? <button onClick={submitAnswer} disabled={!answerText.trim() || submittingAnswer} style={{ flex: 1, height: "100%", background: ACCENT, color: "#000", fontSize: 16, fontWeight: 900, animation: nudgeAnswer ? "nudgePulse 1.0s ease-in-out infinite" : "none" }}>
-                {submittingAnswer ? "Submitting…" : "Submit"}
-              </button>
+            ? <FooterButton onClick={submitAnswer} disabled={!answerText.trim()} nudge={nudgeAnswer} bg={ACCENT} textColor="#000">
+                Submit
+              </FooterButton>
             : null
         )}
       </>
@@ -1023,9 +1024,9 @@ export default function Play({ params }) {
       </div>
         {pokeSystemNode(
           !amArtist && !hasVoted
-            ? <button onClick={submitVote} disabled={!selectedAnswerId || submittingVote} style={{ flex: 1, height: "100%", background: ACCENT, color: "#000", fontSize: 16, fontWeight: 900 }}>
-                {submittingVote ? "Voting…" : "Vote"}
-              </button>
+            ? <FooterButton onClick={submitVote} disabled={!selectedAnswerId} bg={ACCENT} textColor="#000">
+                Vote
+              </FooterButton>
             : null
         )}
       </>
@@ -1175,7 +1176,9 @@ export default function Play({ params }) {
         {pokeSystemNode(
           (isMeReady || markingReady)
             ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.65)" }}>{readyCount} / {players.length} ready…</div>
-            : <button onClick={markReady} style={{ flex: 1, height: "100%", background: ACCENT, color: "#000", fontSize: 16, fontWeight: 900 }}>{isLast ? "See Final Scores →" : "Next Drawing →"}</button>
+            : <FooterButton onClick={markReady} bg={ACCENT} textColor="#000">
+                {isLast ? "See Final Scores →" : "Next Drawing →"}
+              </FooterButton>
         )}
       </>
     )

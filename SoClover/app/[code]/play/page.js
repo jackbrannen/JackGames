@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import FooterButton from "../../../components/FooterButton"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import CARDS from "../../../lib/cards_data.json"
@@ -960,13 +961,9 @@ export default function PlayPage({ params }) {
         {swapAnim && swapAnim.map((s, i) => <SwapCard key={i} cs={CARD_SIZE} {...s} boardRotation={boardRotation} />)}
       </div>
         {pokeSystemNode(
-          <button
-            onClick={onSubmitClues}
-            disabled={submitting || !allSlotsFilled || !allCluesFilled}
-            style={{ flex: 1, height: "100%", background: ACCENT, color: "#000", fontSize: 16, fontWeight: 900, animation: nudgeClues ? "nudgePulse 1.0s ease-in-out infinite" : "none" }}
-          >
-            {submitting ? "Submitting…" : !allSlotsFilled ? "Fill all 4 slots" : !allCluesFilled ? "Write all 4 clues" : "Submit My Board"}
-          </button>
+          <FooterButton onClick={onSubmitClues} disabled={!allSlotsFilled || !allCluesFilled} nudge={nudgeClues} bg={ACCENT} textColor="#000">
+            {!allSlotsFilled ? "Fill all 4 slots" : !allCluesFilled ? "Write all 4 clues" : "Submit My Board"}
+          </FooterButton>
         )}
       </>
     )
@@ -1004,9 +1001,9 @@ export default function PlayPage({ params }) {
           </div>
         </div>
           {pokeSystemNode(amGuesser ? (
-            <button onClick={onContinueAttempt2} style={{ flex: 1, height: "100%", background: ACCENT, color: "#000", fontSize: 16, fontWeight: 900 }}>
+            <FooterButton onClick={onContinueAttempt2} bg={ACCENT} textColor="#000">
               Continue to Attempt 2 →
-            </button>
+            </FooterButton>
           ) : null)}
         </>
       )
@@ -1038,9 +1035,9 @@ export default function PlayPage({ params }) {
           </div>
         </div>
           {pokeSystemNode(
-            <button onClick={onReadyNextBoard} disabled={readying || alreadyReady} style={{ flex: 1, height: "100%", background: alreadyReady ? MID_DARK : ACCENT, color: alreadyReady ? WHITE : "#000", fontSize: 16, fontWeight: 900 }}>
+            <FooterButton onClick={onReadyNextBoard} disabled={alreadyReady} bg={alreadyReady ? MID_DARK : ACCENT} textColor={alreadyReady ? WHITE : "#000"}>
               {alreadyReady ? "Waiting for others…" : "Next Board →"}
-            </button>
+            </FooterButton>
           )}
         </>
       )
@@ -1130,9 +1127,9 @@ export default function PlayPage({ params }) {
         {swapAnim && swapAnim.map((s, i) => <SwapCard key={i} cs={CARD_SIZE} {...s} boardRotation={displayBoardRotation} />)}
       </div>
         {pokeSystemNode(amGuesser ? (
-          <button onClick={onSubmitGuess} disabled={submittingGuess || !allGuessFilled} style={{ flex: 1, height: "100%", background: ACCENT, color: "#000", fontSize: 16, fontWeight: 900 }}>
-            {submittingGuess ? "Checking…" : !allGuessFilled ? `Place all ${4 - SLOT_NAMES.filter(s => guessSlots[s]).length} remaining` : `Submit Guess${attempt === 2 ? " (2)" : ""}`}
-          </button>
+          <FooterButton onClick={onSubmitGuess} disabled={!allGuessFilled} bg={ACCENT} textColor="#000">
+            {!allGuessFilled ? `Place all ${4 - SLOT_NAMES.filter(s => guessSlots[s]).length} remaining` : `Submit Guess${attempt === 2 ? " (2)" : ""}`}
+          </FooterButton>
         ) : null)}
       </>
     )

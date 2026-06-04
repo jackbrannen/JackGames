@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import FooterButton from "../../../components/FooterButton"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 
@@ -217,9 +218,6 @@ export default function Play({ params }) {
   }
 
   // Helpers defined after the null guard so game is guaranteed non-null
-  function footerBtnStyle(bg, color) {
-    return { height: "100%", width: "100%", background: bg, color, fontSize: 16, fontWeight: 900 }
-  }
   function footerWait(text) {
     return (
       <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -303,9 +301,9 @@ export default function Play({ params }) {
         </div>
 
         {renderUI(
-          <button onClick={() => router.replace(`/${code}`)} style={footerBtnStyle(YELLOW, "#000")}>
+          <FooterButton onClick={() => router.replace(`/${code}`)} bg={YELLOW} textColor="#000">
             Back to Lobby
-          </button>
+          </FooterButton>
         )}
       </div>
     )
@@ -318,7 +316,7 @@ export default function Play({ params }) {
       if (eliminatedWasMrWhite !== false) return null
       if (isCurrentlyEliminated || isEliminated) return footerWait("Waiting for the group…")
       if (iHavePressedNextRound) return footerWait(`${nextRoundReadyCount} / ${nextRoundEligible.length} ready…`)
-      return <button onClick={handleNextRound} style={footerBtnStyle(YELLOW, "#000")}>Next Round</button>
+      return <FooterButton onClick={handleNextRound} bg={YELLOW} textColor="#000">Next Round</FooterButton>
     })()
 
     return (
@@ -356,7 +354,7 @@ export default function Play({ params }) {
   if (game.phase === "discussion") {
     const discussionFooterAction = isEliminated ? null : eliminating
       ? footerWait("Revealing…")
-      : <button onClick={() => setConfirmElimination(true)} style={footerBtnStyle(WARM_LIGHT, "white")}>I've been eliminated.</button>
+      : <FooterButton onClick={() => setConfirmElimination(true)} bg={WARM_LIGHT} textColor="white">I've been eliminated.</FooterButton>
 
     return (
       <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", paddingBottom: BOTTOM_PAD }}>
@@ -482,7 +480,7 @@ export default function Play({ params }) {
     ? null
     : iHavePressedStatements
       ? footerWait(`${statementsReadyCount} / ${activePlayers.length} ready…`)
-      : <button onClick={handleStatementsDone} style={footerBtnStyle(YELLOW, "#000")}>Statements all done</button>
+      : <FooterButton onClick={handleStatementsDone} bg={YELLOW} textColor="#000">Statements all done</FooterButton>
 
   return (
     <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", paddingBottom: BOTTOM_PAD }}>

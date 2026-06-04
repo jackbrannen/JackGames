@@ -8,7 +8,7 @@ are wired in all 12 games and omitted from the table.
 
 |                  | FB | GOW | AV | FTW | DF | SC | TEL | CC | CN | RC | EC | MW |
 |------------------|----|-----|----|-----|----|----|-----|----|----|----|----|-----|
-| FooterButton     | ✓  | ✓   |    | ✓   |    |    |     |    |    |    |    |    |
+| FooterButton     | ✓  | ✓   | ·  | ✓   | ✓  | ✓  | ✓   | ·  | ·  | ✓  | ✓  | ✓  |
 | WaitingList      |    | ✓   |    | ✓   |    |    |     | ✓  |    |    |    |    |
 | StatusBar        |    | ✓   |    |     |    | ✓  |     |    |    |    |    |    |
 | TextEntry        |    | ✓   |    | ✓   |    |    |     |    |    |    |    |    |
@@ -68,5 +68,4 @@ Each game's dummy game implementation must:
 - ~~GOW answering/voting: WaitingList shown to all players waiting~~ ✓
 - ~~FTW: eliminate the page with the "Let's Do This" button that starts rounds. Unnecessary.~~ ✓
 - ~~FTW: play again button doesn't work~~ ✓
-- Change the "play another game" component for all games: When a player picks it, they open the other games modal. When they pick one, it jumps them into the lobby. Then other players, still on the end game screen of the previous game, get a pop-up saying, "[Name] wants to start a game of [game name]" with a "Join" button. Pressing join opens a link to that game (with the specific room name in the URL already) so it just drops them into the lobby. Or they can X out of the modal if they prefer.
-- Set the order of games in the "play another game" modal to match what's now on the main games list. 
+ 

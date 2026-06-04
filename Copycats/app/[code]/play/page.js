@@ -11,7 +11,7 @@ import Notifications from "../../../components/Notifications"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import EndGame from "../../../components/EndGame"
 import Results from "../../../components/Results"
-import { STYLE } from "../../../components/styles"
+import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD } from "../../../components/styles"
 
 const BG         = "#5C2D8C"
 const YELLOW     = "#FBDF54"
@@ -54,7 +54,7 @@ function Section({ label, children, style }) {
 
 function TopBar({ children }) {
   return (
-    <div style={{ background: DARK, padding: "12px 20px", ...STYLE.eyebrow, color: "rgba(255,255,255,0.75)" }}>
+    <div style={{ background: DARK, padding: `${SPACE.sm - 4}px ${SPACE.md}px`, ...STYLE.eyebrow, color: `rgba(255,255,255,${OPACITY.moderate})` }}>
       {children}
     </div>
   )
@@ -62,8 +62,8 @@ function TopBar({ children }) {
 
 function BigQuestion({ question }) {
   return (
-    <div style={{ background: MID, padding: "20px 20px", borderLeft: `4px solid ${YELLOW}` }}>
-      <p style={{ fontSize: 20, fontWeight: 700, color: "white", lineHeight: 1.4 }}>
+    <div style={{ background: MID, padding: `${SPACE.md}px ${SPACE.md}px`, borderLeft: `4px solid ${YELLOW}` }}>
+      <p style={{ fontSize: FONT_SIZE.heading, fontWeight: FONT_WEIGHT.bold, color: "white", lineHeight: 1.4 }}>
         "{question}"
       </p>
     </div>
@@ -107,7 +107,7 @@ function AnswerTextarea({ value, onChange, placeholder, disabled }) {
 
 function WaitingList({ players, doneIds, myPlayerId, onPoke, doneLabel = "Ready", waitLabel = "Writing…", typingPlayerIds, pokeCooldownActive, pokeJustSent }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: GAP.card }}>
       {players.map(p => {
         const done = doneIds.includes(p.id)
         const isMe = p.id === myPlayerId
@@ -339,7 +339,7 @@ export default function PlayPage({ params }) {
       return (
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <TopBar>Write Your Questions</TopBar>
-          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
+          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div style={{ textAlign: "center", padding: "32px 0" }}>
               <p style={{ fontSize: 20, fontWeight: 700, color: "white", marginBottom: 8 }}>Question submitted!</p>
               <p style={{ fontSize: 16, color: "rgba(255,255,255,0.65)" }}>Waiting for everyone else…</p>
@@ -366,7 +366,7 @@ export default function PlayPage({ params }) {
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
         <TopBar>Write Your Questions</TopBar>
-        <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
+        <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
           <div>
             <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 6 }}>
               You're asking {myTarget?.name ?? "…"}.
@@ -433,7 +433,7 @@ export default function PlayPage({ params }) {
         <>
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <TopBar>Round {current_round + 1} of {players.length}</TopBar>
-          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
+          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div>
               <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
                 {roundQuestioner?.name} asked you…
@@ -445,7 +445,7 @@ export default function PlayPage({ params }) {
             </p>
             {incomingAnswers.length > 0 && (
               <Section label={`Answers so far (${incomingAnswers.length})`}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: GAP.card }}>
                   {incomingAnswers.map((a, i) => (
                     <div key={a.player_id} style={{ background: MID, padding: "12px 16px", fontSize: 16, color: "white" }}>
                       {a.answer}
@@ -470,7 +470,7 @@ export default function PlayPage({ params }) {
         <>
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <TopBar>Round {current_round + 1} of {players.length}</TopBar>
-          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
+          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div>
               <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
                 {roundQuestioner?.name} asked {roundTarget?.name}…
@@ -499,7 +499,7 @@ export default function PlayPage({ params }) {
         <>
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <TopBar>Round {current_round + 1} of {players.length}</TopBar>
-          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
+          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div>
               <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
                 {roundQuestioner?.name} asked you…
@@ -536,7 +536,7 @@ export default function PlayPage({ params }) {
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
         <TopBar>Round {current_round + 1} of {players.length}</TopBar>
-        <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
+        <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
           <div>
             <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
               {roundQuestioner?.name} asked {roundTarget?.name}…
@@ -588,13 +588,13 @@ export default function PlayPage({ params }) {
       return (
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <TopBar>Round {current_round + 1} of {players.length}</TopBar>
-          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
+          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div>
               <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 4 }}>Stay quiet!</p>
               <p style={{ fontSize: 15, color: "rgba(255,255,255,0.65)" }}>Everyone is deciding which answer is really yours.</p>
             </div>
             <Section label="The answers">
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: GAP.selection }}>
                 {shuffled.map(a => {
                   const voteCount = roundVotes.filter(v => v.voted_for_player_id === a.player_id).length
                   return (
@@ -637,7 +637,7 @@ export default function PlayPage({ params }) {
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
         <TopBar>Round {current_round + 1} of {players.length}</TopBar>
-        <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
+        <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
           <div>
             <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
               Which answer is {roundTarget?.name}'s?
@@ -724,7 +724,7 @@ export default function PlayPage({ params }) {
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
         <TopBar>Round {current_round + 1} of {players.length} · Results</TopBar>
-        <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
+        <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: GAP.section, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
           {/* Question context */}
           <p style={{ fontSize: 14, color: "rgba(255,255,255,0.65)", lineHeight: 1.5 }}>
             {roundQuestioner?.name} asked {roundTarget?.name}: "{roundQuestion}"

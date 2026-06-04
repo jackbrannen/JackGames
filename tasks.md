@@ -34,7 +34,7 @@ are wired in all 12 games and omitted from the table.
 |                  | FB | GOW | AV | FTW | DF | SC | TEL | CC | CN | RC | EC | MW |
 |------------------|----|-----|----|-----|----|----|-----|----|----|----|----|-----|
 | FooterButton     | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
-| WaitingList      |    | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  |    |    | ✓  |    |
+| WaitingList      | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
 | StatusBar        | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
 | TextEntry        |    | ✓   |    | ✓   |    |    |     |    |    |    |    |    |
 | RandomIdeas      |    | ✓   |    |     |    |    |     |    |    |    |    |    |

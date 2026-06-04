@@ -521,7 +521,7 @@ export default function PlayPage({ params }) {
           </div>
         </div>
           {pokeSystemNode(
-            <FooterButton onClick={submitAnswer} disabled={!myAnswer.trim()} nudge={nudgeAnswer}>
+            <FooterButton key={`answer-${current_round}`} onClick={submitAnswer} disabled={!myAnswer.trim()} nudge={nudgeAnswer}>
               Submit Answer
             </FooterButton>
           )}

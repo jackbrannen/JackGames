@@ -14,7 +14,7 @@ are wired in all 12 games and omitted from the table.
 | TextEntry        |    | ✓   |    | ✓   |    |    |     |    |    |    |    |    |
 | RandomIdeas      |    | ✓   |    |     |    |    |     |    |    |    |    |    |
 | Selections       | ·  | ✓   | ✓  | ·   | ✓  | ·  | ·   | ✓  | ·  | ·  | ·  | ·  |
-| HomeScreen       |    | ✓   |    |     |    |    |     |    |    |    |    |    |
+| HomeScreen       |    | ✓   |    |     |    |    |     | ✓  |    |    |    |    |
 | Lobby            |    | ✓   |    |     |    |    |     |    |    |    |    |    |
 | EndGame          | ✓  | ✓   | ·  | ·   | ✓  | ·  | ·   | ✓  | ✓  | ✓  | ·  | ·  |
 | Results          |    | ✓   |    |     |    |    |     |    |    |    |    |    |

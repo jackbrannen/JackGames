@@ -633,14 +633,15 @@ export default function PlayPage({ params }) {
       )
     }
 
-    async function submitVote() {
+    async function submitVote(id) {
+      setSelectedVote(id)
       const { error } = await supabase.rpc("cc_submit_vote", {
         p_code: code,
         p_voter_id: myId,
         p_round: current_round,
-        p_voted_for_player_id: selectedVote,
+        p_voted_for_player_id: id,
       })
-      if (error) throw error
+      if (error) { setSelectedVote(null); throw error }
       await loadState()
     }
 
@@ -662,18 +663,14 @@ export default function PlayPage({ params }) {
               isMine: !!(myAnswerText && a.answer.trim().toLowerCase() === myAnswerText),
             }))}
             selectedId={selectedVote}
-            onSelect={id => setSelectedVote(id)}
+            onSelect={id => submitVote(id)}
             onDeselect={() => setSelectedVote(null)}
             colors={{ bg: MID, selectedBg: YELLOW, selectedText: "#000", deselectBg: DARK, deselectText: YELLOW }}
             mineLabel="Your answer — can't vote for it"
           />
         </div>
       </div>
-        {pokeSystemNode(
-          <FooterButton onClick={submitVote} disabled={!selectedVote}>
-            That's the Real One
-          </FooterButton>
-        )}
+        {pokeSystemNode()}
       </>
     )
   }

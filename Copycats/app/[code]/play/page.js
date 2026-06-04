@@ -616,23 +616,6 @@ export default function PlayPage({ params }) {
       )
     }
 
-    if (myVoteRow) {
-      return (
-        <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-          <TopBar>Round {current_round + 1} of {players.length}</TopBar>
-          <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
-            <div style={{ textAlign: "center", padding: "16px 0" }}>
-              <p style={{ fontSize: 20, fontWeight: 700, color: "white", marginBottom: 8 }}>Vote submitted!</p>
-              <p style={{ fontSize: 16, color: "rgba(255,255,255,0.65)" }}>Waiting for everyone…</p>
-            </div>
-            <Section label="Waiting for votes…">
-              <WaitingList players={players.filter(p => p.id !== roundTarget?.id)} doneIds={votedIds} myPlayerId={myId} onPoke={sendInlinePoke} doneLabel="Voted" waitLabel="Deciding…" pokeCooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
-            </Section>
-          </div>
-        </div>
-      )
-    }
-
     async function submitVote(id) {
       setSelectedVote(id)
       const { error } = await supabase.rpc("cc_submit_vote", {
@@ -644,6 +627,9 @@ export default function PlayPage({ params }) {
       if (error) { setSelectedVote(null); throw error }
       await loadState()
     }
+
+    // Reflect DB vote in selectedId so it survives re-renders and loadState
+    const currentSelectedId = myVoteRow?.voted_for_player_id ?? selectedVote
 
     return (
       <>
@@ -662,12 +648,15 @@ export default function PlayPage({ params }) {
               text: a.answer,
               isMine: !!(myAnswerText && a.answer.trim().toLowerCase() === myAnswerText),
             }))}
-            selectedId={selectedVote}
+            selectedId={currentSelectedId}
             onSelect={id => submitVote(id)}
             onDeselect={() => setSelectedVote(null)}
             colors={{ bg: MID, selectedBg: YELLOW, selectedText: "#000", deselectBg: DARK, deselectText: YELLOW }}
             mineLabel="Your answer — can't vote for it"
           />
+          <Section label="Waiting for votes…">
+            <WaitingList players={players.filter(p => p.id !== roundTarget?.id)} doneIds={votedIds} myPlayerId={myId} onPoke={sendInlinePoke} doneLabel="Voted" waitLabel="Deciding…" pokeCooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
+          </Section>
         </div>
       </div>
         {pokeSystemNode()}

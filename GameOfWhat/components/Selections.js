@@ -28,7 +28,16 @@
     gap           number  — gap between rows in px (default 10)
     fontSize      number  — text size in px (default 18)
 
-  Usage (GameOfWhat voting):
+  IMPORTANT — keep Selections visible after selection:
+    Do NOT navigate away or replace the component when the player selects.
+    The component must stay on screen so the player can see their selection
+    and deselect if they change their mind. Only hide it once all players
+    have acted (phase transition) or the game explicitly moves on.
+    Derive selectedId from the DB vote (not just local state) so it survives
+    re-renders and loadState calls:
+      const currentSelectedId = myVoteRow?.voted_for_player_id ?? localSelectedId
+
+  Usage (GameOfWhat voting — immediate submit on tap, deselect via RPC):
     <Selections
       options={answerGroups.map(g => ({ id: g.primaryId, text: g.text, isMine: g.playerIds.includes(myPlayerId) }))}
       selectedId={myVoteId}
@@ -36,6 +45,16 @@
       onDeselect={handleDeselect}
       disabled={submittingVote}
       colors={{ bg: CARD_BG, selectedBg: YELLOW, selectedText: "#000", deselectBg: "#4A123B", deselectText: YELLOW }}
+    />
+
+  Usage (Copycats voting — immediate submit on tap, overwrite to change vote):
+    <Selections
+      options={dedupedVotable.map(a => ({ id: a.player_id, text: a.answer, isMine: ... }))}
+      selectedId={myVoteRow?.voted_for_player_id ?? selectedVote}
+      onSelect={id => submitVote(id)}
+      onDeselect={() => setSelectedVote(null)}
+      colors={{ bg: MID, selectedBg: YELLOW, selectedText: "#000", deselectBg: DARK, deselectText: YELLOW }}
+      mineLabel="Your answer — can't vote for it"
     />
 
   Usage (Drawful — select then confirm in Footer):

@@ -6,6 +6,7 @@ import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
+import EndGame from "../../../components/EndGame"
 
 const BG = "#C0B298"
 const TAN = "#C4924A"
@@ -241,6 +242,50 @@ export default function Play({ params }) {
   const winnerColor = game.winning_team === "red" ? RED_COLOR : BLUE_COLOR
   const turnColor = teamColor(game.turn_team)
 
+  if (game.phase === "finished") {
+    const redPlayers = players.filter(p => p.team === "red")
+    const bluePlayers = players.filter(p => p.team === "blue")
+    const redWins = game.winning_team === "red"
+    const blueWins = game.winning_team === "blue"
+
+    const teamAbove = (
+      <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 32 }}>
+        {[
+          { label: "Red", color: RED_COLOR, teamPlayers: redPlayers, winner: redWins },
+          { label: "Blue", color: BLUE_COLOR, teamPlayers: bluePlayers, winner: blueWins },
+        ].map(team => (
+          <div key={team.label} style={{ display: "flex" }}>
+            <div style={{ padding: "13px 0", minWidth: 48, flexShrink: 0, background: team.color, fontSize: 13, fontWeight: 900, color: "white", display: "flex", alignItems: "center", justifyContent: "center", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              {team.label}
+            </div>
+            <div style={{ padding: "13px 16px", flex: 1, background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 700 }}>{team.label} Team</div>
+                {team.teamPlayers.length > 0 && <div style={{ fontSize: 12, opacity: 0.65, marginTop: 2 }}>{team.teamPlayers.map(p => p.name).join(", ")}</div>}
+              </div>
+              {team.winner && <span style={{ fontSize: 11, fontWeight: 800, color: team.color, textTransform: "uppercase", letterSpacing: "0.1em" }}>Winner</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+
+    return (
+      <>
+      <div style={{ minHeight: "100dvh", background: "#1A1008", color: "white", display: "flex", flexDirection: "column" }}>
+        <EndGame
+          players={[]}
+          onPlayAgain={playAgain}
+          bottomPad={BOTTOM_PAD}
+          colors={{ yellow: TAN, wl: "#2E1E0F" }}
+          aboveScores={teamAbove}
+        />
+      </div>
+      {pokeSystemNode}
+      </>
+    )
+  }
+
   return (
     <>
     <div style={{ height: "100dvh", background: BG, color: TEXT, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -404,23 +449,6 @@ export default function Play({ params }) {
         )}
 
         {/* ---- GAME OVER ---- */}
-        {game.phase === "finished" && (
-          <div style={{ paddingTop: 4 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "rgba(0,0,0,0.5)", textAlign: "center", marginBottom: 12 }}>
-              {game.winning_team === myTeam ? "Your team won!" : myTeam ? "Your team lost." : "Game over."}
-            </div>
-            <button
-              onClick={playAgain}
-              style={{ background: TEXT, color: "white", fontSize: 20, fontWeight: 900, padding: "18px", width: "100%", display: "block", marginBottom: 16 }}
-            >
-              Play Again
-            </button>
-            <a href="https://games.jackbrannen.com"
-              style={{ display: "block", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%", textAlign: "center", textDecoration: "none" }}>
-              Play Another Game
-            </a>
-          </div>
-        )}
 
         {/* ---- CLUE PHASE ---- */}
         {game.phase === "play" && game.turn_phase === "clue" && (

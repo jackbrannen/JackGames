@@ -64,13 +64,13 @@ export default function WaitingList({
 
   return (
     <div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <div style={{ display: "flex", flexDirection: "column" }}>
         {players.map(p => {
           const isMe   = p.name === myName
           const justSent = pokeJustSent === p.name
 
           return (
-            <div key={p.name} style={{ display: "flex", alignItems: "center", background: mid, padding: "13px 16px", gap: 10 }}>
+            <div key={p.name} style={{ display: "flex", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.08)", padding: "10px 4px", gap: 10 }}>
               <div style={{
                 width: 10, height: 10, borderRadius: "50%", flexShrink: 0,
                 background: p.done ? "#22C55E" : "rgba(255,255,255,0.25)",

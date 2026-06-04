@@ -53,7 +53,7 @@ Each game's dummy game implementation must:
 - ~~The "stepped away" feature is very unreliable. Gives false positives and false negatives.~~ ✓
 - ~~GOW: can't press X to deselect~~ ✓
 - ~~GOW: Score display doesn't match UI style guide.~~ ✓
-- GOW/others: Selections and WaitingList look too similar - this was marked as done but I see no change
+- ~~GOW/others: Selections and WaitingList look too similar~~ ✓
 - ~~GOW: Results - Needs to show both who voted for something and who selected it. Component-level fix.~~ ✓
 
 ### Recently fixed

@@ -54,35 +54,44 @@ export default function EndGame({
 
       {aboveScores}
 
+      {players.length > 0 && (<>
       <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 16 }}>
         Final Scores
       </div>
 
-      {players.map(p => {
-        const isWinner = p.score === topScore
-        return (
-          <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
-            <div style={{
-              background: isWinner ? yellow : wl,
-              color: isWinner ? "#000" : "white",
-              fontSize: 22, fontWeight: 900,
-              minWidth: 52, textAlign: "center", padding: "8px 0",
-            }}>
-              {p.score}
+      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        {players.map(p => {
+          const isWinner = p.score === topScore
+          return (
+            <div key={p.id} style={{ display: "flex" }}>
+              <div style={{
+                padding: "13px 0", minWidth: 48, flexShrink: 0,
+                background: isWinner ? yellow : wl,
+                fontSize: 18, fontWeight: 900, color: isWinner ? "#000" : "white",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                {p.score}
+              </div>
+              <div style={{
+                padding: "13px 16px", flex: 1,
+                background: isWinner ? "rgba(251, 223, 84, 0.15)" : "rgba(255,255,255,0.08)",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+              }}>
+                <div style={{ fontSize: 17, fontWeight: 700 }}>
+                  {p.name}
+                  {myPlayerId === p.id && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
+                </div>
+                {isWinner && (
+                  <span style={{ fontSize: 11, fontWeight: 800, color: yellow, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                    {isTie ? "Tied" : "Winner"}
+                  </span>
+                )}
+              </div>
             </div>
-            <div>
-              <span style={{ fontSize: 22, fontWeight: 700 }}>
-                {p.name}
-                              </span>
-              {isWinner && (
-                <span style={{ fontSize: 12, fontWeight: 800, color: yellow, marginLeft: 10, textTransform: "uppercase", letterSpacing: "0.1em" }}>
-                  {isTie ? "Tied!" : "Winner!"}
-                </span>
-              )}
-            </div>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
+      </>)}
 
       <div style={{ marginTop: 40, display: "flex", flexDirection: "column", gap: 10 }}>
         {onPlayAgain && (

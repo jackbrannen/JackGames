@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
@@ -148,9 +148,26 @@ function WaitingList({ players, doneIds, myPlayerId, onPoke, doneLabel = "Ready"
 const POKE_COLORS = { dark: "#3D1A70", mid: "#4A228C", wl: "#7A3AAA", yellow: "#FBDF54", notifBg: "#2D1050" }
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
+const DEMO_PLAYERS = [
+  { id: "1", name: "Jordan",  score: 520 },
+  { id: "2", name: "Alex",    score: 450 },
+  { id: "3", name: "Riley",   score: 410 },
+  { id: "4", name: "Sam",     score: 380 },
+]
+
 export default function PlayPage({ params }) {
   const code = params.code
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  if (searchParams.get("demo") === "1") {
+    const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
+    return (
+      <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
+        <EndGame players={DEMO_PLAYERS} myPlayerId="2" onPlayAgain={() => {}} bottomPad={BOTTOM_PAD} colors={{ yellow: YELLOW, wl: MID }} />
+      </div>
+    )
+  }
 
   const [game, setGame] = useState(null)
   const [players, setPlayers] = useState([])

@@ -8,6 +8,7 @@ import FooterButton from "../../../components/FooterButton"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import { playYourTurn } from "../../../lib/sounds"
+import EndGame from "../../../components/EndGame"
 
 const T1         = "#3378FF"  // page background blue
 const WARM_LIGHT = "#3399FF"
@@ -390,6 +391,67 @@ export default function Play({ params }) {
     )
   }
 
+  if (game.phase === "finished") {
+    const t1Score = game.team1_score ?? 0
+    const t2Score = game.team2_score ?? 0
+    const t1Wins = t1Score > t2Score
+    const t2Wins = t2Score > t1Score
+    const team1Players = players.filter(p => p.team === 1)
+    const team2Players = players.filter(p => p.team === 2)
+
+    const teamAbove = (
+      <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 32 }}>
+        {[
+          { label: "Boys", color: BOYS, score: t1Score, names: team1Players.map(p => p.name), winner: t1Wins },
+          { label: "Girls", color: GIRLS, score: t2Score, names: team2Players.map(p => p.name), winner: t2Wins },
+        ].map(team => (
+          <div key={team.label} style={{ display: "flex" }}>
+            <div style={{ padding: "13px 0", minWidth: 48, flexShrink: 0, background: team.color, fontSize: 18, fontWeight: 900, color: "#000", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {team.score}
+            </div>
+            <div style={{ padding: "13px 16px", flex: 1, background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 700 }}>{team.label}</div>
+                {team.names.length > 0 && <div style={{ fontSize: 12, opacity: 0.65, marginTop: 2 }}>{team.names.join(", ")}</div>}
+              </div>
+              {team.winner && <span style={{ fontSize: 11, fontWeight: 800, color: team.color, textTransform: "uppercase", letterSpacing: "0.1em" }}>Winner</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+
+    const clueList = players.filter(p => allClues.some(c => c.player_id === p.id)).length > 0 ? (
+      <div style={{ marginTop: 8 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.75, marginBottom: 20 }}>All Clues</div>
+        {players.filter(p => allClues.some(c => c.player_id === p.id)).map(player => (
+          <div key={player.id} style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 4 }}>{player.name}</div>
+            <div style={{ fontSize: 16, fontWeight: 400, opacity: 0.85, lineHeight: 1.5 }}>
+              {allClues.filter(c => c.player_id === player.id).map(c => c.text).join(", ")}
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : null
+
+    return (
+      <>
+      <div style={{ minHeight: "100dvh", background: T1, color: "white", display: "flex", flexDirection: "column" }}>
+        <EndGame
+          players={[]}
+          onPlayAgain={doPlayAgain}
+          bottomPad={BOTTOM_PAD}
+          colors={{ yellow: YELLOW, wl: "#2357E7" }}
+          aboveScores={teamAbove}
+          belowButtons={clueList}
+        />
+      </div>
+      {pokeSystemNode()}
+      </>
+    )
+  }
+
   const skipDisabled = !activeClue || cluesInBowl <= 1 || (game.skip_limit > 0 && game.turn_skips_used >= game.skip_limit)
 
   const SWIPE_THRESHOLD = 80
@@ -592,66 +654,6 @@ export default function Play({ params }) {
       {/* Main content */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
 
-        {/* GAME OVER */}
-        {game.phase === "finished" && (
-          <div style={{ padding: "40px 24px", paddingBottom: BOTTOM_PAD, flex: 1 }}>
-            <div style={{ fontSize: "clamp(56px, 16vw, 88px)", fontWeight: 900, textTransform: "uppercase", lineHeight: 0.9, marginBottom: 32 }}>
-              Game<br />Over
-            </div>
-
-            <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.6, marginBottom: 8 }}>Winner</div>
-            <div style={{ fontSize: 52, fontWeight: 900, lineHeight: 1, marginBottom: 8 }}>
-              {game.team1_score === game.team2_score
-                ? "Tie!"
-                : game.team1_score > game.team2_score
-                  ? "Boys"
-                  : "Girls"}
-            </div>
-            <div style={{ fontSize: 18, opacity: 0.65, fontWeight: 600, marginBottom: 48 }}>
-              {game.team1_score} – {game.team2_score}
-            </div>
-
-            <button
-              onClick={doPlayAgain}
-              style={{
-                background: YELLOW,
-                color: "#000",
-                fontSize: 22,
-                fontWeight: 900,
-                padding: "22px 32px",
-                width: "100%",
-                display: "block",
-                marginBottom: playAgainError ? 12 : 48,
-              }}
-            >
-              Play Again
-            </button>
-            {playAgainError && (
-              <div style={{ fontSize: 13, color: "rgba(0,0,0,0.7)", background: YELLOW, padding: "10px 16px", marginBottom: 36, fontWeight: 700 }}>
-                Error: {playAgainError}
-              </div>
-            )}
-
-            <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 16 }}>All Clues</div>
-            {players.filter((p) => allClues.some((c) => c.player_id === p.id)).map((player) => (
-              <div key={player.id} style={{ marginBottom: 28 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.6, marginBottom: 8 }}>{player.name}</div>
-                {allClues.filter((c) => c.player_id === player.id).map((clue) => (
-                  <div key={clue.id} style={{ padding: "10px 0", borderBottom: "1px solid rgba(255,255,255,0.15)", fontSize: 17, fontWeight: 700 }}>
-                    {clue.text}
-                  </div>
-                ))}
-              </div>
-            ))}
-
-            <div style={{ marginTop: 16 }}>
-              <a href="https://games.jackbrannen.com"
-                style={{ display: "block", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%", textAlign: "center", textDecoration: "none" }}>
-                Play Another Game
-              </a>
-            </div>
-          </div>
-        )}
 
         {/* ROUND BEGINNING */}
         {game.phase === "between_rounds" && (

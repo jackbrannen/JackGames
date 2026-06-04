@@ -54,6 +54,7 @@ export default function EndGame({
 
       {aboveScores}
 
+      {players.length > 0 && (<>
       <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 16 }}>
         Final Scores
       </div>
@@ -90,6 +91,7 @@ export default function EndGame({
           )
         })}
       </div>
+      </>)}
 
       <div style={{ marginTop: 40, display: "flex", flexDirection: "column", gap: 10 }}>
         {onPlayAgain && (

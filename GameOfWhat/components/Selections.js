@@ -111,18 +111,19 @@ export default function Selections({
                 color: isSelected ? selectedText : opt.isMine ? mineText : "white",
                 opacity: opt.isMine ? 1 : dimmed ? 0.45 : 1,
                 transition: "opacity 200ms",
+                userSelect: "none",
               }}
             >
-              <span style={{ fontSize, fontWeight: isSelected ? 700 : 500, flex: 1 }}>
+              <span style={{ fontSize, fontWeight: isSelected ? 700 : 500, flex: 1, pointerEvents: "none" }}>
                 {opt.text}
               </span>
               {isSelected && (
-                <span style={{ fontSize: 18, marginLeft: 12, flexShrink: 0, fontWeight: 900 }}>
+                <span style={{ fontSize: 18, marginLeft: 12, flexShrink: 0, fontWeight: 900, pointerEvents: "none" }}>
                   ✕
                 </span>
               )}
               {opt.isMine && (
-                <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.6, marginLeft: 12 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.6, marginLeft: 12, pointerEvents: "none" }}>
                   your answer
                 </span>
               )}

@@ -16,10 +16,10 @@ Status of shared components matching StyleGuide/ (localhost:3099):
 | StatusBar | ✅ Yes | Now uses FONT_SIZE, FONT_WEIGHT, OPACITY constants |
 | TextEntry | ✅ Yes | Now uses FONT_SIZE, FONT_WEIGHT constants |
 | RandomIdeas | ✅ Yes | Now uses FONT_SIZE, FONT_WEIGHT, OPACITY constants |
-| Lobby | ⚠️ Partial | Partially updated with constants (player names, section headers); many inline values remain |
+| Lobby | ✅ Yes | Now uses FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP constants throughout |
 | GameModal | ✅ Yes | End-game picker modal |
 
-**Next cleanup:** Audit and fix ⚠️ and ❌ components to match style guide.
+**All shared components now ✅ locked to style guide!**
 
 ---
 

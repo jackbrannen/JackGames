@@ -33,11 +33,11 @@ are wired in all 12 games and omitted from the table.
 
 |                  | FB | GOW | AV | FTW | DF | SC | TEL | CC | CN | RC | EC | MW |
 |------------------|----|-----|----|-----|----|----|-----|----|----|----|----|-----|
-| FooterButton     | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
-| WaitingList      | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
-| StatusBar        | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
-| TextEntry        | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
-| RandomIdeas      | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
+| FooterButton     | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ❌ | ✓  | ✓  | ✓  |
+| WaitingList      | ❌ | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ·  | ❌ | ❌ | ✓  | ❌ |
+| StatusBar        | C  | ✓   | C  | ✓   | C  | ✓  | C   | ✓  | C  | C  | C  | C  |
+| TextEntry        | ❌ | ✓   | ❌ | ✓   | ❌ | ❌ | ❌  | ❌ | ❌ | ❌ | ❌ | ❌ |
+| RandomIdeas      | ❌ | ✓   | ❌ | ·   | ❌ | ❌ | ❌  | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Selections       | ·  | ✓   | ✓  | ·   | ✓  | ·  | ·   | ✓  | ·  | ·  | ·  | ·  |
 | HomeScreen       | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
 | Lobby            | C  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | C  | C  | ✓  | ✓  |
@@ -50,7 +50,18 @@ FB=Fishbowl, GOW=Game of What, AV=Avalon, FTW=First to Worst, DF=Drawful,
 SC=So Clover, TEL=Telestrations, CC=Copycats, CN=Codenames, RC=Reverse Charades,
 EC=Exquisite Corpse, MW=Mr. White
 
-**C** = Custom implementation (team-based games: Fishbowl, Codenames, ReverseCharades use custom lobby with team selection but still use Footer for Start button)
+**Legend:**
+- **✓** = Using the shared component from packages/shared/components/
+- **❌** = Imported but NOT using (defeats "tweak once, updates everywhere")
+- **C** = Custom implementation (game-specific needs)
+- **·** = Not applicable to this game
+
+**Notes:**
+- **Lobby:** Team-based games (Fishbowl, Codenames, ReverseCharades) use custom lobby with team selection but still use Footer for Start button.
+- **StatusBar:** Only 4/12 games use it (GOW, FTW, SoClover, Copycats). The other 8 have custom top bars for game-specific info (team scores, clues remaining, etc.).
+- **WaitingList:** 7/12 games use it. Fishbowl/Codenames/ReverseCharades/MrWhite import but don't render.
+- **TextEntry:** Only 2/12 games use it (GOW, FTW). 10 games import but don't use.
+- **RandomIdeas:** Only 1/12 games use it (GOW). 10 games import but don't use.
 
 ### Dummy Game spec (per game)
 Each game's dummy game implementation must:

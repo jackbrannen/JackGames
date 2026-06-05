@@ -475,7 +475,7 @@ export default function Play({ params }) {
         playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name }))}
         gamePhase={game?.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
-        onResetToLobby={async () => { await supabase.rpc("ftw_reset_to_lobby", { p_code: code }); await loadState() }}
+        onResetToLobby={async () => { await rpc("ftw_reset_to_lobby", { p_code: code }) }}
       />
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
         {footer}
@@ -486,6 +486,12 @@ export default function Play({ params }) {
 
   function resolveWords(ids) {
     return (ids ?? []).map(id => allWords.find(w => w.id === id)).filter(Boolean).map(w => ({ id: w.id, text: w.text }))
+  }
+
+  async function rpc(fn, args = {}) {
+    const { error } = await supabase.rpc(fn, args)
+    if (error) throw error
+    // Don't call loadState() - let polling pick up phase changes naturally.
   }
 
   async function loadState() {
@@ -1006,9 +1012,7 @@ export default function Play({ params }) {
     async function handleLockIn() {
       if (!rankingItems || !myPlayerId) return
       const rankingIds = rankingItems.map(item => item.id)
-      const { error } = await supabase.rpc("ftw_lock_ranking", { p_code: code, p_player_id: myPlayerId, p_ranking: rankingIds })
-      if (error) throw error
-      await loadState()
+      await rpc("ftw_lock_ranking", { p_code: code, p_player_id: myPlayerId, p_ranking: rankingIds })
     }
 
     const listH = listTotalH(rankingItems ?? [], vw() - 90)

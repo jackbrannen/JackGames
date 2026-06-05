@@ -72,8 +72,22 @@ Each game's dummy game implementation must:
 ---
 
 ## Bug fixes
+- Avalon: no need to show room code in header once game has started. This should be a part of the status bar spec: no room code. Are other games like this?
 
-- ~~SoClover: The Fifth Card setting should be editable before joining the game~~ ✓
+
+### Recently fixed
+- ~~GOW: Selections "my answer" style doesn't match style guide~~ ✓
+- ~~GOW: Scores showing during normal round screens~~ ✓
+- ~~Back to lobby from hamburger menu doesn't work~~ ✓ (all 12 games)
+- ~~FTW dummy game~~ ✓ (auto-join + pre-fill word fields)
+- ~~GOW Selections: pressing ✕ to deselect then blocked re-selection~~ ✓
+- ~~GOW voting typing indicator: bubble now clears when player stops typing~~ ✓
+- ~~GOW submit nudge: wired to question field; FTW submit nudge wired to word fields~~ ✓
+- ~~GOW results: all players now see results screen (50%+ ready to advance)~~ ✓
+- ~~GOW answering/voting: WaitingList shown to all players waiting~~ ✓
+- ~~FTW: eliminate the page with the "Let's Do This" button that starts rounds. Unnecessary.~~ ✓
+- ~~FTW: play again button doesn't work~~ ✓
+ - ~~SoClover: The Fifth Card setting should be editable before joining the game~~ ✓
 - ~~SoClover: The 5th card option can't currently be toggled on.~~ ✓
 - ~~SoClover: when the guesser rotates cards or the board, it is STILL not shown on other devices.~~ ✓
 - ~~GOW: remove skip as an option~~ ✓
@@ -91,17 +105,3 @@ Each game's dummy game implementation must:
 - ~~GOW: Score display doesn't match UI style guide.~~ ✓
 - ~~GOW/others: Selections and WaitingList look too similar~~ ✓
 - ~~GOW: Results - Needs to show both who voted for something and who selected it. Component-level fix.~~ ✓
-
-### Recently fixed
-- ~~GOW: Selections "my answer" style doesn't match style guide~~ ✓
-- ~~GOW: Scores showing during normal round screens~~ ✓
-- ~~Back to lobby from hamburger menu doesn't work~~ ✓ (all 12 games)
-- ~~FTW dummy game~~ ✓ (auto-join + pre-fill word fields)
-- ~~GOW Selections: pressing ✕ to deselect then blocked re-selection~~ ✓
-- ~~GOW voting typing indicator: bubble now clears when player stops typing~~ ✓
-- ~~GOW submit nudge: wired to question field; FTW submit nudge wired to word fields~~ ✓
-- ~~GOW results: all players now see results screen (50%+ ready to advance)~~ ✓
-- ~~GOW answering/voting: WaitingList shown to all players waiting~~ ✓
-- ~~FTW: eliminate the page with the "Let's Do This" button that starts rounds. Unnecessary.~~ ✓
-- ~~FTW: play again button doesn't work~~ ✓
- 

@@ -48,7 +48,7 @@
 */
 
 import { useState } from "react"
-import { FONT_SIZE, FONT_WEIGHT, OPACITY, STYLE } from "./styles"
+import { FONT_SIZE, FONT_WEIGHT, OPACITY, STYLE, SPACE, GAP } from "./styles"
 
 function PlayerRow({ p, myPlayerId, mid }) {
   return (
@@ -87,7 +87,7 @@ export default function Lobby({
   if (notFound) {
     return (
       <div style={{ minHeight: "100dvh", background: bg || dark, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ color: "white", fontSize: 22, fontWeight: 700 }}>Room not found.</p>
+        <p style={{ color: "white", fontSize: FONT_SIZE.heading, fontWeight: FONT_WEIGHT.bold }}>Room not found.</p>
       </div>
     )
   }
@@ -95,7 +95,7 @@ export default function Lobby({
   if (loading) {
     return (
       <div style={{ minHeight: "100dvh", background: bg || dark, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 18, fontWeight: 700 }}>Loading…</p>
+        <p style={{ color: `rgba(255,255,255,${OPACITY.muted})`, fontSize: FONT_SIZE.bodyLg, fontWeight: FONT_WEIGHT.bold }}>Loading…</p>
       </div>
     )
   }
@@ -104,22 +104,22 @@ export default function Lobby({
     <div style={{ minHeight: "100dvh", background: bg || dark, color: "white" }}>
 
       {/* Header */}
-      <div style={{ padding: "28px 24px 24px", background: dark, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+      <div style={{ padding: `${SPACE.xl}px ${SPACE.lg}px ${SPACE.lg}px`, background: dark, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: SPACE.sm }}>
         <div style={{ minWidth: 0 }}>
           {gameName && (
-            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.45, marginBottom: 4 }}>
+            <div style={{ fontSize: FONT_SIZE.eyebrow, fontWeight: FONT_WEIGHT.heavy, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.45, marginBottom: 4 }}>
               {gameName}
             </div>
           )}
-          <div style={{ fontSize: "clamp(18px, 6vw, 38px)", fontWeight: 900, letterSpacing: "-1px", lineHeight: 1, whiteSpace: "nowrap" }}>
+          <div style={{ fontSize: "clamp(18px, 6vw, 38px)", fontWeight: FONT_WEIGHT.black, letterSpacing: "-1px", lineHeight: 1, whiteSpace: "nowrap" }}>
             {codeDisplay ?? code}
           </div>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, marginTop: 4, alignItems: "stretch" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: SPACE.xs, flexShrink: 0, marginTop: 4, alignItems: "stretch" }}>
           {onInvite && (
             <button
               onClick={onInvite}
-              style={{ background: wl, color: "white", fontSize: 13, fontWeight: 800, padding: "10px 16px" }}
+              style={{ background: wl, color: "white", fontSize: FONT_SIZE.min, fontWeight: FONT_WEIGHT.heavy, padding: "10px 16px" }}
             >
               Invite
             </button>
@@ -127,7 +127,7 @@ export default function Lobby({
           {howToPlayContent && (
             <button
               onClick={() => setShowHowToPlay(true)}
-              style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 13, fontWeight: 800, padding: "10px 14px" }}
+              style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: FONT_SIZE.min, fontWeight: FONT_WEIGHT.heavy, padding: "10px 14px" }}
             >
               How to Play
             </button>
@@ -143,13 +143,13 @@ export default function Lobby({
 
       {/* Join form */}
       {showJoinZone && joinContent && (
-        <div style={{ padding: "28px 24px 0" }}>
+        <div style={{ padding: `${SPACE.xl}px ${SPACE.lg}px 0` }}>
           {joinContent}
         </div>
       )}
 
       {/* Player list */}
-      <div style={{ padding: "28px 24px 0" }}>
+      <div style={{ padding: `${SPACE.xl}px ${SPACE.lg}px 0` }}>
         <div style={{ ...STYLE.sectionHeader, marginBottom: 4 }}>
           Players
         </div>
@@ -157,13 +157,13 @@ export default function Lobby({
           {players.length} {players.length === 1 ? "player" : "players"}
         </div>
         {players.length === 0 && (
-          <div style={{ fontSize: 15, opacity: 0.65, fontStyle: "italic", padding: "12px 0" }}>No players yet</div>
+          <div style={{ fontSize: FONT_SIZE.small + 1, opacity: OPACITY.muted, fontStyle: "italic", padding: "12px 0" }}>No players yet</div>
         )}
         {(() => {
           const hasTeams = players.some(p => p.teamLabel)
           if (!hasTeams) {
             return (
-              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: GAP.card }}>
                 {players.map(p => <PlayerRow key={p.id} p={p} myPlayerId={myPlayerId} mid={mid} />)}
               </div>
             )
@@ -178,17 +178,17 @@ export default function Lobby({
           })
           return teamOrder.map(label => (
             <div key={label} style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: teamMap[label].color || "rgba(255,255,255,0.65)", marginBottom: 6 }}>
+              <div style={{ fontSize: FONT_SIZE.min, fontWeight: FONT_WEIGHT.heavy, textTransform: "uppercase", letterSpacing: "0.12em", color: teamMap[label].color || `rgba(255,255,255,${OPACITY.muted})`, marginBottom: 6 }}>
                 {label}
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: GAP.card }}>
                 {teamMap[label].players.map(p => <PlayerRow key={p.id} p={p} myPlayerId={myPlayerId} mid={mid} />)}
               </div>
             </div>
           ))
         })()}
         {players.length < minPlayers && (
-          <p style={{ fontSize: 13, opacity: 0.65, fontWeight: 600, marginTop: 10 }}>
+          <p style={{ fontSize: FONT_SIZE.min, opacity: OPACITY.muted, fontWeight: FONT_WEIGHT.semibold, marginTop: 10 }}>
             Need at least {minPlayers} players to start.
           </p>
         )}
@@ -196,7 +196,7 @@ export default function Lobby({
 
       {/* Extra content */}
       {extraContent && (
-        <div style={{ padding: "28px 24px 0" }}>
+        <div style={{ padding: `${SPACE.xl}px ${SPACE.lg}px 0` }}>
           {extraContent}
         </div>
       )}
@@ -205,22 +205,22 @@ export default function Lobby({
       {showHowToPlay && howToPlayContent && (
         <div
           onClick={() => setShowHowToPlay(false)}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 200, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 24, overflowY: "auto" }}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 200, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: SPACE.lg, overflowY: "auto" }}
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ background: "#1A1A2E", width: "100%", maxWidth: 480, padding: "28px 24px", marginTop: 24 }}
+            style={{ background: "#1A1A2E", width: "100%", maxWidth: 480, padding: `${SPACE.xl}px ${SPACE.lg}px`, marginTop: SPACE.lg }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-              <div style={{ fontSize: 20, fontWeight: 900, color: "white" }}>How to Play</div>
+              <div style={{ fontSize: FONT_SIZE.heading, fontWeight: FONT_WEIGHT.black, color: "white" }}>How to Play</div>
               <button
                 onClick={() => setShowHowToPlay(false)}
-                style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 18, fontWeight: 800, padding: "6px 12px" }}
+                style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: FONT_SIZE.bodyLg, fontWeight: FONT_WEIGHT.heavy, padding: "6px 12px" }}
               >
                 ✕
               </button>
             </div>
-            <div style={{ fontSize: 15, color: "rgba(255,255,255,0.85)", lineHeight: 1.7, fontWeight: 400 }}>
+            <div style={{ fontSize: FONT_SIZE.small + 1, color: `rgba(255,255,255,${OPACITY.normal})`, lineHeight: 1.7, fontWeight: FONT_WEIGHT.regular }}>
               {howToPlayContent}
             </div>
           </div>

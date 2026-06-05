@@ -43,8 +43,8 @@ are wired in all 12 games and omitted from the table.
 | Lobby            | C  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | C  | C  | ✓  | ✓  |
 | EndGame          | ✓  | ✓   | ·  | ·   | ✓  | ·  | ·   | ✓  | ✓  | ✓  | ·  | ·  |
 | Results          | C  | ✓   | C  | C   | C  | C  | C   | ✓  | C  | C  | C  | C  |
-| **Dummy Games**  | ✓  | ✓   | ·  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ·  | ·  |
-| **Online pres.** |    | ✓   |    |     |    |    |     |    |    |    |    |    |
+| Dummy Games      | ✓  | ✓   | ·  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ·  | ·  |
+| Online pres      |    | ✓   |    |     |    |    |     |    |    |    |    |    |
 
 FB=Fishbowl, GOW=Game of What, AV=Avalon, FTW=First to Worst, DF=Drawful,
 SC=So Clover, TEL=Telestrations, CC=Copycats, CN=Codenames, RC=Reverse Charades,

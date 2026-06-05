@@ -782,7 +782,7 @@ export default function Lobby({ params }) {
       )}
 
       {/* Team balance warning */}
-      {everyoneReady && !teamsBalanced && gameExists && !gameLocked && (
+      {!teamsBalanced && gameExists && !gameLocked && players.length > 0 && (
         <div style={{ padding: "16px 24px", background: "#0C47E9", fontSize: 14, fontWeight: 700, color: YELLOW }}>
           Need at least 2 players per team to start.
         </div>

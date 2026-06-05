@@ -396,6 +396,7 @@ export default function Play({ params }) {
 
   const [answerText, setAnswerText] = useState("")
   const [submittingAnswer, setSubmittingAnswer] = useState(false)
+  const [isTypingAnswer, setIsTypingAnswer] = useState(false)
 
   const [selectedAnswerId, setSelectedAnswerId] = useState(null)
   const [submittingVote, setSubmittingVote] = useState(false)
@@ -940,18 +941,16 @@ export default function Play({ params }) {
               <p style={{ fontSize: 16, opacity: 0.75, fontWeight: 600, marginBottom: 14 }}>
                 Write a fake answer — something that sounds like the real prompt.
               </p>
-              <textarea
+              <TextEntry
                 value={answerText}
-                onChange={e => setAnswerText(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submitAnswer() } }}
+                onChange={setAnswerText}
+                onTypingChange={setIsTypingAnswer}
+                onSubmit={submitAnswer}
                 placeholder="Your fake answer…"
                 maxLength={120}
                 rows={2}
-                style={{
-                  width: "100%", background: WARM_LIGHT, color: "white",
-                  fontSize: 18, fontWeight: 600, padding: "14px 16px",
-                  resize: "none", display: "block", marginBottom: 0,
-                }}
+                bg={WARM_LIGHT}
+                fontSize={18}
               />
               <div style={{ marginTop: 16 }}>
                 <RandomIdeas

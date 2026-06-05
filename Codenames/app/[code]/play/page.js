@@ -161,7 +161,38 @@ export default function Play({ params }) {
         rules={instructions ? [["How to Play", instructions]] : null}
         onResetToLobby={async () => { await supabase.rpc("reset_codenames_game", { p_code: code }); await loadState() }}
       />
-      <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} />
+      <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
+        {game?.phase === "play" && game.turn_phase === "clue" && isMyTurn && isCluegiver && (
+          <FooterButton
+            onClick={submitClue}
+            disabled={!clueWord.trim() || !clueNum}
+            loading={submittingClue}
+            bg={turnColor}
+          >
+            Give Clue
+          </FooterButton>
+        )}
+        {game?.phase === "play" && game.turn_phase === "guess" && isMyTurn && !isCluegiver && (
+          <>
+            {!allGuessesUsed && (
+              <FooterButton
+                onClick={submitGuess}
+                disabled={!game.turn_selected_card_id}
+                loading={submittingGuess}
+                bg={turnColor}
+              >
+                Submit Guess
+              </FooterButton>
+            )}
+            <FooterButton
+              onClick={endTurn}
+              variant="secondary"
+            >
+              End Turn
+            </FooterButton>
+          </>
+        )}
+      </Footer>
     </>
   ) : null
 
@@ -512,13 +543,6 @@ export default function Play({ params }) {
                     </button>
                   ))}
                 </div>
-                <button
-                  disabled={!clueWord.trim() || !clueNum || submittingClue}
-                  onClick={submitClue}
-                  style={{ background: turnColor, color: "white", fontSize: 20, fontWeight: 900, padding: "18px", width: "100%", display: "block" }}
-                >
-                  {submittingClue ? "Sending…" : "Give Clue"}
-                </button>
               </div>
             ) : (
               <div style={{ textAlign: "center", padding: "20px 0" }}>
@@ -535,46 +559,15 @@ export default function Play({ params }) {
         )}
 
         {/* ---- GUESS PHASE ---- */}
-        {game.phase === "play" && game.turn_phase === "guess" && (
-          <>
-            {isMyTurn && !isCluegiver ? (
-              <div style={{ display: "flex", gap: 8 }}>
-                {allGuessesUsed ? (
-                  <button
-                    onClick={endTurn}
-                    style={{ background: turnColor, color: "white", fontSize: 18, fontWeight: 900, padding: "16px 24px", flex: 1 }}
-                  >
-                    End Turn
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      disabled={!game.turn_selected_card_id || submittingGuess}
-                      onClick={submitGuess}
-                      style={{ background: turnColor, color: "white", fontSize: 18, fontWeight: 900, padding: "16px 24px", flex: 1 }}
-                    >
-                      {submittingGuess ? "Revealing…" : "Submit Guess"}
-                    </button>
-                    <button
-                      onClick={endTurn}
-                      style={{ background: "rgba(0,0,0,0.15)", color: TEXT, fontSize: 16, fontWeight: 800, padding: "16px 20px", flexShrink: 0 }}
-                    >
-                      End Turn
-                    </button>
-                  </>
-                )}
-              </div>
-            ) : (
-              <div style={{ textAlign: "center", padding: "16px 0" }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "rgba(0,0,0,0.4)", letterSpacing: "0.06em" }}>
-                  {isMyTurn && isCluegiver
-                    ? <><span style={{ color: turnColor, fontWeight: 900 }}>Your team</span> is guessing…</>
-                    : <>Waiting for <span style={{ color: turnColor, fontWeight: 900 }}>{teamLabel(game.turn_team)}</span> to guess…</>
-                  }
-                </div>
-              </div>
-            )}
-          </>
+        {game.phase === "play" && game.turn_phase === "guess" && (!isMyTurn || isCluegiver) && (
+          <div style={{ textAlign: "center", padding: "16px 0" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "rgba(0,0,0,0.4)", letterSpacing: "0.06em" }}>
+              {isMyTurn && isCluegiver
+                ? <><span style={{ color: turnColor, fontWeight: 900 }}>Your team</span> is guessing…</>
+                : <>Waiting for <span style={{ color: turnColor, fontWeight: 900 }}>{teamLabel(game.turn_team)}</span> to guess…</>
+              }
+            </div>
+          </div>
         )}
 
       </div>

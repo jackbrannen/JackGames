@@ -22,15 +22,13 @@ import EndGame from "../../../components/EndGame"
 import { playYourTurn } from "../../../lib/sounds"
 
 const BG = "#6B1A44"
+const DARK = "#4A123B"  // cool-dark: headers, top bars
+const MID = "#5C1640"   // mid-dark: wells, cards, panels
 const YELLOW = "#FBDF54"
 const GREEN = "#12BAAA"
 const RED = "#F04F52"
-const WARM_LIGHT = "#821F42"
-const CARD_BG = WARM_LIGHT
 
-
-
-const POKE_COLORS = { dark: "#4A123B", mid: "#5C1640", wl: "#821F42", yellow: "#FBDF54", notifBg: "#300A20" }
+const POKE_COLORS = { dark: DARK, mid: MID, wl: "#8B2060", yellow: YELLOW, notifBg: "#300A20" }
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
 const BOT_WORDS = ["pizza","coffee","traffic","vacation","homework","laundry","dentist","parking","sunshine","deadline","wifi","elevator","printer","leftovers","voicemail"]
@@ -319,6 +317,7 @@ export default function Play({ params }) {
         p_voter_id: myPlayerId,
         p_answer_id: answerId,
       })
+      setSubmittingVote(false)
     } catch {
       setSubmittingVote(false)
       changingVoteRef.current = false
@@ -725,7 +724,7 @@ export default function Play({ params }) {
                 onSelect={id => submitVote(id)}
                 onDeselect={handleDeselect}
                 disabled={submittingVote}
-                colors={{ bg: CARD_BG, selectedBg: YELLOW, selectedText: "#000", deselectBg: "#4A123B", deselectText: YELLOW }}
+                colors={{ bg: MID, selectedBg: YELLOW, selectedText: "#000" }}
               />
               {/* None of the above */}
               {(() => {

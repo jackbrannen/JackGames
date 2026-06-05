@@ -45,20 +45,8 @@ const ROLE_LABEL = {
   minion:   "Minion of Mordred",
 }
 
-// Used to split two-word room codes into their component words for display
-
-
 const POKE_COLORS = { dark: "#091218", mid: "#1C2B3A", wl: "#19303B", yellow: "#C9A84C", notifBg: "#070D13" }
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
-
-const WORDS_A = ["AMBER","CEDAR","CRIMSON","DAGGER","EMBER","FALCON","GLACIER","HARBOR","INDIGO","JASPER","KODIAK","LANTERN","MARBLE","NEBULA","ONYX","PHANTOM","QUARTZ","RAVEN","SILVER","TOPAZ"]
-
-function splitCode(code) {
-  for (const w of WORDS_A) {
-    if (code.startsWith(w)) return [w, code.slice(w.length)]
-  }
-  return [code, ""]
-}
 
 const STYLES = `
   @keyframes avFlipIn {
@@ -964,8 +952,6 @@ export default function Play({ params }) {
   }
 
   // ─── main render ──────────────────────────────────────────────
-
-  const [codeWord1, codeWord2] = splitCode(code)
 
   return (
     <>

@@ -68,6 +68,8 @@ export default function Selections({
     flash = "rgba(255,80,80,0.25)",
     mineBg = "rgba(255,255,255,0.05)",
     mineText = "rgba(255,255,255,0.4)",
+    deselectBg,  // separate ✕ button background
+    deselectText = "#FBDF54",  // separate ✕ button text color
   } = colors
 
   // Put own items last
@@ -97,37 +99,52 @@ export default function Selections({
 
         return (
           <div key={opt.id}>
-            <button
-              onClick={() => handleTap(opt)}
-              disabled={disabled && !opt.isMine}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                width: "100%",
-                padding: "18px 16px",
-                textAlign: "left",
-                background: isSelected ? selectedBg : isFlashing ? flash : opt.isMine ? mineBg : bg,
-                color: isSelected ? selectedText : opt.isMine ? mineText : "white",
-                opacity: opt.isMine ? 1 : dimmed ? 0.45 : 1,
-                transition: "opacity 200ms",
-                userSelect: "none",
-              }}
-            >
-              <span style={{ fontSize, fontWeight: isSelected ? 700 : 500, flex: 1, pointerEvents: "none" }}>
-                {opt.text}
-              </span>
+            <div style={{ display: "flex", alignItems: "stretch" }}>
+              <button
+                onClick={() => isSelected ? null : handleTap(opt)}
+                disabled={disabled && !opt.isMine}
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "18px 16px",
+                  textAlign: "left",
+                  background: isSelected ? selectedBg : isFlashing ? flash : opt.isMine ? mineBg : bg,
+                  color: isSelected ? selectedText : opt.isMine ? mineText : "white",
+                  opacity: opt.isMine ? 1 : dimmed ? 0.45 : 1,
+                  transition: "opacity 200ms",
+                }}
+              >
+                <span style={{ fontSize, fontWeight: isSelected ? 700 : 500, flex: 1 }}>
+                  {opt.text}
+                </span>
+                {opt.isMine && (
+                  <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.6, marginLeft: 12 }}>
+                    your answer
+                  </span>
+                )}
+              </button>
               {isSelected && (
-                <span style={{ fontSize: 18, marginLeft: 12, flexShrink: 0, fontWeight: 900, pointerEvents: "none" }}>
+                <button
+                  onClick={() => onDeselect?.()}
+                  disabled={disabled}
+                  style={{
+                    background: deselectBg ?? bg,
+                    color: deselectText,
+                    fontSize: 22,
+                    fontWeight: 900,
+                    padding: "16px 24px",
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
                   ✕
-                </span>
+                </button>
               )}
-              {opt.isMine && (
-                <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.6, marginLeft: 12, pointerEvents: "none" }}>
-                  your answer
-                </span>
-              )}
-            </button>
+            </div>
             {opt.isMine && isFlashing && (
               <div style={{
                 fontSize: 13,

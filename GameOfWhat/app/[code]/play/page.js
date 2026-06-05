@@ -725,7 +725,7 @@ export default function Play({ params }) {
                 onSelect={id => submitVote(id)}
                 onDeselect={handleDeselect}
                 disabled={submittingVote}
-                colors={{ bg: MID, selectedBg: YELLOW, selectedText: "#000" }}
+                colors={{ bg: MID, selectedBg: YELLOW, selectedText: "#000", deselectBg: DARK, deselectText: YELLOW }}
               />
               {/* None of the above */}
               {(() => {

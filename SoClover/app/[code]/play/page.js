@@ -469,7 +469,7 @@ export default function PlayPage({ params }) {
         playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name }))}
         gamePhase={game?.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
-        onResetToLobby={async () => { await supabase.rpc("soclover_reset_to_lobby", { p_code: code }); await loadState() }}
+        onResetToLobby={async () => { await rpc("soclover_reset_to_lobby", { p_code: code }) }}
       />
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
         {footer}
@@ -493,6 +493,12 @@ export default function PlayPage({ params }) {
 
   const LEAF_SIZE = 64
   const CARD_SIZE = Math.floor((vw - 2 * LEAF_SIZE) / 2)
+
+  async function rpc(fn, args = {}) {
+    const { error } = await supabase.rpc(fn, args)
+    if (error) throw error
+    // Don't call loadState() - let polling pick up phase changes naturally.
+  }
 
   const loadState = useCallback(async () => {
     const [{ data: gameData }, { data: playerData }, { data: boardData }] = await Promise.all([
@@ -797,8 +803,7 @@ export default function PlayPage({ params }) {
 
   async function onContinueAttempt2() {
     if (!currentBoard) return
-    await supabase.rpc("soclover_start_attempt2", { p_code: code, p_board_id: currentBoard.id })
-    await loadState()
+    await rpc("soclover_start_attempt2", { p_code: code, p_board_id: currentBoard.id })
   }
 
   async function onReadyNextBoard() {

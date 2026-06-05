@@ -205,8 +205,7 @@ export default function Play({ params }) {
   useEffect(() => {
     if (!allNextQuestionsIn) return
     ;(async () => {
-      await supabase.rpc("gow_start_next_round", { p_code: code })
-      await loadState()
+      await rpc("gow_start_next_round", { p_code: code })
     })()
   }, [allNextQuestionsIn, code])
 
@@ -278,17 +277,21 @@ export default function Play({ params }) {
 
   // ─────────────────────────────────────────────────────────
 
+  async function rpc(fn, args = {}) {
+    const { error } = await supabase.rpc(fn, args)
+    if (error) throw error
+    // Don't call loadState() - let polling pick up phase changes naturally.
+  }
+
   async function submitAnswer() {
     if (!currentQuestion || !myPlayerId) return
-    const { error } = await supabase.rpc("gow_submit_answer", {
+    await rpc("gow_submit_answer", {
       p_code: code,
       p_question_id: currentQuestion.id,
       p_player_id: myPlayerId,
       p_text: myAnswer.trim(),
       p_skipped: false,
     })
-    if (error) throw error
-    await loadState()
   }
 
   async function handleDeselect() {
@@ -309,25 +312,25 @@ export default function Play({ params }) {
     changingVoteRef.current = true
     setSubmittingVote(true)
     setMyVoteId(answerId ?? "nota")
-    const { error } = await supabase.rpc("gow_submit_vote", {
-      p_code: code,
-      p_question_id: currentQuestion.id,
-      p_voter_id: myPlayerId,
-      p_answer_id: answerId,
-    })
-    if (error) { setSubmittingVote(false); changingVoteRef.current = false; return }
-    await loadState()
-    setSubmittingVote(false)
-    changingVoteRef.current = false
+    try {
+      await rpc("gow_submit_vote", {
+        p_code: code,
+        p_question_id: currentQuestion.id,
+        p_voter_id: myPlayerId,
+        p_answer_id: answerId,
+      })
+    } catch {
+      setSubmittingVote(false)
+      changingVoteRef.current = false
+    }
   }
 
   async function handleAdvanceFromResults() {
     const snapId = resultSnapshot?.questionId
     setResultsAcknowledged(snapId)
     if (game?.question_phase === "results") {
-      await supabase.rpc("gow_advance_question", { p_code: code })
+      await rpc("gow_advance_question", { p_code: code })
     }
-    await loadState()
   }
 
   async function submitRoundQuestion() {
@@ -336,12 +339,12 @@ export default function Play({ params }) {
     const { error } = await supabase.from("gow_players").update({ question: trimmed }).eq("id", myPlayerId)
     if (error) throw error
     setRoundQuestion("")
+    // Keep loadState here - not a phase change, just updating player data
     await loadState()
   }
 
   async function startNextRound() {
-    await supabase.rpc("gow_start_next_round", { p_code: code })
-    await loadState()
+    await rpc("gow_start_next_round", { p_code: code })
   }
 
   // Must be before early return — Rules of Hooks
@@ -382,7 +385,7 @@ export default function Play({ params }) {
         playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, score: p.score }))}
         gamePhase={game?.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
-        onResetToLobby={async () => { await supabase.rpc("gow_reset_game", { p_code: code }); await loadState() }}
+        onResetToLobby={async () => { await rpc("gow_reset_game", { p_code: code }) }}
       />
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
         {footer}
@@ -459,7 +462,7 @@ export default function Play({ params }) {
 
   // ── GAME OVER ──────────────────────────────────────────────
   async function resetGame() {
-    await supabase.rpc("gow_reset_game", { p_code: code })
+    await rpc("gow_reset_game", { p_code: code })
   }
 
   if (game.phase === "finished") {

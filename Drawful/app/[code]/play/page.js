@@ -436,7 +436,7 @@ export default function Play({ params }) {
         playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name }))}
         gamePhase={game?.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
-        onResetToLobby={async () => { await supabase.rpc("drawful_reset_game", { p_code: code }); await loadState() }}
+        onResetToLobby={async () => { await rpc("drawful_reset_game", { p_code: code }) }}
       />
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
         {footer}
@@ -444,6 +444,12 @@ export default function Play({ params }) {
     </>
   ) : null
 
+  async function rpc(fn, args = {}) {
+    const { supabase } = await import("../../../lib/supabase")
+    const { error } = await supabase.rpc(fn, args)
+    if (error) throw error
+    // Don't call loadState() - let polling pick up phase changes naturally.
+  }
 
   async function loadState() {
     const { supabase } = await import("../../../lib/supabase")
@@ -763,10 +769,8 @@ export default function Play({ params }) {
 
   async function markReady() {
     if (markingReady) return
-    const { supabase } = await import("../../../lib/supabase")
     setMarkingReady(true)
-    await supabase.rpc("drawful_mark_ready", { p_code: code, p_player_id: myPlayerId })
-    await loadState()
+    await rpc("drawful_mark_ready", { p_code: code, p_player_id: myPlayerId })
   }
 
   // ── Loading ───────────────────────────────────────────────────────────────
@@ -788,9 +792,7 @@ export default function Play({ params }) {
     const finalPlayers = [...players].sort((a, b) => b.score - a.score)
 
     const resetGame = async () => {
-      const { supabase } = await import("../../../lib/supabase")
-      await supabase.rpc("drawful_reset_game", { p_code: code })
-      await loadState()
+      await rpc("drawful_reset_game", { p_code: code })
     }
 
     const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`

@@ -127,6 +127,9 @@ export default function LobbyPage({ params }) {
   const hasAutoJoinedRef = useRef(false)
   useEffect(() => {
     if (gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    // Only auto-join if this is a dummy game session (indicated by query param)
+    const params = new URLSearchParams(window.location.search)
+    if (!params.get("isDummy")) return
     const saved = loadProfile()
     if (!saved?.username) return
     hasAutoJoinedRef.current = true

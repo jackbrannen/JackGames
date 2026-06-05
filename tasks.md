@@ -56,6 +56,15 @@ EC=Exquisite Corpse, MW=Mr. White
 - **C** = Custom implementation (game-specific needs)
 - **·** = Not applicable to this game
 
+**Component Usage Summary:**
+- **12/12 (100%):** FooterButton ✅, HomeScreen ✅
+- **9/12 (75%):** Lobby (3 custom for team games) ✅
+- **8/12 (67%):** WaitingList ✅
+- **7/12 (58%):** RandomIdeas ✅
+- **6/12 (50%):** EndGame ✅
+- **4/12 (33%):** StatusBar, Selections ✅
+- **2/12 (17%):** TextEntry, Results ✅
+
 **Notes:**
 - **Lobby:** Team-based games (Fishbowl, Codenames, ReverseCharades) use custom lobby with team selection but still use Footer for Start button.
 - **StatusBar:** Only 4/12 games use it (GOW, FTW, SoClover, Copycats). The other 8 have custom top bars for game-specific info (team scores, clues remaining, etc.).
@@ -63,6 +72,8 @@ EC=Exquisite Corpse, MW=Mr. White
 - **TextEntry:** Only 2/12 games use it (GOW, FTW) with typing indicators. Other games either have no text entry or don't need typing indicators (marked ·).
 - **RandomIdeas:** 7/12 games use it (GOW, FTW, Drawful, Telestrations, Copycats, Fishbowl, ReverseCharades). Others don't have creative prompt entry (marked ·).
 - **Results:** Only 2/12 games use the shared component (GOW, Copycats). Results component is designed for answer-voting games. Other games have custom results for their specific mechanics: images (Drawful), chains (Telestrations), rankings (FTW), missions (Avalon), etc. (marked C for custom).
+- **EndGame:** 6/12 games use it (FB, GOW, DF, CC, CN, RC). Games without traditional "game over" screens (Avalon, FTW, SoClover, Tel, EC, MW) have custom end states.
+- **Selections:** 4/12 games use it (GOW, AV, DF, CC) for tap-to-select answer lists. Other games don't have this mechanic (marked ·).
 
 ### Dummy Game spec (per game)
 Each game's dummy game implementation must:

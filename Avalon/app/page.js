@@ -23,19 +23,16 @@ async function createGame() {
   const { supabase } = await import("../lib/supabase")
   for (let attempt = 0; attempt < 10; attempt++) {
     const code = randomCode()
-    const { count } = await supabase
-      .from("avalon_games")
-      .select("code", { count: "exact", head: true })
-      .eq("code", code)
-      .neq("phase", "finished")
-    if ((count ?? 0) > 0) continue
     const { data, error } = await supabase
       .from("avalon_games")
       .insert({ code })
       .select("code")
       .single()
+    if (!error && data) return data.code
+    // If duplicate key error, try again with new code
+    if (error?.code === "23505") continue
+    // Other error, throw it
     if (error) throw error
-    return data.code
   }
   throw new Error("Could not allocate game code")
 }

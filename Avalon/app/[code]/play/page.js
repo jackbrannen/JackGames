@@ -160,6 +160,7 @@ export default function Play({ params }) {
   const [myId, setMyId]                 = useState(null)
   const [selected, setSelected]         = useState([])
   const [target, setTarget]             = useState(null)
+  const [acting, setActing]             = useState(false)
   const [cardPhase, setCardPhase]       = useState("unset")
   const [animReady, setAnimReady]       = useState(false)
   const [instructions, setInstructions] = useState("")

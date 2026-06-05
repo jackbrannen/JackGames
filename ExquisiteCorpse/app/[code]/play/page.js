@@ -573,7 +573,7 @@ export default function Play({ params }) {
         playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name }))}
         gamePhase={game?.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
-        onResetToLobby={async () => { await supabase.rpc("ec_reset_game", { p_code: code }); await loadState() }}
+        onResetToLobby={async () => { await rpc("ec_reset_game", { p_code: code }) }}
       />
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
         {footer}
@@ -589,6 +589,11 @@ export default function Play({ params }) {
     if (!prev) return
     if (prev !== game.phase) playChirp()
   }, [game?.phase])
+
+  async function rpc(fn, args = {}) {
+    const { error } = await supabase.rpc(fn, args)
+    if (error) throw error
+  }
 
   async function loadState() {
     const { data: gameData } = await supabase
@@ -867,7 +872,7 @@ export default function Play({ params }) {
 
         {/* Play again / another game */}
         <div style={{ padding: "0 24px 48px", display: "flex", flexDirection: "column", gap: 10 }}>
-          <button onClick={async () => { await supabase.rpc("ec_reset_game", { p_code: code }); await loadState() }}
+          <button onClick={async () => { await rpc("ec_reset_game", { p_code: code }) }}
             style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
             Play Again
           </button>

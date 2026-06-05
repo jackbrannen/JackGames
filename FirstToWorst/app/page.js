@@ -107,9 +107,16 @@ export default function Home() {
     try {
       const { supabase } = await import("../lib/supabase")
       const code = await createGame()
-      await supabase.from("ftw_games").update({ is_demo: true }).eq("code", code)
+      console.log("Created game:", code)
+      const { error: updateError } = await supabase.from("ftw_games").update({ is_demo: true }).eq("code", code)
+      if (updateError) {
+        console.error("Failed to set is_demo:", updateError)
+        throw updateError
+      }
+      console.log("Set is_demo: true for game", code)
       router.push(`/${code}`)
     } catch (e) {
+      console.error("onDummy error:", e)
       setError(e?.message ?? "Unknown error")
       setCreating(false)
     }

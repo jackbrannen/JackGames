@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../lib/supabase"
 import { pick25Words } from "../../lib/words"
+import Footer, { FOOTER_H } from "../../components/Footer"
+import FooterButton from "../../components/FooterButton"
 
 const BG = "#C0B298"
 const TAN = "#C4924A"
@@ -46,6 +48,9 @@ function saveProfile(profile) {
 }
 
 const TEXT = "#1A1008"
+
+const POKE_COLORS = { dark: "#8A6C4E", mid: "#A0825F", wl: "rgba(0,0,0,0.15)", yellow: YELLOW, notifBg: "#6B4E32" }
+const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
 const inputStyle = {
   background: "rgba(0,0,0,0.1)",
@@ -314,7 +319,8 @@ export default function Lobby({ params }) {
   }
 
   return (
-    <div style={{ minHeight: "100dvh", background: BG, color: TEXT, paddingBottom: "max(48px, calc(48px + env(safe-area-inset-bottom, 0px)))" }}>
+    <>
+    <div style={{ minHeight: "100dvh", background: BG, color: TEXT, paddingBottom: BOTTOM_PAD }}>
 
       {/* Header */}
       <div style={{ padding: "28px 24px 24px", background: "rgba(0,0,0,0.3)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
@@ -399,22 +405,6 @@ export default function Lobby({ params }) {
               Cancel
             </button>
           </div>
-        </div>
-      )}
-
-      {/* Start Game CTA */}
-      {canStart && (
-        <div style={{ padding: "20px 24px", background: TAN }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: "rgba(0,0,0,0.55)", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 10 }}>
-            Everyone is ready!
-          </div>
-          <button
-            onClick={() => setConfirmingStart(true)}
-            disabled={starting}
-            style={{ background: "#000", color: TAN, fontSize: 24, fontWeight: 900, padding: "20px", width: "100%", display: "block" }}
-          >
-            {starting ? "Starting…" : "Start Game"}
-          </button>
         </div>
       )}
 
@@ -670,5 +660,14 @@ export default function Lobby({ params }) {
         </div>
       )}
     </div>
+
+    {canStart && (
+      <Footer colors={POKE_COLORS}>
+        <FooterButton onClick={() => setConfirmingStart(true)} loading={starting}>
+          Start Game
+        </FooterButton>
+      </Footer>
+    )}
+    </>
   )
 }

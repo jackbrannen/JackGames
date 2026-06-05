@@ -4,6 +4,8 @@ import { supabase } from "../../lib/supabase"
 import { splitCode } from "../../lib/words"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import Footer, { FOOTER_H } from "../../components/Footer"
+import FooterButton from "../../components/FooterButton"
 
 const PRIMARY = "#974344"
 const DARK    = "#803946"
@@ -64,6 +66,9 @@ const inputStyle = {
   width: "100%",
   display: "block",
 }
+
+const POKE_COLORS = { dark: DARK, mid: MID, wl: WARM, yellow: YELLOW, notifBg: "#5A2428" }
+const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
 const selectStyle = {
   background: DARK,
@@ -412,7 +417,8 @@ export default function Lobby({ params }) {
   })
 
   return (
-    <div style={{ minHeight: "100dvh", background: PRIMARY, color: "white" }}>
+    <>
+    <div style={{ minHeight: "100dvh", background: PRIMARY, color: "white", paddingBottom: BOTTOM_PAD }}>
 
       {/* Header */}
       <div style={{ padding: "28px 24px 24px", background: DARK, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
@@ -562,21 +568,6 @@ export default function Lobby({ params }) {
         </div>
       )}
 
-      {/* Start Game CTA */}
-      {canStart && (
-        <div style={{ padding: "20px 24px", background: YELLOW }}>
-          <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(0,0,0,0.5)", marginBottom: 12 }}>
-            Everyone is ready!
-          </div>
-          <button
-            onClick={() => setConfirmingStart(true)}
-            style={{ background: "#000", color: YELLOW, fontSize: 24, fontWeight: 900, padding: "20px", width: "100%", display: "block" }}
-          >
-            Start Game
-          </button>
-          {startError && <p style={{ color: PRIMARY, marginTop: 10, fontSize: 14, fontWeight: 700 }}>{startError}</p>}
-        </div>
-      )}
       {!canStart && everyoneReady && !teamsValid && (
         <div style={{ padding: "16px 24px", background: DARK, fontSize: 14, fontWeight: 700, color: YELLOW }}>
           Need at least 2 players per team to start.
@@ -813,5 +804,14 @@ export default function Lobby({ params }) {
         </div>
       )}
     </div>
+
+    {canStart && (
+      <Footer colors={POKE_COLORS}>
+        <FooterButton onClick={() => setConfirmingStart(true)} loading={starting}>
+          Start Game
+        </FooterButton>
+      </Footer>
+    )}
+    </>
   )
 }

@@ -442,25 +442,20 @@ export default function Play({ params }) {
 
   // Pre-fill word fields for dummy games
   useEffect(() => {
-    console.log("Prefill check:", { is_demo: game?.is_demo, phase: game?.phase, submitted: me?.words_submitted, hasRun: hasPrefilledRef.current })
     if (!game?.is_demo || game.phase !== "submitting" || hasPrefilledRef.current) return
-    if (me?.words_submitted || !myPlayerId) return
+    if (me?.words_submitted) return
     hasPrefilledRef.current = true
-    console.log("Running prefill...")
     ;(async () => {
       try {
-        const { data, error } = await supabase.rpc("get_random_ideas", { p_count: 5, p_exclude: [] })
-        console.log("Random ideas result:", { data, error })
+        const { data } = await supabase.rpc("get_random_ideas", { p_count: 5, p_exclude: [] })
         if (data && data.length >= 5) {
-          const ideas = data.slice(0, 5).map(item => item.idea)
-          console.log("Setting fields to:", ideas)
-          setWordFields(ideas)
+          setWordFields(data.slice(0, 5).map(item => item.idea))
         }
       } catch (e) {
         console.error("Failed to prefill:", e)
       }
     })()
-  }, [game?.is_demo, game?.phase, me?.words_submitted, myPlayerId])
+  }, [game?.is_demo, game?.phase, me?.words_submitted])
 
   useEffect(() => {
     if (!game || !me) return

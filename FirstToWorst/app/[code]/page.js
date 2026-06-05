@@ -183,7 +183,7 @@ export default function LobbyPage({ params }) {
   async function startGame() {
     if (starting) return
     setStarting(true)
-    const { error } = await supabase.rpc("start_firsttoworst_game", { p_code: code })
+    const { error } = await supabase.rpc("ftw_start_game", { p_code: code })
     if (error) { alert("Failed to start: " + error.message); setStarting(false) }
   }
 

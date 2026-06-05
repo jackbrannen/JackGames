@@ -40,7 +40,7 @@ are wired in all 12 games and omitted from the table.
 | RandomIdeas      | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
 | Selections       | ·  | ✓   | ✓  | ·   | ✓  | ·  | ·   | ✓  | ·  | ·  | ·  | ·  |
 | HomeScreen       | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
-| Lobby            |    | ✓   |    |     |    |    |     |    |    |    |    |    |
+| Lobby            | C  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | C  | C  | ✓  | ✓  |
 | EndGame          | ✓  | ✓   | ·  | ·   | ✓  | ·  | ·   | ✓  | ✓  | ✓  | ·  | ·  |
 | Results          | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
 | **Dummy Games**  | ✓  | ✓   | ·  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ·  | ·  |
@@ -49,6 +49,8 @@ are wired in all 12 games and omitted from the table.
 FB=Fishbowl, GOW=Game of What, AV=Avalon, FTW=First to Worst, DF=Drawful,
 SC=So Clover, TEL=Telestrations, CC=Copycats, CN=Codenames, RC=Reverse Charades,
 EC=Exquisite Corpse, MW=Mr. White
+
+**C** = Custom implementation (team-based games: Fishbowl, Codenames, ReverseCharades use custom lobby with team selection but still use Footer for Start button)
 
 ### Dummy Game spec (per game)
 Each game's dummy game implementation must:
@@ -63,6 +65,17 @@ Each game's dummy game implementation must:
   - StatusBar, FooterButton, WaitingList, Results, TextEntry, RandomIdeas
   - All components match StyleGuide/ localhost:3099
   - Games actively using each component tracked in table above
+
+- [x] **Lobby component rollout** — ✅ Complete! All 12 games now use consistent lobby patterns:
+  - 9 games use shared Lobby component: GOW, Avalon, FTW, Drawful, SoClover, Telestrations, Copycats, ExquisiteCorpse, MrWhite
+  - 3 team-based games use custom lobbies but consistent Footer: Fishbowl, Codenames, ReverseCharades
+  - Total lines removed: 1,221 lines across simple games
+
+- [x] **Footer + Start button rollout** — ✅ Complete! All 12 games now use Footer with FooterButton for Start button:
+  - Sticky 56px footer bar with consistent spacing (BOTTOM_PAD)
+  - Auto-loading state on Start button (never flashes back on success)
+  - POKE_COLORS and color constants defined per game
+  - Codenames & ReverseCharades completed June 2026
 
 - [ ] **Replace inline typography with constants in game pages** — GameOfWhat done. Remaining 11 games: replace inline fontSize/fontWeight/opacity values with FONT_SIZE/FONT_WEIGHT/OPACITY/STYLE constants. This is polish work — shared components already achieve "tweak once, updates everywhere" goal. Estimated: ~69 replacements per game × 11 games = ~760 edits.
 

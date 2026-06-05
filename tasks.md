@@ -59,7 +59,12 @@ Each game's dummy game implementation must:
 
 - [x] **HomeScreen rollout** — ✅ Complete! All 12 games now use HomeScreen component. Custom accent colors: Avalon (GOLD), Drawful (ACCENT), Codenames (TAN).
 
-- [ ] **Replace inline typography with constants in all game pages** — GameOfWhat done. Remaining 11 games need same pattern: replace inline fontSize/fontWeight/opacity values with FONT_SIZE/FONT_WEIGHT/OPACITY/STYLE constants. Focus on play pages first (app/[code]/play/page.js), then lobby pages.
+- [x] **Shared component infrastructure rollout** — ✅ Complete! All 12 games now import all shared components:
+  - StatusBar, FooterButton, WaitingList, Results, TextEntry, RandomIdeas
+  - All components match StyleGuide/ localhost:3099
+  - Games actively using each component tracked in table above
+
+- [ ] **Replace inline typography with constants in game pages** — GameOfWhat done. Remaining 11 games: replace inline fontSize/fontWeight/opacity values with FONT_SIZE/FONT_WEIGHT/OPACITY/STYLE constants. This is polish work — shared components already achieve "tweak once, updates everywhere" goal. Estimated: ~69 replacements per game × 11 games = ~760 edits.
 
 ### Components still to build
 - [ ] **Duplicate detection** — works with TextEntry. Three modes: (1) within one player's fields — useDuplicates hook built ✓; (2) between players for bonus points (Drawful, GameOfWhat) — show bonus on submission (GOW: working ad-hoc in submitAnswer); (3) between players to block (Fishbowl, ReverseCharades) — highlight and block. Modes 2-3 are game-specific (need DB data).

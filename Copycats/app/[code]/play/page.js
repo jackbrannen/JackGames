@@ -197,6 +197,11 @@ export default function PlayPage({ params }) {
     setSelectedVote(null)
   }, [game?.current_round])
 
+  async function rpc(fn, args = {}) {
+    const { error } = await supabase.rpc(fn, args)
+    if (error) throw error
+  }
+
   async function loadState() {
     const [{ data: g }, { data: ps }, { data: an }, { data: vs }] = await Promise.all([
       supabase.from("cc_games").select("*").eq("code", code).single(),
@@ -282,7 +287,7 @@ export default function PlayPage({ params }) {
         playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name }))}
         gamePhase={game?.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
-        onResetToLobby={async () => { await supabase.rpc("cc_reset_to_lobby", { p_code: code }); await loadState() }}
+        onResetToLobby={async () => { await rpc("cc_reset_to_lobby", { p_code: code }) }}
       />
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
         {footer}
@@ -809,7 +814,7 @@ export default function PlayPage({ params }) {
         <EndGame
           players={finalPlayers}
           myPlayerId={myId}
-          onPlayAgain={async () => { await supabase.rpc("cc_reset_to_lobby", { p_code: code }); await loadState() }}
+          onPlayAgain={async () => { await rpc("cc_reset_to_lobby", { p_code: code }) }}
           bottomPad={BOTTOM_PAD}
           colors={{ yellow: YELLOW, wl: MID }}
         />

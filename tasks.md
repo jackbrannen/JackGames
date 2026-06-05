@@ -42,7 +42,7 @@ are wired in all 12 games and omitted from the table.
 | HomeScreen       | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
 | Lobby            | C  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | C  | C  | ✓  | ✓  |
 | EndGame          | ✓  | ✓   | ·  | ·   | ✓  | ·  | ·   | ✓  | ✓  | ✓  | ·  | ·  |
-| Results          | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
+| Results          | C  | ✓   | C  | C   | C  | C  | C   | ✓  | C  | C  | C  | C  |
 | **Dummy Games**  | ✓  | ✓   | ·  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ·  | ·  |
 | **Online pres.** |    | ✓   |    |     |    |    |     |    |    |    |    |    |
 
@@ -59,9 +59,10 @@ EC=Exquisite Corpse, MW=Mr. White
 **Notes:**
 - **Lobby:** Team-based games (Fishbowl, Codenames, ReverseCharades) use custom lobby with team selection but still use Footer for Start button.
 - **StatusBar:** Only 4/12 games use it (GOW, FTW, SoClover, Copycats). The other 8 have custom top bars for game-specific info (team scores, clues remaining, etc.).
-- **WaitingList:** 7/12 games use it. Turn-based games (Fishbowl, Codenames, ReverseCharades, MrWhite, Copycats) don't need it (marked ·).
+- **WaitingList:** 8/12 games use it. Turn-based games (Fishbowl, Codenames, ReverseCharades, MrWhite) don't need it (marked ·).
 - **TextEntry:** Only 2/12 games use it (GOW, FTW) with typing indicators. Other games either have no text entry or don't need typing indicators (marked ·).
 - **RandomIdeas:** 7/12 games use it (GOW, FTW, Drawful, Telestrations, Copycats, Fishbowl, ReverseCharades). Others don't have creative prompt entry (marked ·).
+- **Results:** Only 2/12 games use the shared component (GOW, Copycats). Results component is designed for answer-voting games. Other games have custom results for their specific mechanics: images (Drawful), chains (Telestrations), rankings (FTW), missions (Avalon), etc. (marked C for custom).
 
 ### Dummy Game spec (per game)
 Each game's dummy game implementation must:

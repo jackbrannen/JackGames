@@ -335,6 +335,8 @@ export default function Play({ params }) {
   async function rpc(fn, args = {}) {
     const { error } = await supabase.rpc(fn, args)
     if (error) throw error
+    // Small delay to let DB transaction commit before polling
+    await new Promise(resolve => setTimeout(resolve, 100))
     await refresh()
   }
 

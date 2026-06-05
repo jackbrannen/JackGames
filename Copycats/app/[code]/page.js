@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../lib/supabase"
 import { useSubmitNudge } from "../../lib/useSubmitNudge"
+import Lobby from "../../components/Lobby"
+import Footer, { FOOTER_H } from "../../components/Footer"
+import FooterButton from "../../components/FooterButton"
 
 const BG         = "#5C2D8C"
 const YELLOW     = "#FBDF54"
@@ -51,6 +54,9 @@ const inputStyle = {
   width: "100%",
   display: "block",
 }
+
+const POKE_COLORS = { dark: DARK, mid: MID, wl: WARM_LIGHT, yellow: YELLOW, notifBg: "#2A1050" }
+const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
 export default function LobbyPage({ params }) {
   const code = params.code
@@ -179,167 +185,74 @@ export default function LobbyPage({ params }) {
 
   const me = players.find(p => p.id === myPlayerId)
   const hasJoined = !!me
-  const isHost = game?.host_id === myPlayerId || (!game?.host_id && players[0]?.id === myPlayerId)
   const canStart = players.length >= 3
 
   const [codeA, codeB] = splitCode(code)
 
-  if (notFound) {
-    return (
-      <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 18, fontWeight: 600 }}>Room not found.</p>
-      </div>
-    )
-  }
-
-  if (!game) {
-    return (
-      <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 18, fontWeight: 600 }}>Loading…</p>
-      </div>
-    )
-  }
-
   return (
-    <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-      {/* Header */}
-      <div style={{ background: DARK, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.65)", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: 4 }}>
-            Copycats
-          </div>
-          <div style={{ display: "flex", gap: 2 }}>
-            <span style={{ fontSize: 28, fontWeight: 900, color: "rgba(255,255,255,0.5)", letterSpacing: "0.04em" }}>{codeA}</span>
-            <span style={{ fontSize: 28, fontWeight: 900, color: "white", letterSpacing: "0.04em" }}>{codeB}</span>
-          </div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0, alignItems: "stretch" }}>
-          <button
-            onClick={onInvite}
-            style={{ background: WARM_LIGHT, color: "white", fontSize: 15, fontWeight: 700, padding: "10px 18px" }}
-          >
-            {inviteCopied ? "Copied!" : "Invite"}
-          </button>
-          <button
-            onClick={() => setShowInstructions(true)}
-            style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 13, fontWeight: 800, padding: "10px 14px" }}
-          >
-            How to Play
-          </button>
-        </div>
+    <>
+      <div style={{ paddingBottom: BOTTOM_PAD }}>
+        <Lobby
+          code={code}
+          gameName="Copycats"
+          players={players.map(p => ({ id: p.id, name: p.name }))}
+          myPlayerId={myPlayerId}
+          onInvite={onInvite}
+          howToPlayContent={instructions}
+          codeDisplay={
+            <>
+              <span style={{ color: "rgba(255,255,255,0.5)" }}>{codeA}</span>
+              <span style={{ color: "white" }}>{codeB}</span>
+            </>
+          }
+          joinContent={
+            <div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 12 }}>Join Game</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {!savedProfile?.firstName && (
+                  <>
+                    <input type="text" placeholder="First name" value={firstName} onChange={e => setFirstName(e.target.value)} style={inputStyle} />
+                    <input type="text" placeholder="Last name" value={lastName} onChange={e => setLastName(e.target.value)} style={inputStyle} />
+                  </>
+                )}
+                <input
+                  type="text"
+                  placeholder="Display Name"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && onJoin()}
+                  style={inputStyle}
+                />
+                <button
+                  onClick={onJoin}
+                  disabled={joining || !username.trim() || (!savedProfile?.firstName && (!firstName.trim() || !lastName.trim()))}
+                  style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "18px", marginTop: 4, animation: nudgeJoin ? "nudgePulse 1.5s ease-in-out infinite" : "none" }}
+                >
+                  {joining ? "Joining…" : "Join"}
+                </button>
+                {!!joinError && (
+                  <p style={{ color: YELLOW, fontSize: 14, fontWeight: 600 }}>{joinError}</p>
+                )}
+              </div>
+            </div>
+          }
+          colors={{ bg: BG, dark: DARK, mid: MID, wl: WARM_LIGHT, yellow: YELLOW }}
+          minPlayers={3}
+          notFound={notFound}
+          loading={!game && !notFound}
+        />
       </div>
 
-      <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: 24, maxWidth: 480, width: "100%", margin: "0 auto" }}>
-
-        {/* Join form */}
-        {!hasJoined && (
-          <div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 12 }}>Join Game</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {!savedProfile?.firstName && (
-                <>
-                  <input type="text" placeholder="First name" value={firstName} onChange={e => setFirstName(e.target.value)} style={inputStyle} />
-                  <input type="text" placeholder="Last name" value={lastName} onChange={e => setLastName(e.target.value)} style={inputStyle} />
-                </>
-              )}
-              <input
-                type="text"
-                placeholder="Display Name"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && onJoin()}
-                style={inputStyle}
-              />
-              <button
-                onClick={onJoin}
-                disabled={joining || !username.trim() || (!savedProfile?.firstName && (!firstName.trim() || !lastName.trim()))}
-                style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "18px", marginTop: 4, animation: nudgeJoin ? "nudgePulse 1.5s ease-in-out infinite" : "none" }}
-              >
-                {joining ? "Joining…" : "Join"}
-              </button>
-              {!!joinError && (
-                <p style={{ color: YELLOW, fontSize: 14, fontWeight: 600 }}>{joinError}</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Players */}
-        <div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 12 }}>Players</div>
-          {players.length === 0 ? (
-            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 16 }}>No players yet</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-              {players.map((p, i) => (
-                <div key={p.id} style={{ display: "flex" }}>
-                  <div style={{
-                    padding: "13px 0", minWidth: 48, flexShrink: 0,
-                    background: DARK,
-                    fontSize: 18, fontWeight: 900, color: "white",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
-                    {i + 1}
-                  </div>
-                  <div style={{
-                    padding: "13px 16px", flex: 1,
-                    background: MID,
-                    display: "flex", alignItems: "center",
-                  }}>
-                    <span style={{ fontSize: 17, fontWeight: 700 }}>
-                      {p.name}
-                      
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {players.length < 3 && (
-            <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 14, fontWeight: 600, marginTop: 10 }}>
-              Minimum 3 players needed
-            </p>
-          )}
-        </div>
-
-        {/* Start */}
-        {hasJoined && (
-          <div style={{ marginTop: "auto", paddingTop: 24 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.65)", textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: 10, textAlign: "center" }}>
-              All players in?
-            </div>
-            <button
-              onClick={() => setConfirmingStart(true)}
-              disabled={starting || !canStart}
-              style={{ background: YELLOW, color: "#000", fontSize: 22, fontWeight: 900, padding: "20px", width: "100%" }}
-            >
-              {starting ? "Starting…" : "Start Game"}
-            </button>
-            {!!startError && (
-              <p style={{ color: YELLOW, fontSize: 14, fontWeight: 600, marginTop: 8 }}>{startError}</p>
-            )}
-          </div>
-        )}
-      </div>
-
-      {showInstructions && (
-        <div
-          onClick={() => setShowInstructions(false)}
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", zIndex: 200, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 24, overflowY: "auto" }}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{ background: "#1A1A2E", width: "100%", maxWidth: 480, padding: "28px 24px", marginTop: 24 }}
+      {hasJoined && (
+        <Footer colors={POKE_COLORS}>
+          <FooterButton
+            onClick={() => setConfirmingStart(true)}
+            disabled={!canStart}
+            loading={starting}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-              <div style={{ fontSize: 20, fontWeight: 900, color: "white" }}>How to Play</div>
-              <button onClick={() => setShowInstructions(false)} style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 18, fontWeight: 800, padding: "6px 12px" }}>✕</button>
-            </div>
-            <div style={{ fontSize: 15, color: "rgba(255,255,255,0.85)", lineHeight: 1.7, fontWeight: 400, whiteSpace: "pre-wrap" }}>
-              {instructions || "Loading…"}
-            </div>
-          </div>
-        </div>
+            Start Game
+          </FooterButton>
+        </Footer>
       )}
 
       {/* Confirm start modal */}
@@ -365,7 +278,6 @@ export default function LobbyPage({ params }) {
                   <div style={{ padding: "10px 14px", flex: 1, background: WARM_LIGHT, display: "flex", alignItems: "center" }}>
                     <span style={{ fontSize: 16, fontWeight: 700, color: "white" }}>
                       {p.name}
-                      
                     </span>
                   </div>
                 </div>
@@ -386,6 +298,6 @@ export default function LobbyPage({ params }) {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }

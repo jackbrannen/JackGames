@@ -23,7 +23,8 @@
                                a single Join button.
     showJoin        bool       — override visibility of joinContent (default: !myPlayerId)
     extraContent    ReactNode  — anything rendered below the player list
-    colors          { dark, mid, wl, yellow }
+    colors          { dark, mid, wl, yellow, bg? }
+                                 — bg is the main page background (optional, defaults to dark)
     minPlayers      number     — minimum to start; shows notice when below (default 4)
     notFound        bool       — show "room not found" state
     loading         bool       — show loading state
@@ -78,14 +79,14 @@ export default function Lobby({
   notFound = false,
   loading = false,
 }) {
-  const { dark = "#333", mid = "#444", wl = "#555", yellow = "#FBDF54" } = colors
+  const { dark = "#333", mid = "#444", wl = "#555", yellow = "#FBDF54", bg } = colors
   const [showHowToPlay, setShowHowToPlay] = useState(false)
 
   const showJoinZone = showJoin !== undefined ? showJoin : !myPlayerId
 
   if (notFound) {
     return (
-      <div style={{ minHeight: "100dvh", background: dark, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ minHeight: "100dvh", background: bg || dark, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <p style={{ color: "white", fontSize: 22, fontWeight: 700 }}>Room not found.</p>
       </div>
     )
@@ -93,14 +94,14 @@ export default function Lobby({
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100dvh", background: dark, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ minHeight: "100dvh", background: bg || dark, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 18, fontWeight: 700 }}>Loading…</p>
       </div>
     )
   }
 
   return (
-    <div style={{ minHeight: "100dvh", color: "white" }}>
+    <div style={{ minHeight: "100dvh", background: bg || dark, color: "white" }}>
 
       {/* Header */}
       <div style={{ padding: "28px 24px 24px", background: dark, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>

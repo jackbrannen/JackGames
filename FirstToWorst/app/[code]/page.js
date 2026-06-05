@@ -126,7 +126,7 @@ export default function LobbyPage({ params }) {
 
   const hasAutoJoinedRef = useRef(false)
   useEffect(() => {
-    if (gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    if (!gameExists || gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
     const saved = loadProfile()
     if (!saved?.username) return
     hasAutoJoinedRef.current = true
@@ -140,7 +140,7 @@ export default function LobbyPage({ params }) {
       localStorage.setItem(`firsttoworst:${code}:playerId`, data.id)
       setMyPlayerId(data.id)
     })()
-  }, [gamePhase, myPlayerId, code])
+  }, [gameExists, gamePhase, myPlayerId, code])
 
   async function join() {
     const trimmed = name.trim()

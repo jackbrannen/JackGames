@@ -80,24 +80,17 @@ function SecondaryBtn({ onClick, disabled, children, style }) {
   )
 }
 
-function AnswerTextarea({ value, onChange, placeholder, disabled }) {
+function AnswerTextarea({ value, onChange, placeholder, disabled, onTypingChange }) {
   return (
-    <textarea
+    <TextEntry
       value={value}
-      onChange={e => onChange(e.target.value)}
+      onChange={onChange}
+      onTypingChange={onTypingChange}
       placeholder={placeholder}
       disabled={disabled}
       rows={3}
-      style={{
-        background: WARM_LIGHT,
-        color: "white",
-        fontSize: 18,
-        fontWeight: 500,
-        padding: "16px 18px",
-        width: "100%",
-        resize: "none",
-        lineHeight: 1.5,
-      }}
+      bg={WARM_LIGHT}
+      fontSize={18}
     />
   )
 }
@@ -375,7 +368,8 @@ export default function PlayPage({ params }) {
 
           <AnswerTextarea
             value={myQuestion}
-            onChange={v => { setMyQuestion(v); trackTyping() }}
+            onChange={setMyQuestion}
+            onTypingChange={isTyping => isTyping && trackTyping()}
             placeholder={`Your question for ${myTarget?.name ?? "them"}…`}
           />
 
@@ -520,7 +514,8 @@ export default function PlayPage({ params }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <AnswerTextarea
                 value={myAnswer}
-                onChange={v => { setMyAnswer(v); trackTyping() }}
+                onChange={setMyAnswer}
+                onTypingChange={isTyping => isTyping && trackTyping()}
                 placeholder="Your answer…"
               />
               {!!answerError && <p style={{ fontSize: 14, fontWeight: 600, color: YELLOW }}>{answerError}</p>}
@@ -557,7 +552,8 @@ export default function PlayPage({ params }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <AnswerTextarea
               value={myAnswer}
-              onChange={v => { setMyAnswer(v); trackTyping() }}
+              onChange={setMyAnswer}
+              onTypingChange={isTyping => isTyping && trackTyping()}
               placeholder={`Fake ${roundTarget?.name}'s answer…`}
             />
             {!!answerError && <p style={{ fontSize: 14, fontWeight: 600, color: YELLOW }}>{answerError}</p>}

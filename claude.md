@@ -28,6 +28,28 @@ A series of multiplayer web game built with Next.js 14 and Supabase. Players con
 - Do not write automated tests — verification is manual
 - If I ask for a code path audit before a fix, enumerate every handler touching the affected state, confirm with me, then fix
 
+### Manual Testing Checklist
+
+When implementing or updating shared components or interactive features, verify:
+
+1. **Full interaction sequences** — test all states in order, not just individually
+   - Example: vote → deselect → vote again → deselect (not just "vote works" and "deselect works")
+   - Don't assume success-path state cleanup works just because error-path cleanup works
+
+2. **Visual comparison against StyleGuide/** — render with actual game colors, compare side-by-side
+   - StyleGuide runs at localhost:3099 when `npm run dev` in StyleGuide/ directory
+   - Check background colors match (not just gap/fontSize/layout)
+   - Games must pass correct `mid`/`dark` colors to components, not fallback defaults
+
+3. **Manual loading states** — if using `const [submitting, setSubmitting] = useState(false)`:
+   - Reset to `false` on BOTH success AND error paths
+   - If you only reset on error, the component stays disabled after first success
+
+4. **Edge cases specific to the feature** — think about what could go wrong and test it
+   - Timer running → pause → resume
+   - Multiple rapid taps on the same button
+   - Changing vote to the same answer
+
 ### Button Loading State — Never Flash Back on Success
 
 When a button action causes a phase/screen transition, do NOT call `setLoading(false)` on the success path. Only reset loading state on error. Leave the button text as "Loading…" until the component unmounts naturally when the new phase arrives. Resetting early causes a visible flash back to the idle label right before the screen changes.

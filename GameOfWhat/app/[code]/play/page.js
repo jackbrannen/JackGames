@@ -24,11 +24,12 @@ import { playYourTurn } from "../../../lib/sounds"
 const BG = "#6B1A44"
 const DARK = "#4A123B"  // cool-dark: headers, top bars
 const MID = "#5C1640"   // mid-dark: wells, cards, panels
+const WARM_LIGHT = "#8B2060"  // warm-light: inputs, secondary buttons (kept for compatibility)
 const YELLOW = "#FBDF54"
 const GREEN = "#12BAAA"
 const RED = "#F04F52"
 
-const POKE_COLORS = { dark: DARK, mid: MID, wl: "#8B2060", yellow: YELLOW, notifBg: "#300A20" }
+const POKE_COLORS = { dark: DARK, mid: MID, wl: WARM_LIGHT, yellow: YELLOW, notifBg: "#300A20" }
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
 const BOT_WORDS = ["pizza","coffee","traffic","vacation","homework","laundry","dentist","parking","sunshine","deadline","wifi","elevator","printer","leftovers","voicemail"]
@@ -446,7 +447,7 @@ export default function Play({ params }) {
             notaCount={snapNotaVoters.length}
             skippedNames={snapSkipped.map(a => players.find(p => p.id === a.player_id)?.name).filter(Boolean)}
             scores={[...players].sort((a, b) => b.score - a.score).map(p => ({ name: p.name, score: p.score }))}
-            colors={{ card: CARD_BG, yellow: YELLOW, dim: WARM_LIGHT }}
+            colors={{ card: MID, yellow: YELLOW, dim: WARM_LIGHT }}
           />
         </div>
       </div>
@@ -771,7 +772,7 @@ export default function Play({ params }) {
                   return { name: p?.name ?? "", done: votedPlayerIds.has(pid), typing: typingPlayerIds.has(pid), away: isAway(pid) }
                 })}
                 myName={me?.name}
-                colors={{ mid: CARD_BG }}
+                colors={{ mid: MID }}
                 onPoke={sendInlinePoke}
                 cooldownActive={pokeCooldownActive}
                 pokeJustSent={pokeJustSent}

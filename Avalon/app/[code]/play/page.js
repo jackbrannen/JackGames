@@ -229,12 +229,11 @@ export default function Play({ params }) {
       </FooterButton>
     )
   } else if (me && phase === "propose" && me.id === game?.leader_id) {
-    const selected = players.filter(p => (game?.selected_ids ?? []).includes(p.id))
     const questSize = (QUEST_SIZES[game?.player_count ?? 5] ?? [2,3,2,3,3])[(game?.quest_number ?? 1) - 1]
     footerButtons = (
       <FooterButton
         variant="primary"
-        onClick={() => rpc("submit_avalon_proposal", { p_code: code, p_leader_id: me.id, p_player_ids: selected.map(p => p.id) })}
+        onClick={() => rpc("submit_avalon_proposal", { p_code: code, p_leader_id: me.id, p_player_ids: selected })}
         disabled={selected.length !== questSize}
       >
         Propose Team ({selected.length}/{questSize})

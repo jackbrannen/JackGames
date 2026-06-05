@@ -474,6 +474,11 @@ export default function Play({ params }) {
     setTimeout(() => setPokeCooldownActive(false), 10000)
   }
 
+  async function rpc(fn, args = {}) {
+    const { error } = await supabase.rpc(fn, args)
+    if (error) throw error
+  }
+
   async function loadState() {
     const { data: gameData } = await supabase
       .from("tel_games").select("phase,is_dummy,current_step,total_steps,reveal_order,current_reveal_chain,current_reveal_step,timer_seconds,step_started_at,next_game,next_game_picker_name").eq("code", code).single()
@@ -906,7 +911,7 @@ export default function Play({ params }) {
         playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name }))}
         gamePhase={game?.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
-        onResetToLobby={async () => { await supabase.rpc("tel_reset_game", { p_code: code }); await loadState() }}
+        onResetToLobby={async () => { await rpc("tel_reset_game", { p_code: code }) }}
       />
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
         {footer}

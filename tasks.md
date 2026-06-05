@@ -109,10 +109,11 @@ Each game's dummy game implementation must:
 ---
 
 ## Bug fixes
-- Avalon: no need to show room code in header once game has started. This should be a part of the status bar spec: no room code. Are other games like this?
+(None outstanding)
 
 
 ### Recently fixed
+- ~~Avalon: no need to show room code in header once game has started~~ ✓ (removed unused splitCode code; verified no games show room code during play)
 - ~~GOW: Selections "my answer" style doesn't match style guide~~ ✓
 - ~~GOW: Scores showing during normal round screens~~ ✓
 - ~~Back to lobby from hamburger menu doesn't work~~ ✓ (all 12 games)

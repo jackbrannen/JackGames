@@ -162,6 +162,11 @@ export default function Play({ params }) {
     if (existing) setMyPlayerId(existing)
   }, [code])
 
+  async function rpc(fn, args = {}) {
+    const { error } = await supabase.rpc(fn, args)
+    if (error) throw error
+  }
+
   async function loadState() {
     const { data: gameData } = await supabase
       .from("reversecharades_games")
@@ -256,7 +261,7 @@ export default function Play({ params }) {
         playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, teamColor: p.team ? teamColor(p.team) : undefined, teamLabel: p.team ? teamLabel(p.team) : undefined, teamTextColor: p.team ? teamTextColor(p.team) : undefined }))}
         gamePhase={game?.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
-        onResetToLobby={async () => { await supabase.rpc("rc_reset_game", { p_code: code }); await loadState() }}
+        onResetToLobby={async () => { await rpc("rc_reset_game", { p_code: code }) }}
       />
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} timerRunning={timerRunning} />
     </>
@@ -279,8 +284,7 @@ export default function Play({ params }) {
     endingRef.current = true
     ;(async () => {
       try {
-        await supabase.rpc("rc_end_turn", { p_code: code })
-        await loadState()
+        await rpc("rc_end_turn", { p_code: code })
       } finally { endingRef.current = false }
     })()
   }, [code, game?.phase, game?.turn_started_at, secondsRemaining])
@@ -288,28 +292,27 @@ export default function Play({ params }) {
   async function doStartTurn() {
     if (!myPlayerId || acting) return
     setActing(true)
-    const { error } = await supabase.rpc("rc_start_turn", { p_code: code, p_player_id: myPlayerId })
-    if (error) { setActing(false); return }
-    await loadState()
-    setActing(false)
+    try {
+      await rpc("rc_start_turn", { p_code: code, p_player_id: myPlayerId })
+    } catch {
+      setActing(false)
+    }
   }
 
   async function doCorrect() {
     if (!currentClue || !myPlayerId || acting) return
     setActing(true)
     sfxCorrect()
-    await supabase.rpc("rc_correct", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
-    await loadState()
-    setActing(false)
+    await rpc("rc_correct", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
+    // Don't reset acting - let component unmount on phase change
   }
 
   async function doSkip() {
     if (!currentClue || !myPlayerId || acting) return
     setActing(true)
     sfxSkip()
-    await supabase.rpc("rc_skip", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
-    await loadState()
-    setActing(false)
+    await rpc("rc_skip", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
+    // Don't reset acting - let component unmount on phase change
   }
 
   async function doResetGame() {

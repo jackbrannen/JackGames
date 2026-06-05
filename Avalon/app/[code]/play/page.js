@@ -972,22 +972,17 @@ export default function Play({ params }) {
     <div style={{ minHeight: "100dvh", background: BG, color: TEXT }}>
       <style>{STYLES}</style>
 
-      {/* Score menu bar — matches other games' top bar style */}
+      {/* Score menu bar */}
       {showMenuBar && (
-        <div style={{ background: "#0A1520", padding: "12px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: GOOD, opacity: 0.7, marginBottom: 2 }}>Loyal Servants</div>
-              <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1, color: GOOD }}>{goodWins}</div>
-            </div>
-            <div style={{ fontSize: 18, color: "rgba(232,220,200,0.2)", fontWeight: 300 }}>–</div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: EVIL, opacity: 0.7, marginBottom: 2 }}>Evil Minions</div>
-              <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1, color: EVIL }}>{evilWins}</div>
-            </div>
+        <div style={{ background: "#0A1520", padding: "12px 20px", display: "flex", alignItems: "center", gap: 16 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: GOOD, opacity: 0.7, marginBottom: 2 }}>Loyal Servants</div>
+            <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1, color: GOOD }}>{goodWins}</div>
           </div>
-          <div style={{ fontSize: 20, fontWeight: 900, letterSpacing: "-0.5px", flexShrink: 0 }}>
-            <span style={{ color: GOLD }}>{codeWord1}</span><span style={{ color: TEXT }}>{codeWord2}</span>
+          <div style={{ fontSize: 18, color: "rgba(232,220,200,0.2)", fontWeight: 300 }}>–</div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: EVIL, opacity: 0.7, marginBottom: 2 }}>Evil Minions</div>
+            <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1, color: EVIL }}>{evilWins}</div>
           </div>
         </div>
       )}

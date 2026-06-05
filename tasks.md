@@ -112,6 +112,9 @@ Each game's dummy game implementation must:
 - ~~**Stuck loading buttons (cross-game)**~~ ✓ Fixed in all 12 games. Added standardized `rpc()` helper that doesn't call `loadState()` after phase-changing RPCs. Polling interval (1.5s) picks up phase changes naturally, preventing FooterButton from staying in loading state.
 - Avalon: On screens that reveal the quest succeeding or failing, the text that reveals the result, along with the updated score, should not be revealed until the card flip animation is done. Showing it beforehand spoils the surprise.
 
+## Additions
+- Change timers to have visual bars
+
 
 ### Recently fixed
 - ~~Avalon: no need to show room code in header once game has started~~ ✓ (removed unused splitCode code; verified no games show room code during play)

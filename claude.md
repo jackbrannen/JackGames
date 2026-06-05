@@ -454,7 +454,6 @@ All games share the same `pokes` table:
 `*_games`:
 - `code` text UNIQUE NOT NULL — the join code
 - `phase` text NOT NULL — `'lobby' | 'play' | 'finished'` (add more phases as needed)
-- `host_id` uuid — player ID of the host
 - `created_at` timestamp
 
 `*_players`:
@@ -481,8 +480,7 @@ Every game's lobby follows this structure (top to bottom):
 3. **Player list** — grid or list with ready/status indicators; "(you)" label on self
 4. **Join form** — shown only if player hasn't joined yet; first/last name inputs
 5. **Game-specific content** — e.g. clue submission form (Fishbowl), question preview (GoW)
-6. **Host controls** — Start button (disabled until valid state), optional settings panel
-7. **Settings panel** — collapsible or separate screen; only visible to host
+6. **Start button and settings** — Start button (disabled until valid state), optional settings panel
 
 Ready state indicator: teal/green dot = ready, gray dot = not ready. Show count "X / Y ready".
 
@@ -520,11 +518,9 @@ Player lists use a two-column card layout: a narrow number/index block on the le
 Exception: team-based games (Fishbowl, Avalon) use a team-grid layout instead.
 
 ### Start Button Logic
-Always validate before enabling:
+The Start button is visible to all players. Validate before enabling:
 - Minimum player count met
 - Teams balanced (if team-based)
-- All players ready (or host overrides)
-- Host is the one pressing it (check `playerId === game.host_id`)
 
 ---
 
@@ -554,7 +550,7 @@ Distinguish clearly between "it's your turn" and "you're waiting." Players who a
 
 ### Team Assignment
 - Two teams; players choose or are auto-assigned
-- Enforce balance: host can't start if teams differ by more than 1
+- Enforce balance: game can't start if teams differ by more than 1
 - Visual: color-coded player rows, team name headers
 
 ### Advancing Between Phases — 50%+ Ready
@@ -594,7 +590,7 @@ Reset `ready_player_ids = '{}'` in any reset/restart RPC as well.
 
 ### Voting
 - Each player submits a vote (player ID or option index) into their row in `*_players`
-- Host/server detects when all votes are in (count non-null votes vs. player count)
+- Server detects when all votes are in (count non-null votes vs. player count)
 - Show "waiting for votes" with per-player status dots (voted = filled, not voted = empty)
 - Reveal all at once — never show partial results until all votes are in
 

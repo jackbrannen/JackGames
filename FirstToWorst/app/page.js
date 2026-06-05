@@ -101,7 +101,18 @@ export default function Home() {
   }
 
   async function onDummy() {
-    onCreate()
+    if (creating) return
+    setCreating(true)
+    setError("")
+    try {
+      const { supabase } = await import("../lib/supabase")
+      const code = await createGame()
+      await supabase.from("ftw_games").update({ is_demo: true }).eq("code", code)
+      router.push(`/${code}`)
+    } catch (e) {
+      setError(e?.message ?? "Unknown error")
+      setCreating(false)
+    }
   }
 
   return (

@@ -407,6 +407,7 @@ export default function Play({ params }) {
   const wordInputRefs = useRef([])
   const [submitError, setSubmitError] = useState("")
   const [copiedIdeaIndex, setCopiedIdeaIndex] = useState(null)
+  const hasPrefilledRef = useRef(false)
 
   // Group guessing phase
   const [groupItems, setGroupItems] = useState(null)
@@ -438,6 +439,23 @@ export default function Play({ params }) {
 
   const me = useMemo(() => players.find(p => p.id === myPlayerId), [players, myPlayerId])
   const nudgeWords = useSubmitNudge(wordFields.some(w => w.trim()) ? "x" : "", !!me?.words_submitted)
+
+  // Pre-fill word fields for dummy games
+  useEffect(() => {
+    if (!game?.is_demo || game.phase !== "submitting" || hasPrefilledRef.current) return
+    if (me?.words_submitted || !myPlayerId) return
+    hasPrefilledRef.current = true
+    ;(async () => {
+      try {
+        const { data } = await supabase.rpc("get_random_ideas", { p_count: 5, p_exclude: [] })
+        if (data && data.length >= 5) {
+          setWordFields(data.slice(0, 5).map(item => item.idea))
+        }
+      } catch (e) {
+        console.error("Failed to prefill:", e)
+      }
+    })()
+  }, [game?.is_demo, game?.phase, me?.words_submitted, myPlayerId])
 
   useEffect(() => {
     if (!game || !me) return

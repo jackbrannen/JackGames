@@ -445,16 +445,8 @@ export default function Play({ params }) {
     if (!game?.is_demo || game.phase !== "submitting" || hasPrefilledRef.current) return
     if (me?.words_submitted) return
     hasPrefilledRef.current = true
-    ;(async () => {
-      try {
-        const { data } = await supabase.rpc("get_random_ideas", { p_count: 5, p_exclude: [] })
-        if (data && data.length >= 5) {
-          setWordFields(data.slice(0, 5).map(item => item.idea))
-        }
-      } catch (e) {
-        console.error("Failed to prefill:", e)
-      }
-    })()
+    // Hardcode for now to test
+    setWordFields(["pizza", "traffic", "coffee", "dentist", "payday"])
   }, [game?.is_demo, game?.phase, me?.words_submitted])
 
   useEffect(() => {

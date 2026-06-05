@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Footer, { FOOTER_H } from "../../components/Footer"
 import FooterButton from "../../components/FooterButton"
+import RandomIdeas from "../../components/RandomIdeas"
 
 const PRIMARY = "#974344"
 const DARK    = "#803946"
@@ -113,11 +114,9 @@ function isBannedClue(text) {
   return BANNED_CLUES.some(b => lower === b)
 }
 
-function AddClueForm({ code, playerId, onAdded, disabled }) {
+function AddClueForm({ code, playerId, onAdded, disabled, playerNames = [] }) {
   const [text, setText] = useState("")
   const [clueError, setClueError] = useState("")
-  const [shownIdeas, setShownIdeas] = useState([])
-  const [loadingIdeas, setLoadingIdeas] = useState(false)
 
   async function submit() {
     const trimmed = text.trim()
@@ -137,14 +136,6 @@ function AddClueForm({ code, playerId, onAdded, disabled }) {
     if (error) { alert("Error adding clue"); return }
     setText("")
     await onAdded()
-  }
-
-  async function handleGetIdeas() {
-    if (loadingIdeas || shownIdeas.length >= 9) return
-    setLoadingIdeas(true)
-    const { data } = await supabase.rpc("get_random_ideas", { p_count: 3, p_exclude: shownIdeas })
-    if (data?.length) setShownIdeas(prev => [...prev, ...data])
-    setLoadingIdeas(false)
   }
 
   return (
@@ -172,28 +163,14 @@ function AddClueForm({ code, playerId, onAdded, disabled }) {
       )}
 
       <div style={{ marginTop: 16 }}>
-        {shownIdeas.length < 9 ? (
-          <button
-            onClick={handleGetIdeas}
-            disabled={loadingIdeas}
-            style={{ background: WARM, color: "white", fontSize: 15, fontWeight: 800, padding: "14px 18px", width: "100%", marginBottom: shownIdeas.length ? 12 : 0 }}
-          >
-            {shownIdeas.length === 0 ? "✦ Random ideas" : "✦ 3 more ideas"}
-          </button>
-        ) : (
-          <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.25)", padding: "12px 18px", background: WARM, marginBottom: 12 }}>
-            No more ideas
-          </div>
-        )}
-        {shownIdeas.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {shownIdeas.map((idea, i) => (
-              <div key={i} style={{ padding: "7px 14px", borderRadius: 999, fontSize: 14, fontWeight: 700, background: WARM, color: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.12)" }}>
-                {idea}
-              </div>
-            ))}
-          </div>
-        )}
+        <RandomIdeas
+          bg={WARM}
+          yellow={YELLOW}
+          fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
+          playerNames={playerNames}
+          maxDraws={3}
+          onIdeaClick={idea => setText(idea)}
+        />
       </div>
     </div>
   )
@@ -739,7 +716,13 @@ export default function Lobby({ params }) {
                     Maximum of {settings.max_clues_per_player} clues reached.
                   </p>
                 ) : (
-                  <AddClueForm code={code} playerId={me.id} disabled={false} onAdded={() => refreshMyClues(me.id)} />
+                  <AddClueForm
+                    code={code}
+                    playerId={me.id}
+                    disabled={false}
+                    onAdded={() => refreshMyClues(me.id)}
+                    playerNames={players.filter(p => p.id !== me.id).map(p => p.first_name || p.name)}
+                  />
                 )}
               </>
             )}

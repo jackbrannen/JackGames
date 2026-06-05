@@ -12,6 +12,7 @@ import WaitingList from "../../../components/WaitingList"
 import Results from "../../../components/Results"
 import TextEntry from "../../../components/TextEntry"
 import StatusBar from "../../../components/StatusBar"
+import RandomIdeas from "../../../components/RandomIdeas"
 import { useDuplicates } from "../../../lib/useDuplicates"
 import useTypingPresence from "../../../lib/useTypingPresence"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
@@ -404,8 +405,6 @@ export default function Play({ params }) {
   const [wordFields, setWordFields] = useState(["", "", "", "", ""])
   const { dupeIndices, hasDuplicates } = useDuplicates(wordFields)
   const wordInputRefs = useRef([])
-  const [shownIdeas, setShownIdeas] = useState([])
-  const [loadingIdeas, setLoadingIdeas] = useState(false)
   const [submitError, setSubmitError] = useState("")
   const [copiedIdeaIndex, setCopiedIdeaIndex] = useState(null)
 
@@ -755,28 +754,11 @@ export default function Play({ params }) {
     }
 
     const wCount = wordFields.length
-    const ideasExhausted = shownIdeas.length >= Math.max(9, wCount * 2)
-    const canGetMoreIdeas = !ideasExhausted
 
-    async function handleGetIdeas() {
-      if (loadingIdeas || ideasExhausted) return
-      setLoadingIdeas(true)
-      const isFirst = shownIdeas.length === 0
+    async function fetchRandomIdeas(count, exclude) {
       const categories = await fetchIdeas()
-      const excludeSet = new Set(shownIdeas.map(s => s.toLowerCase()))
-      const picked = sampleIdeas(categories, excludeSet)
-      if (isFirst) {
-        const others = players.filter(p => p.id !== myPlayerId && (p.first_name || p.name))
-        if (others.length && picked.length) {
-          const pick = others[Math.floor(Math.random() * others.length)]
-          picked[Math.floor(Math.random() * picked.length)] = pick.first_name || pick.name
-        }
-      }
-      if (picked.length) {
-        setShownIdeas(prev => [...prev, ...picked])
-        requestAnimationFrame(() => ideasRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }))
-      }
-      setLoadingIdeas(false)
+      const excludeSet = new Set(exclude.map(s => s.toLowerCase()))
+      return sampleIdeas(categories, excludeSet, count)
     }
 
     async function handleSubmitWords() {
@@ -927,40 +909,24 @@ export default function Play({ params }) {
           </div>
 
           {/* Random ideas */}
-          {canGetMoreIdeas ? (
-            <button
-              onClick={handleGetIdeas}
-              disabled={loadingIdeas}
-              style={{ background: WARM_LIGHT, color: "white", fontSize: 15, fontWeight: 800, padding: "14px 18px", width: "100%", marginBottom: shownIdeas.length ? 12 : 0 }}
-            >
-              {shownIdeas.length === 0 ? "✦ Random ideas" : "✦ 3 more ideas"}
-            </button>
-          ) : (
-            <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.25)", padding: "12px 18px", background: DARK, marginBottom: 12 }}>
-              No more ideas
-            </div>
-          )}
-
-          {shownIdeas.length > 0 && (
-            <div ref={ideasRef} style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
-              {shownIdeas.map((idea, i) => (
-                <div
-                  key={i}
-                  style={{
-                    padding: "7px 14px",
-                    borderRadius: 999,
-                    fontSize: 14,
-                    fontWeight: 700,
-                    background: WARM_LIGHT,
-                    color: "rgba(255,255,255,0.85)",
-                    border: "none",
-                  }}
-                >
-                  {idea}
-                </div>
-              ))}
-            </div>
-          )}
+          <div style={{ marginBottom: 20 }}>
+            <RandomIdeas
+              key={game.round_index}
+              bg={WARM_LIGHT}
+              yellow={YELLOW}
+              fetchIdeas={fetchRandomIdeas}
+              playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
+              maxDraws={Math.ceil(wCount * 2 / 3)}
+              onIdeaClick={idea => {
+                const firstEmpty = wordFields.findIndex(w => !w.trim())
+                if (firstEmpty !== -1) {
+                  const next = [...wordFields]
+                  next[firstEmpty] = idea
+                  setWordFields(next)
+                }
+              }}
+            />
+          </div>
 
           {submitError && (
             <p style={{ fontSize: 14, fontWeight: 700, color: "#F04F52", marginBottom: 12 }}>{submitError}</p>

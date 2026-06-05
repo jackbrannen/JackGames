@@ -447,7 +447,25 @@ export default function Play({ params }) {
           belowButtons={clueList}
         />
       </div>
-      {pokeSystemNode()}
+      {me && <>
+        <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />
+        <Menu
+          supabase={supabase}
+          colors={POKE_COLORS}
+          isOpen={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          roomCode={code}
+          currentPlayer={me.name}
+          playerDetails={players.map(p => ({
+            name: p.name,
+            teamColor: p.team === 1 ? BOYS : p.team === 2 ? GIRLS : undefined,
+            teamLabel: p.team === 1 ? "Boys" : p.team === 2 ? "Girls" : undefined,
+          }))}
+          gamePhase={game?.phase}
+          rules={instructions ? [["How to Play", instructions]] : null}
+          onResetToLobby={async () => { await supabase.rpc("reset_game_for_replay", { p_code: code }); await loadState() }}
+        />
+      </>}
       </>
     )
   }

@@ -109,7 +109,7 @@ Each game's dummy game implementation must:
 ---
 
 ## Bug fixes
-- **Stuck loading buttons (cross-game)** — Phase-changing buttons get stuck in "Loading..." state. Root cause: calling `loadState()` immediately after RPC races with DB transaction, keeping button mounted. Solution: remove `loadState()` call after phase-changing RPCs; let polling pick up phase change naturally. Avalon ✓ fixed. Needs fixing: FB, GOW, FTW, DF, SC, TEL, CC, CN, RC, EC, MW.
+- ~~**Stuck loading buttons (cross-game)**~~ ✓ Fixed in all 12 games. Added standardized `rpc()` helper that doesn't call `loadState()` after phase-changing RPCs. Polling interval (1.5s) picks up phase changes naturally, preventing FooterButton from staying in loading state.
 - Avalon: On screens that reveal the quest succeeding or failing, the text that reveals the result, along with the updated score, should not be revealed until the card flip animation is done. Showing it beforehand spoils the surprise.
 
 

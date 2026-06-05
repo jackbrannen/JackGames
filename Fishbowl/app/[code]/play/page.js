@@ -279,8 +279,7 @@ export default function Play({ params }) {
     endingRef.current = true
     ;(async () => {
       try {
-        await supabase.rpc("end_turn", { p_code: code, p_reason: "time" })
-        await loadState()
+        await rpc("end_turn", { p_code: code, p_reason: "time" })
       } finally { endingRef.current = false }
     })()
   }, [code, game?.turn_running, isMyTurn, secondsRemaining])
@@ -291,16 +290,22 @@ export default function Play({ params }) {
     ;(async () => {
       try {
         if (secondsRemaining >= 3) {
-          await supabase.rpc("pause_for_new_round", { p_code: code, p_player_id: me.id })
+          await rpc("pause_for_new_round", { p_code: code, p_player_id: me.id })
         } else {
-          await supabase.rpc("end_turn_new_round", { p_code: code })
+          await rpc("end_turn_new_round", { p_code: code })
         }
-        await loadState()
       } finally { endingRef.current = false }
     })()
   }, [code, game?.turn_running, isMyTurn, game?.active_clue_id, secondsRemaining])
 
   const onDeck = useMemo(() => buildOnDeck(players, game), [players, game])
+
+  async function rpc(fn, args = {}) {
+    const { error } = await supabase.rpc(fn, args)
+    if (error) throw error
+    // Don't call loadState() - let polling pick up phase changes naturally.
+    // Prevents FooterButton from staying in loading state if phase hasn't updated yet.
+  }
 
   async function saveScoreAndSettings() {
     await supabase
@@ -316,19 +321,17 @@ export default function Play({ params }) {
 
   async function doStartRound() {
     sfxStartRound()
-    await supabase.rpc("start_round", { p_code: code })
-    await loadState()
+    await rpc("start_round", { p_code: code })
   }
 
   async function doStartTurn() {
     if (!me) return
     if (isPaused) {
       sfxResume()
-      await supabase.rpc("resume_turn", { p_code: code, p_player_id: me.id })
+      await rpc("resume_turn", { p_code: code, p_player_id: me.id })
     } else {
-      await supabase.rpc("start_turn", { p_code: code, p_player_id: me.id })
+      await rpc("start_turn", { p_code: code, p_player_id: me.id })
     }
-    await loadState()
   }
 
   async function doCorrect() {
@@ -346,44 +349,35 @@ export default function Play({ params }) {
   }
 
   async function doEndTurn(reason = "manual") {
-    await supabase.rpc("end_turn", { p_code: code, p_reason: reason })
-    await loadState()
+    await rpc("end_turn", { p_code: code, p_reason: reason })
   }
 
   async function doPassTurn() {
     if (!me) return
-    await supabase.rpc("pass_turn", { p_code: code, p_player_id: me.id })
-    await loadState()
+    await rpc("pass_turn", { p_code: code, p_player_id: me.id })
   }
 
   async function doEndRound() {
     sfxEndRound()
-    await supabase.rpc("end_round", { p_code: code })
-    await loadState()
+    await rpc("end_round", { p_code: code })
   }
 
   async function doPause() {
     if (!me) return
     sfxPause()
-    await supabase.rpc("pause_turn", { p_code: code, p_player_id: me.id })
-    await loadState()
+    await rpc("pause_turn", { p_code: code, p_player_id: me.id })
   }
 
   async function doContinueTurn() {
     if (!me) return
-    await supabase.rpc("start_round", { p_code: code })
-    await supabase.rpc("start_turn", { p_code: code, p_player_id: me.id })
-    await loadState()
+    await rpc("start_round", { p_code: code })
+    await rpc("start_turn", { p_code: code, p_player_id: me.id })
   }
 
 
   async function doPlayAgain() {
     setPlayAgainError(null)
-    const { error } = await supabase.rpc("reset_game_for_replay", { p_code: code })
-    if (error) {
-      setPlayAgainError(error.message)
-      return
-    }
+    await rpc("reset_game_for_replay", { p_code: code })
     router.replace(`/${code}`)
   }
 

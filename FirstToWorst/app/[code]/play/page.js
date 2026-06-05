@@ -438,7 +438,7 @@ export default function Play({ params }) {
   }, [code])
 
   const me = useMemo(() => players.find(p => p.id === myPlayerId), [players, myPlayerId])
-  const nudgeWords = useSubmitNudge(wordFields.some(w => w.trim()) ? "x" : "", !!me?.words_submitted)
+  const nudgeWords = useSubmitNudge(wordFields.some(w => w?.trim()) ? "x" : "", !!me?.words_submitted)
 
   // Pre-fill word fields for dummy games
   useEffect(() => {

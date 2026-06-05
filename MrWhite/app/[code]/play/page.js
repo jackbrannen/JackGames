@@ -73,6 +73,11 @@ export default function Play({ params }) {
     else router.replace(`/${code}`)
   }, [code])
 
+  async function rpc(fn, args = {}) {
+    const { error } = await supabase.rpc(fn, args)
+    if (error) throw error
+  }
+
   async function loadState() {
     const { data: gameData } = await supabase
       .from("mrwhite_games")
@@ -195,24 +200,20 @@ export default function Play({ params }) {
   async function handleStatementsDone() {
     if (iHavePressedStatements) return
     setStatementsPressed(true)
-    await supabase.rpc("mw_statements_ready", { p_code: code, p_player_id: myPlayerId })
-    await loadState()
+    await rpc("mw_statements_ready", { p_code: code, p_player_id: myPlayerId })
   }
 
   async function handleEliminate() {
     if (eliminating) return
     setEliminating(true)
     setConfirmElimination(false)
-    const { error } = await supabase.rpc("mw_eliminate", { p_code: code, p_eliminated_id: myPlayerId })
-    if (error) { setEliminating(false); return }
-    await loadState()
+    await rpc("mw_eliminate", { p_code: code, p_eliminated_id: myPlayerId })
   }
 
   async function handleNextRound() {
     if (iHavePressedNextRound) return
     setNextRoundPressed(true)
-    await supabase.rpc("mw_next_round", { p_code: code, p_player_id: myPlayerId })
-    await loadState()
+    await rpc("mw_next_round", { p_code: code, p_player_id: myPlayerId })
   }
 
   if (!game || !myWord) {
@@ -241,7 +242,7 @@ export default function Play({ params }) {
         word={myWord}
         gamePhase={game.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
-        onResetToLobby={async () => { await supabase.rpc("mw_reset_game", { p_code: code }); await loadState() }}
+        onResetToLobby={async () => { await rpc("mw_reset_game", { p_code: code }) }}
         peekBarHeight="env(safe-area-inset-bottom)"
       />
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} peekBarHeight="env(safe-area-inset-bottom)">
@@ -295,7 +296,7 @@ export default function Play({ params }) {
           </div>
 
           <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 10 }}>
-            <button onClick={async () => { await supabase.rpc("mw_reset_game", { p_code: code }); await loadState() }}
+            <button onClick={async () => { await rpc("mw_reset_game", { p_code: code }) }}
               style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
               Play Again
             </button>

@@ -37,7 +37,7 @@ are wired in all 12 games and omitted from the table.
 | WaitingList      | ·  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ·  | ·  | ·  | ✓  | ·  |
 | StatusBar        | C  | ✓   | C  | ✓   | C  | ✓  | C   | ✓  | C  | C  | C  | C  |
 | TextEntry        | ·  | ✓   | ·  | ✓   | ·  | ·  | ·   | ·  | ·  | ·  | ·  | ·  |
-| RandomIdeas      | ·  | ✓   | ·  | ·   | ✓  | ·  | ✓   | ✓  | ·  | ·  | ·  | ·  |
+| RandomIdeas      | ✓  | ✓   | ·  | ✓   | ✓  | ·  | ✓   | ✓  | ·  | ✓  | ·  | ·  |
 | Selections       | ·  | ✓   | ✓  | ·   | ✓  | ·  | ·   | ✓  | ·  | ·  | ·  | ·  |
 | HomeScreen       | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
 | Lobby            | C  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | C  | C  | ✓  | ✓  |
@@ -61,7 +61,7 @@ EC=Exquisite Corpse, MW=Mr. White
 - **StatusBar:** Only 4/12 games use it (GOW, FTW, SoClover, Copycats). The other 8 have custom top bars for game-specific info (team scores, clues remaining, etc.).
 - **WaitingList:** 7/12 games use it. Turn-based games (Fishbowl, Codenames, ReverseCharades, MrWhite, Copycats) don't need it (marked ·).
 - **TextEntry:** Only 2/12 games use it (GOW, FTW) with typing indicators. Other games either have no text entry or don't need typing indicators (marked ·).
-- **RandomIdeas:** 4/12 games use it (GOW, Drawful, Telestrations, Copycats). Others don't have creative prompt entry or only use RPC for dummy game auto-fill (marked ·).
+- **RandomIdeas:** 7/12 games use it (GOW, FTW, Drawful, Telestrations, Copycats, Fishbowl, ReverseCharades). Others don't have creative prompt entry (marked ·).
 
 ### Dummy Game spec (per game)
 Each game's dummy game implementation must:

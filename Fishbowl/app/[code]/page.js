@@ -3,6 +3,8 @@
 import { supabase } from "../../lib/supabase"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import Footer, { FOOTER_H } from "../../components/Footer"
+import FooterButton from "../../components/FooterButton"
 
 const T1         = "#3378FF"  // page background blue
 const WARM_LIGHT = "#3399FF"
@@ -64,6 +66,11 @@ const DEFAULT_SETTINGS = {
 }
 
 const SETTINGS_LOCK_SECONDS = 30
+
+const COOL_DARK = "#0C47E9"
+const MID_DARK = "#2357E7"
+const POKE_COLORS = { dark: COOL_DARK, mid: MID_DARK, wl: WARM_LIGHT, yellow: YELLOW, notifBg: "#071A8A" }
+const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
 function isoSecondsFromNow(seconds) {
   return new Date(Date.now() + seconds * 1000).toISOString()
@@ -744,7 +751,8 @@ export default function Lobby({ params }) {
   const team2Players = players.filter((p) => p.team === 2)
 
   return (
-    <div style={{ minHeight: "100dvh", background: T1, color: "white" }}>
+    <>
+    <div style={{ minHeight: "100dvh", background: T1, color: "white", paddingBottom: BOTTOM_PAD }}>
 
       {/* Header */}
       <div style={{ padding: "28px 24px 24px", background: "#0C47E9", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
@@ -799,32 +807,10 @@ export default function Lobby({ params }) {
         </div>
       )}
 
-      {/* Start Game CTA */}
+      {/* Team balance warning */}
       {everyoneReady && !teamsBalanced && gameExists && !gameLocked && (
         <div style={{ padding: "16px 24px", background: "#0C47E9", fontSize: 14, fontWeight: 700, color: YELLOW }}>
           Need at least 2 players per team to start.
-        </div>
-      )}
-      {canStartGame && (
-        <div style={{ padding: "20px 24px", background: YELLOW }}>
-          <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(0,0,0,0.5)", marginBottom: 12 }}>
-            Everyone is ready!
-          </div>
-          <button
-            onClick={() => setConfirmingStart(true)}
-            disabled={starting}
-            style={{
-              background: "#000",
-              color: YELLOW,
-              fontSize: 24,
-              fontWeight: 900,
-              padding: "20px",
-              width: "100%",
-              display: "block",
-            }}
-          >
-            {starting ? "Starting…" : "Start Game"}
-          </button>
         </div>
       )}
 
@@ -1027,126 +1013,134 @@ export default function Lobby({ params }) {
         </div>
       </div>}
 
-      {/* Join / My Info */}
-      <div style={{ padding: "28px 24px 28px" }}>
-        {!me ? (
-          <>
-            <SectionLabel>Join Game</SectionLabel>
-            {gameLocked ? (
-              <p style={{ fontSize: 16, opacity: 0.65, fontWeight: 600 }}>Game already started. New players cannot join.</p>
-            ) : isDemo ? (
-              <p style={{ fontSize: 16, opacity: 0.65, fontWeight: 600 }}>Joining…</p>
-            ) : (
-              <>
-                {!savedProfile && (
-                  <>
-                    <input
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      placeholder="First name"
-                      maxLength={40}
-                      style={{ ...inputStyle, marginBottom: 8 }}
-                    />
-                    <input
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      placeholder="Last name"
-                      maxLength={40}
-                      style={{ ...inputStyle, marginBottom: 8 }}
-                    />
-                  </>
-                )}
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && join()}
-                  placeholder="Display Name"
-                  maxLength={45}
-                  style={inputStyle}
-                />
+      {/* Join */}
+      {!me && (
+        <div style={{ padding: "28px 24px 28px" }}>
+          <SectionLabel>Join Game</SectionLabel>
+          {gameLocked ? (
+            <p style={{ fontSize: 16, opacity: 0.65, fontWeight: 600 }}>Game already started. New players cannot join.</p>
+          ) : isDemo ? (
+            <p style={{ fontSize: 16, opacity: 0.65, fontWeight: 600 }}>Joining…</p>
+          ) : (
+            <>
+              {!savedProfile && (
+                <>
+                  <input
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="First name"
+                    maxLength={40}
+                    style={{ ...inputStyle, marginBottom: 8 }}
+                  />
+                  <input
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Last name"
+                    maxLength={40}
+                    style={{ ...inputStyle, marginBottom: 8 }}
+                  />
+                </>
+              )}
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && joinGender && join()}
+                placeholder="Display Name"
+                maxLength={45}
+                style={inputStyle}
+              />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}>
                 <button
-                  onClick={join}
+                  onClick={() => { setJoinGender(1); setTimeout(join, 0) }}
                   disabled={joining || !name.trim() || (!savedProfile && (!firstName.trim() || !lastName.trim()))}
                   style={{
-                    background: YELLOW,
-                    color: "#000",
-                    fontSize: 20,
+                    background: BOYS,
+                    color: "white",
+                    fontSize: 18,
                     fontWeight: 900,
                     padding: "18px",
-                    width: "100%",
-                    marginTop: 8,
-                    display: "block",
                   }}
                 >
-                  {joining ? "Joining…" : "Join"}
+                  {joining && joinGender === 1 ? "Joining…" : "Boys"}
                 </button>
-              </>
-            )}
-          </>
-        ) : (
-          <>
-            <SectionLabel>You</SectionLabel>
-            <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 16 }}>
-              {me.name}
-            </div>
+                <button
+                  onClick={() => { setJoinGender(2); setTimeout(join, 0) }}
+                  disabled={joining || !name.trim() || (!savedProfile && (!firstName.trim() || !lastName.trim()))}
+                  style={{
+                    background: GIRLS,
+                    color: "white",
+                    fontSize: 18,
+                    fontWeight: 900,
+                    padding: "18px",
+                  }}
+                >
+                  {joining && joinGender === 2 ? "Joining…" : "Girls"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button
-                disabled={gameLocked || me.ready}
-                onClick={async () => {
-                  const newTeam = me.team === 1 ? 2 : 1
-                  await supabase.from("players").update({ team: newTeam }).eq("id", me.id)
-                  const updated = { ...(savedProfile ?? {}), team: newTeam }
-                  saveProfile(updated)
-                  setSavedProfile(updated)
-                  await refreshPlayers()
-                }}
-                style={{
-                  background: WARM_LIGHT,
-                  color: "white",
-                  fontSize: 14,
-                  fontWeight: 800,
-                  padding: "12px 18px",
-                }}
-              >
-                Change Genders
-              </button>
-
-              <button
-                disabled={gameLocked || (!me.ready && myClues.length < gameSettings.min_clues_per_player)}
-                onClick={async () => {
-                  const { error } = await supabase
-                    .from("players")
-                    .update({ ready: !me.ready })
-                    .eq("id", me.id)
-                  if (error) { alert("Ready toggle failed: " + error.message); return }
-                  await refreshPlayers()
-                }}
-                style={{
-                  background: me.ready ? "#12BAAA" : YELLOW,
-                  color: me.ready ? "white" : "#000",
-                  fontSize: 14,
-                  fontWeight: 900,
-                  padding: "12px 18px",
-                }}
-              >
-                {me.ready ? "Not Ready" : "I'm Ready"}
-              </button>
-            </div>
-
-            {!me.ready && !gameLocked && myClues.length < gameSettings.min_clues_per_player && (
-              <p style={{ marginTop: 12, fontSize: 13, opacity: 0.65, fontWeight: 600, color: YELLOW }}>
-                Enter your clues before marking yourself ready.
-              </p>
-            )}
-            {me.ready && !gameLocked && (
-              <p style={{ marginTop: 12, fontSize: 13, opacity: 0.65, fontWeight: 600 }}>
-                Your clues are locked. Un-ready to edit them.
-              </p>
-            )}
-          </>
-        )}
-      </div>
+      {/* Action buttons */}
+      {!!me && (
+        <div style={{ padding: "0 24px 28px" }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+            <button
+              disabled={gameLocked || me.ready}
+              onClick={async () => {
+                const newTeam = me.team === 1 ? 2 : 1
+                await supabase.from("players").update({ team: newTeam }).eq("id", me.id)
+                const updated = { ...(savedProfile ?? {}), team: newTeam }
+                saveProfile(updated)
+                setSavedProfile(updated)
+                await refreshPlayers()
+              }}
+              style={{
+                background: WARM_LIGHT,
+                color: "white",
+                fontSize: 14,
+                fontWeight: 800,
+                padding: "14px 18px",
+                flex: 1,
+              }}
+            >
+              Change Genders
+            </button>
+            <button
+              disabled={gameLocked || (!me.ready && myClues.length < gameSettings.min_clues_per_player)}
+              onClick={async () => {
+                const { error } = await supabase
+                  .from("players")
+                  .update({ ready: !me.ready })
+                  .eq("id", me.id)
+                if (error) { alert("Ready toggle failed: " + error.message); return }
+                await refreshPlayers()
+              }}
+              style={{
+                background: me.ready ? "#12BAAA" : YELLOW,
+                color: me.ready ? "white" : "#000",
+                fontSize: 14,
+                fontWeight: 900,
+                padding: "14px 18px",
+                flex: 1,
+              }}
+            >
+              {me.ready ? "Not Ready" : "I'm Ready"}
+            </button>
+          </div>
+          {!me.ready && !gameLocked && myClues.length < gameSettings.min_clues_per_player && (
+            <p style={{ marginTop: 4, fontSize: 13, opacity: 0.65, fontWeight: 600, color: YELLOW }}>
+              Enter your clues before marking yourself ready.
+            </p>
+          )}
+          {me.ready && !gameLocked && (
+            <p style={{ marginTop: 4, fontSize: 13, opacity: 0.65, fontWeight: 600 }}>
+              Your clues are locked. Un-ready to edit them.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* My Clues */}
       {!!me && (
@@ -1223,6 +1217,15 @@ export default function Lobby({ params }) {
             )}
           </div>
         </div>
+      )}
+    </div>
+
+      {canStartGame && (
+        <Footer colors={POKE_COLORS}>
+          <FooterButton onClick={() => setConfirmingStart(true)} loading={starting}>
+            Start Game
+          </FooterButton>
+        </Footer>
       )}
 
       {showInstructions && (
@@ -1306,6 +1309,6 @@ export default function Lobby({ params }) {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }

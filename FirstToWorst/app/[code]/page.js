@@ -71,6 +71,8 @@ export default function LobbyPage({ params }) {
   const [joinError, setJoinError] = useState("")
   const [starting, setStarting] = useState(false)
   const [confirmingStart, setConfirmingStart] = useState(false)
+  const [theme, setTheme] = useState("random")
+  const [isPersonal, setIsPersonal] = useState(false)
 
   const me = players.find(p => p.id === myPlayerId)
 
@@ -190,6 +192,14 @@ export default function LobbyPage({ params }) {
     if (error) { alert("Failed to start: " + error.message); setStarting(false) }
   }
 
+  async function saveSettings() {
+    const { error } = await supabase
+      .from("ftw_games")
+      .update({ theme, is_personal: isPersonal })
+      .eq("code", code)
+    if (error) console.error("Failed to save settings:", error)
+  }
+
   function onInvite() {
     const url = window.location.href
     if (navigator.share) navigator.share({ title: `Join First to Worst — ${code}`, url })
@@ -254,6 +264,80 @@ export default function LobbyPage({ params }) {
                 {joining ? "Joining…" : "Join"}
               </button>
               {joinError && <p style={{ marginTop: 10, fontSize: 14, fontWeight: 700, color: GOLD }}>{joinError}</p>}
+            </div>
+          }
+          settingsContent={
+            <div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 20 }}>Theme</div>
+              <div style={{ fontSize: 15, fontWeight: 600, opacity: 0.65, marginBottom: 12, lineHeight: 1.4 }}>
+                What kinds of words should people write?
+              </div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 32 }}>
+                {["random", "good", "bad"].map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setTheme(t)}
+                    style={{
+                      flex: 1,
+                      background: theme === t ? GOLD : WARM_LIGHT,
+                      color: theme === t ? "#000" : "white",
+                      fontSize: 16,
+                      fontWeight: 900,
+                      padding: "14px 8px",
+                      textTransform: "capitalize",
+                    }}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 20 }}>Word Distribution</div>
+              <div style={{ fontSize: 15, fontWeight: 600, opacity: 0.65, marginBottom: 12, lineHeight: 1.4 }}>
+                Should words be written blind, or should you know who you're writing them for?
+              </div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 32 }}>
+                <button
+                  onClick={() => setIsPersonal(false)}
+                  style={{
+                    flex: 1,
+                    background: !isPersonal ? GOLD : WARM_LIGHT,
+                    color: !isPersonal ? "#000" : "white",
+                    fontSize: 16,
+                    fontWeight: 900,
+                    padding: "14px 8px",
+                  }}
+                >
+                  Random
+                </button>
+                <button
+                  onClick={() => setIsPersonal(true)}
+                  style={{
+                    flex: 1,
+                    background: isPersonal ? GOLD : WARM_LIGHT,
+                    color: isPersonal ? "#000" : "white",
+                    fontSize: 16,
+                    fontWeight: 900,
+                    padding: "14px 8px",
+                  }}
+                >
+                  Personal
+                </button>
+              </div>
+
+              <button
+                onClick={saveSettings}
+                style={{
+                  background: GOLD,
+                  color: "#000",
+                  fontSize: 18,
+                  fontWeight: 900,
+                  padding: "16px",
+                  width: "100%",
+                }}
+              >
+                Save
+              </button>
             </div>
           }
           colors={{ bg: BG, dark: DARK, mid: MID, wl: WARM_LIGHT, yellow: GOLD }}

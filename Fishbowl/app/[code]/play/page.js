@@ -328,7 +328,8 @@ export default function Play({ params }) {
     if (!me) return
     if (isPaused) {
       sfxResume()
-      await rpc("resume_turn", { p_code: code, p_player_id: me.id })
+      await supabase.rpc("resume_turn", { p_code: code, p_player_id: me.id })
+      await loadState() // Immediate feedback for resume
     } else {
       await rpc("start_turn", { p_code: code, p_player_id: me.id })
     }
@@ -338,6 +339,7 @@ export default function Play({ params }) {
     if (!activeClue || !me) return null
     sfxCorrect()
     const { data } = await supabase.rpc("score_correct", { p_code: code, p_clue_id: activeClue.id, p_team: me.team })
+    await loadState() // Immediate feedback for score update
     return data?.[0] ? { id: data[0].new_clue_id, text: data[0].new_clue_text } : null
   }
 
@@ -345,6 +347,7 @@ export default function Play({ params }) {
     if (!activeClue) return null
     sfxSkip()
     const { data } = await supabase.rpc("skip_clue", { p_code: code, p_clue_id: activeClue.id })
+    await loadState() // Immediate feedback for score update
     return data?.[0] ? { id: data[0].new_clue_id, text: data[0].new_clue_text } : null
   }
 
@@ -365,7 +368,8 @@ export default function Play({ params }) {
   async function doPause() {
     if (!me) return
     sfxPause()
-    await rpc("pause_turn", { p_code: code, p_player_id: me.id })
+    await supabase.rpc("pause_turn", { p_code: code, p_player_id: me.id })
+    await loadState() // Immediate feedback for pause state
   }
 
   async function doContinueTurn() {

@@ -34,10 +34,10 @@ are wired in all 12 games and omitted from the table.
 |                  | FB | GOW | AV | FTW | DF | SC | TEL | CC | CN | RC | EC | MW |
 |------------------|----|-----|----|-----|----|----|-----|----|----|----|----|-----|
 | FooterButton     | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ❌ | ✓  | ✓  | ✓  |
-| WaitingList      | ❌ | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ·  | ❌ | ❌ | ✓  | ❌ |
+| WaitingList      | ·  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ·  | ·  | ·  | ✓  | ·  |
 | StatusBar        | C  | ✓   | C  | ✓   | C  | ✓  | C   | ✓  | C  | C  | C  | C  |
-| TextEntry        | ❌ | ✓   | ❌ | ✓   | ❌ | ❌ | ❌  | ❌ | ❌ | ❌ | ❌ | ❌ |
-| RandomIdeas      | ❌ | ✓   | ❌ | ·   | ❌ | ❌ | ❌  | ❌ | ❌ | ❌ | ❌ | ❌ |
+| TextEntry        | ·  | ✓   | ·  | ✓   | ·  | ·  | ·   | ·  | ·  | ·  | ·  | ·  |
+| RandomIdeas      | ·  | ✓   | ·  | ·   | ✓  | ·  | ✓   | ✓  | ·  | ·  | ·  | ·  |
 | Selections       | ·  | ✓   | ✓  | ·   | ✓  | ·  | ·   | ✓  | ·  | ·  | ·  | ·  |
 | HomeScreen       | ✓  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | ✓  | ✓  | ✓  | ✓  |
 | Lobby            | C  | ✓   | ✓  | ✓   | ✓  | ✓  | ✓   | ✓  | C  | C  | ✓  | ✓  |
@@ -59,9 +59,9 @@ EC=Exquisite Corpse, MW=Mr. White
 **Notes:**
 - **Lobby:** Team-based games (Fishbowl, Codenames, ReverseCharades) use custom lobby with team selection but still use Footer for Start button.
 - **StatusBar:** Only 4/12 games use it (GOW, FTW, SoClover, Copycats). The other 8 have custom top bars for game-specific info (team scores, clues remaining, etc.).
-- **WaitingList:** 7/12 games use it. Fishbowl/Codenames/ReverseCharades/MrWhite import but don't render.
-- **TextEntry:** Only 2/12 games use it (GOW, FTW). 10 games import but don't use.
-- **RandomIdeas:** Only 1/12 games use it (GOW). 10 games import but don't use.
+- **WaitingList:** 7/12 games use it. Turn-based games (Fishbowl, Codenames, ReverseCharades, MrWhite, Copycats) don't need it (marked ·).
+- **TextEntry:** Only 2/12 games use it (GOW, FTW) with typing indicators. Other games either have no text entry or don't need typing indicators (marked ·).
+- **RandomIdeas:** 4/12 games use it (GOW, Drawful, Telestrations, Copycats). Others don't have creative prompt entry or only use RPC for dummy game auto-fill (marked ·).
 
 ### Dummy Game spec (per game)
 Each game's dummy game implementation must:

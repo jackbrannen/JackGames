@@ -76,7 +76,7 @@ export default function LobbyPage({ params }) {
 
   async function refreshPlayers() {
     const { data } = await supabase
-      .from("firsttoworst_players")
+      .from("ftw_players")
       .select("id,name,created_at")
       .eq("game_code", code)
       .order("created_at", { ascending: true })
@@ -85,7 +85,7 @@ export default function LobbyPage({ params }) {
 
   async function loadGame() {
     const { data, error } = await supabase
-      .from("firsttoworst_games")
+      .from("ftw_games")
       .select("code,phase")
       .eq("code", code)
       .single()
@@ -114,8 +114,8 @@ export default function LobbyPage({ params }) {
     function handleVisibility() { clearInterval(poll); if (!document.hidden) { loadState(); poll = setInterval(loadState, 1500) } }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`firsttoworst-lobby-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "firsttoworst_players", filter: `game_code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "firsttoworst_games", filter: `code=eq.${code}` }, loadState)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ftw_players", filter: `game_code=eq.${code}` }, loadState)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ftw_games", filter: `code=eq.${code}` }, loadState)
       .subscribe()
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
@@ -131,9 +131,9 @@ export default function LobbyPage({ params }) {
     if (!saved?.username) return
     hasAutoJoinedRef.current = true
     ;(async () => {
-      const { data: taken } = await supabase.from("firsttoworst_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
+      const { data: taken } = await supabase.from("ftw_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
       if (taken?.length > 0) return
-      const { data, error } = await supabase.from("firsttoworst_players")
+      const { data, error } = await supabase.from("ftw_players")
         .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName.trim(), last_name: saved.lastName.trim() })
         .select("id").single()
       if (error || !data) return
@@ -153,7 +153,7 @@ export default function LobbyPage({ params }) {
     setJoinError("")
 
     const { data: existing } = await supabase
-      .from("firsttoworst_players").select("id").eq("game_code", code).ilike("name", trimmed).limit(1)
+      .from("ftw_players").select("id").eq("game_code", code).ilike("name", trimmed).limit(1)
     if (existing?.length > 0) {
       setJoinError("That username is already taken in this game.")
       setJoining(false)
@@ -171,7 +171,7 @@ export default function LobbyPage({ params }) {
     setSavedProfile(newProfile)
 
     const { data, error } = await supabase
-      .from("firsttoworst_players")
+      .from("ftw_players")
       .insert({ game_code: code, name: trimmed, first_name: trimmedFirst, last_name: trimmedLast })
       .select("id").single()
     if (error) { alert("Failed to join: " + error.message); setJoining(false); return }

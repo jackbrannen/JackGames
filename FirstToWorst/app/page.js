@@ -43,13 +43,13 @@ async function createGame() {
   for (let attempt = 0; attempt < 10; attempt++) {
     const code = randomCode()
     const { count } = await supabase
-      .from("firsttoworst_games")
+      .from("ftw_games")
       .select("code", { count: "exact", head: true })
       .eq("code", code)
       .neq("phase", "finished")
     if ((count ?? 0) > 0) continue
     const { data, error } = await supabase
-      .from("firsttoworst_games")
+      .from("ftw_games")
       .insert({ code })
       .select("code")
       .single()

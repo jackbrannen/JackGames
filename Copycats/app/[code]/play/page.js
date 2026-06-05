@@ -379,6 +379,17 @@ export default function PlayPage({ params }) {
             placeholder={`Your question for ${myTarget?.name ?? "them"}…`}
           />
 
+          <div style={{ marginTop: 16, marginBottom: 24 }}>
+            <RandomIdeas
+              bg={WARM_LIGHT}
+              yellow={YELLOW}
+              fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
+              playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
+              maxDraws={3}
+              onIdeaClick={idea => { setMyQuestion(idea); trackTyping() }}
+            />
+          </div>
+
           <Section label="Waiting for everyone…">
             <WaitingList players={players} doneIds={submittedIds} myPlayerId={myId} onPoke={sendInlinePoke} typingPlayerIds={typingPlayerIds} pokeCooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
           </Section>

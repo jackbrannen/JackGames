@@ -953,6 +953,16 @@ export default function Play({ params }) {
                   resize: "none", display: "block", marginBottom: 0,
                 }}
               />
+              <div style={{ marginTop: 16 }}>
+                <RandomIdeas
+                  bg={WARM_LIGHT}
+                  yellow={ACCENT}
+                  fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
+                  playerNames={players.filter(p => p.id !== myPlayerId && !p.is_bot).map(p => p.first_name || p.name)}
+                  maxDraws={3}
+                  onIdeaClick={idea => setAnswerText(idea)}
+                />
+              </div>
             </div>
           )}
         </div>

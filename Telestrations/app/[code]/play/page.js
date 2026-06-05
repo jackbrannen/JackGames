@@ -1340,6 +1340,16 @@ export default function Play({ params }) {
             padding: "16px", resize: "none", borderRadius: 4, lineHeight: 1.45,
           }}
         />
+        <div style={{ marginTop: 16 }}>
+          <RandomIdeas
+            bg="rgba(255,255,255,0.15)"
+            yellow={YELLOW}
+            fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
+            playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
+            maxDraws={3}
+            onIdeaClick={idea => { setSentence(idea); trackTyping() }}
+          />
+        </div>
 
         {timeLeft !== null && (timeLeft > 0 || sentence.trim()) && (
           <p style={{ fontSize: 14, fontWeight: 800, color: timerColor, marginTop: 8 }}>⏱ {timeLeft}s</p>

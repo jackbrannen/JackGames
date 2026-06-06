@@ -142,6 +142,23 @@ export default function LobbyPage({ params }) {
     })()
   }, [game?.phase, myPlayerId, code])
 
+  const hasDummyJoinedRef = useRef(false)
+  useEffect(() => {
+    if (!game || !game.is_dummy || game.phase !== "lobby" || myPlayerId || hasDummyJoinedRef.current) return
+    hasDummyJoinedRef.current = true
+    ;(async () => {
+      const existing = players.filter(p => p.name.startsWith("Player "))
+      const nextNum = existing.length + 1
+      const botName = `Player ${nextNum}`
+      const { data, error } = await supabase.from("drawful_players")
+        .insert({ game_code: code, name: botName, first_name: botName, last_name: "", is_bot: false })
+        .select("id").single()
+      if (error || !data) return
+      localStorage.setItem(`drawful:${code}:playerId`, data.id)
+      setMyPlayerId(data.id)
+    })()
+  }, [game?.is_dummy, game?.phase, myPlayerId, code, players])
+
   async function join() {
     const trimmedUsername = username.trim()
     const trimmedFirst = (savedProfile?.firstName || firstName).trim()

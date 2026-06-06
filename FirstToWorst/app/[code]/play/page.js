@@ -795,30 +795,50 @@ export default function Play({ params }) {
     }
 
     async function handleSubmitWords() {
-      const trimmed = wordFields.map(w => w.trim())
-      if (trimmed.some(w => !w)) { setSubmitError(`Fill in all ${wCount} before submitting.`); throw new Error("validation") }
+      console.log("=== handleSubmitWords START ===")
+      console.log("wordFields:", wordFields)
+      const trimmed = wordFields.map(w => w?.trim ? w.trim() : "")
+      console.log("trimmed:", trimmed)
+      if (trimmed.some(w => !w)) {
+        console.log("Validation failed: empty fields")
+        setSubmitError(`Fill in all ${wCount} before submitting.`)
+        throw new Error("validation")
+      }
       const lower = trimmed.map(w => w.toLowerCase())
-      if (hasDuplicates) { setSubmitError("No duplicates allowed."); throw new Error("validation") }
+      if (hasDuplicates) {
+        console.log("Validation failed: duplicates")
+        setSubmitError("No duplicates allowed.")
+        throw new Error("validation")
+      }
 
       // Disallow words already submitted by other players
       const takenWord = trimmed.find(w => allWords.some(aw => aw.text.trim().toLowerCase() === w.toLowerCase()))
-      if (takenWord) { setSubmitError(`"${takenWord}" was already submitted. Try something else.`); throw new Error("validation") }
+      if (takenWord) {
+        console.log("Validation failed: taken word", takenWord)
+        setSubmitError(`"${takenWord}" was already submitted. Try something else.`)
+        throw new Error("validation")
+      }
 
       // Disallow exact matches to any shown idea — error shown inline under that field
       const shownLower = shownIdeas.map(s => s.toLowerCase())
       const copiedIdx = lower.findIndex(w => shownLower.includes(w))
       if (copiedIdx !== -1) {
+        console.log("Validation failed: copied idea")
         setCopiedIdeaIndex(copiedIdx)
         setSubmitError("")
         throw new Error("validation")
       }
       setCopiedIdeaIndex(null)
 
-      if (!myPlayerId) return
+      if (!myPlayerId) {
+        console.log("No myPlayerId, returning")
+        return
+      }
       setSubmitError("")
 
       const forPlayerIds = fieldToRecipient || null
 
+      console.log("Calling ftw_submit_words with:", { trimmed, myPlayerId, forPlayerIds })
       const { error } = await supabase.rpc("ftw_submit_words", {
         p_code: code,
         p_player_id: myPlayerId,
@@ -830,7 +850,9 @@ export default function Play({ params }) {
         setSubmitError(error.message ?? JSON.stringify(error))
         throw error
       }
+      console.log("RPC success, calling loadState")
       await loadState()
+      console.log("=== handleSubmitWords END ===")
     }
 
     // Build input sections

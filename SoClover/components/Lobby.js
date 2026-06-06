@@ -16,7 +16,7 @@
     onInvite        fn       — called when Invite is tapped
     howToPlayContent ReactNode  — content inside the How to Play modal (omit to hide button)
     codeDisplay     ReactNode  — overrides the default code text rendering in the header
-    settingsContent ReactNode  — strip rendered below the header (game-specific settings)
+    settingsContent ReactNode  — content for settings modal (opens via cog button in header)
     startContent    ReactNode  — start game CTA block (rendered above join form)
     joinContent     ReactNode  — join form; shown when player hasn't joined.
                                For team games, pass two team-join buttons here instead of
@@ -50,6 +50,41 @@
 import { useState } from "react"
 import { FONT_SIZE, FONT_WEIGHT, OPACITY, STYLE, SPACE, GAP } from "./styles"
 
+function SettingsModal({ isOpen, onClose, children, colors }) {
+  if (!isOpen) return null
+  const { dark, yellow } = colors
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.8)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 100,
+        padding: 24,
+      }}
+      onClick={onClose}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: dark,
+          maxWidth: 600,
+          width: "100%",
+          maxHeight: "80vh",
+          overflowY: "auto",
+          padding: "32px 24px",
+        }}
+      >
+        <div style={{ fontSize: 28, fontWeight: 900, marginBottom: 24 }}>Game Settings</div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 function PlayerRow({ p, myPlayerId, mid }) {
   return (
     <div style={{ padding: "13px 16px", background: mid, display: "flex", alignItems: "center" }}>
@@ -78,9 +113,10 @@ export default function Lobby({
   minPlayers = 4,
   notFound = false,
   loading = false,
-}) {
+) {
   const { dark = "#333", mid = "#444", wl = "#555", yellow = "#FBDF54", bg } = colors
   const [showHowToPlay, setShowHowToPlay] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
 
   const showJoinZone = showJoin !== undefined ? showJoin : !myPlayerId
 
@@ -116,6 +152,14 @@ export default function Lobby({
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: SPACE.xs, flexShrink: 0, marginTop: 4, alignItems: "stretch" }}>
+          {settingsContent && (
+            <button
+              onClick={() => setShowSettings(true)}
+              style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 20, fontWeight: FONT_WEIGHT.heavy, padding: "8px 12px", lineHeight: 1 }}
+            >
+              ⚙️
+            </button>
+          )}
           {onInvite && (
             <button
               onClick={onInvite}
@@ -135,8 +179,10 @@ export default function Lobby({
         </div>
       </div>
 
-      {/* Settings strip */}
-      {settingsContent}
+      {/* Settings modal */}
+      <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} colors={colors}>
+        {settingsContent}
+      </SettingsModal>
 
       {/* Start CTA */}
       {startContent}

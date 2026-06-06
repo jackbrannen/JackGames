@@ -447,9 +447,12 @@ export default function Play({ params }) {
     hasPrefilledRef.current = true
     ;(async () => {
       try {
-        const { data } = await supabase.rpc("get_random_ideas", { p_count: 5, p_exclude: [] })
+        const { data, error } = await supabase.rpc("get_random_ideas", { p_count: 5, p_exclude: [] })
+        console.log("get_random_ideas result:", { data, error })
         if (data && data.length >= 5) {
-          setWordFields(data.slice(0, 5).map(item => item.idea))
+          const ideas = data.slice(0, 5).map(item => item.idea)
+          console.log("Setting wordFields to:", ideas)
+          setWordFields(ideas)
         }
       } catch (e) {
         console.error("Failed to prefill:", e)

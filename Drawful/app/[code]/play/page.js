@@ -839,7 +839,7 @@ export default function Play({ params }) {
 
     return (
       <>
-      <div style={{ height: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ height: `calc(100dvh - ${FOOTER_H}px - env(safe-area-inset-bottom))`, background: BG, color: "white", display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Compact header */}
         <div style={{ flexShrink: 0, padding: "12px 24px 10px" }}>
           <div style={{ height: 4, background: WARM_LIGHT, marginBottom: 10 }}>

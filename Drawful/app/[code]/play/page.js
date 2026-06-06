@@ -727,26 +727,33 @@ export default function Play({ params }) {
     if (!answerText.trim() || submittingAnswer || myAnswer || amArtist) return
     const { supabase } = await import("../../../lib/supabase")
     setSubmittingAnswer(true)
-    const trimmed = answerText.trim()
-    const capitalized = trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
-    const myText = trimmed.toLowerCase()
-    const { error } = await supabase.rpc("drawful_submit_answer", {
-      p_code: code,
-      p_drawing_player_id: currentArtist.id,
-      p_author_id: me.id,
-      p_text: capitalized,
-    })
-    if (error) { alert("Error: " + error.message); setSubmittingAnswer(false); return }
-    const { data: freshAnswers } = await supabase
-      .from("drawful_answers").select("author_id,text")
-      .eq("game_code", code).eq("drawing_player_id", currentArtist.id).eq("is_real", false)
-    const match = freshAnswers?.find(a => a.author_id !== me.id && a.text?.trim().toLowerCase() === myText)
-    if (match) {
-      const matchPlayer = players.find(p => p.id === match.author_id)
-      setBonusMatchName(matchPlayer?.name || "someone")
-      setTimeout(() => setBonusMatchName(null), 4000)
+    try {
+      const trimmed = answerText.trim()
+      const capitalized = trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
+      const myText = trimmed.toLowerCase()
+      const { error } = await supabase.rpc("drawful_submit_answer", {
+        p_code: code,
+        p_drawing_player_id: currentArtist.id,
+        p_author_id: me.id,
+        p_text: capitalized,
+      })
+      if (error) { alert("Error: " + error.message); setSubmittingAnswer(false); return }
+      const { data: freshAnswers } = await supabase
+        .from("drawful_answers").select("author_id,text")
+        .eq("game_code", code).eq("drawing_player_id", currentArtist.id).eq("is_real", false)
+      const match = freshAnswers?.find(a => a.author_id !== me.id && a.text?.trim().toLowerCase() === myText)
+      if (match) {
+        const matchPlayer = players.find(p => p.id === match.author_id)
+        setBonusMatchName(matchPlayer?.name || "someone")
+        setTimeout(() => setBonusMatchName(null), 4000)
+      }
+      await loadState()
+      setSubmittingAnswer(false)
+    } catch (e) {
+      console.error("Submit answer error:", e)
+      alert("Failed to submit: " + (e?.message ?? "Unknown error"))
+      setSubmittingAnswer(false)
     }
-    await loadState()
   }
 
   async function submitVote() {

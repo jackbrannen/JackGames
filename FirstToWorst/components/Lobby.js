@@ -113,7 +113,7 @@ export default function Lobby({
   minPlayers = 4,
   notFound = false,
   loading = false,
-) {
+}) {
   const { dark = "#333", mid = "#444", wl = "#555", yellow = "#FBDF54", bg } = colors
   const [showHowToPlay, setShowHowToPlay] = useState(false)
   const [showSettings, setShowSettings] = useState(false)

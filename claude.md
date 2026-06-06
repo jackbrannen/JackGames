@@ -2,7 +2,23 @@
 
 > ⚠️ **DEPLOYMENT RULE — READ FIRST:** Vercel free tier allows **100 deployments/day across all projects**. Finish ALL edits to a game before deploying. Never deploy the same game twice in one session. Violating this floods the Vercel dashboard with deployment errors.
 
-A series of multiplayer web game built with Next.js 14 and Supabase. Players connect from their own devices and play together in real time.
+A series of multiplayer web games built with Next.js 14 and Supabase. Players connect from their own devices and play together in real time.
+
+---
+
+## Critical Workflow Rules
+
+**Read these first. They prevent the most common bugs.**
+
+1. **Always read the spec first.** Before implementing any feature, search tasks.md and this file for the spec. Implement exactly what it says. If the spec requires something complex, ask before deviating: "Spec says X, but that requires Y — should I do Z instead?" Never shortcut spec requirements without asking.
+
+2. **Never copy code to all 12 games without testing the template first.** When creating a pattern to copy (API endpoints, shared hooks, etc.): (1) build and test locally in one game; (2) verify the build passes; (3) test the feature works; (4) only then copy to the other 11. Bugs caught in step 1 prevent 11 cascading failures.
+
+3. **Before removing or renaming any constant/function/import:** (1) `grep -rn "NAME"` to find every reference; (2) list all references and decide replacement for each; (3) replace all; (4) verify with grep again (should return zero matches); (5) only then remove/rename the definition. Removing a definition before updating all call sites causes runtime errors.
+
+4. **Never navigate above `/Users/jack/Library/CloudStorage/Dropbox-Personal/Claude/Games`.** All file reads, writes, edits, and shell commands must stay within this directory and its subdirectories.
+
+---
 
 ## Stack
 
@@ -16,17 +32,19 @@ A series of multiplayer web game built with Next.js 14 and Supabase. Players con
 - All game logic lives in `pages/` or `app/` — check which one exists before editing
 - Supabase client is initialized once and imported; don't create new instances in components
 - Real-time subscriptions are set up in the component that owns that game phase's state
+- All pages use `"use client"`. No SSR. No component library — inline styles only.
 
 ## Database & Schema Changes
 
-- There is **no local migrations folder** — schema changes are made in the Supabase dashboard or via `supabase` CLI
+- Schema changes are made in the Supabase dashboard or via `supabase` CLI
 - Before writing code that depends on a new column or table, confirm the schema change has been made in Supabase and is live
 - If a feature isn't working and it touches the database, check whether the column/table actually exists before debugging the code
 
-## Bug Fixes
+---
 
-- Do not write automated tests — verification is manual
-- If I ask for a code path audit before a fix, enumerate every handler touching the affected state, confirm with me, then fix
+## Testing & Validation
+
+**Do not write automated tests** — verification is manual. If I ask for a code path audit before a fix, enumerate every handler touching the affected state, confirm with me, then fix.
 
 ### Manual Testing Checklist
 
@@ -75,6 +93,8 @@ async function handleAction() {
 
 This applies to every action button that triggers a phase transition: Submit, Lock It In, Start Game, Ready, etc.
 
+---
+
 ## Monorepo Structure
 
 All games live in a single git repo at `https://github.com/jackbrannen/JackGames`. The local root is `/Users/jack/Library/CloudStorage/Dropbox-Personal/Claude/Games/`. Each game is a subdirectory (e.g. `Fishbowl/`, `GameOfWhat/`). Shared code lives in `packages/shared/`.
@@ -92,6 +112,8 @@ All games live in a single git repo at `https://github.com/jackbrannen/JackGames
 
 Canonical sources live in `packages/shared/components/`. Each game has its own copy at `[Game]/components/[Name].js`. To update a shared component: edit the canonical, then copy it to all 12 games. See the **Shared Components** section below for the full list and specs.
 
+---
+
 ## Deployment
 
 - Deployed to Vercel
@@ -99,23 +121,6 @@ Canonical sources live in `packages/shared/components/`. Each game has its own c
 - Don't change DNS recommendations mid-conversation — pick one approach and stick with it
 
 **When a fix "isn't working": check deployment first.** Run `vercel ls --cwd [Game]` before assuming the code is wrong. If the latest deployment predates the fix, deploy manually with `vercel --prod --cwd [Game]` and retest.
-
-### Cross-Game Mechanic Parity
-
-When a shared mechanic is improved in one game, immediately update all other games that use it. Shared mechanics include:
-- Random ideas (fetch count, chip style, exhaustion limit)
-- Profile management (localStorage + cookie)
-- "Game in progress" screen for late-joiners
-- Realtime + polling setup pattern
-- Section header style (17px bold, not 11px small-caps)
-- Player list card design (two-column numbered layout)
-- Cool-dark hex backgrounds (no rgba black overlays)
-- Opacity floor (0.65 minimum on colored backgrounds)
-- 50%+ ready to advance from results screens
-- Button loading state never resets on success
-- **Shared components** (Footer, Menu, Notifications, WaitingList, GameModal) — see dedicated section below
-
-Failing to propagate improvements counts as an incomplete task.
 
 ### Vercel Deployment Limit
 
@@ -126,37 +131,22 @@ The free tier allows **100 deployments per day across all projects**. With 11 ga
 - **Batch changes**: finish all edits for a game before committing; avoid committing the same file multiple times in one session
 - The cap resets on a rolling 24-hour window — try again in a few hours if blocked
 
-## SQL & Migrations
+### Cross-Game Mechanic Parity
 
-- Run all SQL changes directly against the linked Supabase project using `supabase db query --linked -f <file>` — no manual steps needed
-- Write SQL to a temp file, execute it, then delete the file. Do not keep a `pending_migrations.sql` around.
+When a shared mechanic is improved in one game, immediately update all other games that use it. See tasks.md for rollout tracking. Failing to propagate improvements counts as an incomplete task.
 
-## UI & Design
-
-- Avoid low-contrast text that is hard to read
-- Avoid placing highly saturated complementary colors next to each other (e.g. red next to green) — they create visual vibration and are hard to read
-- Do not make body or label text too small — err on the side of larger, not smaller
-- Avoid mixed alignment within a row: do not left-align text while right-aligning its badge or marker in the same row. If text and badges appear together, align the badge to the left of the text instead
-- Don't make any text smaller than 13px
-- The main games menu screen should use the game's color scheme for each game card
-- All buttons are square — no `borderRadius` unless the shape is intentionally a circle or pill (e.g. a status dot, a tag chip)
+---
 
 ## Development Workflow
 
 - Run locally with `npm run dev`
 - Test multiplayer features with two browser windows (or two devices on the same network)
-- Verify changes manually by playing through the affected game flow on two devices or two browser windows
+- Verify changes manually by playing through the affected game flow
 - One deploy per game per session maximum — see deployment rule at top of this file
-- Always make all edits to the deployed site only, not the local, and push to git then deploy with `vercel --prod --cwd [Game]`.
+- If you ever have questions, ask me rather than guessing
+- If I ask for something that seems unwise, let me know and explain why it might be a bad idea
 
-## Workflow
-
-- **Always read the spec first.** Before implementing any feature, search tasks.md and this file for the spec. Implement exactly what it says. If the spec requires something complex, ask before deviating: "Spec says X, but that requires Y — should I do Z instead?" Never shortcut spec requirements without asking.
-- **Never copy code to all 12 games without testing the template first.** When creating a pattern to copy (API endpoints, shared hooks, etc.): (1) build and test locally in one game; (2) verify the build passes; (3) test the feature works; (4) only then copy to the other 11. Bugs caught in step 1 prevent 11 cascading failures.
-- **Before removing or renaming any constant/function/import:** (1) `grep -rn "NAME"` to find every reference; (2) list all references and decide replacement for each; (3) replace all; (4) verify with grep again (should return zero matches); (5) only then remove/rename the definition. Removing a definition before updating all call sites causes runtime errors.
-- If you ever have questions, ask me rather than guessing.
-- If I ask for something that seems unwise, let me know and explain why it might be a bad idea.
-- **Never navigate above `/Users/jack/Library/CloudStorage/Dropbox-Personal/Claude/Games`.** All file reads, writes, edits, and shell commands must stay within this directory and its subdirectories.
+---
 
 ## What I'm Building
 
@@ -224,8 +214,6 @@ lib/
   words.js or prompts.js  # Game-specific content
 ```
 
-All pages use `"use client"`. No SSR. No component library — inline styles only.
-
 ---
 
 ## UI Design System
@@ -237,45 +225,23 @@ All pages use `"use client"`. No SSR. No component library — inline styles onl
 import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD } from "../components/styles"
 ```
 
-**Never use magic numbers in inline styles.** Use constants:
-- Typography: `FONT_SIZE.body`, `FONT_WEIGHT.bold`, `OPACITY.normal`
-- Section headers: `STYLE.sectionHeader` (fontSize: 17, fontWeight: 800, opacity: 0.85)
-- Eyebrow labels: `STYLE.eyebrow` (13px uppercase with letter-spacing)
-- Gaps: `GAP.card` (3), `GAP.selection` (6), `GAP.result` (12), `GAP.section` (24)
-- Card layouts: `STYLE.cardLeft(darkColor)`, `STYLE.cardRight(midColor)`, `STYLE.well(midColor)`
-- Spacing: `SPACE.xs` (8), `SPACE.sm` (16), `SPACE.lg` (24), etc.
+**Never use magic numbers in inline styles.** Use the named constants from `styles.js`. For exact values, component examples, and visual reference, see `StyleGuide/app/page.js` (runs at localhost:3099).
 
-### CSS Reset (copy verbatim into every new game's `globals.css`)
-```css
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { min-height: 100%; padding-bottom: env(safe-area-inset-bottom); }
-body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; }
-button { cursor: pointer; border: none; -webkit-tap-highlight-color: transparent; }
-button:active:not(:disabled) { transform: scale(0.91); filter: brightness(1.3); }
-button:disabled { opacity: 0.35; cursor: not-allowed; }
-input, select, textarea { font-family: inherit; outline: none; border: none; }
-input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.6); opacity: 1; }
-```
+For CSS reset, button styles, and JSX patterns, see `CODE_PATTERNS.md`.
 
-### Button Styles (copy into every new game)
-- **Primary action:** background `#FBDF54`, color `#000`, font-weight 900
-- **Secondary:** background `rgba(255,255,255,0.15)`, color `#fff`, font-weight 700
-- **Disabled:** opacity 0.35 (handled by global CSS above)
-- All buttons are square — no `borderRadius`
+### Typography Rules
 
-### Typography
-- Minimum font size: **13px** (non-negotiable)
-- **Section headers** — `fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)"`. No uppercase, no letter-spacing. This applies everywhere a label titles a section of content. Examples: "Players", "Join Game", "Scores", "Everyone's answers", "Points this round", "Sarah's real answer". **Never use uppercase + letter-spacing for section headers** — that is eyebrow style only.
-- **Eyebrow / metadata labels** inside colored header bands (e.g. "ROUND 2 OF 5" above a bigger title) — `fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.75`. These are progress indicators inside status bars, not section titles. Only use this style for phase/round progress at the top of the screen.
-- Headings: 20–28px, weight 900
-- Use `clamp()` for responsive sizing where appropriate
-- Body text: 16–18px, weight 400–500
-- **Opacity floor on colored backgrounds: 0.65.** Never set text opacity below 0.65 on a colored background — it becomes unreadable. The only exception is the `button:disabled` global rule (0.35) which is handled by CSS and applies to interactive affordance, not reading.
-- Opacity scale: 0.35 disabled (CSS only), 0.65 muted/secondary, 0.75 moderate emphasis, 0.85 normal, 1.0 full
+- **Minimum font size: 13px** (non-negotiable)
+- **Section headers vs eyebrows:** Section headers title content sections and use sentence case with no letter-spacing (examples: "Players", "Join Game", "Scores"). Eyebrows are metadata labels inside colored header bands and use UPPERCASE with letter-spacing (examples: "ROUND 2 OF 5", "WAITING FOR VOTES"). Only use eyebrow style for phase/round progress at the top of the screen.
+- **Opacity floor: 0.65** on colored backgrounds — never go below 0.65 or text becomes unreadable. Exception: `button:disabled` uses 0.35 (handled by CSS, applies to interactive affordance not reading).
 
-### Spacing
-- 8px base grid: 8, 16, 20, 24, 28, 32, 48
-- `padding-bottom: env(safe-area-inset-bottom)` on any bottom-pinned bar
+### Design Principles
+
+- Avoid low-contrast text
+- Avoid saturated complementary colors next to each other (visual vibration)
+- Avoid mixed alignment in rows (don't left-align text and right-align its badge)
+- All buttons are square — no `borderRadius` unless circle/pill (status dot, chip)
+- Use `padding-bottom: env(safe-area-inset-bottom)` on bottom-pinned bars
 
 ### Color System — Cool/Warm Zone Derivation
 
@@ -288,33 +254,9 @@ Every game has a primary background color. Darker zones (section headers, wells,
 
 **Never use `rgba(0,0,0,X)` or `rgba(255,255,255,X)` overlays on colored backgrounds.** Both produce desaturated results with no intentional hue. Always derive an explicit hex using the HSB formulas above. The only exception is a full-screen modal backdrop (`position: fixed; inset: 0`) at high opacity (0.7+) — that is intentional visual separation, not a tint.
 
-Derived colors for each game:
+**For actual color values:** See `StyleGuide/app/page.js` lines 5-17. Each game has `bg`, `dark`, `mid`, `wl`, and `yellow` defined there.
 
-| Game | Primary (BG) | Cool-dark (headers) | Mid-dark (wells/cards) | Warm-light (inputs/btns) |
-|------|-------------|---------------------|------------------------|--------------------------|
-| Fishbowl | `#3378FF` | `#0C47E9` | `#2357E7` | — |
-| Game of What | `#6B1A44` | `#4A123B` | `#5C1640` | — |
-| Avalon | `#0F1923` | — | — | — |
-| First to Worst | `#004F45` | `#003638` | `#00423f` | `#006648` |
-| Drawful | `#307977` | `#1C5250` | `#245E5C` | — |
-| So Clover | `#6B8C2A` | `#4C7523` | `#5A8026` | `#90A331` |
-| JackGames hub | `#111118` | — | — | — |
-
-When adding a new game: compute the primary in HSB, apply the ±10°/±5° shifts and ±9% brightness adjustments, then convert back to hex. Do not eyeball hex values.
-
-### Game Color Palettes
-
-| Game | Primary | Team A | Team B | Accent | Text |
-|------|---------|--------|--------|--------|------|
-| Fishbowl | `#3378FF` | `#F97316` (orange) | `#C026D3` (magenta) | `#FBDF54` | white |
-| Game of What | `#6B1A44` | — | — | `#FBDF54` | white |
-| Avalon | `#0F1923` | `#4A8FD4` (good) | `#AA2222` (evil) | `#C9A84C` (gold) | `#E8DCC8` (cream) |
-| First to Worst | `#004F45` | — | — | `#FBDF54` | white |
-| Drawful | `#307977` | — | — | `#F5E8D8` (warm cream) | white |
-| So Clover | `#6B8C2A` | — | — | `#FBDF54` | white |
-| JackGames hub | `#111118` | — | — | `#FBDF54` | white |
-
-Yellow `#FBDF54` is the universal accent/CTA color across all games. Individual games may use a different accent if yellow conflicts with their palette (e.g. Drawful uses warm cream).
+When adding a new game: compute the primary in HSB, apply the ±10°/±5° shifts and ±9% brightness adjustments, then convert back to hex. Do not eyeball hex values. Yellow `#FBDF54` is the universal accent/CTA color (exception: Drawful uses warm cream `#F5E8D8`).
 
 ---
 
@@ -334,35 +276,24 @@ There is **one canonical list of random idea prompts** shared across multiple ga
 Fishbowl is the most mature game. When building new games, copy its patterns rather than inventing new ones.
 
 ### Profile Management
+
 All games share a player profile (first name, last name, display name) stored in `localStorage:jackgames:profile` and mirrored to cookie `jackgames_profile` (domain `.jackbrannen.com` so it's readable by all games).
 
-**The cookie is authoritative.** localStorage is per-domain and can hold stale data from a previous session. The shared cookie reflects the most recent explicit save (from any game or the hub). Always merge with local as base and cookie as override:
-
-```js
-function loadProfile() {
-  try {
-    const local = JSON.parse(localStorage.getItem("jackgames:profile") || "null")
-    const match = document.cookie.match(/(?:^|;\s*)jackgames_profile=([^;]*)/)
-    const cookie = match ? JSON.parse(decodeURIComponent(match[1])) : null
-    const merged = { ...(local ?? {}) }
-    for (const [k, v] of Object.entries(cookie ?? {})) { if (v) merged[k] = v }
-    if (merged.firstName && merged.lastName) return merged
-  } catch {}
-  return null
-}
-
-function saveProfile(profile) {
-  const json = JSON.stringify(profile)
-  localStorage.setItem("jackgames:profile", json)
-  document.cookie = `jackgames_profile=${encodeURIComponent(json)}; domain=.jackbrannen.com; max-age=31536000; path=/; SameSite=Lax`
-}
-```
+**The cookie is authoritative.** localStorage is per-domain and can hold stale data from a previous session. The shared cookie reflects the most recent explicit save (from any game or the hub). Always merge with local as base and cookie as override.
 
 **Critical rules — do not diverge:**
 - **Never call `saveProfile(saved)` on load unless `saved.username` is present.** Reading the profile and immediately writing it back corrupts the shared cookie if the local copy is incomplete (missing username). Guard it: `if (saved.username) saveProfile(saved)`.
 - **Never use a fallback value (e.g. `firstName`) as a stand-in for `username`.** If that fallback gets auto-saved or auto-joined with, it cements the wrong value into storage across all games.
 - **If username is missing, show all three fields (first, last, display name) blank** so the user re-enters everything cleanly. Do not hide first/last fields just because `savedProfile` exists — gate on `savedProfile?.username`.
 - **Auto-join (if used) must gate on `savedProfile?.username`**, not the username state variable, which may contain a UI hint rather than a stored value.
+
+For implementation code, see `CODE_PATTERNS.md`.
+
+### Dummy Games
+
+**Spec (see tasks.md for full details):**
+1. **Auto-join** — use saved profile username to join the lobby automatically (only if saved profile exists)
+2. **Pre-fill text fields** — fill input fields with random ideas when the relevant phase starts
 
 ### Game Code Generation
 Two concatenated words from a word list, e.g. `MAPLERIVER`. Uniqueness checked against the DB (loop up to 10 attempts). Each game can use its own word list but the generation logic is identical.
@@ -372,25 +303,13 @@ Format: `localStorage:[gamename]:[code]:playerId`
 Example: `fishbowl:MAPLERIVER:playerId`
 
 ### Realtime + Polling
-All games use **both**: Supabase Realtime for fast updates, plus a 1.5s polling interval as a fallback. Always set up both; never rely on only one.
-
-```js
-const poll = setInterval(loadState, 1500)
-const channel = supabase.channel(`game-${code}`)
-  .on("postgres_changes", { event: "*", schema: "public", table: "GAME_players" }, refreshPlayers)
-  .on("postgres_changes", { event: "*", schema: "public", table: "GAME_games", filter: `code=eq.${code}` }, handleGameUpdate)
-  .subscribe()
-return () => { clearInterval(poll); supabase.removeChannel(channel) }
-```
-
-### Modals / Overlays
-Fixed position, full-screen, semi-transparent dark background. Click outside to close. No library needed — this is 15 lines of inline JSX.
+All games use **both**: Supabase Realtime for fast updates, plus a 1.5s polling interval as a fallback. Always set up both; never rely on only one. See `CODE_PATTERNS.md` for implementation.
 
 ---
 
 ## Shared Components
 
-Each shared component has a canonical source in `packages/shared/components/` and a copy in every game's `components/` folder. To update: edit canonical, copy to all 12 games. Full specs live alongside each component file.
+Each shared component has a canonical source in `packages/shared/components/` and a copy in every game's `components/` folder. To update: edit canonical, copy to all 12 games. Full specs live in the comment at the top of each component file.
 
 ### Component list
 
@@ -421,8 +340,6 @@ Shared lib files (canonical in `packages/shared/lib/`, copied to each game's `li
 | `lib/useTypingPresence.js` | Tracks which players are currently typing via Supabase presence channel |
 | `components/styles.js` | Design tokens (colors, spacing) used by shared components |
 
-Full props, usage examples, and behavior notes are in the spec comment at the top of each component file. `PokeSystem.js` is a backward-compatible wrapper around Footer + Menu + Notifications — existing games use it until they're migrated. Rollout status tracked in `tasks.md`.
-
 ### Key constants
 ```js
 export const FOOTER_H = 56  // from Footer.js — height of the sticky footer bar
@@ -431,32 +348,11 @@ const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 // Use BOTTOM_PAD for paddingBottom on scrollable content areas
 ```
 
-### Colors per game
-Each game passes a `colors` object to Footer, Menu, and Notifications:
-```js
-{ dark, mid, wl, yellow, notifBg }
-
-// Fishbowl:        { dark: "#0C47E9", mid: "#2357E7", wl: "#4A70FF", yellow: "#FBDF54", notifBg: "#071A8A" }
-// GameOfWhat:      { dark: "#4A123B", mid: "#5C1640", wl: "#821F42", yellow: "#FBDF54", notifBg: "#300A20" }
-// FirstToWorst:    { dark: "#003638", mid: "#00423f", wl: "#006648", yellow: "#FBDF54", notifBg: "#001E1C" }
-// Drawful:         { dark: "#1C5250", mid: "#245E5C", wl: "#3A9180", yellow: "#F5E8D8", notifBg: "#0F302F" }
-// SoClover:        { dark: "#4C7523", mid: "#5A8026", wl: "#90A331", yellow: "#FBDF54", notifBg: "#2E4510" }
-// Avalon:          { dark: "#0A1520", mid: "#121F2E", wl: "#1E3248", yellow: "#C9A84C", notifBg: "#060D14" }
-// Telestrations:   { dark: "#1A0840", mid: "#200C52", wl: "#4A228C", yellow: "#FBDF54", notifBg: "#15062A" }
-// Copycats:        { dark: "#1A0840", mid: "#200C52", wl: "#4A228C", yellow: "#FBDF54", notifBg: "#15062A" }
-// Codenames, ReverseCharades, ExquisiteCorpse, MrWhite — derive from primary colors
-```
-
 ### Pokes database table
 All games share the same `pokes` table:
 - `room_code` text, `from_player` text, `to_player` text | null, `message` text, `id` uuid, `created_at` timestamp
 - Poke: `supabase.from("pokes").insert({ room_code, from_player, to_player: targetName, message: "👉" })`
 - Message: same but `to_player: null` and `message` = the text
-
-### Reset RPCs (used by Menu's Lobby tile)
-- `tel_reset_game`, `gow_reset_game`, `ftw_reset_to_lobby`, `drawful_reset_game`
-- `soclover_reset_to_lobby`, `avalon_reset_to_lobby`, `cc_reset_to_lobby`
-- `reset_codenames_game`, `rc_reset_game`, `ec_reset_game`
 
 ### Game-specific behaviors
 - **Fishbowl / ReverseCharades**: pass `timerRunning` to Footer — disables hamburger during active turn
@@ -507,36 +403,7 @@ Every game's lobby follows this structure (top to bottom):
 
 Ready state indicator: teal/green dot = ready, gray dot = not ready. Show count "X / Y ready".
 
-### Player List — Two-Column Card Design
-
-Player lists use a two-column card layout: a narrow number/index block on the left, a name block on the right. Use the game's cool-dark and mid-dark colors.
-
-```jsx
-<div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-  {players.map((p, i) => (
-    <div key={p.id} style={{ display: "flex" }}>
-      <div style={{
-        padding: "13px 0", minWidth: 48, flexShrink: 0,
-        background: DARK,  // cool-dark hex
-        fontSize: 18, fontWeight: 900, color: "white",
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}>
-        {i + 1}
-      </div>
-      <div style={{
-        padding: "13px 16px", flex: 1,
-        background: MID,   // mid-dark hex
-        display: "flex", alignItems: "center",
-      }}>
-        <div style={{ fontSize: 17, fontWeight: 700 }}>
-          {p.name}
-          {p.id === myPlayerId && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
-        </div>
-      </div>
-    </div>
-  ))}
-</div>
-```
+Player list uses a two-column card layout: narrow number/index block on left, name block on right. Use the game's cool-dark and mid-dark colors. See `CODE_PATTERNS.md` for JSX example.
 
 Exception: team-based games (Fishbowl, Avalon) use a team-grid layout instead.
 
@@ -587,27 +454,7 @@ When transitioning from a results or reveal screen (i.e. a screen players may wa
 
 Exception: pure transition screens with no content to absorb (e.g. a loading state between rounds) can auto-advance or allow any single player to advance.
 
-```sql
--- Schema addition
-ALTER TABLE {game}_games ADD COLUMN IF NOT EXISTS ready_player_ids uuid[] DEFAULT '{}';
-
--- RPC pattern
-CREATE OR REPLACE FUNCTION {game}_mark_ready(p_code text, p_player_id uuid)
-RETURNS void LANGUAGE plpgsql AS $$
-DECLARE v_ready int; v_total int;
-BEGIN
-  UPDATE {game}_games
-  SET ready_player_ids = array_append(COALESCE(ready_player_ids, '{}'), p_player_id)
-  WHERE code = p_code AND NOT (p_player_id = ANY(COALESCE(ready_player_ids, '{}')));
-  SELECT COALESCE(array_length(ready_player_ids,1),0),
-         (SELECT count(*) FROM {game}_players WHERE game_code = p_code)
-  INTO v_ready, v_total FROM {game}_games WHERE code = p_code;
-  IF v_ready * 2 >= v_total THEN
-    PERFORM {game}_next_phase(p_code);
-    UPDATE {game}_games SET ready_player_ids = '{}' WHERE code = p_code;
-  END IF;
-END; $$;
-```
+See `CODE_PATTERNS.md` for RPC implementation.
 
 Reset `ready_player_ids = '{}'` in any reset/restart RPC as well.
 

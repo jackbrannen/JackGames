@@ -1116,17 +1116,18 @@ export default function Play({ params }) {
     const hasVotedNextRound = game.next_round_votes?.some(v => v === myPlayerId) ?? false
     const guessParticipants = players.filter(p => !p.opt_out_guess).length
 
+    // Auto-start dragging after intro (must be outside conditional render)
+    useEffect(() => {
+      if (game.round_phase !== "intro" || isSubject) return
+      const timer = setTimeout(async () => {
+        await supabase.rpc("ftw_start_dragging", { p_code: code })
+        await loadState()
+      }, 2000)
+      return () => clearTimeout(timer)
+    }, [game.round_phase, code, isSubject])
+
     // ── INTRO ──
     if (game.round_phase === "intro") {
-      useEffect(() => {
-        if (isSubject) return
-        const timer = setTimeout(async () => {
-          await supabase.rpc("ftw_start_dragging", { p_code: code })
-          await loadState()
-        }, 2000)
-        return () => clearTimeout(timer)
-      }, [code, isSubject])
-
       if (isSubject) {
         return (
           <>

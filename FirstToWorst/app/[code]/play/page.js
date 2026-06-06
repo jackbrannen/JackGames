@@ -719,6 +719,7 @@ export default function Play({ params }) {
 
   if (game.phase === "submitting") {
     // Wait for player data to load before rendering
+    console.log("Submitting phase check:", { myPlayerId, playersLength: players.length, me: !!me })
     if (!myPlayerId || players.length === 0 || !me) {
       return (
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>

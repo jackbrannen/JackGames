@@ -718,7 +718,13 @@ export default function Play({ params }) {
   // ── SUBMITTING PHASE ──────────────────────────────────────────────────────
 
   if (game.phase === "submitting") {
-    if (!me) return null  // Wait for player data to load
+    if (!me) {
+      return (
+        <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <p style={{ color: "white", fontSize: 22, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" }}>Loading…</p>
+        </div>
+      )
+    }
 
     const writingPlayers = players.filter(p => !p.opt_out_write)
 

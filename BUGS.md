@@ -4,6 +4,32 @@ Recurring bugs, their symptoms, diagnostic steps, and fixes. Check this when deb
 
 ---
 
+## Dynamic Imports Breaking During HMR
+
+**Symptom:** Supabase queries hang infinitely, loadState never completes, infinite loop of "loadState called" logs. Page stuck on "Loading..."
+
+**Diagnostic steps:**
+1. Check console for `[HMR] unexpected require(...lib/supabase.js) from disposed module`
+2. Check if there are dynamic imports: `await import("../lib/supabase")`
+3. Check if supabase is already imported at top of file
+
+**Cause:**
+- Dynamic imports (`await import("../../../lib/supabase")`) fail during Hot Module Reload
+- Causes Supabase queries to hang without throwing catchable errors
+- Results in infinite loadState loop
+
+**Fix:**
+1. Remove all dynamic imports: `const { supabase } = await import("../../../lib/supabase")`
+2. Use the static import at top of file: `import { supabase } from "../../../lib/supabase"`
+3. **Restart dev server** - HMR state is corrupted, hot reload won't fix it
+4. Use global replace: `replace_all=true` to remove all occurrences at once
+
+**Prevention:**
+- Never use dynamic imports for supabase - it's already imported at top
+- If you see HMR warnings in console, restart dev server immediately
+
+---
+
 ## Stuck on Loading Screen
 
 **Symptom:** Page shows "Loading..." indefinitely, never renders content.

@@ -454,6 +454,7 @@ export default function Play({ params }) {
   async function loadState() {
     try {
       console.log("loadState called for code:", code)
+      console.log("About to query supabase, supabase is:", typeof supabase)
       const { data: gameData, error: gameError } = await supabase
         .from("drawful_games").select("phase,drawing_started_at,current_drawing_index,is_dummy,ready_player_ids,next_game,next_game_picker_name").eq("code", code).single()
       console.log("loadState game:", { gameData, gameError })

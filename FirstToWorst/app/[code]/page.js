@@ -61,6 +61,7 @@ export default function LobbyPage({ params }) {
   const [instructions, setInstructions] = useState("")
   const [gameExists, setGameExists] = useState(null)
   const [gamePhase, setGamePhase] = useState("lobby")
+  const [isDemo, setIsDemo] = useState(false)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
   const [savedProfile, setSavedProfile] = useState(null)
@@ -88,12 +89,13 @@ export default function LobbyPage({ params }) {
   async function loadGame() {
     const { data, error } = await supabase
       .from("ftw_games")
-      .select("code,phase")
+      .select("code,phase,is_demo")
       .eq("code", code)
       .single()
     if (error || !data) { setGameExists(false); return }
     setGameExists(true)
     setGamePhase(data.phase)
+    setIsDemo(!!data.is_demo)
   }
 
   async function loadState() {
@@ -143,6 +145,23 @@ export default function LobbyPage({ params }) {
       setMyPlayerId(data.id)
     })()
   }, [gameExists, gamePhase, myPlayerId, code])
+
+  const hasDummyJoinedRef = useRef(false)
+  useEffect(() => {
+    if (!gameExists || !isDemo || gamePhase !== "lobby" || myPlayerId || hasDummyJoinedRef.current) return
+    hasDummyJoinedRef.current = true
+    ;(async () => {
+      const existing = players.filter(p => p.name.startsWith("Player "))
+      const nextNum = existing.length + 1
+      const botName = `Player ${nextNum}`
+      const { data, error } = await supabase.from("ftw_players")
+        .insert({ game_code: code, name: botName, first_name: botName, last_name: "" })
+        .select("id").single()
+      if (error || !data) return
+      localStorage.setItem(`ftw:${code}:playerId`, data.id)
+      setMyPlayerId(data.id)
+    })()
+  }, [gameExists, isDemo, gamePhase, myPlayerId, code, players])
 
   async function join() {
     const trimmed = name.trim()

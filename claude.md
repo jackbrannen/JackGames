@@ -20,22 +20,26 @@ A series of multiplayer web games built with Next.js 14 and Supabase. Players co
 
 ---
 
-## When to Consult DOCS.md
+## When to Consult Other Docs
 
-Before proceeding with implementation, check DOCS.md for:
+**DOCS.md** — implementation patterns and specs:
+- Before building a lobby page → "Lobby Page Pattern"
+- Before building an in-game page → "In-Game Page Pattern"
+- Before using any shared component → "Shared Components"
+- Before deriving colors → "Color System" for HSB formulas
+- Before implementing voting/rounds/teams/roles → "Recurring Mechanics"
+- Before checking database schema → "Supabase Schema Conventions"
+- When you need the games catalog → "Games Catalog"
 
-- **Before building a lobby page** → read "Lobby Page Pattern"
-- **Before building an in-game page** → read "In-Game Page Pattern"
-- **Before using any shared component** → read the component spec in "Shared Components"
-- **Before deriving colors for a new game** → read "Color System" for HSB formulas
-- **Before looking up a game's colors** → see StyleGuide/app/page.js lines 5-17
-- **Before implementing voting** → read "Voting" in "Recurring Mechanics"
-- **Before implementing rounds/phases** → read "Rounds" and "Advancing Between Phases" in "Recurring Mechanics"
-- **Before implementing timed turns** → read "Timed Turns" in "Recurring Mechanics"
-- **Before implementing teams** → read "Team Assignment" in "Recurring Mechanics"
-- **Before implementing hidden roles** → read "Hidden Roles" in "Recurring Mechanics"
-- **Before checking database schema** → read "Supabase Schema Conventions"
-- **When you need the games catalog** → see "Games Catalog" for subdomains, colors, player counts
+**BUGS.md** — common bugs and fixes:
+- When debugging "stuck on loading" → check diagnostic steps
+- When button stuck on "Loading..." → check loading state patterns
+- When seeing React hooks errors → check hook ordering rules
+- When Vercel build fails → check module/file issues
+- When footer covers content → check padding/height calculations
+- When profile/auto-join fails → check saveProfile rules
+
+**CODE_PATTERNS.md** — copy-paste code examples (CSS reset, player list JSX, profile management, etc.)
 
 ---
 

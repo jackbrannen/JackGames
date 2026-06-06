@@ -407,6 +407,7 @@ export default function Play({ params }) {
   const wordInputRefs = useRef([])
   const [submitError, setSubmitError] = useState("")
   const [copiedIdeaIndex, setCopiedIdeaIndex] = useState(null)
+  const [shownIdeas, setShownIdeas] = useState([])
   const hasPrefilledRef = useRef(false)
 
   // Group guessing phase

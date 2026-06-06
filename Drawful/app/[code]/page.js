@@ -147,8 +147,12 @@ export default function LobbyPage({ params }) {
     if (!game || !game.is_dummy || game.phase !== "lobby" || myPlayerId || hasDummyJoinedRef.current) return
     hasDummyJoinedRef.current = true
     ;(async () => {
-      const existing = players.filter(p => p.name.startsWith("Player "))
-      const nextNum = existing.length + 1
+      const { data: existingPlayers } = await supabase
+        .from("drawful_players")
+        .select("name")
+        .eq("game_code", code)
+        .ilike("name", "Player %")
+      const nextNum = (existingPlayers?.length ?? 0) + 1
       const botName = `Player ${nextNum}`
       const { data, error } = await supabase.from("drawful_players")
         .insert({ game_code: code, name: botName, first_name: botName, last_name: "", is_bot: false })
@@ -157,7 +161,7 @@ export default function LobbyPage({ params }) {
       localStorage.setItem(`drawful:${code}:playerId`, data.id)
       setMyPlayerId(data.id)
     })()
-  }, [game?.is_dummy, game?.phase, myPlayerId, code, players])
+  }, [game?.is_dummy, game?.phase, myPlayerId, code])
 
   async function join() {
     const trimmedUsername = username.trim()

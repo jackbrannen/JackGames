@@ -446,36 +446,41 @@ export default function Play({ params }) {
   ) : null
 
   async function rpc(fn, args = {}) {
-    const { supabase } = await import("../../../lib/supabase")
     const { error } = await supabase.rpc(fn, args)
     if (error) throw error
     // Don't call loadState() - let polling pick up phase changes naturally.
   }
 
   async function loadState() {
-    const { supabase } = await import("../../../lib/supabase")
-    const { data: gameData } = await supabase
-      .from("drawful_games").select("phase,drawing_started_at,current_drawing_index,is_dummy,ready_player_ids,next_game,next_game_picker_name").eq("code", code).single()
-    if (!gameData) { router.replace(`/${code}`); return }
-    if (gameData.phase === "lobby") { router.replace(`/${code}`); return }
-    prevPhaseRef.current = gameData.phase
+    try {
+      console.log("loadState called for code:", code)
+      const { data: gameData, error: gameError } = await supabase
+        .from("drawful_games").select("phase,drawing_started_at,current_drawing_index,is_dummy,ready_player_ids,next_game,next_game_picker_name").eq("code", code).single()
+      console.log("loadState game:", { gameData, gameError })
+      if (!gameData) { router.replace(`/${code}`); return }
+      if (gameData.phase === "lobby") { router.replace(`/${code}`); return }
+      prevPhaseRef.current = gameData.phase
 
-    const { data: playerData } = await supabase
-      .from("drawful_players").select("id,name,seat,is_bot,score,prompt,drawing_url")
-      .eq("game_code", code).order("seat", { ascending: true })
+      const { data: playerData } = await supabase
+        .from("drawful_players").select("id,name,seat,is_bot,score,prompt,drawing_url")
+        .eq("game_code", code).order("seat", { ascending: true })
+      console.log("loadState players:", { playerData })
 
-    const { data: answerData } = await supabase
-      .from("drawful_answers").select("id,drawing_player_id,author_id,text,is_real,display_order")
-      .eq("game_code", code).order("display_order", { ascending: true })
+      const { data: answerData } = await supabase
+        .from("drawful_answers").select("id,drawing_player_id,author_id,text,is_real,display_order")
+        .eq("game_code", code).order("display_order", { ascending: true })
 
-    const { data: voteData } = await supabase
-      .from("drawful_votes").select("id,drawing_player_id,voter_id,answer_id")
-      .eq("game_code", code)
+      const { data: voteData } = await supabase
+        .from("drawful_votes").select("id,drawing_player_id,voter_id,answer_id")
+        .eq("game_code", code)
 
-    setGame(gameData)
-    setPlayers(playerData ?? [])
-    setAnswers(answerData ?? [])
-    setVotes(voteData ?? [])
+      setGame(gameData)
+      setPlayers(playerData ?? [])
+      setAnswers(answerData ?? [])
+      setVotes(voteData ?? [])
+    } catch (e) {
+      console.error("loadState error:", e)
+    }
   }
 
   useEffect(() => {
@@ -488,8 +493,7 @@ export default function Play({ params }) {
   useEffect(() => {
     let cleanup
     ;(async () => {
-      const { supabase } = await import("../../../lib/supabase")
-      supabase.from("game_instructions").select("body").eq("game_key", "drawful").single()
+        supabase.from("game_instructions").select("body").eq("game_key", "drawful").single()
         .then(({ data }) => { if (data?.body) setInstructions(data.body) })
       loadState()
       let poll = setInterval(loadState, 1500)
@@ -505,8 +509,7 @@ export default function Play({ params }) {
     if (!game || game.phase === "finished") return
     let cleanup
     ;(async () => {
-      const { supabase } = await import("../../../lib/supabase")
-      const channel = supabase.channel(`drawful-play-${code}`)
+        const channel = supabase.channel(`drawful-play-${code}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "drawful_games", filter: `code=eq.${code}` }, loadState)
         .on("postgres_changes", { event: "*", schema: "public", table: "drawful_answers", filter: `game_code=eq.${code}` }, loadState)
         .on("postgres_changes", { event: "*", schema: "public", table: "drawful_votes", filter: `game_code=eq.${code}` }, loadState)
@@ -694,7 +697,6 @@ export default function Play({ params }) {
 
   async function submitDrawing(autoSubmit = false) {
     if (submittingDrawing || me?.drawing_url) return
-    const { supabase } = await import("../../../lib/supabase")
     const getExport = getExportRef.current
     if (!getExport && !autoSubmit) { alert("Canvas not ready"); return }
 
@@ -725,7 +727,6 @@ export default function Play({ params }) {
 
   async function submitAnswer() {
     if (!answerText.trim() || submittingAnswer || myAnswer || amArtist) return
-    const { supabase } = await import("../../../lib/supabase")
     setSubmittingAnswer(true)
     try {
       const trimmed = answerText.trim()
@@ -758,7 +759,6 @@ export default function Play({ params }) {
 
   async function submitVote() {
     if (!selectedAnswerId || submittingVote || myVote || amArtist) return
-    const { supabase } = await import("../../../lib/supabase")
     setSubmittingVote(true)
     try {
       const { error } = await supabase.rpc("drawful_submit_vote", {
@@ -786,6 +786,7 @@ export default function Play({ params }) {
   // ── Loading ───────────────────────────────────────────────────────────────
 
   if (!game || !me) {
+    console.log("Loading screen:", { game: !!game, me: !!me, myPlayerId, playersLength: players.length })
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>

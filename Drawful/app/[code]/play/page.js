@@ -760,14 +760,21 @@ export default function Play({ params }) {
     if (!selectedAnswerId || submittingVote || myVote || amArtist) return
     const { supabase } = await import("../../../lib/supabase")
     setSubmittingVote(true)
-    const { error } = await supabase.rpc("drawful_submit_vote", {
-      p_code: code,
-      p_drawing_player_id: currentArtist.id,
-      p_voter_id: me.id,
-      p_answer_id: selectedAnswerId,
-    })
-    if (error) { alert("Error: " + error.message); setSubmittingVote(false); return }
-    await loadState()
+    try {
+      const { error } = await supabase.rpc("drawful_submit_vote", {
+        p_code: code,
+        p_drawing_player_id: currentArtist.id,
+        p_voter_id: me.id,
+        p_answer_id: selectedAnswerId,
+      })
+      if (error) { alert("Error: " + error.message); setSubmittingVote(false); return }
+      await loadState()
+      setSubmittingVote(false)
+    } catch (e) {
+      console.error("Submit vote error:", e)
+      alert("Failed to submit vote: " + (e?.message ?? "Unknown error"))
+      setSubmittingVote(false)
+    }
   }
 
   async function markReady() {

@@ -795,10 +795,11 @@ export default function Play({ params }) {
     }
 
     async function handleSubmitWords() {
-      console.log("=== handleSubmitWords START ===")
-      console.log("wordFields:", wordFields)
-      const trimmed = wordFields.map(w => w?.trim ? w.trim() : "")
-      console.log("trimmed:", trimmed)
+      try {
+        console.log("=== handleSubmitWords START ===")
+        console.log("wordFields:", wordFields)
+        const trimmed = wordFields.map(w => w?.trim ? w.trim() : "")
+        console.log("trimmed:", trimmed)
       if (trimmed.some(w => !w)) {
         console.log("Validation failed: empty fields")
         setSubmitError(`Fill in all ${wCount} before submitting.`)
@@ -850,9 +851,13 @@ export default function Play({ params }) {
         setSubmitError(error.message ?? JSON.stringify(error))
         throw error
       }
-      console.log("RPC success, calling loadState")
-      await loadState()
-      console.log("=== handleSubmitWords END ===")
+        console.log("RPC success, calling loadState")
+        await loadState()
+        console.log("=== handleSubmitWords END ===")
+      } catch (err) {
+        console.error("=== handleSubmitWords ERROR ===", err)
+        throw err
+      }
     }
 
     // Build input sections

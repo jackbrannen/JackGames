@@ -1017,9 +1017,22 @@ export default function Play({ params }) {
 
         <div style={{ padding: "20px 24px" }}>
           {amArtist ? (
-            <p style={{ fontSize: 16, opacity: 0.75, fontWeight: 600, textAlign: "center", paddingTop: 8 }}>
-              Watch everyone vote.
-            </p>
+            <div>
+              <p style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 12 }}>
+                Waiting for votes
+              </p>
+              <WaitingList
+                players={players.filter(p => p.id !== myPlayerId).map(p => ({
+                  name: p.name,
+                  done: !!votes.find(v => v.drawing_player_id === currentArtist.id && v.voter_id === p.id)
+                }))}
+                myName={me?.name}
+                colors={{ mid: MID }}
+                onPoke={sendInlinePoke}
+                cooldownActive={pokeCooldownActive}
+                pokeJustSent={pokeJustSent}
+              />
+            </div>
           ) : (
             <>
               {!hasVoted && <p style={{ fontSize: 16, opacity: 0.75, fontWeight: 600, marginBottom: 14 }}>Pick what you think is the real answer.</p>}

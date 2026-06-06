@@ -448,11 +448,8 @@ export default function Play({ params }) {
     ;(async () => {
       try {
         const { data, error } = await supabase.rpc("get_random_ideas", { p_count: 5, p_exclude: [] })
-        console.log("get_random_ideas result:", { data, error })
         if (data && data.length >= 5) {
-          const ideas = data.slice(0, 5).map(item => item.idea)
-          console.log("Setting wordFields to:", ideas)
-          setWordFields(ideas)
+          setWordFields(data.slice(0, 5))
         }
       } catch (e) {
         console.error("Failed to prefill:", e)
@@ -722,7 +719,6 @@ export default function Play({ params }) {
 
   if (game.phase === "submitting") {
     // Wait for player data to load before rendering
-    console.log("Submitting phase check:", { myPlayerId, playersLength: players.length, me: !!me })
     if (!myPlayerId || players.length === 0 || !me) {
       return (
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -799,9 +795,7 @@ export default function Play({ params }) {
     }
 
     async function handleSubmitWords() {
-      console.log("handleSubmitWords called", { wordFields, myPlayerId })
       const trimmed = wordFields.map(w => w.trim())
-      console.log("Trimmed words:", trimmed)
       if (trimmed.some(w => !w)) { setSubmitError(`Fill in all ${wCount} before submitting.`); throw new Error("validation") }
       const lower = trimmed.map(w => w.toLowerCase())
       if (hasDuplicates) { setSubmitError("No duplicates allowed."); throw new Error("validation") }

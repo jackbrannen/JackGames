@@ -718,7 +718,8 @@ export default function Play({ params }) {
   // ── SUBMITTING PHASE ──────────────────────────────────────────────────────
 
   if (game.phase === "submitting") {
-    if (!me) {
+    // Wait for player data to load before rendering
+    if (!myPlayerId || players.length === 0 || !me) {
       return (
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <p style={{ color: "white", fontSize: 22, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase" }}>Loading…</p>

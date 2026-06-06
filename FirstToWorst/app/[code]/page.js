@@ -72,7 +72,7 @@ export default function LobbyPage({ params }) {
   const [starting, setStarting] = useState(false)
   const [confirmingStart, setConfirmingStart] = useState(false)
   const [theme, setTheme] = useState("random")
-  const [isPersonal, setIsPersonal] = useState(false)
+  const [isPersonal, setIsPersonal] = useState(true)
 
   const me = players.find(p => p.id === myPlayerId)
 
@@ -266,7 +266,7 @@ export default function LobbyPage({ params }) {
               {joinError && <p style={{ marginTop: 10, fontSize: 14, fontWeight: 700, color: GOLD }}>{joinError}</p>}
             </div>
           }
-          settingsContent={
+          settingsContent={closeModal => (
             <div>
               <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 20 }}>Theme</div>
               <div style={{ fontSize: 15, fontWeight: 600, opacity: 0.65, marginBottom: 12, lineHeight: 1.4 }}>
@@ -326,7 +326,7 @@ export default function LobbyPage({ params }) {
               </div>
 
               <button
-                onClick={saveSettings}
+                onClick={() => { saveSettings(); closeModal() }}
                 style={{
                   background: GOLD,
                   color: "#000",
@@ -339,7 +339,7 @@ export default function LobbyPage({ params }) {
                 Save
               </button>
             </div>
-          }
+          )}
           colors={{ bg: BG, dark: DARK, mid: MID, wl: WARM_LIGHT, yellow: GOLD }}
           minPlayers={MIN_PLAYERS}
           notFound={gameExists === false}

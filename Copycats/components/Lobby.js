@@ -152,14 +152,6 @@ export default function Lobby({
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: SPACE.xs, flexShrink: 0, marginTop: 4, alignItems: "stretch" }}>
-          {settingsContent && (
-            <button
-              onClick={() => setShowSettings(true)}
-              style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 20, fontWeight: FONT_WEIGHT.heavy, padding: "8px 12px", lineHeight: 1 }}
-            >
-              ⚙️
-            </button>
-          )}
           {onInvite && (
             <button
               onClick={onInvite}
@@ -179,9 +171,21 @@ export default function Lobby({
         </div>
       </div>
 
+      {/* Settings cog button - top right of content area */}
+      {settingsContent && (
+        <div style={{ padding: `${SPACE.lg}px ${SPACE.lg}px 0`, display: "flex", justifyContent: "flex-end" }}>
+          <button
+            onClick={() => setShowSettings(true)}
+            style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 24, fontWeight: FONT_WEIGHT.heavy, padding: "10px 14px", lineHeight: 1 }}
+          >
+            ⚙️
+          </button>
+        </div>
+      )}
+
       {/* Settings modal */}
       <SettingsModal isOpen={showSettings} onClose={() => setShowSettings(false)} colors={colors}>
-        {settingsContent}
+        {typeof settingsContent === 'function' ? settingsContent(() => setShowSettings(false)) : settingsContent}
       </SettingsModal>
 
       {/* Start CTA */}

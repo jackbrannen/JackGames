@@ -1079,7 +1079,13 @@ export default function Play({ params }) {
     async function handleLockIn() {
       if (!rankingItems || !myPlayerId) return
       const rankingIds = rankingItems.map(item => item.id)
-      await rpc("ftw_lock_ranking", { p_code: code, p_player_id: myPlayerId, p_ranking: rankingIds })
+      try {
+        await rpc("ftw_lock_ranking", { p_code: code, p_player_id: myPlayerId, p_ranking: rankingIds })
+      } catch (e) {
+        console.error("Lock ranking failed:", e)
+        alert("Failed to lock ranking: " + (e?.message ?? "Unknown error"))
+        throw e  // Re-throw so FooterButton resets loading state
+      }
     }
 
     const listH = listTotalH(rankingItems ?? [], vw() - 90)

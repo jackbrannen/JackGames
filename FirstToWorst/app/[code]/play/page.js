@@ -796,7 +796,9 @@ export default function Play({ params }) {
     }
 
     async function handleSubmitWords() {
+      console.log("handleSubmitWords called", { wordFields, myPlayerId })
       const trimmed = wordFields.map(w => w.trim())
+      console.log("Trimmed words:", trimmed)
       if (trimmed.some(w => !w)) { setSubmitError(`Fill in all ${wCount} before submitting.`); throw new Error("validation") }
       const lower = trimmed.map(w => w.toLowerCase())
       if (hasDuplicates) { setSubmitError("No duplicates allowed."); throw new Error("validation") }

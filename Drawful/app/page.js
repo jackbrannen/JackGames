@@ -119,21 +119,11 @@ export default function Home() {
       }
       if (!code) throw new Error("Could not generate code")
 
-      // Insert game directly with finished phase
-      const { error: gameErr } = await supabase.from("drawful_games").insert({ code, is_dummy: true, phase: "finished" })
+      // Insert game in lobby phase for dummy game
+      const { error: gameErr } = await supabase.from("drawful_games").insert({ code, is_dummy: true, phase: "lobby" })
       if (gameErr) throw gameErr
 
-      // Insert bot players
-      const bots = [
-        { name: "Raccoon", seat: 0, score: 450, is_bot: true, game_code: code },
-        { name: "Flamingo", seat: 1, score: 380, is_bot: true, game_code: code },
-        { name: "Capybara", seat: 2, score: 520, is_bot: true, game_code: code },
-        { name: "Narwhal", seat: 3, score: 410, is_bot: true, game_code: code },
-      ]
-      const { error: botErr } = await supabase.from("drawful_players").insert(bots)
-      if (botErr) throw botErr
-
-      router.push(`/${code}/play`)
+      router.push(`/${code}`)
     } catch (e) {
       setError(e?.message ?? "unknown error")
       setIsCreating(false)

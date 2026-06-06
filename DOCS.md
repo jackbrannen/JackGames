@@ -286,6 +286,3 @@ When each answer has ≤1 voter (e.g. Drawful fake-answer voting):
 - RPC assigns roles atomically at game start
 - "Evil sees evil": send evil player IDs only to players whose role grants that knowledge
 - Identity card accessed via Menu's "My Role" tile — no floating mini-card
-
-### useSubmitNudge
-Hook that tracks if player started typing/drawing, nudges to submit. File `lib/useSubmitNudge.js` must be committed to git in every game that imports it. If Vercel build fails with `Module not found`, file is untracked — run `git add lib/useSubmitNudge.js && git commit`.

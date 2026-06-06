@@ -97,6 +97,9 @@ Before proceeding with implementation, check DOCS.md for:
 - Edit canonical in `packages/shared/components/`, then copy to all 12 games
 - When a mechanic improves in one game, update all others (see tasks.md)
 
+**useSubmitNudge gotcha:**
+If copying `lib/useSubmitNudge.js` to a game, it MUST be committed to git. If Vercel build fails with `Module not found: Can't resolve '../lib/useSubmitNudge'`, the file is on disk but untracked — run `git add lib/useSubmitNudge.js && git commit`.
+
 ---
 
 ## Development

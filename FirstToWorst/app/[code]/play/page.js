@@ -690,6 +690,18 @@ export default function Play({ params }) {
     }
   }, [game?.phase, game?.round_phase, game?.guessing_index, players.length, myPlayerId])
 
+  // Auto-start dragging after intro (must be before all conditionals including !game check)
+  useEffect(() => {
+    if (!game || game.phase !== "guessing" || game.round_phase !== "intro") return
+    const subjectId = game.guessing_player_ids?.[game.guessing_index]
+    if (myPlayerId === subjectId) return
+    const timer = setTimeout(async () => {
+      await supabase.rpc("ftw_start_dragging", { p_code: code })
+      await loadState()
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, [game?.phase, game?.round_phase, game?.guessing_index, code, myPlayerId])
+
   if (!game) {
     return (
       <>
@@ -715,16 +727,6 @@ export default function Play({ params }) {
   const thingsWord = theme === "good" ? "good things" : theme === "bad" ? "bad things" : "things"
 
   const isPersonal = game.word_distribution === "personal"
-
-  // Auto-start dragging after intro (must be before all phase conditionals)
-  useEffect(() => {
-    if (game.phase !== "guessing" || game.round_phase !== "intro" || isSubject) return
-    const timer = setTimeout(async () => {
-      await supabase.rpc("ftw_start_dragging", { p_code: code })
-      await loadState()
-    }, 2000)
-    return () => clearTimeout(timer)
-  }, [game.phase, game.round_phase, code, isSubject])
 
   // ── SUBMITTING PHASE ──────────────────────────────────────────────────────
 

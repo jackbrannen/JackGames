@@ -107,7 +107,7 @@ export default function LobbyPage({ params }) {
   }, [])
 
   useEffect(() => {
-    const existing = localStorage.getItem(`firsttoworst:${code}:playerId`)
+    const existing = localStorage.getItem(`ftw:${code}:playerId`)
     if (existing) setMyPlayerId(existing)
     supabase.from("game_instructions").select("body").eq("game_key", "firsttoworst").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
@@ -139,7 +139,7 @@ export default function LobbyPage({ params }) {
         .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName.trim(), last_name: saved.lastName.trim() })
         .select("id").single()
       if (error || !data) return
-      localStorage.setItem(`firsttoworst:${code}:playerId`, data.id)
+      localStorage.setItem(`ftw:${code}:playerId`, data.id)
       setMyPlayerId(data.id)
     })()
   }, [gameExists, gamePhase, myPlayerId, code])
@@ -178,7 +178,7 @@ export default function LobbyPage({ params }) {
       .select("id").single()
     if (error) { alert("Failed to join: " + error.message); setJoining(false); return }
 
-    localStorage.setItem(`firsttoworst:${code}:playerId`, data.id)
+    localStorage.setItem(`ftw:${code}:playerId`, data.id)
     setMyPlayerId(data.id)
   }
 

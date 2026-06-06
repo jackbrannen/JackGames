@@ -716,6 +716,16 @@ export default function Play({ params }) {
 
   const isPersonal = game.word_distribution === "personal"
 
+  // Auto-start dragging after intro (must be before all phase conditionals)
+  useEffect(() => {
+    if (game.phase !== "guessing" || game.round_phase !== "intro" || isSubject) return
+    const timer = setTimeout(async () => {
+      await supabase.rpc("ftw_start_dragging", { p_code: code })
+      await loadState()
+    }, 2000)
+    return () => clearTimeout(timer)
+  }, [game.phase, game.round_phase, code, isSubject])
+
   // ── SUBMITTING PHASE ──────────────────────────────────────────────────────
 
   if (game.phase === "submitting") {
@@ -1107,16 +1117,6 @@ export default function Play({ params }) {
   }
 
   // ── GUESSING PHASE ────────────────────────────────────────────────────────
-
-  // Auto-start dragging after intro (must be outside all conditionals)
-  useEffect(() => {
-    if (game.phase !== "guessing" || game.round_phase !== "intro" || isSubject) return
-    const timer = setTimeout(async () => {
-      await supabase.rpc("ftw_start_dragging", { p_code: code })
-      await loadState()
-    }, 2000)
-    return () => clearTimeout(timer)
-  }, [game.phase, game.round_phase, code, isSubject])
 
   if (game.phase === "guessing") {
     const nonSubjectPlayers = players.filter(p => p.id !== subjectId && !p.opt_out_guess)

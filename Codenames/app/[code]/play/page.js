@@ -99,6 +99,12 @@ export default function Play({ params }) {
   const [instructions, setInstructions] = useState("")
   const loadEpochRef = useRef(0)
 
+  // Reset loading states when turn changes
+  useEffect(() => {
+    setSubmittingClue(false)
+    setSubmittingGuess(false)
+  }, [game?.turn_team, game?.turn_phase])
+
   async function rpc(fn, args = {}) {
     const { error } = await supabase.rpc(fn, args)
     if (error) throw error
@@ -151,62 +157,6 @@ export default function Play({ params }) {
   const me = players.find(p => p.id === myPlayerId)
 
   const [menuOpen, setMenuOpen] = useState(false)
-  const pokeSystemNode = me ? (
-    <>
-      <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />
-      <Menu
-        supabase={supabase}
-        colors={POKE_COLORS}
-        isOpen={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        roomCode={code}
-        currentPlayer={me.name}
-        playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, teamColor: p.team === "red" ? RED_COLOR : p.team === "blue" ? BLUE_COLOR : undefined, teamLabel: p.team === "red" ? "Red" : p.team === "blue" ? "Blue" : undefined }))}
-        gamePhase={game?.phase}
-        rules={instructions ? [["How to Play", instructions]] : null}
-        onResetToLobby={async () => { await rpc("reset_codenames_game", { p_code: code }) }}
-      />
-      <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
-        {game?.phase === "play" && game.turn_phase === "clue" && isMyTurn && isCluegiver && (
-          <FooterButton
-            onClick={submitClue}
-            disabled={!clueWord.trim() || !clueNum}
-            loading={submittingClue}
-            bg={turnColor}
-          >
-            Give Clue
-          </FooterButton>
-        )}
-        {game?.phase === "play" && game.turn_phase === "guess" && isMyTurn && !isCluegiver && (
-          <>
-            {!allGuessesUsed && (
-              <FooterButton
-                onClick={submitGuess}
-                disabled={!game.turn_selected_card_id}
-                loading={submittingGuess}
-                bg={turnColor}
-              >
-                Submit Guess
-              </FooterButton>
-            )}
-            <FooterButton
-              onClick={endTurn}
-              variant="secondary"
-            >
-              End Turn
-            </FooterButton>
-          </>
-        )}
-      </Footer>
-    </>
-  ) : null
-
-  const isCluegiver = !!me?.is_cluegiver
-  const myTeam = me?.team
-  const isMyTurn = !!myTeam && game?.turn_team === myTeam
-  const allGuessesUsed = game?.turn_phase === "guess" &&
-    game?.current_clue_number != null &&
-    (game?.guesses_used ?? 0) >= game.current_clue_number + 1
 
   const turnCluegiver = players.find(p => p.team === game?.turn_team && p.is_cluegiver)
 
@@ -277,13 +227,88 @@ export default function Play({ params }) {
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 18, fontWeight: 700 }}>Loading…</p>
       </div>
-        {pokeSystemNode}
+        {me && (
+          <>
+            <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />
+            <Menu
+              supabase={supabase}
+              colors={POKE_COLORS}
+              isOpen={menuOpen}
+              onClose={() => setMenuOpen(false)}
+              roomCode={code}
+              currentPlayer={me.name}
+              playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, teamColor: p.team === "red" ? RED_COLOR : p.team === "blue" ? BLUE_COLOR : undefined, teamLabel: p.team === "red" ? "Red" : p.team === "blue" ? "Blue" : undefined }))}
+              gamePhase={game?.phase}
+              rules={instructions ? [["How to Play", instructions]] : null}
+              onResetToLobby={async () => { await rpc("reset_codenames_game", { p_code: code }) }}
+            />
+            <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} />
+          </>
+        )}
       </>
     )
   }
 
-  const winnerColor = game.winning_team === "red" ? RED_COLOR : BLUE_COLOR
+  const isCluegiver = !!me?.is_cluegiver
+  const myTeam = me?.team
+  const isMyTurn = !!myTeam && game?.turn_team === myTeam
+  const allGuessesUsed = game?.turn_phase === "guess" &&
+    game?.current_clue_number != null &&
+    (game?.guesses_used ?? 0) >= game.current_clue_number + 1
   const turnColor = teamColor(game.turn_team)
+  const winnerColor = game.winning_team === "red" ? RED_COLOR : BLUE_COLOR
+
+  const pokeSystemNode = me ? (
+    <>
+      <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />
+      <Menu
+        supabase={supabase}
+        colors={POKE_COLORS}
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        roomCode={code}
+        currentPlayer={me.name}
+        playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, teamColor: p.team === "red" ? RED_COLOR : p.team === "blue" ? BLUE_COLOR : undefined, teamLabel: p.team === "red" ? "Red" : p.team === "blue" ? "Blue" : undefined }))}
+        gamePhase={game?.phase}
+        rules={instructions ? [["How to Play", instructions]] : null}
+        onResetToLobby={async () => { await rpc("reset_codenames_game", { p_code: code }) }}
+      />
+      <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
+        {game?.phase === "play" && game.turn_phase === "clue" && isMyTurn && isCluegiver && (
+          <FooterButton
+            onClick={submitClue}
+            disabled={!clueWord.trim() || !clueNum}
+            loading={submittingClue}
+            bg={turnColor}
+            textColor="white"
+          >
+            Give Clue
+          </FooterButton>
+        )}
+        {game?.phase === "play" && game.turn_phase === "guess" && isMyTurn && !isCluegiver && (
+          <>
+            {!allGuessesUsed && (
+              <FooterButton
+                onClick={submitGuess}
+                disabled={!game.turn_selected_card_id}
+                loading={submittingGuess}
+                bg={turnColor}
+                textColor="white"
+              >
+                Submit Guess
+              </FooterButton>
+            )}
+            <FooterButton
+              onClick={endTurn}
+              variant="secondary"
+            >
+              End Turn
+            </FooterButton>
+          </>
+        )}
+      </Footer>
+    </>
+  ) : null
 
   if (game.phase === "finished") {
     const redPlayers = players.filter(p => p.team === "red")

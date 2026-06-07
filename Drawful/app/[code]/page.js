@@ -254,7 +254,13 @@ export default function LobbyPage({ params }) {
 
       {canStart && me && (
         <Footer colors={POKE_COLORS}>
-          <FooterButton onClick={() => setConfirmingStart(true)} disabled={starting}>
+          <FooterButton
+            onClick={() => {
+              setConfirmingStart(true)
+              throw new Error("Modal opened")
+            }}
+            disabled={starting || confirmingStart}
+          >
             Start Game
           </FooterButton>
         </Footer>
@@ -262,7 +268,7 @@ export default function LobbyPage({ params }) {
 
       {confirmingStart && (
         <div
-          onClick={() => setConfirmingStart(false)}
+          onClick={() => { setConfirmingStart(false); setStarting(false) }}
           style={{
             position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -304,7 +310,7 @@ export default function LobbyPage({ params }) {
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button
-                onClick={() => setConfirmingStart(false)}
+                onClick={() => { setConfirmingStart(false); setStarting(false) }}
                 style={{ flex: 1, background: WARM_LIGHT, color: "white", fontSize: 17, fontWeight: 800, padding: "16px" }}
               >
                 Cancel

@@ -1197,7 +1197,13 @@ export default function Lobby({ params }) {
 
       {canStartGame && (
         <Footer colors={POKE_COLORS}>
-          <FooterButton onClick={() => setConfirmingStart(true)} disabled={starting}>
+          <FooterButton
+            onClick={() => {
+              setConfirmingStart(true)
+              throw new Error("Modal opened")
+            }}
+            disabled={starting || confirmingStart}
+          >
             Start Game
           </FooterButton>
         </Footer>

@@ -141,7 +141,7 @@ export default function Home() {
       error={error}
       onDummyGame={createDummyGame}
       isDummy={isCreating}
-      colors={{ bg: BG, wl: WARM_LIGHT, yellow: TAN }}
+      colors={{ bg: "#1A1008", wl: "#4A3015", yellow: TAN }}
     />
   )
 }

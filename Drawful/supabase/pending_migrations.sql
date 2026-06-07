@@ -2,6 +2,151 @@
 ALTER TABLE drawful_games
   ADD COLUMN IF NOT EXISTS ready_player_ids uuid[] DEFAULT '{}';
 
+-- drawful_submit_drawing: player submits their drawing
+--   - Updates player's drawing_url
+--   - When all drawings submitted, inserts real answers and advances to 'guessing'
+CREATE OR REPLACE FUNCTION drawful_submit_drawing(
+  p_code text,
+  p_player_id uuid,
+  p_drawing_url text
+) RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+  v_total_players int;
+  v_drawings_done int;
+  v_player RECORD;
+BEGIN
+  -- Update player's drawing
+  UPDATE drawful_players
+  SET drawing_url = p_drawing_url
+  WHERE game_code = p_code AND id = p_player_id;
+
+  -- Count total players and how many have finished drawing
+  SELECT count(*) INTO v_total_players
+  FROM drawful_players WHERE game_code = p_code;
+
+  SELECT count(*) INTO v_drawings_done
+  FROM drawful_players
+  WHERE game_code = p_code AND drawing_url IS NOT NULL;
+
+  -- If all players have submitted drawings, insert real answers and advance to guessing
+  IF v_drawings_done >= v_total_players THEN
+    -- Insert real answers for each player's prompt
+    FOR v_player IN
+      SELECT id, prompt
+      FROM drawful_players
+      WHERE game_code = p_code
+        AND prompt IS NOT NULL
+        AND trim(prompt) != ''
+    LOOP
+      INSERT INTO drawful_answers (game_code, drawing_player_id, author_id, text, is_real)
+      VALUES (p_code, v_player.id, v_player.id, v_player.prompt, true)
+      ON CONFLICT DO NOTHING;
+    END LOOP;
+
+    UPDATE drawful_games
+    SET phase = 'guessing', current_drawing_index = 0
+    WHERE code = p_code;
+  END IF;
+END;
+$$;
+
+-- drawful_start_game: start the game by assigning seats, prompts, and setting phase to drawing
+CREATE OR REPLACE FUNCTION drawful_start_game(p_code text)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+  v_player RECORD;
+  v_seat_counter int := 0;
+  v_prompt_text text;
+BEGIN
+  -- Assign seats to players (in order of creation)
+  FOR v_player IN
+    SELECT id FROM drawful_players WHERE game_code = p_code ORDER BY created_at
+  LOOP
+    UPDATE drawful_players
+    SET seat = v_seat_counter
+    WHERE id = v_player.id;
+    v_seat_counter := v_seat_counter + 1;
+  END LOOP;
+
+  -- Assign a random unused prompt to each player
+  FOR v_player IN
+    SELECT id FROM drawful_players WHERE game_code = p_code
+  LOOP
+    -- Get a random unused prompt
+    SELECT text INTO v_prompt_text
+    FROM drawful_prompts
+    WHERE used_at IS NULL
+    ORDER BY random()
+    LIMIT 1;
+
+    -- Assign it to the player and mark as used
+    IF v_prompt_text IS NOT NULL THEN
+      UPDATE drawful_players
+      SET prompt = v_prompt_text
+      WHERE id = v_player.id;
+
+      UPDATE drawful_prompts
+      SET used_at = now()
+      WHERE text = v_prompt_text AND used_at IS NULL;
+    END IF;
+  END LOOP;
+
+  -- Set phase to drawing
+  -- Real answers are inserted later by drawful_submit_drawing when all drawings are done
+  UPDATE drawful_games
+  SET phase = 'drawing', current_drawing_index = 0, drawing_started_at = now()
+  WHERE code = p_code;
+END;
+$$;
+
+-- drawful_submit_answer: player submits a fake answer for the current drawing
+--   - Validates text is not null or empty
+--   - Advances phase to 'voting' when all non-artist players have submitted
+CREATE OR REPLACE FUNCTION drawful_submit_answer(
+  p_code              text,
+  p_drawing_player_id uuid,
+  p_author_id         uuid,
+  p_text              text
+) RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+  v_total_non_artist int;
+  v_submitted        int;
+BEGIN
+  -- Validate text is not null or empty
+  IF p_text IS NULL OR trim(p_text) = '' THEN
+    RAISE EXCEPTION 'Answer text cannot be empty';
+  END IF;
+
+  -- Skip if player already submitted an answer for this drawing
+  IF EXISTS (
+    SELECT 1 FROM drawful_answers
+    WHERE game_code = p_code
+      AND drawing_player_id = p_drawing_player_id
+      AND author_id = p_author_id
+  ) THEN RETURN; END IF;
+
+  -- Insert the fake answer
+  INSERT INTO drawful_answers (game_code, drawing_player_id, author_id, text, is_real)
+  VALUES (p_code, p_drawing_player_id, p_author_id, trim(p_text), false);
+
+  -- Count how many non-artist players exist
+  SELECT count(*) INTO v_total_non_artist
+  FROM drawful_players WHERE game_code = p_code AND id != p_drawing_player_id;
+
+  -- Count how many fake answers have been submitted
+  SELECT count(*) INTO v_submitted
+  FROM drawful_answers
+  WHERE game_code = p_code
+    AND drawing_player_id = p_drawing_player_id
+    AND is_real = false;
+
+  -- If all non-artist players have submitted, advance to voting
+  IF v_submitted >= v_total_non_artist THEN
+    UPDATE drawful_games SET phase = 'voting' WHERE code = p_code;
+  END IF;
+END;
+$$;
+
 -- drawful_submit_vote: multiple players may vote for the same answer (no exclusivity)
 --   - Awards 1 pt to voter for correct guess, 1 pt to fake-answer author per fool
 --   - Advances phase to 'results' when all eligible voters have voted

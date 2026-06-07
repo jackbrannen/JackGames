@@ -115,6 +115,62 @@ For implementation code, see CODE_PATTERNS.md.
 
 ---
 
+## Testing Multi-User Games
+
+### Testing with Single Browser (Dummy Games)
+
+When testing game flow that requires multiple players, use dummy games + direct database manipulation:
+
+1. **Create a dummy game**  
+   Click "DUMMY GAME" button on home page. This sets `is_dummy: true` in the database.
+
+2. **Join as test user**  
+   Join normally in the browser (this will be your "real" player for testing UI interactions).
+
+3. **Add additional test players via database**  
+   ```javascript
+   import { createClient } from '@supabase/supabase-js';
+   const supabase = createClient(url, key);
+   
+   await supabase.from('[game]_players').insert([
+     { game_code: 'CODE', name: 'test_player_2', first_name: 'Test', last_name: 'Two' },
+     { game_code: 'CODE', name: 'test_player_3', first_name: 'Test', last_name: 'Three' }
+   ]);
+   ```
+
+4. **Advance game state manually**  
+   For testing phases that require all players to complete an action:
+   ```javascript
+   // Mark players as having submitted (adjust table/column names per game)
+   await supabase.from('[game]_players')
+     .update({ questions_submitted: true })
+     .eq('game_code', 'CODE')
+     .neq('name', 'your_test_player');
+   
+   // Or insert required data directly
+   await supabase.from('[game]_answers').insert([
+     { game_code: 'CODE', player_id: id2, round: 0, answer: 'test answer' }
+   ]);
+   
+   // Manually advance phase if needed
+   await supabase.from('[game]_games')
+     .update({ phase: 'voting', current_round: 0 })
+     .eq('code', 'CODE');
+   ```
+
+5. **Use browser to test the real flow**  
+   With dummy players in the database, test the actual UI interactions and button states for your test player.
+
+### Why Not Multiple Browser Tabs?
+
+Browser tabs share localStorage, so they all appear as the same player. Incognito tabs work but are harder to manage. Direct database manipulation is faster for testing game logic.
+
+### Dummy Game Auto-Fill
+
+Dummy games automatically pre-fill text input fields with random ideas when a phase starts (only if `game.is_dummy === true`). This speeds up testing but shouldn't auto-submit — you still click buttons to advance.
+
+---
+
 ## Shared Components
 
 Canonical sources in `packages/shared/components/`. Each game has copy at `[Game]/components/[Name].js`. To update: edit canonical, copy to all 12 games.

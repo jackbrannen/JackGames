@@ -14,6 +14,7 @@ import Results from "../../../components/Results"
 import TextEntry from "../../../components/TextEntry"
 import RandomIdeas from "../../../components/RandomIdeas"
 import StatusBar from "../../../components/StatusBar"
+import WaitingList from "../../../components/WaitingList"
 import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT } from "../../../components/styles"
 
 const BG         = "#5C2D8C"
@@ -92,36 +93,6 @@ function AnswerTextarea({ value, onChange, placeholder, disabled, onTypingChange
       bg={WARM_LIGHT}
       fontSize={18}
     />
-  )
-}
-
-function WaitingList({ players, doneIds, myPlayerId, onPoke, doneLabel = "Ready", waitLabel = "Writing…", typingPlayerIds, pokeCooldownActive, pokeJustSent }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: GAP.card }}>
-      {players.map(p => {
-        const done = doneIds.includes(p.id)
-        const isMe = p.id === myPlayerId
-        return (
-          <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, background: MID, padding: "12px 16px" }}>
-            <div style={{ width: 10, height: 10, borderRadius: "50%", background: done ? GREEN : "rgba(255,255,255,0.25)", flexShrink: 0 }} />
-            <span style={{ fontSize: 16, fontWeight: 600, flex: 1 }}>
-              {p.name}
-              
-              {!done && typingPlayerIds?.has(p.id) && <span style={{ fontSize: 14, marginLeft: 6 }}>💬</span>}
-            </span>
-            {!done && !isMe && onPoke ? (
-              pokeJustSent === p.name ? (
-                <span style={{ fontSize: 18, color: GREEN, fontWeight: 700 }}>✓</span>
-              ) : !pokeCooldownActive ? (
-                <button onClick={() => onPoke(p.name)} style={{ background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 20, padding: "0 4px", lineHeight: 1 }}>👉</button>
-              ) : null
-            ) : (
-              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", fontWeight: 600 }}>{done ? doneLabel : waitLabel}</span>
-            )}
-          </div>
-        )
-      })}
-    </div>
   )
 }
 
@@ -206,8 +177,8 @@ export default function PlayPage({ params }) {
     const [{ data: g }, { data: ps }, { data: an }, { data: vs }] = await Promise.all([
       supabase.from("cc_games").select("*").eq("code", code).single(),
       supabase.from("cc_players").select("*").eq("game_code", code).order("created_at"),
-      supabase.from("cc_answers").select("*").eq("game_code", code),
-      supabase.from("cc_votes").select("*").eq("game_code", code),
+      supabase.from("cc_answers").select("*").eq("game_code", code).order("created_at"),
+      supabase.from("cc_votes").select("*").eq("game_code", code).order("created_at"),
     ])
     if (!g) { router.push(`/${code}`); return }
     if (g.phase === "lobby") { router.replace(`/${code}`); return }
@@ -235,17 +206,19 @@ export default function PlayPage({ params }) {
   // Pre-fill question and answer fields (dummy games)
   useEffect(() => {
     if (game?.phase !== "question_writing" || !myId) return
+    if (!game?.is_dummy) return
     supabase.rpc("get_random_ideas", { p_count: 1, p_exclude: [] })
       .then(({ data }) => { if (data?.[0]) setMyQuestion(prev => prev || data[0]) })
-  }, [game?.phase, game?.current_round, myId])
+  }, [game?.phase, game?.current_round, myId, game?.is_dummy])
 
   useEffect(() => {
     if (game?.phase !== "answering" || !myId) return
+    if (!game?.is_dummy) return
     const myAnswerRow = answers.find(a => a.player_id === myId && a.round === game?.current_round)
     if (myAnswerRow) return
     supabase.rpc("get_random_ideas", { p_count: 1, p_exclude: [] })
       .then(({ data }) => { if (data?.[0]) setMyAnswer(prev => prev || data[0]) })
-  }, [game?.phase, game?.current_round, myId, answers.length])
+  }, [game?.phase, game?.current_round, myId, answers.length, game?.is_dummy])
 
   // Must be declared before early returns — Rules of Hooks
   const myAnswerRowEarly = answers.find(a => a.player_id === myId && a.round === game?.current_round)
@@ -264,6 +237,15 @@ export default function PlayPage({ params }) {
   }
 
   const me = players.find(p => p.id === myId)
+
+  // Transform players for WaitingList component
+  function makeWaitingPlayers(playerList, doneIds) {
+    return playerList.map(p => ({
+      name: p.name,
+      done: doneIds.includes(p.id),
+      typing: typingPlayerIds.has(p.id),
+    }))
+  }
 
   async function sendInlinePoke(targetName) {
     if (!me || pokeCooldownActive) return
@@ -340,7 +322,7 @@ export default function PlayPage({ params }) {
               <p style={{ fontSize: 16, color: "rgba(255,255,255,0.65)" }}>Waiting for everyone else…</p>
             </div>
             <Section label="Waiting for everyone…">
-              <WaitingList players={players} doneIds={submittedIds} myPlayerId={myId} onPoke={sendInlinePoke} typingPlayerIds={typingPlayerIds} pokeCooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
+              <WaitingList players={makeWaitingPlayers(players, submittedIds)} myName={me.name} colors={{ mid: MID }} onPoke={sendInlinePoke} cooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
             </Section>
           </div>
         </div>
@@ -383,14 +365,14 @@ export default function PlayPage({ params }) {
               bg={WARM_LIGHT}
               yellow={YELLOW}
               fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
-              playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
+              playerNames={players.filter(p => p.id !== myId).map(p => p.first_name || p.name)}
               maxDraws={3}
               onIdeaClick={idea => { setMyQuestion(idea); trackTyping() }}
             />
           </div>
 
           <Section label="Waiting for everyone…">
-            <WaitingList players={players} doneIds={submittedIds} myPlayerId={myId} onPoke={sendInlinePoke} typingPlayerIds={typingPlayerIds} pokeCooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
+            <WaitingList players={makeWaitingPlayers(players, submittedIds)} myName={me.name} colors={{ mid: MID }} onPoke={sendInlinePoke} cooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
           </Section>
         </div>
       </div>
@@ -409,28 +391,50 @@ export default function PlayPage({ params }) {
     const answeredIds = roundAnswers.map(a => a.player_id)
 
     async function submitAnswer() {
+      console.log('[COPYCATS] submitAnswer called - code version: 2024-06-07-v3')
       setAnswerError("")
       const myText = myAnswer.trim().toLowerCase()
-      const { error } = await supabase.rpc("cc_submit_answer", {
-        p_code: code,
-        p_player_id: myId,
-        p_round: current_round,
-        p_answer: myAnswer.trim(),
-      })
-      if (error) {
-        setAnswerError(error.message || "Something went wrong.")
-        throw error
+      console.log('[COPYCATS] Calling cc_submit_answer RPC...')
+
+      try {
+        // Add timeout to prevent hanging forever
+        const rpcPromise = supabase.rpc("cc_submit_answer", {
+          p_code: code,
+          p_player_id: myId,
+          p_round: current_round,
+          p_answer: myAnswer.trim(),
+        })
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('RPC timeout after 10s')), 10000)
+        )
+
+        const { error } = await Promise.race([rpcPromise, timeoutPromise])
+        console.log('[COPYCATS] RPC returned, error:', error)
+        if (error) {
+          setAnswerError(error.message || "Something went wrong.")
+          throw error
+        }
+      } catch (err) {
+        console.log('[COPYCATS] Error in RPC or timeout:', err)
+        setAnswerError(err.message || "Request timed out")
+        throw err
       }
-      const { data: freshAnswers } = await supabase
+
+      console.log('[COPYCATS] Calling loadState...')
+      await loadState()
+      console.log('[COPYCATS] loadState completed')
+
+      // Check if anyone else wrote the same answer (bonus match)
+      const { data: freshAnswers, error: fetchError } = await supabase
         .from("cc_answers").select("player_id,answer")
         .eq("game_code", code).eq("round", current_round)
+      if (fetchError) throw fetchError
       const match = freshAnswers?.find(a => a.player_id !== myId && a.answer?.trim().toLowerCase() === myText)
       if (match) {
         const matchPlayer = players.find(p => p.id === match.player_id)
         setBonusMatchName(matchPlayer?.name || "someone")
         setTimeout(() => setBonusMatchName(null), 4000)
       }
-      await loadState()
     }
 
     // Target already submitted — show incoming answers live
@@ -462,7 +466,7 @@ export default function PlayPage({ params }) {
               </Section>
             )}
             <Section label="Waiting for…">
-              <WaitingList players={players} doneIds={answeredIds} myPlayerId={myId} onPoke={sendInlinePoke} typingPlayerIds={typingPlayerIds} pokeCooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
+              <WaitingList players={makeWaitingPlayers(players, answeredIds)} myName={me.name} colors={{ mid: MID }} onPoke={sendInlinePoke} cooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
             </Section>
           </div>
         </div>
@@ -491,7 +495,7 @@ export default function PlayPage({ params }) {
             )}
             <p style={{ fontSize: 16, color: "rgba(255,255,255,0.65)" }}>Answers hidden until everyone is done.</p>
             <Section label="Status">
-              <WaitingList players={players} doneIds={answeredIds} myPlayerId={myId} onPoke={sendInlinePoke} typingPlayerIds={typingPlayerIds} pokeCooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
+              <WaitingList players={makeWaitingPlayers(players, answeredIds)} myName={me.name} colors={{ mid: MID }} onPoke={sendInlinePoke} cooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
             </Section>
           </div>
         </div>
@@ -526,7 +530,7 @@ export default function PlayPage({ params }) {
               {!!answerError && <p style={{ fontSize: 14, fontWeight: 600, color: YELLOW }}>{answerError}</p>}
             </div>
             <Section label="Waiting for everyone…">
-              <WaitingList players={players} doneIds={answeredIds} myPlayerId={myId} onPoke={sendInlinePoke} typingPlayerIds={typingPlayerIds} pokeCooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
+              <WaitingList players={makeWaitingPlayers(players, answeredIds)} myName={me.name} colors={{ mid: MID }} onPoke={sendInlinePoke} cooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
             </Section>
           </div>
         </div>
@@ -564,7 +568,7 @@ export default function PlayPage({ params }) {
             {!!answerError && <p style={{ fontSize: 14, fontWeight: 600, color: YELLOW }}>{answerError}</p>}
           </div>
           <Section label="Waiting for everyone…">
-            <WaitingList players={players} doneIds={answeredIds} myPlayerId={myId} onPoke={sendInlinePoke} typingPlayerIds={typingPlayerIds} pokeCooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
+            <WaitingList players={makeWaitingPlayers(players, answeredIds)} myName={me.name} colors={{ mid: MID }} onPoke={sendInlinePoke} cooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
           </Section>
         </div>
       </div>
@@ -620,7 +624,7 @@ export default function PlayPage({ params }) {
               </div>
             </Section>
             <Section label="Waiting for votes…">
-              <WaitingList players={players.filter(p => p.id !== myId)} doneIds={votedIds} myPlayerId={myId} onPoke={sendInlinePoke} doneLabel="Voted" waitLabel="Deciding…" pokeCooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
+              <WaitingList players={makeWaitingPlayers(players.filter(p => p.id !== myId), votedIds)} myName={me.name} colors={{ mid: MID }} onPoke={sendInlinePoke} cooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
             </Section>
           </div>
         </div>
@@ -636,6 +640,18 @@ export default function PlayPage({ params }) {
         p_voted_for_player_id: id,
       })
       if (error) { setSelectedVote(null); throw error }
+      await loadState()
+    }
+
+    async function deselectVote() {
+      setSelectedVote(null)
+      const { error } = await supabase
+        .from("cc_votes")
+        .delete()
+        .eq("game_code", code)
+        .eq("voter_id", myId)
+        .eq("round", current_round)
+      if (error) throw error
       await loadState()
     }
 
@@ -661,12 +677,12 @@ export default function PlayPage({ params }) {
             }))}
             selectedId={currentSelectedId}
             onSelect={id => submitVote(id)}
-            onDeselect={() => setSelectedVote(null)}
+            onDeselect={deselectVote}
             colors={{ bg: MID, selectedBg: YELLOW, selectedText: "#000", deselectBg: DARK, deselectText: YELLOW }}
             mineLabel="Your answer — can't vote for it"
           />
           <Section label="Waiting for votes…">
-            <WaitingList players={players.filter(p => p.id !== roundTarget?.id)} doneIds={votedIds} myPlayerId={myId} onPoke={sendInlinePoke} doneLabel="Voted" waitLabel="Deciding…" pokeCooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
+            <WaitingList players={makeWaitingPlayers(players.filter(p => p.id !== roundTarget?.id), votedIds)} myName={me.name} colors={{ mid: MID }} onPoke={sendInlinePoke} cooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
           </Section>
         </div>
       </div>
@@ -740,16 +756,32 @@ export default function PlayPage({ params }) {
           </p>
 
           {/* Real answer */}
-          {targetAnswer && (
-            <div>
-              <div style={{ ...STYLE.sectionHeader, marginBottom: 16 }}>
-                {roundTarget?.name}'s real answer
+          {targetAnswer && (() => {
+            const correctVoters = roundVotes
+              .filter(v => {
+                const votedText = answerByPlayer[v.voted_for_player_id]
+                return v.voted_for_player_id === roundTarget?.id || (votedText && targetText && votedText === targetText)
+              })
+              .map(v => players.find(p => p.id === v.voter_id)?.name)
+              .filter(Boolean)
+
+            return (
+              <div>
+                <div style={{ ...STYLE.sectionHeader, marginBottom: 16 }}>
+                  {roundTarget?.name}'s real answer
+                </div>
+                <div style={{ background: GREEN, padding: "16px 20px" }}>
+                  <p style={{ fontSize: 18, fontWeight: 700, color: "white", lineHeight: 1.4 }}>{targetAnswer.answer}</p>
+                  {correctVoters.length > 0 && (
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 8 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, flexShrink: 0 }}>Chosen by</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.85 }}>{correctVoters.join(", ")}</span>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div style={{ background: GREEN, padding: "16px 20px" }}>
-                <p style={{ fontSize: 18, fontWeight: 700, color: "white", lineHeight: 1.4 }}>{targetAnswer.answer}</p>
-              </div>
-            </div>
-          )}
+            )
+          })()}
 
           <Results
             items={(() => {

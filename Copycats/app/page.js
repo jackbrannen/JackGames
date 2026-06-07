@@ -38,7 +38,7 @@ function randomCode() {
   return `${a}${b}`
 }
 
-async function createGame() {
+async function createGame(isDummy = false) {
   const { supabase } = await import("../lib/supabase")
   for (let i = 0; i < 10; i++) {
     const code = randomCode()
@@ -50,7 +50,7 @@ async function createGame() {
     if ((count ?? 0) > 0) continue
     const { data, error } = await supabase
       .from("cc_games")
-      .insert({ code })
+      .insert({ code, is_dummy: isDummy })
       .select("code")
       .single()
     if (error) throw error
@@ -82,12 +82,12 @@ export default function Home() {
         })
     }
   }, [])
-  async function onCreate() {
+  async function onCreate(isDummy = false) {
     if (creating) return
     setCreating(true)
     setError("")
     try {
-      const code = await createGame()
+      const code = await createGame(isDummy)
       router.push(`/${code}`)
     } catch (e) {
       setError(e?.message ?? "Unknown error")
@@ -101,7 +101,7 @@ export default function Home() {
   }
 
   async function onDummy() {
-    onCreate()
+    onCreate(true)
   }
 
   return (

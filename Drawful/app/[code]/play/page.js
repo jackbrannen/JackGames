@@ -731,6 +731,10 @@ export default function Play({ params }) {
     setSubmittingAnswer(true)
     try {
       const trimmed = answerText.trim()
+      if (!trimmed) {
+        setSubmittingAnswer(false)
+        return
+      }
       const capitalized = trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
       const myText = trimmed.toLowerCase()
       const { error } = await supabase.rpc("drawful_submit_answer", {
@@ -879,7 +883,7 @@ export default function Play({ params }) {
         </div>
       </div>
         {pokeSystemNode(
-          <FooterButton onClick={() => submitDrawing(false)} disabled={submittingDrawing} bg={ACCENT} textColor="#000">
+          <FooterButton onClick={() => submitDrawing(false)} loading={submittingDrawing} bg={ACCENT} textColor="#000">
             Done Drawing
           </FooterButton>
         )}
@@ -1068,7 +1072,7 @@ export default function Play({ params }) {
       </div>
         {pokeSystemNode(
           !amArtist && !hasVoted
-            ? <FooterButton onClick={submitVote} disabled={!selectedAnswerId} bg={ACCENT} textColor="#000">
+            ? <FooterButton onClick={submitVote} loading={submittingVote} disabled={!selectedAnswerId} bg={ACCENT} textColor="#000">
                 Vote
               </FooterButton>
             : null

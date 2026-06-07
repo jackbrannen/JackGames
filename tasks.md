@@ -115,6 +115,9 @@ Each game's dummy game implementation must:
 ## Additions
 - Change timers to have visual bars
 - All score displays need to understand ties—when two people both have the same point values, they share the same rank, and are both shown the same way
+- Drawful: make the use of a current player's name in a Claude-generated drawing description much rarer
+- Drawful: correct prompts still too easy to recognize as being written by Claude. Need to add more variety or something.
+- Fix dumb game descriptions on jackgames and on game home pages
 
 
 ### Recently fixed

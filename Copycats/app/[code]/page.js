@@ -83,6 +83,12 @@ export default function LobbyPage({ params }) {
   const [instructions, setInstructions] = useState("")
   const nudgeJoin = useSubmitNudge(username, !!myPlayerId)
 
+  const me = players.find(p => p.id === myPlayerId)
+  const hasJoined = !!me
+  const canStart = players.length >= 3
+
+  const [codeA, codeB] = splitCode(code)
+
   useEffect(() => {
     supabase.from("game_instructions").select("body").eq("game_key", "copycats").single()
       .then(({ data }) => { if (data) setInstructions(data.body) })
@@ -183,12 +189,6 @@ export default function LobbyPage({ params }) {
     })
   }
 
-  const me = players.find(p => p.id === myPlayerId)
-  const hasJoined = !!me
-  const canStart = players.length >= 3
-
-  const [codeA, codeB] = splitCode(code)
-
   return (
     <>
       <div style={{ paddingBottom: BOTTOM_PAD }}>
@@ -246,9 +246,11 @@ export default function LobbyPage({ params }) {
       {hasJoined && (
         <Footer colors={POKE_COLORS}>
           <FooterButton
-            onClick={() => setConfirmingStart(true)}
-            disabled={!canStart}
-            disabled={starting}
+            onClick={() => {
+              setConfirmingStart(true)
+              throw new Error("Modal opened")
+            }}
+            disabled={!canStart || starting || confirmingStart}
           >
             Start Game
           </FooterButton>

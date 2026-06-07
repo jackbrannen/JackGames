@@ -15,6 +15,7 @@
     bg         hex — overrides the variant background color
     textColor  hex — overrides the variant text color
     disabled   bool
+    loading    bool (optional) — external loading state controlled by parent
     nudge      bool — pulse animation when player has input but hasn't submitted
     style      object — additional style overrides (fontSize, fontWeight, etc.)
     children   button label
@@ -59,20 +60,28 @@ export default function FooterButton({
   textColor,
   disabled = false,
   nudge = false,
+  loading: externalLoading,
   style,
   children,
 }) {
-  const [loading, setLoading] = useState(false)
+  const [internalLoading, setInternalLoading] = useState(false)
+  const loading = externalLoading !== undefined ? externalLoading : internalLoading
   const v = VARIANTS[variant] ?? VARIANTS.primary
   const showNudge = nudge && !loading && !disabled
 
   async function handleClick() {
     if (loading || disabled) return
-    setLoading(true)
-    try {
+    // Only manage internal loading if no external loading is provided
+    if (externalLoading === undefined) {
+      setInternalLoading(true)
+      try {
+        await onClick?.()
+      } catch {
+        setInternalLoading(false)
+      }
+    } else {
+      // External loading is managed by parent
       await onClick?.()
-    } catch {
-      setLoading(false)
     }
   }
 

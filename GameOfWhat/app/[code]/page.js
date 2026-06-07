@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../lib/supabase"
 import Lobby from "../../components/Lobby"
+import Footer, { FOOTER_H } from "../../components/Footer"
+import FooterButton from "../../components/FooterButton"
 
 const BG = "#6B1A44"
 const YELLOW = "#FBDF54"
@@ -12,6 +14,8 @@ const DARK = "#4A123B"
 const MID = "#5C1640"
 
 const LOBBY_COLORS = { dark: DARK, mid: MID, wl: WARM_LIGHT, yellow: YELLOW }
+const POKE_COLORS = { dark: DARK, mid: MID, wl: WARM_LIGHT, yellow: YELLOW, notifBg: "#3D0F2E" }
+const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
 const WORDS_A_GOW = [
   "MAPLE","RIVER","OCEAN","SUNRISE","VELVET","COPPER","SILVER","EMBER","FOREST","CLOUD",
@@ -255,24 +259,9 @@ export default function LobbyPage({ params }) {
     </>
   ) : null
 
-  const startCTA = canStart ? (
-    <div style={{ padding: "20px 24px", background: YELLOW }}>
-      <div style={{ fontSize: 13, fontWeight: 800, color: "#000", opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 10 }}>
-        All players in?
-      </div>
-      <button
-        onClick={() => setConfirmingStart(true)}
-        disabled={starting}
-        style={{ background: "#000", color: YELLOW, fontSize: 24, fontWeight: 900, padding: "20px", width: "100%", display: "block" }}
-      >
-        Start Game
-      </button>
-    </div>
-  ) : null
-
   return (
     <>
-      <div style={{ background: BG }}>
+      <div style={{ paddingBottom: BOTTOM_PAD }}>
         <Lobby
           code={code}
           gameName="The Game of What"
@@ -281,7 +270,6 @@ export default function LobbyPage({ params }) {
           onInvite={handleInvite}
           howToPlayContent={instructions ? <span style={{ whiteSpace: "pre-wrap" }}>{instructions}</span> : <span>Loading…</span>}
           codeDisplay={<><span style={{ color: YELLOW }}>{word1}</span><span style={{ color: "rgba(255,255,255,0.75)" }}>{word2}</span></>}
-          startContent={startCTA}
           joinContent={joinForm}
           colors={LOBBY_COLORS}
           minPlayers={4}
@@ -289,6 +277,20 @@ export default function LobbyPage({ params }) {
           loading={!game}
         />
       </div>
+
+      {canStart && (
+        <Footer colors={POKE_COLORS}>
+          <FooterButton
+            onClick={() => {
+              setConfirmingStart(true)
+              throw new Error("Modal opened")
+            }}
+            disabled={starting || confirmingStart}
+          >
+            Start Game
+          </FooterButton>
+        </Footer>
+      )}
 
       {confirmingStart && (
         <div

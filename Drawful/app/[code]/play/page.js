@@ -916,26 +916,20 @@ export default function Play({ params }) {
           {amArtist ? (
             // Artist view
             <div>
-              <p style={{ fontSize: 16, opacity: 0.65, fontWeight: 600, marginBottom: 16 }}>
-                Watch the fake answers come in.
+              <p style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 12 }}>
+                Waiting for fake answers
               </p>
-              <div style={{ fontSize: 32, fontWeight: 900, color: ACCENT, marginBottom: 4 }}>
-                {fakeAnswerCount}
-              </div>
-              <div style={{ fontSize: 14, opacity: 0.7, fontWeight: 600 }}>
-                {fakeAnswerCount === 1 ? "answer" : "answers"} submitted so far
-              </div>
-              {/* Placeholder dots for suspense */}
-              <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
-                {Array.from({ length: expectedAnswers }).map((_, i) => (
-                  <div key={i} style={{
-                    width: 36, height: 36, borderRadius: 8,
-                    background: i < fakeAnswerCount ? WARM_LIGHT : MID,
-                    border: "2px solid rgba(255,255,255,0.15)",
-                    transition: "background 0.3s",
-                  }} />
-                ))}
-              </div>
+              <WaitingList
+                players={players.filter(p => p.id !== myPlayerId).map(p => ({
+                  name: p.name,
+                  done: !!answers.find(a => a.drawing_player_id === currentArtist.id && a.author_id === p.id && !a.is_real)
+                }))}
+                myName={me?.name}
+                colors={{ mid: MID }}
+                onPoke={sendInlinePoke}
+                cooldownActive={pokeCooldownActive}
+                pokeJustSent={pokeJustSent}
+              />
             </div>
           ) : isWaiting ? (
             // Already answered

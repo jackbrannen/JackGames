@@ -254,7 +254,7 @@ export default function LobbyPage({ params }) {
 
       {canStart && me && (
         <Footer colors={POKE_COLORS}>
-          <FooterButton onClick={() => setConfirmingStart(true)} loading={starting}>
+          <FooterButton onClick={() => setConfirmingStart(true)} disabled={starting}>
             Start Game
           </FooterButton>
         </Footer>

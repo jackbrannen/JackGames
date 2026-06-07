@@ -114,6 +114,7 @@ Each game's dummy game implementation must:
 
 ## Additions
 - Change timers to have visual bars
+- All score displays need to understand ties—when two people both have the same point values, they share the same rank, and are both shown the same way
 
 
 ### Recently fixed

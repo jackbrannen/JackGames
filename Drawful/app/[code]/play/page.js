@@ -989,7 +989,7 @@ export default function Play({ params }) {
       </div>
         {pokeSystemNode(
           !amArtist && !isWaiting
-            ? <FooterButton onClick={submitAnswer} disabled={!answerText.trim()} nudge={nudgeAnswer} bg={ACCENT} textColor="#000">
+            ? <FooterButton onClick={submitAnswer} loading={submittingAnswer} disabled={!answerText.trim()} nudge={nudgeAnswer} bg={ACCENT} textColor="#000">
                 Submit
               </FooterButton>
             : null

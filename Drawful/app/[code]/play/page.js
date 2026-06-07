@@ -941,7 +941,20 @@ export default function Play({ params }) {
               )}
               <p style={{ fontSize: 15, opacity: 0.7, fontWeight: 600, marginBottom: 8 }}>You answered:</p>
               <p style={{ fontSize: 20, fontWeight: 800, marginBottom: 20 }}>"{myAnswer?.text}"</p>
-              <p style={{ fontSize: 14, opacity: 0.65, fontWeight: 600 }}>Waiting for everyone to answer…</p>
+              <p style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginTop: 24, marginBottom: 12 }}>
+                Waiting for answers
+              </p>
+              <WaitingList
+                players={players.filter(p => p.id !== myPlayerId && p.id !== currentArtist.id).map(p => ({
+                  name: p.name,
+                  done: !!answers.find(a => a.drawing_player_id === currentArtist.id && a.author_id === p.id && !a.is_real)
+                }))}
+                myName={me?.name}
+                colors={{ mid: MID }}
+                onPoke={sendInlinePoke}
+                cooldownActive={pokeCooldownActive}
+                pokeJustSent={pokeJustSent}
+              />
             </div>
           ) : (
             // Submit fake answer

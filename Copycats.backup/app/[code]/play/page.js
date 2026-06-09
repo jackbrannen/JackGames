@@ -386,7 +386,7 @@ export default function PlayPage({ params }) {
         </div>
       </div>
         {pokeSystemNode(
-          <FooterButton key="submit-question" onClick={submitQuestion} disabled={!myQuestion.trim()}>
+          <FooterButton onClick={submitQuestion} disabled={!myQuestion.trim()}>
             Submit Question
           </FooterButton>
         )}

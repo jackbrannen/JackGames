@@ -118,6 +118,7 @@ Each game's dummy game implementation must:
 - Drawful: make the use of a current player's name in a Claude-generated drawing description much rarer
 - Drawful: correct prompts still too easy to recognize as being written by Claude. Need to add more variety or something.
 - Fix dumb game descriptions on jackgames and on game home pages
+- Need to get duplicate detection working for Copycats
 
 
 ### Recently fixed

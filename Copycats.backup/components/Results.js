@@ -5,6 +5,9 @@
   Shows answer groups with vote counts, authors, and optional bonus/correct
   labels. Below the answers: overall game scores sorted descending.
 
+  Answer cards: single card (mid-dark bg) with badge + content inside, gap: 12 between cards.
+  Scores: two-column split design (left block + right block), gap: 3 between rows.
+
   Props:
     question     { text, authorName }  — displayed above answers (omit to hide)
     items        { id, text, authorNames[], voteCount, voterNames[]?, isBonus?, isCorrect? }[]
@@ -68,7 +71,7 @@ export default function Results({
       )}
 
       {/* Answer groups */}
-      <div style={{ display: "flex", flexDirection: "column", gap, marginBottom: 28 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 28 }}>
         {items.map(item => {
           const pts = item.voteCount ?? 0
           return (
@@ -83,11 +86,11 @@ export default function Results({
                   {pts > 0 ? `+${pts}` : "0"}
                 </div>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3, color: "white" }}>{item.text}</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>{item.text}</div>
                   {(item.authorNames ?? []).length > 0 && (
                     <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 5 }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "white", opacity: 0.4, flexShrink: 0 }}>Written by</span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "white" }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>Written by</span>
+                      <span style={{ fontSize: 13, fontWeight: 700 }}>
                         {(item.authorNames ?? []).join(" & ")}
                         {item.isBonus && (
                           <span style={{ marginLeft: 6, background: yellow, color: "#000", fontSize: 11, fontWeight: 900, padding: "1px 5px", verticalAlign: "middle" }}>
@@ -104,8 +107,8 @@ export default function Results({
                   )}
                   {(item.voterNames ?? []).length > 0 && (
                     <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 3 }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "white", opacity: 0.4, flexShrink: 0 }}>Chosen by</span>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "white", opacity: 0.6 }}>{item.voterNames.join(", ")}</span>
+                      <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>Chosen by</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.6 }}>{item.voterNames.join(", ")}</span>
                     </div>
                   )}
                 </div>

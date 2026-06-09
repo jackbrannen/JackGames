@@ -36,7 +36,7 @@
     onTypingChange(false) fires 2s after the last keystroke
     The game page owns writing this to the DB, e.g.:
       async function setTyping(isTyping) {
-        await supabase.from("cc_players").update({ is_typing: isTyping }).eq("id", myPlayerId)
+        await supabase.from("gow_players").update({ is_typing: isTyping }).eq("id", myPlayerId)
       }
 */
 

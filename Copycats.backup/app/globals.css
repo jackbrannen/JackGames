@@ -13,6 +13,7 @@ body {
   font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   background: #000;
+  color: white;
 }
 
 button {

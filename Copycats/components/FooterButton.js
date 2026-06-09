@@ -67,13 +67,13 @@ export default function FooterButton({
   const v = VARIANTS[variant] ?? VARIANTS.primary
   const showNudge = nudge && !loading && !disabled
 
-  // Safety timeout: if loading for more than 5s, auto-reset
+  // Safety timeout: if loading for more than 3s, auto-reset
   useEffect(() => {
     if (loading) {
       loadingTimeoutRef.current = setTimeout(() => {
-        console.warn('[FooterButton] Auto-resetting loading state after 5s timeout')
+        console.warn('[FooterButton] Auto-resetting loading state after 3s timeout')
         setLoading(false)
-      }, 5000)
+      }, 3000)
     }
     return () => {
       if (loadingTimeoutRef.current) {

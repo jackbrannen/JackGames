@@ -152,7 +152,7 @@ export default function Results({
                   {s.score}
                 </div>
                 <div style={{ background: card, padding: "10px 16px", flex: 1, display: "flex", alignItems: "center" }}>
-                  <span style={{ fontSize: 17, fontWeight: 700 }}>{s.name}</span>
+                  <span style={{ fontSize: 17, fontWeight: 700, color: "white" }}>{s.name}</span>
                 </div>
               </div>
             ))}

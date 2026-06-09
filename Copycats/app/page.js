@@ -40,7 +40,7 @@ async function createGame(isDummy = false) {
       .select("code", { count: "exact", head: true })
       .eq("code", code)
       .neq("phase", "finished")
-    if (checkError) throw checkError
+    if (checkError) throw new Error(checkError.message || "Failed to check game code")
     if ((count ?? 0) > 0) continue
 
     const { data, error: insertError } = await supabase
@@ -48,7 +48,7 @@ async function createGame(isDummy = false) {
       .insert({ code, is_dummy: isDummy })
       .select("code")
       .single()
-    if (insertError) throw insertError
+    if (insertError) throw new Error(insertError.message || "Failed to create game")
     return String(data.code).toUpperCase()
   }
   throw new Error("unable_to_allocate_game_code")

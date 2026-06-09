@@ -48,7 +48,7 @@ export default function EndGame({
 
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: "40px 24px", paddingBottom: bottomPad }}>
-      <div style={{ fontSize: "clamp(56px, 16vw, 88px)", fontWeight: 900, lineHeight: 0.9, marginBottom: 32 }}>
+      <div style={{ fontSize: "clamp(56px, 16vw, 88px)", fontWeight: 900, lineHeight: 0.9, marginBottom: 32, color: "white" }}>
         Game<br />Over
       </div>
 
@@ -77,9 +77,9 @@ export default function EndGame({
                 background: isWinner ? "rgba(251, 223, 84, 0.15)" : "rgba(255,255,255,0.08)",
                 display: "flex", alignItems: "center", justifyContent: "space-between",
               }}>
-                <div style={{ fontSize: 17, fontWeight: 700 }}>
+                <div style={{ fontSize: 17, fontWeight: 700, color: "white" }}>
                   {p.name}
-                  {myPlayerId === p.id && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
+                  {myPlayerId === p.id && <span style={{ fontSize: 12, color: "white", opacity: 0.65, marginLeft: 6 }}>you</span>}
                 </div>
                 {isWinner && (
                   <span style={{ fontSize: 11, fontWeight: 800, color: yellow, textTransform: "uppercase", letterSpacing: "0.1em" }}>

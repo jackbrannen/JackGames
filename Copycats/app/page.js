@@ -40,7 +40,7 @@ async function createGame(isDummy = false) {
       .select("code", { count: "exact", head: true })
       .eq("code", code)
       .neq("phase", "finished")
-    if (checkError) throw new Error(checkError.message || "Failed to check game code")
+    if (checkError) return { error: checkError.message || "Failed to check game code" }
     if ((count ?? 0) > 0) continue
 
     const { data, error: insertError } = await supabase
@@ -48,10 +48,10 @@ async function createGame(isDummy = false) {
       .insert({ code, is_dummy: isDummy })
       .select("code")
       .single()
-    if (insertError) throw new Error(insertError.message || "Failed to create game")
-    return String(data.code).toUpperCase()
+    if (insertError) return { error: insertError.message || "Failed to create game" }
+    return { code: String(data.code).toUpperCase() }
   }
-  throw new Error("unable_to_allocate_game_code")
+  return { error: "unable_to_allocate_game_code" }
 }
 
 export default function Home() {
@@ -65,12 +65,13 @@ export default function Home() {
     if (isCreating) return
     setError("")
     setIsCreating(true)
-    try {
-      const code = await createGame(isDummy)
-      router.push(`/${code}`)
-    } catch (e) {
-      setError(e?.message ?? "unknown error")
+    const result = await createGame(isDummy)
+    if (result.error) {
+      console.error('[Copycats] Create game error:', result.error)
+      setError(result.error)
       setIsCreating(false)
+    } else {
+      router.push(`/${result.code}`)
     }
   }
 

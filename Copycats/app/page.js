@@ -4,7 +4,6 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useSubmitNudge } from "../lib/useSubmitNudge"
 import HomeScreen from "../components/HomeScreen"
-import { supabase } from "../lib/supabase"
 
 const WORDS_A = [
   "MAPLE","RIVER","OCEAN","SUNRISE","VELVET","COPPER","SILVER","EMBER","FOREST","CLOUD",
@@ -33,6 +32,7 @@ function randomCode() {
 }
 
 async function createGame(isDummy = false) {
+  const { supabase } = await import("../lib/supabase")
   for (let attempt = 1; attempt <= 10; attempt++) {
     const code = randomCode()
     const { count, error: checkError } = await supabase
@@ -40,18 +40,19 @@ async function createGame(isDummy = false) {
       .select("code", { count: "exact", head: true })
       .eq("code", code)
       .neq("phase", "finished")
-    if (checkError) return { error: checkError.message || "Failed to check game code" }
+    if (checkError) return null
     if ((count ?? 0) > 0) continue
 
     const { data, error: insertError } = await supabase
       .from("cc_games")
-      .insert({ code, is_dummy: isDummy })
+      .insert({ code })
       .select("code")
       .single()
-    if (insertError) return { error: insertError.message || "Failed to create game" }
-    return { code: String(data.code).toUpperCase() }
+    if (insertError) return null
+    if (!data?.code) return null
+    return String(data.code).toUpperCase()
   }
-  return { error: "unable_to_allocate_game_code" }
+  return null
 }
 
 export default function Home() {
@@ -65,14 +66,11 @@ export default function Home() {
     if (isCreating) return
     setError("")
     setIsCreating(true)
-    const result = await createGame(isDummy)
-    if (result?.error) {
-      setError(String(result.error))
-      setIsCreating(false)
-    } else if (result?.code) {
-      router.push(`/${result.code}`)
+    const code = await createGame(isDummy)
+    if (code) {
+      router.push(`/${code}`)
     } else {
-      setError("Unexpected error")
+      setError("Failed to create game")
       setIsCreating(false)
     }
   }

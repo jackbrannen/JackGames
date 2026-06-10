@@ -66,12 +66,14 @@ export default function Home() {
     setError("")
     setIsCreating(true)
     const result = await createGame(isDummy)
-    if (result.error) {
-      console.error('[Copycats] Create game error:', result.error)
-      setError(result.error)
+    if (result?.error) {
+      setError(String(result.error))
       setIsCreating(false)
-    } else {
+    } else if (result?.code) {
       router.push(`/${result.code}`)
+    } else {
+      setError("Unexpected error")
+      setIsCreating(false)
     }
   }
 

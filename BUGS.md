@@ -415,3 +415,80 @@ if (!trimmed) {
 }
 // Then call RPC with trimmed value
 ```
+
+---
+
+## Circular Reference Error on Game Creation
+
+**Symptom:** "TypeError: JSON.stringify cannot serialize cyclic structures" or "TypeError: Converting circular structure to JSON --> starting at object with constructor 'HTMLButtonElement' | property '__reactFiber$...' -> object with constructor 'FiberNode'"
+
+**Diagnostic steps:**
+1. Check if error appears when clicking Create Game button
+2. Check if code throws Supabase error objects
+3. Check for console.error() calls in event handlers
+4. Look for pattern: error related to HTMLButtonElement and React Fiber
+
+**Cause:**
+When Supabase errors are thrown from within React event handlers (like onClick), Next.js dev overlay tries to serialize the entire execution context including React Fiber references from the button element. These create circular references that can't be stringified.
+
+**Fix:**
+Option 1 - Return error strings instead of throwing:
+```javascript
+// WRONG - throws error object with circular refs
+async function createGame() {
+  const { error } = await supabase.from("games").insert(...)
+  if (error) throw error  // ← circular reference
+}
+
+// CORRECT - return null on error
+async function createGame() {
+  const { error } = await supabase.from("games").insert(...)
+  if (error) return null
+  return code
+}
+```
+
+Option 2 - Don't call console.error in event handlers:
+```javascript
+// WRONG - Next.js serializes context when logging
+async function onClick() {
+  try {
+    await createGame()
+  } catch (e) {
+    console.error('[Game] Error:', e)  // ← triggers serialization
+  }
+}
+
+// CORRECT - just set error state
+async function onClick() {
+  const code = await createGame()
+  if (!code) {
+    setError("Failed to create game")
+  }
+}
+```
+
+**Additional Fix - Use Dynamic Import:**
+If database inserts are failing silently, try dynamic import of Supabase client:
+```javascript
+// WRONG - static import may not work in all contexts
+import { supabase } from "../lib/supabase"
+
+// CORRECT - dynamic import (like GameOfWhat pattern)
+async function createGame() {
+  const { supabase } = await import("../lib/supabase")
+  // ... rest of function
+}
+```
+
+**Example from Copycats:**
+- Static import caused database inserts to fail silently
+- Throwing errors caused circular reference serialization
+- Solution: dynamic import + return null pattern
+- See commit 86c46d5
+
+**Prevention:**
+- Never throw raw Supabase error objects from event handlers
+- Extract error.message before throwing, or return error strings
+- Avoid console.error() in React event handlers in dev mode
+- Use dynamic import for Supabase if static import causes issues

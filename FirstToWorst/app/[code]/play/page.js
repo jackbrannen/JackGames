@@ -390,6 +390,7 @@ export default function Play({ params }) {
   const wordInputRefs = useRef([])
   const [submitError, setSubmitError] = useState("")
   const [copiedIdeaIndex, setCopiedIdeaIndex] = useState(null)
+  const [takenWordIndex, setTakenWordIndex] = useState(null)
   const [shownIdeas, setShownIdeas] = useState([])
   const hasPrefilledRef = useRef(false)
 
@@ -785,12 +786,14 @@ export default function Play({ params }) {
       }
 
       // Disallow words already submitted by other players
-      const takenWord = trimmed.find(w => allWords.some(aw => aw.text.trim().toLowerCase() === w.toLowerCase()))
-      if (takenWord) {
-        console.log("Validation failed: taken word", takenWord)
-        setSubmitError(`"${takenWord}" was already submitted. Try something else.`)
+      const takenIdx = trimmed.findIndex(w => allWords.some(aw => aw.text.trim().toLowerCase() === w.toLowerCase()))
+      if (takenIdx !== -1) {
+        console.log("Validation failed: taken word at index", takenIdx)
+        setTakenWordIndex(takenIdx)
+        setSubmitError("")
         throw new Error("validation")
       }
+      setTakenWordIndex(null)
 
       // Disallow exact matches to any shown idea — error shown inline under that field
       const shownLower = shownIdeas.map(s => s.toLowerCase())
@@ -843,7 +846,9 @@ export default function Play({ params }) {
             {Array.from({ length: g.count }, (_, k) => {
               const idx = g.startField + k
               const isCopied = copiedIdeaIndex === idx
+              const isTaken = takenWordIndex === idx
               const isDupe = dupeIndices.has(idx)
+              const hasError = isCopied || isTaken
               return (
                 <div key={idx}>
                   <TextEntry
@@ -853,6 +858,7 @@ export default function Play({ params }) {
                       next[idx] = v
                       setWordFields(next)
                       if (copiedIdeaIndex === idx) setCopiedIdeaIndex(null)
+                      if (takenWordIndex === idx) setTakenWordIndex(null)
                     }}
                     onTypingChange={onTypingChange}
                     inputRef={el => { wordInputRefs.current[idx] = el }}
@@ -862,13 +868,18 @@ export default function Play({ params }) {
                     multiline={false}
                     placeholder={`${thingWord.charAt(0).toUpperCase() + thingWord.slice(1)} ${k + 1}`}
                     maxLength={60}
-                    bg={isCopied ? "rgba(240,79,82,0.18)" : isDupe ? "#5C1010" : WARM_LIGHT}
+                    bg={hasError ? "rgba(240,79,82,0.18)" : isDupe ? "#5C1010" : WARM_LIGHT}
                     fontSize={18}
-                    style={{ fontWeight: 600, marginBottom: isCopied ? 4 : 6 }}
+                    style={{ fontWeight: 600, marginBottom: hasError ? 4 : 6 }}
                   />
                   {isCopied && (
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#F04F52", marginBottom: 6 }}>
                       Come up with something original!
+                    </div>
+                  )}
+                  {isTaken && (
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#F04F52", marginBottom: 6 }}>
+                      "{wordFields[idx]}" was already submitted. Try something else.
                     </div>
                   )}
                 </div>
@@ -881,7 +892,9 @@ export default function Play({ params }) {
       // Default: 5 generic inputs
       return wordFields.map((val, i) => {
         const isCopied = copiedIdeaIndex === i
+        const isTaken = takenWordIndex === i
         const isDupe = dupeIndices.has(i)
+        const hasError = isCopied || isTaken
         return (
           <div key={i}>
             <TextEntry
@@ -891,6 +904,7 @@ export default function Play({ params }) {
                 next[i] = v
                 setWordFields(next)
                 if (copiedIdeaIndex === i) setCopiedIdeaIndex(null)
+                if (takenWordIndex === i) setTakenWordIndex(null)
               }}
               onTypingChange={onTypingChange}
               inputRef={el => { wordInputRefs.current[i] = el }}
@@ -900,13 +914,18 @@ export default function Play({ params }) {
               multiline={false}
               placeholder={`${thingWord.charAt(0).toUpperCase() + thingWord.slice(1)} ${i + 1}`}
               maxLength={60}
-              bg={isCopied ? "rgba(240,79,82,0.18)" : isDupe ? "#5C1010" : WARM_LIGHT}
+              bg={hasError ? "rgba(240,79,82,0.18)" : isDupe ? "#5C1010" : WARM_LIGHT}
               fontSize={18}
-              style={{ fontWeight: 600, marginBottom: isCopied ? 4 : 8 }}
+              style={{ fontWeight: 600, marginBottom: hasError ? 4 : 8 }}
             />
             {isCopied && (
               <div style={{ fontSize: 13, fontWeight: 700, color: "#F04F52", marginBottom: 8 }}>
                 Come up with something original!
+              </div>
+            )}
+            {isTaken && (
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#F04F52", marginBottom: 8 }}>
+                "{val}" was already submitted. Try something else.
               </div>
             )}
           </div>

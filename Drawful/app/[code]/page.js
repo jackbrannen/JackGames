@@ -260,6 +260,7 @@ export default function LobbyPage({ params }) {
               throw new Error("Modal opened")
             }}
             disabled={starting || confirmingStart}
+            bg={ACCENT}
           >
             Start Game
           </FooterButton>

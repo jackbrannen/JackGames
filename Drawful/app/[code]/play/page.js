@@ -921,7 +921,7 @@ export default function Play({ params }) {
           />
         )}
 
-        <div style={{ padding: "20px 24px 40px" }}>
+        <div style={{ padding: "20px 24px", paddingBottom: BOTTOM_PAD }}>
           {amArtist ? (
             // Artist view
             <div>

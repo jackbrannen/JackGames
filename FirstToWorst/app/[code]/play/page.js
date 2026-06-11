@@ -1364,7 +1364,7 @@ export default function Play({ params }) {
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <button onClick={async () => { await supabase.rpc("ftw_reset_to_lobby", { p_code: code }); await loadState() }}
+            <button onClick={async () => { await supabase.rpc("ftw_new_game", { p_code: code }); await loadState() }}
               style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
               Play Again
             </button>

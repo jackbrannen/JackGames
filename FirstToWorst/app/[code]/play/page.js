@@ -948,7 +948,7 @@ export default function Play({ params }) {
               yellow={YELLOW}
               fetchIdeas={fetchRandomIdeas}
               playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
-              maxDraws={Math.ceil(wCount * 2 / 3)}
+              maxDraws={3}
               onIdeaClick={idea => {
                 const firstEmpty = wordFields.findIndex(w => !w.trim())
                 if (firstEmpty !== -1) {

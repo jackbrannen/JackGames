@@ -76,28 +76,29 @@ export default function WaitingList({
                 background: p.done ? "#22C55E" : "rgba(255,255,255,0.25)",
               }} />
               <div style={{ flex: 1 }}>
-                <span style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold, color: "white", opacity: p.done ? OPACITY.full : 0.75 }}>
+                <span style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold, opacity: p.done ? OPACITY.full : 0.75 }}>
                   {p.name}
                 </span>
                 {p.away && !p.done && (
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "white", opacity: 0.5, fontStyle: "italic", marginTop: 2 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, opacity: 0.5, fontStyle: "italic", marginTop: 2 }}>
                     stepped away
                   </div>
                 )}
               </div>
               {p.typing && !p.done && (
-                <span style={{ fontSize: FONT_SIZE.small, opacity: 0.8 }}>💬</span>
+                <span style={{ fontSize: FONT_SIZE.small }}>💬</span>
               )}
               {!p.done && !isMe && onPoke && pokeReady && (
                 <button
                   onClick={() => !cooldownActive && onPoke(p.name)}
                   style={{
                     background: "transparent",
-                    color: justSent ? "#22C55E" : "rgba(255,255,255,0.55)",
+                    color: justSent ? "#22C55E" : "inherit",
                     fontSize: 20,
                     padding: "0 4px",
                     lineHeight: 1,
                     opacity: cooldownActive && !justSent ? 0.35 : 1,
+                    filter: !justSent && !cooldownActive ? "grayscale(0)" : undefined,
                   }}
                 >
                   {justSent ? "✓" : "👉"}
@@ -108,7 +109,7 @@ export default function WaitingList({
         })}
       </div>
       {showCount && (
-        <div style={{ fontSize: FONT_SIZE.min, color: "white", opacity: OPACITY.muted, fontWeight: FONT_WEIGHT.semibold, marginTop: 10 }}>
+        <div style={{ fontSize: FONT_SIZE.min, opacity: OPACITY.muted, fontWeight: FONT_WEIGHT.semibold, marginTop: 10 }}>
           {doneCount} / {players.length} done
         </div>
       )}

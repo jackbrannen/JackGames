@@ -86,18 +86,19 @@ export default function WaitingList({
                 )}
               </div>
               {p.typing && !p.done && (
-                <span style={{ fontSize: FONT_SIZE.small, opacity: 0.8 }}>💬</span>
+                <span style={{ fontSize: FONT_SIZE.small }}>💬</span>
               )}
               {!p.done && !isMe && onPoke && pokeReady && (
                 <button
                   onClick={() => !cooldownActive && onPoke(p.name)}
                   style={{
                     background: "transparent",
-                    color: justSent ? "#22C55E" : "rgba(255,255,255,0.55)",
+                    color: justSent ? "#22C55E" : "inherit",
                     fontSize: 20,
                     padding: "0 4px",
                     lineHeight: 1,
                     opacity: cooldownActive && !justSent ? 0.35 : 1,
+                    filter: !justSent && !cooldownActive ? "grayscale(0)" : undefined,
                   }}
                 >
                   {justSent ? "✓" : "👉"}

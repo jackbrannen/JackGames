@@ -131,6 +131,7 @@ export default function LobbyPage({ params }) {
   const hasAutoJoinedRef = useRef(false)
   useEffect(() => {
     if (!gameExists || gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    if (!isDemo) return  // Only auto-join for dummy games
     const saved = loadProfile()
     if (!saved?.username) return
     hasAutoJoinedRef.current = true
@@ -144,7 +145,7 @@ export default function LobbyPage({ params }) {
       localStorage.setItem(`ftw:${code}:playerId`, data.id)
       setMyPlayerId(data.id)
     })()
-  }, [gameExists, gamePhase, myPlayerId, code])
+  }, [gameExists, gamePhase, myPlayerId, code, isDemo])
 
   // Dummy games use normal auto-join (no special Player N logic)
 

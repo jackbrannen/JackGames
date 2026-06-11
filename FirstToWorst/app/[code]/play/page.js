@@ -255,10 +255,10 @@ function ButtonList({ items, onMove, disabled, highlightMove }) {
 
 // ── RevealList ───────────────────────────────────────────────────────────────
 
-const REVEAL_AUTHOR_H = 36  // space reserved for "by {name}" line + gap
+const REVEAL_AUTHOR_H = 28  // space reserved for "by {name}" line + gap
 function revealCardH(len, availPx) {
   // Minimum height must accommodate both the word and the author line
-  return Math.max(wordCardH(len, availPx) + REVEAL_AUTHOR_H, 60)
+  return Math.max(wordCardH(len, availPx) + REVEAL_AUTHOR_H, 48)
 }
 
 function RevealList({ items, transitionMs = 80 }) {

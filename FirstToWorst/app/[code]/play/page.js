@@ -1300,7 +1300,7 @@ export default function Play({ params }) {
         <>
         <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
           <StatusBar dark={DARK} label={roundLabel} right={scoreRight} />
-          <div style={{ flex: 1, overflowY: "auto", padding: "24px 24px" }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: "24px 24px 12px" }}>
 
             <div style={{ fontSize: "clamp(26px, 8vw, 40px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 20 }}>
               {showGroupView ? "Group's Guess" : `${subjectPlayer?.name}'s Ranking`}
@@ -1314,7 +1314,7 @@ export default function Play({ params }) {
           </div>
 
           {/* Hold to peek */}
-          <div style={{ flexShrink: 0, padding: "12px 24px", paddingBottom: `calc(${FOOTER_H}px + max(12px, env(safe-area-inset-bottom)))`, background: BG, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ flexShrink: 0, padding: "8px 24px", paddingBottom: `calc(${FOOTER_H}px + max(12px, env(safe-area-inset-bottom)))`, background: BG, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
             <button
               onPointerDown={() => setShowGroupView(true)}
               onPointerUp={() => setShowGroupView(false)}

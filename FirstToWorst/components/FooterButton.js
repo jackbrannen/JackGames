@@ -42,7 +42,7 @@
       <FooterButton nudge={nudge} ...>Submit</FooterButton>
 */
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 
 const VARIANTS = {
   primary:   { bg: "#FBDF54", color: "#000",   fontWeight: 900 },
@@ -63,8 +63,25 @@ export default function FooterButton({
   children,
 }) {
   const [loading, setLoading] = useState(false)
+  const loadingTimeoutRef = useRef(null)
   const v = VARIANTS[variant] ?? VARIANTS.primary
   const showNudge = nudge && !loading && !disabled
+
+  // Safety timeout: if loading for more than 3s, auto-reset
+  useEffect(() => {
+    if (loading) {
+      loadingTimeoutRef.current = setTimeout(() => {
+        console.warn('[FooterButton] Auto-resetting loading state after 3s timeout')
+        setLoading(false)
+      }, 3000)
+    }
+    return () => {
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current)
+        loadingTimeoutRef.current = null
+      }
+    }
+  }, [loading])
 
   async function handleClick() {
     if (loading || disabled) return

@@ -578,6 +578,7 @@ export default function Play({ params }) {
   // Pre-fill word fields from random ideas (dummy games — player hasn't typed anything yet)
   useEffect(() => {
     if (game?.phase !== "submitting" || !myPlayerId || me?.words_submitted) return
+    if (!game?.is_demo) return  // Only pre-fill in dummy games
     if (wordFields.some(w => w.trim())) return
     const wCount = wordFields.length
     const FALLBACK = ["pizza","traffic","naps","coffee","deadlines","rain","meetings","weekends","sushi","dogs"]

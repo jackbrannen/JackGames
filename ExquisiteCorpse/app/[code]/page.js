@@ -61,6 +61,7 @@ export default function LobbyPage({ params }) {
   const [instructions, setInstructions] = useState("")
   const [gameExists, setGameExists] = useState(null)
   const [gamePhase, setGamePhase] = useState("lobby")
+  const [isDemo, setIsDemo] = useState(false)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
   const [savedProfile, setSavedProfile] = useState(null)
@@ -76,7 +77,7 @@ export default function LobbyPage({ params }) {
 
   async function refreshPlayers() {
     const { data } = await supabase
-      .from("exquisitecorpse_players")
+      .from("ec_players")
       .select("id,name,created_at")
       .eq("game_code", code)
       .order("created_at", { ascending: true })
@@ -85,13 +86,14 @@ export default function LobbyPage({ params }) {
 
   async function loadGame() {
     const { data, error } = await supabase
-      .from("exquisitecorpse_games")
-      .select("code,phase")
+      .from("ec_games")
+      .select("code,phase,is_dummy")
       .eq("code", code)
       .single()
     if (error || !data) { setGameExists(false); return }
     setGameExists(true)
     setGamePhase(data.phase)
+    setIsDemo(data.is_dummy || false)
   }
 
   async function loadState() {
@@ -114,8 +116,8 @@ export default function LobbyPage({ params }) {
     function handleVisibility() { clearInterval(poll); if (!document.hidden) { loadState(); poll = setInterval(loadState, 1500) } }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`exquisitecorpse-lobby-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "exquisitecorpse_players", filter: `game_code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "exquisitecorpse_games", filter: `code=eq.${code}` }, loadState)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ec_players", filter: `game_code=eq.${code}` }, loadState)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ec_games", filter: `code=eq.${code}` }, loadState)
       .subscribe()
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
@@ -126,21 +128,22 @@ export default function LobbyPage({ params }) {
 
   const hasAutoJoinedRef = useRef(false)
   useEffect(() => {
-    if (gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    if (gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current || !gameExists) return
+    if (isDemo) return
     const saved = loadProfile()
     if (!saved?.username) return
     hasAutoJoinedRef.current = true
     ;(async () => {
-      const { data: taken } = await supabase.from("exquisitecorpse_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
+      const { data: taken } = await supabase.from("ec_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
       if (taken?.length > 0) return
-      const { data, error } = await supabase.from("exquisitecorpse_players")
+      const { data, error } = await supabase.from("ec_players")
         .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName.trim(), last_name: saved.lastName.trim() })
         .select("id").single()
       if (error || !data) return
       localStorage.setItem(`exquisitecorpse:${code}:playerId`, data.id)
       setMyPlayerId(data.id)
     })()
-  }, [gamePhase, myPlayerId, code])
+  }, [gameExists, isDemo, gamePhase, myPlayerId, code])
 
   async function join() {
     const trimmed = name.trim()
@@ -153,7 +156,7 @@ export default function LobbyPage({ params }) {
     setJoinError("")
 
     const { data: existing } = await supabase
-      .from("exquisitecorpse_players").select("id").eq("game_code", code).ilike("name", trimmed).limit(1)
+      .from("ec_players").select("id").eq("game_code", code).ilike("name", trimmed).limit(1)
     if (existing?.length > 0) {
       setJoinError("That username is already taken in this game.")
       setJoining(false)
@@ -171,7 +174,7 @@ export default function LobbyPage({ params }) {
     setSavedProfile(newProfile)
 
     const { data, error } = await supabase
-      .from("exquisitecorpse_players")
+      .from("ec_players")
       .insert({ game_code: code, name: trimmed, first_name: trimmedFirst, last_name: trimmedLast })
       .select("id").single()
     if (error) { alert("Failed to join: " + error.message); setJoining(false); return }

@@ -110,7 +110,16 @@ export default function Home() {
   }
 
   async function onDummyClick() {
-    onCreateClick()
+    if (isCreating) return
+    setError("")
+    setIsCreating(true)
+    try {
+      const code = await createGame(true)
+      router.push(`/${code}`)
+    } catch (e) {
+      setError(e?.message ?? "unknown error")
+      setIsCreating(false)
+    }
   }
 
   function onJoin() {

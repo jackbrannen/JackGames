@@ -34,7 +34,10 @@ export default function useTypingPresence(gameKey, code, myPlayerId) {
       })
       .subscribe()
     channelRef.current = channel
-    return () => { supabase.removeChannel(channel) }
+    return () => {
+      channel.untrack()
+      supabase.removeChannel(channel)
+    }
   }, [gameKey, code])
 
   const typingPlayerIds = new Set(

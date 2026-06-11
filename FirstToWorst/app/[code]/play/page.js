@@ -15,6 +15,7 @@ import StatusBar from "../../../components/StatusBar"
 import RandomIdeas from "../../../components/RandomIdeas"
 import { useDuplicates } from "../../../lib/useDuplicates"
 import useTypingPresence from "../../../lib/useTypingPresence"
+import useOnlinePresence from "../../../lib/useOnlinePresence"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import { playYourTurn } from "../../../lib/sounds"
 
@@ -409,6 +410,7 @@ export default function Play({ params }) {
   const botAutoRef = useRef({})
   const soundTriggerRef = useRef(null)
   const { onTypingChange, typingPlayerIds } = useTypingPresence("ftw", code, myPlayerId)
+  const { onlinePlayerIds, presenceReady } = useOnlinePresence("ftw", code, myPlayerId)
   const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
   const [pokeJustSent, setPokeJustSent] = useState(null)
   const [instructions, setInstructions] = useState("")
@@ -716,7 +718,7 @@ export default function Play({ params }) {
               Submitted
             </div>
             <WaitingList
-              players={writingPlayers.map(p => ({ name: p.name, done: p.words_submitted, typing: typingPlayerIds.has(p.id) }))}
+              players={writingPlayers.map(p => ({ name: p.name, done: p.words_submitted, typing: typingPlayerIds.has(p.id), away: presenceReady && p.id !== myPlayerId && !onlinePlayerIds.has(p.id) }))}
               myName={me?.name}
               colors={{ mid: MID }}
               onPoke={sendInlinePoke}
@@ -743,7 +745,7 @@ export default function Play({ params }) {
               Submitted
             </div>
             <WaitingList
-              players={writingPlayers.map(p => ({ name: p.name, done: p.words_submitted, typing: typingPlayerIds.has(p.id) }))}
+              players={writingPlayers.map(p => ({ name: p.name, done: p.words_submitted, typing: typingPlayerIds.has(p.id), away: presenceReady && p.id !== myPlayerId && !onlinePlayerIds.has(p.id) }))}
               myName={me?.name}
               colors={{ mid: MID }}
               onPoke={sendInlinePoke}
@@ -991,7 +993,7 @@ export default function Play({ params }) {
               Rankings
             </div>
             <WaitingList
-              players={rankingPlayers.map(p => ({ name: p.name, done: p.ranking_locked, typing: typingPlayerIds.has(p.id) }))}
+              players={rankingPlayers.map(p => ({ name: p.name, done: p.ranking_locked, typing: typingPlayerIds.has(p.id), away: presenceReady && p.id !== myPlayerId && !onlinePlayerIds.has(p.id) }))}
               myName={me?.name}
               colors={{ mid: MID }}
               onPoke={sendInlinePoke}
@@ -1018,7 +1020,7 @@ export default function Play({ params }) {
               Rankings
             </div>
             <WaitingList
-              players={rankingPlayers.map(p => ({ name: p.name, done: p.ranking_locked, typing: typingPlayerIds.has(p.id) }))}
+              players={rankingPlayers.map(p => ({ name: p.name, done: p.ranking_locked, typing: typingPlayerIds.has(p.id), away: presenceReady && p.id !== myPlayerId && !onlinePlayerIds.has(p.id) }))}
               myName={me?.name}
               colors={{ mid: MID }}
               onPoke={sendInlinePoke}
@@ -1248,7 +1250,7 @@ export default function Play({ params }) {
 
             <div style={{ marginBottom: 16 }}>
               <WaitingList
-                players={nonSubjectPlayers.map(p => ({ name: p.name, done: p.guessing_ready, typing: typingPlayerIds.has(p.id) }))}
+                players={nonSubjectPlayers.map(p => ({ name: p.name, done: p.guessing_ready, typing: typingPlayerIds.has(p.id), away: presenceReady && p.id !== myPlayerId && !onlinePlayerIds.has(p.id) }))}
                 myName={me?.name}
                 colors={{ mid: MID }}
                 onPoke={sendInlinePoke}

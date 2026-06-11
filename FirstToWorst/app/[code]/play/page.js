@@ -366,25 +366,7 @@ function Scoreboard({ right, wrong }) {
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 
-const IDEAS_URL = "https://raw.githubusercontent.com/jackbrannen/JackGames/main/JackGames/random_ideas.json"
-let _ideasCache = null
-async function fetchIdeas() {
-  if (_ideasCache) return _ideasCache
-  const res = await fetch(IDEAS_URL)
-  _ideasCache = await res.json()
-  return _ideasCache
-}
-function sampleIdeas(categories, excludeSet, count = 3) {
-  const cats = Object.keys(categories).map(cat => ({
-    cat,
-    pool: categories[cat].filter(idea => !excludeSet.has(idea.toLowerCase()))
-  })).filter(({ pool }) => pool.length > 0)
-  for (let i = cats.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [cats[i], cats[j]] = [cats[j], cats[i]]
-  }
-  return cats.slice(0, count).map(({ pool }) => pool[Math.floor(Math.random() * pool.length)])
-}
+// Random ideas now fetched via Supabase RPC get_random_ideas (see fetchRandomIdeas function)
 
 const POKE_COLORS = { dark: "#003638", mid: "#00423f", wl: "#006648", yellow: "#FBDF54", notifBg: "#001E1C" }
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
@@ -575,32 +557,7 @@ export default function Play({ params }) {
     setWordFields(prev => prev.some(f => f) ? prev : Array(game.words_per_writer).fill(""))
   }, [game?.words_per_writer])
 
-  // Pre-fill word fields from random ideas (dummy games — player hasn't typed anything yet)
-  useEffect(() => {
-    if (game?.phase !== "submitting" || !myPlayerId || me?.words_submitted) return
-    if (!game?.is_demo) return  // Only pre-fill in dummy games
-    if (wordFields.some(w => w.trim())) return
-    const wCount = wordFields.length
-    const FALLBACK = ["pizza","traffic","naps","coffee","deadlines","rain","meetings","weekends","sushi","dogs"]
-    fetchIdeas().then(categories => {
-      const picked = []
-      const seen = new Set()
-      while (picked.length < wCount) {
-        const ideas = sampleIdeas(categories, seen, 1)
-        if (!ideas.length) break
-        picked.push(ideas[0])
-        seen.add(ideas[0].toLowerCase())
-      }
-      // Fill any remaining slots from local fallback
-      const fallbackPool = FALLBACK.filter(w => !seen.has(w))
-      while (picked.length < wCount && fallbackPool.length) {
-        picked.push(fallbackPool.shift())
-      }
-      if (picked.length === wCount) setWordFields(picked)
-    }).catch(() => {
-      setWordFields(FALLBACK.slice(0, wCount))
-    })
-  }, [game?.phase, myPlayerId, me?.words_submitted, wordFields.length])
+  // Pre-fill removed - dummy game pre-fill now handled by dedicated useEffect with supabase.rpc (see line ~445)
 
   // Auto-skip phases for opted-out players
   useEffect(() => {
@@ -803,9 +760,8 @@ export default function Play({ params }) {
     const wCount = wordFields.length
 
     async function fetchRandomIdeas(count, exclude) {
-      const categories = await fetchIdeas()
-      const excludeSet = new Set(exclude.map(s => s.toLowerCase()))
-      return sampleIdeas(categories, excludeSet, count)
+      const { data } = await supabase.rpc("get_random_ideas", { p_count: count, p_exclude: exclude })
+      return data ?? []
     }
 
     async function handleSubmitWords() {

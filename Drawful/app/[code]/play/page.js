@@ -15,6 +15,8 @@ import RandomIdeas from "../../../components/RandomIdeas"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
+import useTypingPresence from "../../../lib/useTypingPresence"
+import useOnlinePresence from "../../../lib/useOnlinePresence"
 import EndGame from "../../../components/EndGame"
 
 const BG = "#307977"
@@ -422,6 +424,9 @@ export default function Play({ params }) {
     setTimeout(() => setPokeJustSent(null), 2000)
     setTimeout(() => setPokeCooldownActive(false), 10000)
   }
+
+  const { onTypingChange, typingPlayerIds } = useTypingPresence("drawful", code, myPlayerId)
+  const { onlinePlayerIds, presenceReady } = useOnlinePresence("drawful", code, myPlayerId)
 
   const [menuOpen, setMenuOpen] = useState(false)
   const pokeSystemNode = (footer = null) => me ? (
@@ -845,7 +850,7 @@ export default function Play({ params }) {
             {timerExpired ? "Time's up! Submitting…" : "Waiting for everyone to finish drawing…"}
           </p>
           <WaitingList
-            players={players.map(p => ({ name: p.name, done: !!p.drawing_url }))}
+            players={players.map(p => ({ name: p.name, done: !!p.drawing_url, typing: typingPlayerIds.has(p.id), away: presenceReady && p.id !== myPlayerId && !onlinePlayerIds.has(p.id) }))}
             myName={me?.name}
             onPoke={sendInlinePoke}
             cooldownActive={pokeCooldownActive}
@@ -926,7 +931,9 @@ export default function Play({ params }) {
               <WaitingList
                 players={players.filter(p => p.id !== myPlayerId).map(p => ({
                   name: p.name,
-                  done: !!answers.find(a => a.drawing_player_id === currentArtist.id && a.author_id === p.id && !a.is_real)
+                  done: !!answers.find(a => a.drawing_player_id === currentArtist.id && a.author_id === p.id && !a.is_real),
+                  typing: typingPlayerIds.has(p.id),
+                  away: presenceReady && p.id !== myPlayerId && !onlinePlayerIds.has(p.id)
                 }))}
                 myName={me?.name}
                 colors={{ mid: MID }}
@@ -951,7 +958,9 @@ export default function Play({ params }) {
               <WaitingList
                 players={players.filter(p => p.id !== myPlayerId && p.id !== currentArtist.id).map(p => ({
                   name: p.name,
-                  done: !!answers.find(a => a.drawing_player_id === currentArtist.id && a.author_id === p.id && !a.is_real)
+                  done: !!answers.find(a => a.drawing_player_id === currentArtist.id && a.author_id === p.id && !a.is_real),
+                  typing: typingPlayerIds.has(p.id),
+                  away: presenceReady && p.id !== myPlayerId && !onlinePlayerIds.has(p.id)
                 }))}
                 myName={me?.name}
                 colors={{ mid: MID }}
@@ -969,7 +978,7 @@ export default function Play({ params }) {
               <TextEntry
                 value={answerText}
                 onChange={setAnswerText}
-                onTypingChange={setIsTypingAnswer}
+                onTypingChange={onTypingChange}
                 onSubmit={submitAnswer}
                 placeholder="Your fake answer…"
                 maxLength={120}
@@ -1044,7 +1053,9 @@ export default function Play({ params }) {
               <WaitingList
                 players={players.filter(p => p.id !== myPlayerId).map(p => ({
                   name: p.name,
-                  done: !!votes.find(v => v.drawing_player_id === currentArtist.id && v.voter_id === p.id)
+                  done: !!votes.find(v => v.drawing_player_id === currentArtist.id && v.voter_id === p.id),
+                  typing: typingPlayerIds.has(p.id),
+                  away: presenceReady && p.id !== myPlayerId && !onlinePlayerIds.has(p.id)
                 }))}
                 myName={me?.name}
                 colors={{ mid: MID }}

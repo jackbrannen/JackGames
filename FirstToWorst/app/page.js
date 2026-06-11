@@ -42,21 +42,23 @@ async function createGame() {
   const { supabase } = await import("../lib/supabase")
   for (let attempt = 0; attempt < 10; attempt++) {
     const code = randomCode()
-    const { count } = await supabase
+    const { count, error: checkError } = await supabase
       .from("ftw_games")
       .select("code", { count: "exact", head: true })
       .eq("code", code)
       .neq("phase", "finished")
+    if (checkError) return null
     if ((count ?? 0) > 0) continue
     const { data, error } = await supabase
       .from("ftw_games")
       .insert({ code })
       .select("code")
       .single()
-    if (error) throw error
+    if (error) return null
+    if (!data?.code) return null
     return data.code
   }
-  throw new Error("Could not allocate game code")
+  return null
 }
 
 export default function Home() {
@@ -86,11 +88,11 @@ export default function Home() {
     if (creating) return
     setCreating(true)
     setError("")
-    try {
-      const code = await createGame()
+    const code = await createGame()
+    if (code) {
       router.push(`/${code}`)
-    } catch (e) {
-      setError(e?.message ?? "Unknown error")
+    } else {
+      setError("Failed to create game")
       setCreating(false)
     }
   }
@@ -104,22 +106,20 @@ export default function Home() {
     if (creating) return
     setCreating(true)
     setError("")
-    try {
-      const { supabase } = await import("../lib/supabase")
-      const code = await createGame()
-      console.log("Created game:", code)
-      const { error: updateError } = await supabase.from("ftw_games").update({ is_demo: true }).eq("code", code)
-      if (updateError) {
-        console.error("Failed to set is_demo:", updateError)
-        throw updateError
-      }
-      console.log("Set is_demo: true for game", code)
-      router.push(`/${code}`)
-    } catch (e) {
-      console.error("onDummy error:", e)
-      setError(e?.message ?? "Unknown error")
+    const { supabase } = await import("../lib/supabase")
+    const code = await createGame()
+    if (!code) {
+      setError("Failed to create game")
       setCreating(false)
+      return
     }
+    const { error: updateError } = await supabase.from("ftw_games").update({ is_demo: true }).eq("code", code)
+    if (updateError) {
+      setError("Failed to set dummy mode")
+      setCreating(false)
+      return
+    }
+    router.push(`/${code}`)
   }
 
   return (

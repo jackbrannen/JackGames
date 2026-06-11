@@ -29,7 +29,7 @@ const GREEN  = "#12BAAA"
 const CARD_BG = WARM_LIGHT
 
 const CARD_H = 64   // minimum card height
-const CARD_GAP = 8
+const CARD_GAP = 4
 
 // Text-fit utilities: font shrinks first, card grows only if still needed.
 // availPx = usable text width inside the card (accounts for padding & buttons).
@@ -137,7 +137,7 @@ function DragList({ items, onReorder, disabled }) {
             <div style={{
               width: "100%", height: "100%",
               background: dragging ? WARM_BRIGHT : CARD_BG,
-              display: "flex", alignItems: "center", padding: "0 18px",
+              display: "flex", alignItems: "center", padding: "0 14px",
               boxShadow: dragging ? "0 8px 28px rgba(0,0,0,0.45)" : "none",
               cursor: disabled ? "default" : dragging ? "grabbing" : "grab",
               userSelect: "none", WebkitUserSelect: "none",
@@ -212,7 +212,7 @@ function ButtonList({ items, onMove, disabled, highlightMove }) {
             <div style={{
               width: "100%", height: "100%",
               background: CARD_BG,
-              display: "flex", alignItems: "center", padding: "0 18px",
+              display: "flex", alignItems: "center", padding: "0 14px",
             }}>
               <span style={{ fontSize: fs, fontWeight: 700, flex: 1, lineHeight: 1.45, wordBreak: "break-word" }}>{item.text}</span>
             </div>
@@ -255,10 +255,10 @@ function ButtonList({ items, onMove, disabled, highlightMove }) {
 
 // ── RevealList ───────────────────────────────────────────────────────────────
 
-const REVEAL_AUTHOR_H = 28  // space reserved for "by {name}" line + gap
+const REVEAL_AUTHOR_H = 24  // space reserved for "by {name}" line + gap
 function revealCardH(len, availPx) {
   // Minimum height must accommodate both the word and the author line
-  return Math.max(wordCardH(len, availPx) + REVEAL_AUTHOR_H, 48)
+  return Math.max(wordCardH(len, availPx) + REVEAL_AUTHOR_H, 44)
 }
 
 function RevealList({ items, transitionMs = 80 }) {
@@ -291,7 +291,7 @@ function RevealList({ items, transitionMs = 80 }) {
               flex: 1, height: h, background: item.correct != null
                 ? (item.correct ? "rgba(18,186,170,0.15)" : "rgba(200,50,50,0.12)")
                 : CARD_BG,
-              display: "flex", alignItems: "center", padding: "0 18px",
+              display: "flex", alignItems: "center", padding: "0 14px",
               overflow: "hidden",
             }}>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -304,7 +304,7 @@ function RevealList({ items, transitionMs = 80 }) {
               </div>
               {item.correct != null && (
                 <div style={{
-                  width: h, height: h, flexShrink: 0, marginRight: -18,
+                  width: h, height: h, flexShrink: 0, marginRight: -14,
                   background: item.correct ? "rgba(18,186,170,0.3)" : "rgba(200,50,50,0.3)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 22, fontWeight: 900,
@@ -1300,13 +1300,13 @@ export default function Play({ params }) {
         <>
         <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
           <StatusBar dark={DARK} label={roundLabel} right={scoreRight} />
-          <div style={{ flex: 1, overflowY: "auto", padding: "24px 24px 12px" }}>
+          <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px 8px" }}>
 
-            <div style={{ fontSize: "clamp(26px, 8vw, 40px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 20 }}>
+            <div style={{ fontSize: "clamp(26px, 8vw, 40px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 12 }}>
               {showGroupView ? "Group's Guess" : `${subjectPlayer?.name}'s Ranking`}
             </div>
 
-            <div style={{ marginBottom: 24 }}>
+            <div style={{ marginBottom: 12 }}>
               <RevealList items={displayItems} transitionMs={0} />
             </div>
 
@@ -1314,7 +1314,7 @@ export default function Play({ params }) {
           </div>
 
           {/* Hold to peek */}
-          <div style={{ flexShrink: 0, padding: "8px 24px", paddingBottom: `calc(${FOOTER_H}px + max(12px, env(safe-area-inset-bottom)))`, background: BG, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ flexShrink: 0, padding: "0 24px", paddingBottom: `calc(${FOOTER_H}px + max(12px, env(safe-area-inset-bottom)))`, background: BG, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
             <button
               onPointerDown={() => setShowGroupView(true)}
               onPointerUp={() => setShowGroupView(false)}

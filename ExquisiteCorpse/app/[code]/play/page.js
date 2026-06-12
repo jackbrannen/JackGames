@@ -620,7 +620,7 @@ export default function Play({ params }) {
   }
 
   useEffect(() => {
-    const existing = localStorage.getItem(`ec:${code}:playerId`)
+    const existing = localStorage.getItem(`exquisitecorpse:${code}:playerId`)
     if (existing) setMyPlayerId(existing)
   }, [code])
 

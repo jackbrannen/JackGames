@@ -535,7 +535,6 @@ export default function Play({ params }) {
   const [loadingIdeas, setLoadingIdeas] = useState(false)
 
   const getExportRef = useRef(null)
-  const [advancing, setAdvancing] = useState(false)
 
   const [selectedChainOwner, setSelectedChainOwner] = useState(null)
   const [instructions, setInstructions] = useState("")
@@ -708,7 +707,6 @@ export default function Play({ params }) {
   useEffect(() => {
     if (!game || game.phase !== "reveal" || !game.is_dummy) return
     if (!currentPresenterPlayer?.is_bot) return
-    if (advancing) return
     const allRevealed = currentRevealStep >= n - 1
     const timer = setTimeout(async () => {
       if (!allRevealed) {
@@ -719,7 +717,7 @@ export default function Play({ params }) {
       await loadState()
     }, 400)
     return () => clearTimeout(timer)
-  }, [game?.phase, game?.is_dummy, currentPresenterPlayer?.id, currentRevealStep, currentRevealChain, advancing])
+  }, [game?.phase, game?.is_dummy, currentPresenterPlayer?.id, currentRevealStep, currentRevealChain])
 
   // Auto-scroll to newly revealed drawings during reveal phase
   useEffect(() => {
@@ -777,33 +775,19 @@ export default function Play({ params }) {
   }
 
   async function handleAdvanceReveal() {
-    if (advancing) return
-    setAdvancing(true)
-    try {
-      await supabase.rpc("ec_advance_reveal", {
-        p_code: code,
-        p_new_reveal_step: currentRevealStep + 1,
-        p_new_reveal_chain: currentRevealChain,
-      })
-    } catch (e) {
-      alert("Error advancing: " + e.message)
-      setAdvancing(false)
-    }
+    await supabase.rpc("ec_advance_reveal", {
+      p_code: code,
+      p_new_reveal_step: currentRevealStep + 1,
+      p_new_reveal_chain: currentRevealChain,
+    })
   }
 
   async function handleNextChain() {
-    if (advancing) return
-    setAdvancing(true)
-    try {
-      await supabase.rpc("ec_advance_reveal", {
-        p_code: code,
-        p_new_reveal_step: -1,
-        p_new_reveal_chain: currentRevealChain + 1,
-      })
-    } catch (e) {
-      alert("Error advancing: " + e.message)
-      setAdvancing(false)
-    }
+    await supabase.rpc("ec_advance_reveal", {
+      p_code: code,
+      p_new_reveal_step: -1,
+      p_new_reveal_chain: currentRevealChain + 1,
+    })
   }
 
   // ── Loading ───────────────────────────────────────────────────────────────
@@ -935,8 +919,8 @@ export default function Play({ params }) {
         {pokeSystemNode(
           amPresenter
             ? (!allStepsRevealed
-                ? <FooterButton onClick={handleAdvanceReveal} bg={YELLOW} textColor="#000">Reveal</FooterButton>
-                : <FooterButton onClick={handleNextChain} bg={YELLOW} textColor="#000">{isLastChain ? "Finish →" : "Next chain →"}</FooterButton>)
+                ? <FooterButton key="reveal" onClick={handleAdvanceReveal} bg={YELLOW} textColor="#000">Reveal</FooterButton>
+                : <FooterButton key="next-chain" onClick={handleNextChain} bg={YELLOW} textColor="#000">{isLastChain ? "Finish →" : "Next chain →"}</FooterButton>)
             : null
         )}
       </>

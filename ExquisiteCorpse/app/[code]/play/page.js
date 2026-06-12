@@ -592,7 +592,7 @@ export default function Play({ params }) {
   }
 
   async function loadGameOnly() {
-    const { data: gameData } = await supabase
+    const { data: gameData, error } = await supabase
       .from("ec_games").select("*").eq("code", code).single()
     if (gameData) setGame(gameData)
   }
@@ -927,8 +927,8 @@ export default function Play({ params }) {
         {pokeSystemNode(
           amPresenter
             ? (!allStepsRevealed
-                ? <FooterButton key="reveal" onClick={handleAdvanceReveal} bg={YELLOW} textColor="#000">Reveal</FooterButton>
-                : <FooterButton key="next-chain" onClick={handleNextChain} bg={YELLOW} textColor="#000">{isLastChain ? "Finish →" : "Next chain →"}</FooterButton>)
+                ? <FooterButton key={`reveal-${currentRevealStep}`} onClick={handleAdvanceReveal} bg={YELLOW} textColor="#000">Reveal</FooterButton>
+                : <FooterButton key={`next-chain-${currentRevealChain}`} onClick={handleNextChain} bg={YELLOW} textColor="#000">{isLastChain ? "Finish →" : "Next chain →"}</FooterButton>)
             : null
         )}
       </>

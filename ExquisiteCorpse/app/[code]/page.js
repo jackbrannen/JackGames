@@ -129,7 +129,7 @@ export default function LobbyPage({ params }) {
   const hasAutoJoinedRef = useRef(false)
   useEffect(() => {
     if (gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current || !gameExists) return
-    if (isDemo) return
+    if (!isDemo) return
     const saved = loadProfile()
     if (!saved?.username) return
     hasAutoJoinedRef.current = true

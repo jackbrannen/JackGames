@@ -536,9 +536,6 @@ export default function Play({ params }) {
 
   const getExportRef = useRef(null)
   const [advancing, setAdvancing] = useState(false)
-  const [showTransition, setShowTransition] = useState(false)
-  const prevRoundRef = useRef(-1)
-  const transitionTimerRef = useRef(null)
 
   const [selectedChainOwner, setSelectedChainOwner] = useState(null)
   const [instructions, setInstructions] = useState("")
@@ -707,17 +704,6 @@ export default function Play({ params }) {
     setShownIdeas([])
   }, [currentRound])
 
-  // Show transition screen when round auto-advances
-  useEffect(() => {
-    if (game?.phase !== "play") { prevRoundRef.current = currentRound; return }
-    if (prevRoundRef.current !== -1 && prevRoundRef.current !== currentRound) {
-      setShowTransition(true)
-      if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current)
-      transitionTimerRef.current = setTimeout(() => setShowTransition(false), 3000)
-    }
-    prevRoundRef.current = currentRound
-  }, [currentRound, game?.phase])
-
   // Auto-advance bot chains during dummy game reveal
   useEffect(() => {
     if (!game || game.phase !== "reveal" || !game.is_dummy) return
@@ -772,7 +758,6 @@ export default function Play({ params }) {
         p_author_id: me.id,
       })
       if (error) throw error
-      await loadState()
     } catch (e) {
       alert("Error submitting: " + e.message)
       setSubmitting(false)
@@ -966,29 +951,6 @@ export default function Play({ params }) {
 
   const stepProgress = `${submittedCount} of ${n} done`
 
-  // Transition screen between rounds
-  if (showTransition) {
-    return (
-      <>
-      <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center" }}>
-        <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.5, marginBottom: 24 }}>
-          Round {currentRound} complete!
-        </div>
-        <h2 style={{ fontSize: 30, fontWeight: 900, marginBottom: 16, letterSpacing: "-0.5px" }}>Chains are moving…</h2>
-        <p style={{ fontSize: 16, opacity: 0.65, fontWeight: 500, marginBottom: 8 }}>You're now drawing on a mystery chain.</p>
-        <p style={{ fontSize: 14, opacity: 0.4, fontWeight: 500, marginBottom: 40 }}>You'll see what the last player left you.</p>
-        <button
-          onClick={() => setShowTransition(false)}
-          style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "18px 40px" }}
-        >
-          Continue →
-        </button>
-      </div>
-        {pokeSystemNode()}
-      </>
-    )
-  }
-
   // Waiting screen (submitted, others still drawing)
   if (myDrawingSubmitted) {
     const submittedPlayerIds = new Set(drawings.filter(d => d.round_number === currentRound).map(d => d.author_id))
@@ -1013,10 +975,12 @@ export default function Play({ params }) {
   return (
     <>
     <div style={{ minHeight: "100dvh", background: BG, color: "white" }}>
+      <StatusBar
+        label={`ROUND ${currentRound + 1} OF ${n}`}
+        progress={stepProgress}
+        colors={{ bg: "#102540", text: "white" }}
+      />
       <div style={{ padding: "20px 24px 10px" }}>
-        <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.45 }}>
-          ROUND {currentRound + 1} OF {n}
-        </div>
         <div style={{ fontSize: 15, opacity: 0.65, fontWeight: 500, marginTop: 4 }}>
           {currentRound === 0
             ? "Start something and adjust your fold line. The next player will only see below your fold line."
@@ -1024,7 +988,7 @@ export default function Play({ params }) {
         </div>
       </div>
 
-      <div style={{ padding: "0 24px" }}>
+      <div style={{ padding: "0 24px", paddingBottom: BOTTOM_PAD }}>
         <DrawingCanvas
           key={`${currentRound}-${myChainOwner.id}`}
           peekImageUrl={myPrevDrawing?.content ?? null}
@@ -1045,7 +1009,7 @@ export default function Play({ params }) {
         )}
 
         {/* Random ideas */}
-        <div style={{ marginTop: 20, marginBottom: 40 }}>
+        <div style={{ marginTop: 20 }}>
           {shownIdeas.length < 9 ? (
             <button
               onClick={handleGetIdeas}

@@ -780,6 +780,7 @@ export default function Play({ params }) {
       p_new_reveal_step: currentRevealStep + 1,
       p_new_reveal_chain: currentRevealChain,
     })
+    await loadState()
   }
 
   async function handleNextChain() {
@@ -788,6 +789,7 @@ export default function Play({ params }) {
       p_new_reveal_step: -1,
       p_new_reveal_chain: currentRevealChain + 1,
     })
+    await loadState()
   }
 
   // ── Loading ───────────────────────────────────────────────────────────────

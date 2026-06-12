@@ -779,25 +779,31 @@ export default function Play({ params }) {
   async function handleAdvanceReveal() {
     if (advancing) return
     setAdvancing(true)
-    await supabase.rpc("ec_advance_reveal", {
-      p_code: code,
-      p_new_reveal_step: currentRevealStep + 1,
-      p_new_reveal_chain: currentRevealChain,
-    })
-    await loadState()
-    setAdvancing(false)
+    try {
+      await supabase.rpc("ec_advance_reveal", {
+        p_code: code,
+        p_new_reveal_step: currentRevealStep + 1,
+        p_new_reveal_chain: currentRevealChain,
+      })
+    } catch (e) {
+      alert("Error advancing: " + e.message)
+      setAdvancing(false)
+    }
   }
 
   async function handleNextChain() {
     if (advancing) return
     setAdvancing(true)
-    await supabase.rpc("ec_advance_reveal", {
-      p_code: code,
-      p_new_reveal_step: -1,
-      p_new_reveal_chain: currentRevealChain + 1,
-    })
-    await loadState()
-    setAdvancing(false)
+    try {
+      await supabase.rpc("ec_advance_reveal", {
+        p_code: code,
+        p_new_reveal_step: -1,
+        p_new_reveal_chain: currentRevealChain + 1,
+      })
+    } catch (e) {
+      alert("Error advancing: " + e.message)
+      setAdvancing(false)
+    }
   }
 
   // ── Loading ───────────────────────────────────────────────────────────────

@@ -1006,12 +1006,12 @@ export default function Play({ params }) {
 
         <button
           onClick={uploadAndSubmitDrawing}
-          disabled={!canvasDirty || submitting}
+          disabled={(!canvasDirty && !game?.is_dummy) || submitting}
           style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "20px", width: "100%", display: "block", marginTop: 16 }}
         >
           {submitting ? "Submitting…" : "Done Drawing"}
         </button>
-        {!canvasDirty && !submitting && (
+        {!canvasDirty && !submitting && !game?.is_dummy && (
           <p style={{ fontSize: 13, opacity: 0.4, fontWeight: 600, textAlign: "center", marginTop: 8 }}>Draw something first!</p>
         )}
 

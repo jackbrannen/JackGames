@@ -492,3 +492,85 @@ async function createGame() {
 - Extract error.message before throwing, or return error strings
 - Avoid console.error() in React event handlers in dev mode
 - Use dynamic import for Supabase if static import causes issues
+
+---
+
+## FooterButton Stuck on "Loading..." During Multi-Step Progression
+
+**Symptom:** Button shows "Loading..." indefinitely during reveal/progression phases where the same button advances through multiple steps (step 0→1→2→3). Button resets correctly on first click but gets stuck on subsequent clicks.
+
+**Diagnostic steps:**
+1. Check if button key prop is static (e.g., `key="reveal"`) or dynamic
+2. Add console.log to measure RPC and database query timing
+3. Check if `loadState()` or similar refresh is called after RPC
+4. Verify button text/function changes between steps
+
+**Cause:**
+FooterButton has internal `loading` state that only resets on error, not success. When the same button instance is reused across multiple progression steps, React doesn't unmount it between steps because the `key` prop stays the same. The internal loading state persists from one step to the next.
+
+**Example:**
+```javascript
+// WRONG - static key means same FooterButton instance across all steps
+<FooterButton key="reveal" onClick={handleAdvanceReveal}>
+  Reveal
+</FooterButton>
+
+// On step 0→1: button sets loading=true, RPC completes, but key="reveal" stays same
+// On step 1→2: React reuses the same instance, loading is still true from step 0
+```
+
+**Fix:**
+Use dynamic keys that include the current progression state:
+```javascript
+// CORRECT - key changes with each step, forcing fresh button instance
+<FooterButton 
+  key={`reveal-${currentRevealStep}`} 
+  onClick={handleAdvanceReveal}
+>
+  Reveal
+</FooterButton>
+
+// For chain/round progression:
+<FooterButton 
+  key={`next-chain-${currentRevealChain}`} 
+  onClick={handleNextChain}
+>
+  {isLastChain ? "Finish →" : "Next chain →"}
+</FooterButton>
+```
+
+**Why it works:**
+- When `currentRevealStep` changes (0→1→2→3), the key changes
+- React unmounts the old FooterButton and mounts a fresh one
+- Fresh instance has `loading=false` by default
+- Natural component lifecycle handles state reset
+
+**Additional optimization:**
+Create a lightweight state refresh function that queries only what's needed:
+```javascript
+// Instead of calling full loadState() (3+ queries)
+async function loadGameOnly() {
+  const { data } = await supabase
+    .from("games").select("*").eq("code", code).single()
+  if (data) setGame(data)
+}
+
+// Call after RPC to immediately update UI
+async function handleAdvance() {
+  await supabase.rpc("advance_step", { ... })
+  await loadGameOnly()  // Fast 1-query refresh
+}
+```
+
+**Example from ExquisiteCorpse:**
+- Reveal phase has 4 steps per chain, 4 chains total (16 button clicks)
+- Static `key="reveal"` caused button to stay stuck after first click
+- Changed to `key={`reveal-${currentRevealStep}`}` 
+- Also added `loadGameOnly()` to reduce queries from 3→1
+- See commits e7015b6, a3c46d6
+
+**Prevention:**
+- Use dynamic keys for any multi-step progression buttons
+- Include the step/index/chain number in the key
+- Don't try to manually reset FooterButton's internal loading state
+- Let React's component lifecycle handle state reset naturally

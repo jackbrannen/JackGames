@@ -758,6 +758,7 @@ export default function Play({ params }) {
         p_author_id: me.id,
       })
       if (error) throw error
+      await loadState()
     } catch (e) {
       alert("Error submitting: " + e.message)
       setSubmitting(false)

@@ -591,6 +591,12 @@ export default function Play({ params }) {
     if (error) throw error
   }
 
+  async function loadGameOnly() {
+    const { data: gameData } = await supabase
+      .from("ec_games").select("*").eq("code", code).single()
+    if (gameData) setGame(gameData)
+  }
+
   async function loadState() {
     const { data: gameData } = await supabase
       .from("ec_games").select("*").eq("code", code).single()
@@ -780,7 +786,7 @@ export default function Play({ params }) {
       p_new_reveal_step: currentRevealStep + 1,
       p_new_reveal_chain: currentRevealChain,
     })
-    await loadState()
+    await loadGameOnly()
   }
 
   async function handleNextChain() {
@@ -789,7 +795,7 @@ export default function Play({ params }) {
       p_new_reveal_step: -1,
       p_new_reveal_chain: currentRevealChain + 1,
     })
-    await loadState()
+    await loadGameOnly()
   }
 
   // ── Loading ───────────────────────────────────────────────────────────────

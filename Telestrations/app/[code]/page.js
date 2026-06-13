@@ -77,7 +77,7 @@ export default function LobbyPage({ params }) {
 
   async function refreshPlayers() {
     const { data } = await supabase
-      .from("telestrations_players")
+      .from("tel_players")
       .select("id,name,created_at")
       .eq("game_code", code)
       .order("created_at", { ascending: true })
@@ -86,7 +86,7 @@ export default function LobbyPage({ params }) {
 
   async function loadGame() {
     const { data, error } = await supabase
-      .from("telestrations_games")
+      .from("tel_games")
       .select("code,phase,is_dummy")
       .eq("code", code)
       .single()
@@ -116,8 +116,8 @@ export default function LobbyPage({ params }) {
     function handleVisibility() { clearInterval(poll); if (!document.hidden) { loadState(); poll = setInterval(loadState, 1500) } }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`telestrations-lobby-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "telestrations_players", filter: `game_code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "telestrations_games", filter: `code=eq.${code}` }, loadState)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tel_players", filter: `game_code=eq.${code}` }, loadState)
+      .on("postgres_changes", { event: "*", schema: "public", table: "tel_games", filter: `code=eq.${code}` }, loadState)
       .subscribe()
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
@@ -134,9 +134,9 @@ export default function LobbyPage({ params }) {
     if (!saved?.username) return
     hasAutoJoinedRef.current = true
     ;(async () => {
-      const { data: taken } = await supabase.from("telestrations_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
+      const { data: taken } = await supabase.from("tel_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
       if (taken?.length > 0) return
-      const { data, error } = await supabase.from("telestrations_players")
+      const { data, error } = await supabase.from("tel_players")
         .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName.trim(), last_name: saved.lastName.trim() })
         .select("id").single()
       if (error || !data) return
@@ -156,7 +156,7 @@ export default function LobbyPage({ params }) {
     setJoinError("")
 
     const { data: existing } = await supabase
-      .from("telestrations_players").select("id").eq("game_code", code).ilike("name", trimmed).limit(1)
+      .from("tel_players").select("id").eq("game_code", code).ilike("name", trimmed).limit(1)
     if (existing?.length > 0) {
       setJoinError("That username is already taken in this game.")
       setJoining(false)
@@ -174,7 +174,7 @@ export default function LobbyPage({ params }) {
     setSavedProfile(newProfile)
 
     const { data, error } = await supabase
-      .from("telestrations_players")
+      .from("tel_players")
       .insert({ game_code: code, name: trimmed, first_name: trimmedFirst, last_name: trimmedLast })
       .select("id").single()
     if (error) { alert("Failed to join: " + error.message); setJoining(false); return }

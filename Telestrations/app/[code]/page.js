@@ -61,6 +61,7 @@ export default function LobbyPage({ params }) {
   const [instructions, setInstructions] = useState("")
   const [gameExists, setGameExists] = useState(null)
   const [gamePhase, setGamePhase] = useState("lobby")
+  const [isDemo, setIsDemo] = useState(false)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
   const [savedProfile, setSavedProfile] = useState(null)
@@ -86,12 +87,13 @@ export default function LobbyPage({ params }) {
   async function loadGame() {
     const { data, error } = await supabase
       .from("telestrations_games")
-      .select("code,phase")
+      .select("code,phase,is_dummy")
       .eq("code", code)
       .single()
     if (error || !data) { setGameExists(false); return }
     setGameExists(true)
     setGamePhase(data.phase)
+    setIsDemo(data.is_dummy || false)
   }
 
   async function loadState() {
@@ -126,7 +128,8 @@ export default function LobbyPage({ params }) {
 
   const hasAutoJoinedRef = useRef(false)
   useEffect(() => {
-    if (gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    if (gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current || !gameExists) return
+    if (!isDemo) return
     const saved = loadProfile()
     if (!saved?.username) return
     hasAutoJoinedRef.current = true
@@ -140,7 +143,7 @@ export default function LobbyPage({ params }) {
       localStorage.setItem(`telestrations:${code}:playerId`, data.id)
       setMyPlayerId(data.id)
     })()
-  }, [gamePhase, myPlayerId, code])
+  }, [gameExists, isDemo, gamePhase, myPlayerId, code])
 
   async function join() {
     const trimmed = name.trim()

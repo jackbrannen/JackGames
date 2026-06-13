@@ -166,7 +166,7 @@ function DrawingCanvas({ onExport, onFirstMark }) {
       onExportRef.current(() => {
         const savedVT = [...canvas.viewportTransform]
         canvas.setViewportTransform([1, 0, 0, 1, 0, 0])
-        const url = canvas.toDataURL({ format: "jpeg", quality: 0.72 })
+        const url = canvas.toDataURL({ format: "jpeg", quality: 0.85 })
         canvas.setViewportTransform(savedVT)
         return url
       })

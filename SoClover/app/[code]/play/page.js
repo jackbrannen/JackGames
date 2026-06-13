@@ -440,6 +440,7 @@ export default function PlayPage({ params }) {
   const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
   const [pokeJustSent, setPokeJustSent] = useState(null)
   const [instructions, setInstructions] = useState("")
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     supabase.from("game_instructions").select("body").eq("game_key", "soclover").single()
@@ -454,8 +455,6 @@ export default function PlayPage({ params }) {
     setTimeout(() => setPokeJustSent(null), 2000)
     setTimeout(() => setPokeCooldownActive(false), 10000)
   }
-
-  const [menuOpen, setMenuOpen] = useState(false)
   const pokeSystemNode = (footer = null) => me ? (
     <>
       <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />

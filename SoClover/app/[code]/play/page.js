@@ -783,8 +783,13 @@ export default function PlayPage({ params }) {
       p_code: code, p_player_id: myPlayerId,
       p_slots: localSlots, p_clues: localClues,
     })
-    if (error) { setClueError(error.message); setSubmitting(false); return }
+    if (error) {
+      setClueError(error.message)
+      setSubmitting(false)
+      throw new Error(error.message) // Let FooterButton reset loading
+    }
     await loadState()
+    // Don't reset submitting - component will unmount when phase changes
   }
 
   function onGuessSlotRotate(slotName) {
@@ -805,7 +810,10 @@ export default function PlayPage({ params }) {
       p_code: code, p_board_id: currentBoard.id,
       p_player_id: myPlayerId, p_guess: guessSlots,
     })
-    if (error) { setSubmittingGuess(false); return }
+    if (error) {
+      setSubmittingGuess(false)
+      throw new Error(error.message) // Let FooterButton reset loading
+    }
     setGuessResult(data)
     await loadState()
     setSubmittingGuess(false)
@@ -824,10 +832,13 @@ export default function PlayPage({ params }) {
     await loadState()
   }
 
+  const localRotateRef = useRef(false)
+
   function rotateBoardCW() {
     if (boardAnimating.current) return
     const el = boardRef.current
     if (!el) return
+    localRotateRef.current = true // Mark this as local rotation
     boardAnimating.current = true
     el.style.transition = "transform 0.4s ease"
     el.style.transform = "rotate(90deg)"
@@ -839,7 +850,10 @@ export default function PlayPage({ params }) {
         if (currentBoard) supabase.from("soclover_boards").update({ board_rotation: next }).eq("id", currentBoard.id).then(() => {})
         return next
       })
-      requestAnimationFrame(() => { boardAnimating.current = false })
+      requestAnimationFrame(() => {
+        boardAnimating.current = false
+        setTimeout(() => { localRotateRef.current = false }, 100) // Clear flag after db update propagates
+      })
     }, 400)
   }
 
@@ -857,7 +871,8 @@ export default function PlayPage({ params }) {
     }
 
     // If remote rotation changed and is different from local, animate
-    if (remoteRot !== prevRemoteRotationRef.current && remoteRot !== boardRotation) {
+    // Skip if this is a local rotation (we already animated it)
+    if (remoteRot !== prevRemoteRotationRef.current && !localRotateRef.current) {
       prevRemoteRotationRef.current = remoteRot
 
       if (boardAnimating.current) return
@@ -873,8 +888,11 @@ export default function PlayPage({ params }) {
         setBoardRotation(remoteRot)
         requestAnimationFrame(() => { boardAnimating.current = false })
       }, 400)
+    } else if (localRotateRef.current) {
+      // Update ref but don't animate (local rotation already handled it)
+      prevRemoteRotationRef.current = remoteRot
     }
-  }, [currentBoard?.board_rotation, boardRotation])
+  }, [currentBoard?.board_rotation])
 
   async function onPlayAgain() {
     await supabase.rpc("soclover_play_again", { p_code: code })

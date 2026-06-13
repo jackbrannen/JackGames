@@ -580,7 +580,7 @@ export default function Play({ params }) {
 
   useEffect(() => {
     if (game?.phase !== "reveal" || currentRevealStep < 0) return
-    setTimeout(() => revealEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 80)
+    setTimeout(() => revealEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 100)
   }, [game?.phase, currentRevealStep, currentRevealChain])
 
   const currentPresenterPlayer = useMemo(() => {

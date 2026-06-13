@@ -527,7 +527,7 @@ export default function Play({ params }) {
     channelRef.current = channel
 
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
-  }, [code])
+  }, [code, myPlayerId])
 
   // Auto-reset after 30s on finished so late-joiners aren't stuck on the in-progress screen
   useEffect(() => {
@@ -1226,10 +1226,11 @@ export default function Play({ params }) {
               const onlinePlayerIds = new Set(
                 Object.values(presenceState).flatMap(presences => presences.map(pr => pr.playerId))
               )
+              const presenceReady = Object.keys(presenceState).length > 0
               return {
                 name: p.name,
                 done: submittedPlayerIds.has(p.id),
-                away: p.id !== myPlayerId && !onlinePlayerIds.has(p.id),
+                away: presenceReady && p.id !== myPlayerId && !onlinePlayerIds.has(p.id),
               }
             })}
             myName={me?.name}
@@ -1306,11 +1307,12 @@ export default function Play({ params }) {
             const onlinePlayerIds = new Set(
               Object.values(presenceState).flatMap(presences => presences.map(pr => pr.playerId))
             )
+            const presenceReady = Object.keys(presenceState).length > 0
             return {
               name: p.name,
               done: submittedPlayerIds.has(p.id),
               typing: typingPlayerIds.has(p.id),
-              away: p.id !== myPlayerId && !onlinePlayerIds.has(p.id),
+              away: presenceReady && p.id !== myPlayerId && !onlinePlayerIds.has(p.id),
             }
           })}
           myName={me?.name}

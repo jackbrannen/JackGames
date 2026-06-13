@@ -55,7 +55,7 @@ async function createGame(isDummy = false) {
       .select("code", { count: "exact", head: true })
       .eq("code", code)
       .neq("phase", "finished")
-    if (checkError) throw checkError
+    if (checkError) return null
     if ((count ?? 0) > 0) continue
 
     const { data, error: insertError } = await supabase
@@ -63,10 +63,10 @@ async function createGame(isDummy = false) {
       .insert({ code, is_dummy: isDummy })
       .select("code")
       .single()
-    if (insertError) throw insertError
+    if (insertError) return null
     return String(data.code).toUpperCase()
   }
-  throw new Error("unable_to_allocate_game_code")
+  return null
 }
 
 function makeBlankDrawing() {
@@ -97,29 +97,40 @@ export default function Home() {
 
     if (fromGame && pickerName) {
       setIsCreating(true)
-      createGame()
-        .then(code => router.push(`/${code}`))
-        .catch(e => {
-          setError(e?.message ?? "Failed to create game")
+      createGame().then(code => {
+        if (!code) {
+          setError("Failed to create game")
           setIsCreating(false)
-        })
+        } else {
+          router.push(`/${code}`)
+        }
+      })
     }
   }, [])
   async function onCreateClick() {
     if (isCreating) return
     setError("")
     setIsCreating(true)
-    try {
-      const code = await createGame(false)
-      router.push(`/${code}`)
-    } catch (e) {
-      setError(e?.message ?? "unknown error")
+    const code = await createGame(false)
+    if (!code) {
+      setError("Failed to create game")
       setIsCreating(false)
+      return
     }
+    router.push(`/${code}`)
   }
 
   async function onDummyClick() {
-    onCreateClick()
+    if (isCreating) return
+    setError("")
+    setIsCreating(true)
+    const code = await createGame(true)
+    if (!code) {
+      setError("Failed to create game")
+      setIsCreating(false)
+      return
+    }
+    router.push(`/${code}`)
   }
 
   function onJoin() {

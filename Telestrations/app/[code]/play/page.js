@@ -946,7 +946,14 @@ export default function Play({ params }) {
           <p style={{ fontSize: 16, opacity: 0.65, fontWeight: 500, marginBottom: 28 }}>This is your reminder to take screenshots.</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 360, margin: "0 auto" }}>
             <button
-              onClick={() => supabase.rpc("tel_reset_game", { p_code: code })}
+              onClick={async () => {
+                try {
+                  await supabase.rpc("tel_reset_game", { p_code: code })
+                  await loadState()
+                } catch (e) {
+                  console.error("Play again failed:", e)
+                }
+              }}
               style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}
             >Play Again</button>
             <a href="https://games.jackbrannen.com"
@@ -996,14 +1003,6 @@ export default function Play({ params }) {
               )
             })}
           </div>
-        </div>
-
-        {/* Play another game */}
-        <div style={{ padding: "0 24px 48px" }}>
-          <a href="https://games.jackbrannen.com"
-            style={{ display: "block", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%", textAlign: "center", textDecoration: "none" }}>
-            Play Another Game
-          </a>
         </div>
 
         {/* Chain detail modal */}
@@ -1223,7 +1222,16 @@ export default function Play({ params }) {
             </p>
           )}
           <WaitingList
-            players={players.map(p => ({ name: p.name, done: submittedPlayerIds.has(p.id) }))}
+            players={players.map(p => {
+              const onlinePlayerIds = new Set(
+                Object.values(presenceState).flatMap(presences => presences.map(pr => pr.playerId))
+              )
+              return {
+                name: p.name,
+                done: submittedPlayerIds.has(p.id),
+                away: p.id !== myPlayerId && !onlinePlayerIds.has(p.id),
+              }
+            })}
             myName={me?.name}
             onPoke={sendInlinePoke}
             cooldownActive={pokeCooldownActive}
@@ -1235,9 +1243,16 @@ export default function Play({ params }) {
       )
     }
 
+    const stepProgress = `${submittedCount} of ${n} done`
+
     return (
       <>
       <div style={{ height: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        <StatusBar
+          label={`STEP ${currentStep + 1} OF ${n}`}
+          progress={stepProgress}
+          colors={{ bg: "#102540", text: "white" }}
+        />
         {/* Compact header */}
         <div style={{ flexShrink: 0, padding: "12px 24px 10px" }}>
           <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.65, marginBottom: 6 }}>Draw this</div>
@@ -1287,7 +1302,17 @@ export default function Play({ params }) {
           </p>
         )}
         <WaitingList
-          players={players.map(p => ({ name: p.name, done: submittedPlayerIds.has(p.id), typing: typingPlayerIds.has(p.id) }))}
+          players={players.map(p => {
+            const onlinePlayerIds = new Set(
+              Object.values(presenceState).flatMap(presences => presences.map(pr => pr.playerId))
+            )
+            return {
+              name: p.name,
+              done: submittedPlayerIds.has(p.id),
+              typing: typingPlayerIds.has(p.id),
+              away: p.id !== myPlayerId && !onlinePlayerIds.has(p.id),
+            }
+          })}
           myName={me?.name}
           onPoke={sendInlinePoke}
           cooldownActive={pokeCooldownActive}
@@ -1301,9 +1326,16 @@ export default function Play({ params }) {
 
   const drawingToDescribe = myPrevStepContent?.content ?? null
 
+  const stepProgress = `${submittedCount} of ${n} done`
+
   return (
     <>
     <div style={{ minHeight: "100dvh", background: BG, color: "white" }}>
+      <StatusBar
+        label={`STEP ${currentStep + 1} OF ${n}`}
+        progress={stepProgress}
+        colors={{ bg: "#102540", text: "white" }}
+      />
       <div style={{ padding: "28px 24px 0" }}>
         <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.45, marginBottom: 10 }}>
           {isFirstStep ? "WRITE A SENTENCE" : "WHAT IS THIS?"}
@@ -1345,16 +1377,18 @@ export default function Play({ params }) {
             padding: "16px", resize: "none", borderRadius: 4, lineHeight: 1.45,
           }}
         />
-        <div style={{ marginTop: 16 }}>
-          <RandomIdeas
-            bg="rgba(255,255,255,0.15)"
-            yellow={YELLOW}
-            fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
-            playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
-            maxDraws={3}
-            onIdeaClick={idea => { setSentence(idea); trackTyping() }}
-          />
-        </div>
+        {isFirstStep && (
+          <div style={{ marginTop: 16 }}>
+            <RandomIdeas
+              bg="rgba(255,255,255,0.15)"
+              yellow={YELLOW}
+              fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
+              playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
+              maxDraws={3}
+              onIdeaClick={idea => { setSentence(idea); trackTyping() }}
+            />
+          </div>
+        )}
 
         {timeLeft !== null && (timeLeft > 0 || sentence.trim()) && (
           <p style={{ fontSize: 14, fontWeight: 800, color: timerColor, marginTop: 8 }}>⏱ {timeLeft}s</p>
@@ -1367,46 +1401,6 @@ export default function Play({ params }) {
           {submitting ? "Submitting…" : "Lock it in"}
         </button>
 
-        {/* Random Ideas — first writing step only */}
-        {isFirstStep && (
-          <div style={{ marginTop: 20 }}>
-            {shownIdeas.length < 9 ? (
-              <button
-                onClick={handleGetIdeas}
-                disabled={loadingIdeas}
-                style={{
-                  background: "rgba(255,255,255,0.12)", color: "white",
-                  fontSize: 15, fontWeight: 800, padding: "14px 18px",
-                  width: "100%", marginBottom: shownIdeas.length ? 12 : 0, borderRadius: 6,
-                }}
-              >
-                {shownIdeas.length === 0 ? "✦ Random ideas" : "✦ 3 more ideas"}
-              </button>
-            ) : (
-              <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.25)", padding: "12px 18px", background: "rgba(255,255,255,0.05)", borderRadius: 6, marginBottom: 12 }}>
-                No more ideas
-              </div>
-            )}
-
-            {shownIdeas.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, paddingBottom: 24 }}>
-                {shownIdeas.map((idea, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      padding: "7px 14px", borderRadius: 999,
-                      fontSize: 14, fontWeight: 700,
-                      background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.65)",
-                      border: "1px solid rgba(255,255,255,0.12)",
-                    }}
-                  >
-                    {idea}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         <div style={{ height: 40 }} />
       </div>

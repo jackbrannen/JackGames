@@ -505,7 +505,7 @@ export default function Play({ params }) {
   }
 
   useEffect(() => {
-    const existing = localStorage.getItem(`tel:${code}:playerId`)
+    const existing = localStorage.getItem(`telestrations:${code}:playerId`)
     if (existing) setMyPlayerId(existing)
   }, [code])
 

@@ -570,6 +570,17 @@ export default function PlayPage({ params }) {
     }
   }, [currentBoard, myPlayerId, game?.fifth_card_enabled])
 
+  // Sync guess_slots for viewers (non-controllers) during guessing phase
+  useEffect(() => {
+    if (!currentBoard || !game || game.phase !== "guessing") return
+    const isController = currentBoard.player_id === myPlayerId
+    if (isController) return // Controller manages their own state
+
+    // Viewer: sync from database (serialize to detect deep changes)
+    const dbSlots = currentBoard.guess_slots ?? {}
+    setGuessSlots(dbSlots)
+  }, [JSON.stringify(currentBoard?.guess_slots), currentBoard?.player_id, myPlayerId, game?.phase])
+
   useEffect(() => {
     const pid = localStorage.getItem(`soclover:${code}:playerId`)
     if (pid) setMyPlayerId(pid)
@@ -831,6 +842,39 @@ export default function PlayPage({ params }) {
       requestAnimationFrame(() => { boardAnimating.current = false })
     }, 400)
   }
+
+  // Sync rotation animation from database changes (when other players rotate)
+  const prevRemoteRotationRef = useRef(null)
+  useEffect(() => {
+    if (!currentBoard) { prevRemoteRotationRef.current = null; return }
+    const remoteRot = currentBoard.board_rotation ?? 0
+
+    // First load - just set it without animation
+    if (prevRemoteRotationRef.current === null) {
+      prevRemoteRotationRef.current = remoteRot
+      setBoardRotation(remoteRot)
+      return
+    }
+
+    // If remote rotation changed and is different from local, animate
+    if (remoteRot !== prevRemoteRotationRef.current && remoteRot !== boardRotation) {
+      prevRemoteRotationRef.current = remoteRot
+
+      if (boardAnimating.current) return
+      const el = boardRef.current
+      if (!el) { setBoardRotation(remoteRot); return }
+
+      boardAnimating.current = true
+      el.style.transition = "transform 0.4s ease"
+      el.style.transform = "rotate(90deg)"
+      setTimeout(() => {
+        el.style.transition = "none"
+        el.style.transform = "rotate(0deg)"
+        setBoardRotation(remoteRot)
+        requestAnimationFrame(() => { boardAnimating.current = false })
+      }, 400)
+    }
+  }, [currentBoard?.board_rotation, boardRotation])
 
   async function onPlayAgain() {
     await supabase.rpc("soclover_play_again", { p_code: code })

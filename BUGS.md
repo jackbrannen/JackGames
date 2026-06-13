@@ -495,6 +495,46 @@ async function createGame() {
 
 ---
 
+## Cannot Test Game — Database Tables Don't Exist
+
+**Symptom:** Game creation succeeds (URL changes to /GAMECODE) but lobby shows "Room not found". Cannot test any game functionality.
+
+**Diagnostic steps:**
+1. Check if table names in code match table names in migrations
+2. Check if migrations have been applied to production database
+3. Try to create a game - if it redirects but shows "Room not found", tables likely don't exist
+4. Check RLS policies are permissive (allow all for anon)
+
+**Causes:**
+
+### Migrations not applied to production
+- **Example:** Telestrations had `tel_games` tables defined in pending_migrations.sql but never applied to Supabase
+- **Fix:** Use Supabase MCP plugin to execute the migration SQL directly:
+  ```javascript
+  mcp__plugin_supabase_supabase__execute_sql({
+    project_id: "...",
+    query: "CREATE TABLE IF NOT EXISTS tel_games (...); ..."
+  })
+  ```
+- **How to find project_id:** `mcp__plugin_supabase_supabase__list_projects()`
+
+### Table name mismatch between code and migrations
+- **Example:** Telestrations lobby queried `telestrations_games` but migrations created `tel_games`
+- **Diagnostic:** grep for table names: `grep -n "from.*TABLE_NAME" app/[code]/page.js`
+- **Fix:** Update code to match migration table names (use replace_all for consistency)
+
+**How to verify fix:**
+1. After applying migrations, try creating a game
+2. Should redirect to lobby with player list visible (not "Room not found")
+3. Should be able to join, see players update in real-time
+
+**Prevention:**
+- Apply migrations to production immediately after creating them
+- Use consistent table naming convention (either full name or abbreviated)
+- Test game creation end-to-end after any schema changes
+
+---
+
 ## FooterButton Stuck on "Loading..." During Multi-Step Progression
 
 **Symptom:** Button shows "Loading..." indefinitely during reveal/progression phases where the same button advances through multiple steps (step 0→1→2→3). Button resets correctly on first click but gets stuck on subsequent clicks.

@@ -1059,7 +1059,7 @@ export default function Play({ params }) {
     if (currentRevealStep === -1 && !amPresenter) {
       return (
         <>
-        <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center", paddingBottom: FOOTER_H }}>
+        <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center", paddingBottom: BOTTOM_PAD }}>
           <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.5, marginBottom: 16 }}>
             REVEAL PHASE
           </div>
@@ -1077,7 +1077,7 @@ export default function Play({ params }) {
     if (currentRevealStep === -1 && amPresenter) {
       return (
         <>
-        <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", padding: "40px 24px", paddingBottom: FOOTER_H }}>
+        <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", padding: "40px 24px", paddingBottom: BOTTOM_PAD }}>
           <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.45, marginBottom: 8 }}>
             YOUR TELESTRATION
           </div>
@@ -1103,7 +1103,7 @@ export default function Play({ params }) {
       const visibleSteps = currentChainSteps.slice(0, currentRevealStep + 1)
       return (
         <>
-        <div style={{ minHeight: "100dvh", background: BG, color: "white", paddingBottom: FOOTER_H }}>
+        <div style={{ minHeight: "100dvh", background: BG, color: "white", paddingBottom: BOTTOM_PAD }}>
           <div style={{ padding: "28px 24px 20px", background: "#1A0840" }}>
             <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.45, marginBottom: 4 }}>
               CHAIN {currentRevealChain + 1} OF {n}
@@ -1131,7 +1131,7 @@ export default function Play({ params }) {
     // Presenter view (active reveal) — Reveal button overlaid on the next card
     return (
       <>
-      <div style={{ minHeight: "100dvh", background: BG, color: "white", paddingBottom: allStepsRevealed ? FOOTER_H + 80 : FOOTER_H }}>
+      <div style={{ minHeight: "100dvh", background: BG, color: "white", paddingBottom: allStepsRevealed ? `calc(${FOOTER_H + 80}px + env(safe-area-inset-bottom))` : BOTTOM_PAD }}>
         <div style={{ padding: "28px 24px 20px", background: "#1A0840" }}>
           <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.45, marginBottom: 4 }}>
             YOUR TELESTRATION

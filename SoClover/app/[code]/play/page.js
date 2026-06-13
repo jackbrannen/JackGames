@@ -241,7 +241,7 @@ function StripCell({ leafName, side, ls, cs, wordA, wordB, clue, showClues, onCl
           className="sc-clue-input"
           type="text" placeholder="clue" value={clue}
           onChange={e => onClueChange(leafName, e.target.value)}
-          style={{ flex: 1, minWidth: 0, maxWidth: 90, background: WHITE, color: "#1a1a1a", fontSize: 15, fontWeight: 800, padding: "6px 8px", textAlign: "center" }}
+          style={{ flex: 1, minWidth: 0, maxWidth: 140, background: WHITE, color: "#1a1a1a", fontSize: 15, fontWeight: 800, padding: "6px 8px", textAlign: "center" }}
           maxLength={20}
         />
       ) : clue ? (
@@ -877,9 +877,9 @@ export default function PlayPage({ params }) {
       return (
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <StatusBar dark={COOL_DARK} label="WRITING CLUES" />
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, gap: SPACE.md }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, gap: SPACE.md, color: WHITE }}>
             <div style={{ fontSize: 40 }}>⏳</div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: WHITE }}>
+            <div style={{ fontSize: 22, fontWeight: 900 }}>
               {submittedCount} / {totalCount} ready
             </div>
             <div style={{ fontSize: 16, color: MUTED }}>Waiting for everyone to submit their clues…</div>

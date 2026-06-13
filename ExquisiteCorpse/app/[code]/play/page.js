@@ -547,9 +547,6 @@ export default function Play({ params }) {
 
   const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
   const [pokeJustSent, setPokeJustSent] = useState(null)
-  const [presenceState, setPresenceState] = useState({})
-  const channelRef = useRef(null)
-
   async function sendInlinePoke(targetName) {
     if (!me || pokeCooldownActive) return
     setPokeCooldownActive(true); setPokeJustSent(targetName)
@@ -640,16 +637,10 @@ export default function Play({ params }) {
     const channel = supabase.channel(`ec-play-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "ec_games", filter: `code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "ec_drawings", filter: `game_code=eq.${code}` }, loadState)
-      .on("presence", { event: "sync" }, () => setPresenceState({ ...channel.presenceState() }))
-      .subscribe(async status => {
-        if (status === "SUBSCRIBED" && myPlayerId) {
-          await channel.track({ playerId: myPlayerId })
-        }
-      })
-    channelRef.current = channel
+      .subscribe()
 
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
-  }, [code, myPlayerId])
+  }, [code])
 
   useEffect(() => {
     if (game?.phase !== "finished") return
@@ -865,14 +856,7 @@ export default function Play({ params }) {
 
         {/* Play again / another game */}
         <div style={{ padding: "0 24px 48px", display: "flex", flexDirection: "column", gap: 10 }}>
-          <button onClick={async () => {
-            try {
-              await supabase.rpc("ec_reset_game", { p_code: code })
-              await loadState()
-            } catch (e) {
-              console.error("Play again failed:", e)
-            }
-          }}
+          <button onClick={async () => { await rpc("ec_reset_game", { p_code: code }); await loadState() }}
             style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
             Play Again
           </button>
@@ -969,21 +953,12 @@ export default function Play({ params }) {
   // Waiting screen (submitted, others still drawing)
   if (myDrawingSubmitted) {
     const submittedPlayerIds = new Set(drawings.filter(d => d.round_number === currentRound).map(d => d.author_id))
-    const onlinePlayerIds = new Set(
-      Object.values(presenceState).flatMap(presences =>
-        presences.map(p => p.playerId)
-      )
-    )
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", padding: "40px 24px", paddingBottom: BOTTOM_PAD }}>
         <p style={{ fontSize: 22, fontWeight: 800, marginBottom: 24 }}>Waiting for everyone to finish…</p>
         <WaitingList
-          players={players.map(p => ({
-            name: p.name,
-            done: submittedPlayerIds.has(p.id),
-            away: p.id !== myPlayerId && !onlinePlayerIds.has(p.id),
-          }))}
+          players={players.map(p => ({ name: p.name, done: submittedPlayerIds.has(p.id) }))}
           myName={me?.name}
           onPoke={sendInlinePoke}
           cooldownActive={pokeCooldownActive}
@@ -1032,19 +1007,31 @@ export default function Play({ params }) {
           <p style={{ fontSize: 13, opacity: 0.4, fontWeight: 600, textAlign: "center", marginTop: 8 }}>Draw something first!</p>
         )}
 
-        {/* Random ideas — first round only */}
-        {currentRound === 0 && (
-          <div style={{ marginTop: 20 }}>
-            <RandomIdeas
-              bg={WARM_LIGHT}
-              yellow={YELLOW}
-              fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
-              playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
-              maxDraws={3}
-              onIdeaClick={() => {}}
-            />
-          </div>
-        )}
+        {/* Random ideas */}
+        <div style={{ marginTop: 20 }}>
+          {shownIdeas.length < 9 ? (
+            <button
+              onClick={handleGetIdeas}
+              disabled={loadingIdeas}
+              style={{ background: WARM_LIGHT, color: "white", fontSize: 15, fontWeight: 800, padding: "14px 18px", width: "100%", marginBottom: shownIdeas.length ? 12 : 0 }}
+            >
+              {shownIdeas.length === 0 ? "✦ Random ideas" : "✦ 3 more ideas"}
+            </button>
+          ) : (
+            <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.25)", padding: "12px 18px", background: WARM_LIGHT, borderRadius: 6, marginBottom: 12 }}>
+              No more ideas
+            </div>
+          )}
+          {shownIdeas.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {shownIdeas.map((idea, i) => (
+                <div key={i} style={{ padding: "7px 14px", borderRadius: 999, fontSize: 14, fontWeight: 700, background: WARM_LIGHT, color: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.12)" }}>
+                  {idea}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
       {pokeSystemNode()}

@@ -563,12 +563,12 @@ export default function Play({ params }) {
 
   // Pre-fill sentence on writing steps (dummy games)
   useEffect(() => {
-    if (game?.phase !== "play" || !myChainOwner || myStepSubmitted) return
+    if (game?.phase !== "play" || !game?.is_dummy || !myChainOwner || myStepSubmitted) return
     const isDrawingStep = currentStep % 2 === 1
     if (isDrawingStep) return
     supabase.rpc("get_random_ideas", { p_count: 1, p_exclude: [] })
       .then(({ data }) => { if (data?.[0]) setSentence(prev => prev || data[0]) })
-  }, [game?.phase, currentStep, myPlayerId, myStepSubmitted])
+  }, [game?.phase, game?.is_dummy, currentStep, myPlayerId, myStepSubmitted])
 
   const submittedCount = useMemo(() => {
     return steps.filter(s => s.step_number === currentStep).length
@@ -580,7 +580,12 @@ export default function Play({ params }) {
 
   useEffect(() => {
     if (game?.phase !== "reveal" || currentRevealStep < 0) return
-    setTimeout(() => revealEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }), 100)
+    const timer = setTimeout(() => {
+      if (revealEndRef.current) {
+        revealEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" })
+      }
+    }, 300)
+    return () => clearTimeout(timer)
   }, [game?.phase, currentRevealStep, currentRevealChain])
 
   const currentPresenterPlayer = useMemo(() => {
@@ -949,7 +954,8 @@ export default function Play({ params }) {
               onClick={async () => {
                 try {
                   await supabase.rpc("tel_reset_game", { p_code: code })
-                  await loadState()
+                  localStorage.removeItem(`telestrations:${code}:playerId`)
+                  router.push(`/${code}`)
                 } catch (e) {
                   console.error("Play again failed:", e)
                 }
@@ -1120,7 +1126,7 @@ export default function Play({ params }) {
                 Waiting for {currentPresenterPlayer?.name}…
               </div>
             )}
-            <div ref={revealEndRef} />
+            <div ref={revealEndRef} style={{ height: 120 }} />
           </div>
         </div>
         {pokeSystemNode()}

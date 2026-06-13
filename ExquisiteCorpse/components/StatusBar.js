@@ -5,32 +5,33 @@
   Shows round, phase, or turn info. No scores, no invite code.
 
   Props:
-    label   string — primary text, e.g. "Round 2 of 3" or "Alex's turn"
-    dark    hex    — background color (use game's cool-dark)
-    right   node   — optional right-side content (e.g. a timer)
+    label     string — primary text, e.g. "ROUND 2 OF 3"
+    progress  string — optional right-side text, e.g. "3 of 5 done"
+    colors    object — { bg, text } for background and text color
 
   Usage:
-    <StatusBar label={`Round ${game.round_index + 1} of ${game.rounds_total}`} dark={DARK} />
+    <StatusBar label={`ROUND ${r + 1} OF ${n}`} progress={`${done} of ${n} done`} colors={{ bg: DARK, text: "white" }} />
 */
 
 import { FONT_SIZE, FONT_WEIGHT, OPACITY } from "./styles"
 
-export default function StatusBar({ label, dark = "#000", right }) {
+export default function StatusBar({ label, progress, colors = {} }) {
+  const { bg = "#000", text = "white" } = colors
   return (
     <div style={{
       padding: "14px 20px",
-      background: dark,
+      background: bg,
       flexShrink: 0,
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
     }}>
-      <div style={{ fontSize: FONT_SIZE.min, fontWeight: FONT_WEIGHT.heavy, opacity: OPACITY.moderate, color: "white" }}>
+      <div style={{ fontSize: FONT_SIZE.min, fontWeight: FONT_WEIGHT.heavy, opacity: OPACITY.moderate, color: text }}>
         {label}
       </div>
-      {right && (
-        <div style={{ fontSize: FONT_SIZE.min, fontWeight: FONT_WEIGHT.heavy, color: "white" }}>
-          {right}
+      {progress && (
+        <div style={{ fontSize: FONT_SIZE.min, fontWeight: FONT_WEIGHT.heavy, color: text, opacity: OPACITY.moderate }}>
+          {progress}
         </div>
       )}
     </div>

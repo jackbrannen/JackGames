@@ -579,7 +579,18 @@ export default function PlayPage({ params }) {
     // Viewer: sync from database (serialize to detect deep changes)
     const dbSlots = currentBoard.guess_slots ?? {}
     setGuessSlots(dbSlots)
-  }, [JSON.stringify(currentBoard?.guess_slots), currentBoard?.player_id, myPlayerId, game?.phase])
+
+    // Update pool to exclude placed cards
+    const fifthCardOn = game?.fifth_card_enabled ?? false
+    const baseCards = fifthCardOn
+      ? [...currentBoard.dealt_card_indices, currentBoard.decoy_card_index]
+      : [...currentBoard.dealt_card_indices]
+    const placedIndices = new Set(
+      SLOT_NAMES.map(s => dbSlots[s]?.cardIndex).filter(x => x != null)
+    )
+    const pool = baseCards.filter(i => !placedIndices.has(i))
+    setGuessPool(pool)
+  }, [JSON.stringify(currentBoard?.guess_slots), currentBoard?.player_id, myPlayerId, game?.phase, game?.fifth_card_enabled])
 
   useEffect(() => {
     const pid = localStorage.getItem(`soclover:${code}:playerId`)

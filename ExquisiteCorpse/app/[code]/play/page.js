@@ -117,7 +117,7 @@ function DrawingCanvas({ peekImageUrl, peekFoldPct, onExport, onFirstMark }) {
   // Export the full canvas (peek strip + new square) so stored images overlap correctly in the reveal
   function makeExportFn(cv) {
     return () => ({
-      dataUrl: cv.toDataURL({ format: "jpeg", quality: 0.72 }),
+      dataUrl: cv.toDataURL({ format: "jpeg", quality: 0.85 }),
       foldPct: foldPctRef.current,
     })
   }

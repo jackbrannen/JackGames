@@ -575,12 +575,12 @@ export default function PlayPage({ params }) {
     }
   }, [currentBoard, myPlayerId, game?.fifth_card_enabled])
 
-  // Sync guess_slots for viewers (non-controllers) during guessing phase
+  // Sync guess_slots for viewers (non-guessers) during guessing phase
   const prevGuessSlots = useRef(null)
   useEffect(() => {
     if (!currentBoard || !game || game.phase !== "guessing") return
-    const isController = currentBoard.player_id === myPlayerId
-    if (isController) return // Controller manages their own state
+    const isGuesser = currentBoard.guesser_id === myPlayerId
+    if (isGuesser) return // Guesser manages their own state
 
     // Viewer: sync from database (serialize to detect deep changes)
     const dbSlots = currentBoard.guess_slots ?? {}

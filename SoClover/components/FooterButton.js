@@ -42,7 +42,7 @@
       <FooterButton nudge={nudge} ...>Submit</FooterButton>
 */
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 
 const VARIANTS = {
   primary:   { bg: "#FBDF54", color: "#000",   fontWeight: 900 },
@@ -66,20 +66,13 @@ export default function FooterButton({
   const v = VARIANTS[variant] ?? VARIANTS.primary
   const showNudge = nudge && !loading && !disabled
 
-  useEffect(() => {
-    console.log('[FooterButton MOUNT] children:', children, 'disabled:', disabled, 'loading:', loading)
-    return () => console.log('[FooterButton UNMOUNT] children:', children)
-  }, [])
 
   async function handleClick() {
     if (loading || disabled) return
-    console.log('[FooterButton CLICK] Setting loading=true, children:', children)
     setLoading(true)
     try {
       await onClick?.()
-      console.log('[FooterButton CLICK] onClick resolved successfully, NOT resetting loading')
-    } catch (err) {
-      console.log('[FooterButton CLICK] onClick rejected, resetting loading=false, error:', err)
+    } catch {
       setLoading(false)
     }
   }

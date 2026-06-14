@@ -400,8 +400,6 @@ export default function PlayPage({ params }) {
   const router = useRouter()
   const code = useMemo(() => params.code.toUpperCase(), [params.code])
 
-  console.log('[SOCLOVER] Build timestamp: 2026-06-14 14:20 - Debug version with FooterButton logging')
-
   const [game, setGame]             = useState(null)
   const [players, setPlayers]       = useState([])
   const [boards, setBoards]         = useState([])
@@ -903,17 +901,12 @@ export default function PlayPage({ params }) {
   }
 
   async function onReadyNextBoard() {
-    console.log('[READY NEXT BOARD] Starting, readying:', readying, 'myPlayerId:', myPlayerId)
     if (readying) return
     setReadying(true)
     try {
-      console.log('[READY NEXT BOARD] Calling RPC...')
       const { error } = await supabase.rpc("soclover_mark_ready", { p_code: code, p_player_id: myPlayerId })
-      console.log('[READY NEXT BOARD] RPC result:', { error })
       if (error) throw new Error(error.message)
-      console.log('[READY NEXT BOARD] Calling loadState...')
       await loadState()
-      console.log('[READY NEXT BOARD] loadState complete')
       // Don't reset readying - button stays disabled while waiting for others
     } catch (err) {
       console.error('[READY NEXT BOARD ERROR]', err)
@@ -1129,7 +1122,6 @@ export default function PlayPage({ params }) {
     const readyCount  = (game.ready_player_ids ?? []).length
     const alreadyReady = (game.ready_player_ids ?? []).includes(myPlayerId)
     const buttonKey = alreadyReady ? "waiting-for-others" : "ready-next-board"
-    console.log('[READY STATE] count:', readyCount, 'alreadyReady:', alreadyReady, 'buttonKey:', buttonKey, 'ready_player_ids:', game.ready_player_ids)
 
     if (currentBoard.status === "scoring1") {
       const highlightSlots = {}

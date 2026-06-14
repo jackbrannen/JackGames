@@ -500,18 +500,23 @@ export default function PlayPage({ params }) {
   }
 
   const loadState = useCallback(async () => {
-    const [{ data: gameData }, { data: playerData }, { data: boardData }] = await Promise.all([
-      supabase.from("soclover_games").select("*").eq("code", code).single(),
-      supabase.from("soclover_players").select("*").eq("game_code", code).order("created_at"),
-      supabase.from("soclover_boards").select("*").eq("game_code", code),
-    ])
-    if (!gameData) { router.push(`/${code}`); return }
-    if (gameData.phase === "lobby") { router.push(`/${code}`); return }
-    console.log('[LOAD STATE] ready_player_ids:', gameData.ready_player_ids, 'phase:', gameData.phase, 'board_index:', gameData.current_board_index)
-    setGame(gameData)
-    setPlayers(playerData ?? [])
-    setBoards(boardData ?? [])
-    setLoading(false)
+    try {
+      const [{ data: gameData }, { data: playerData }, { data: boardData }] = await Promise.all([
+        supabase.from("soclover_games").select("*").eq("code", code).single(),
+        supabase.from("soclover_players").select("*").eq("game_code", code).order("created_at"),
+        supabase.from("soclover_boards").select("*").eq("game_code", code),
+      ])
+      if (!gameData) { router.push(`/${code}`); return }
+      if (gameData.phase === "lobby") { router.push(`/${code}`); return }
+      console.log('[LOAD STATE] ready_player_ids:', gameData.ready_player_ids, 'phase:', gameData.phase, 'board_index:', gameData.current_board_index)
+      setGame(gameData)
+      setPlayers(playerData ?? [])
+      setBoards(boardData ?? [])
+      setLoading(false)
+    } catch (err) {
+      console.error('[LOAD STATE ERROR]', err)
+      // Don't throw - allow component to continue functioning
+    }
   }, [code, router])
 
 
@@ -896,14 +901,20 @@ export default function PlayPage({ params }) {
   }
 
   async function onReadyNextBoard() {
+    console.log('[READY NEXT BOARD] Starting, readying:', readying, 'myPlayerId:', myPlayerId)
     if (readying) return
     setReadying(true)
     try {
+      console.log('[READY NEXT BOARD] Calling RPC...')
       const { error } = await supabase.rpc("soclover_mark_ready", { p_code: code, p_player_id: myPlayerId })
+      console.log('[READY NEXT BOARD] RPC result:', { error })
       if (error) throw new Error(error.message)
+      console.log('[READY NEXT BOARD] Calling loadState...')
       await loadState()
+      console.log('[READY NEXT BOARD] loadState complete')
       // Don't reset readying - button stays disabled while waiting for others
     } catch (err) {
+      console.error('[READY NEXT BOARD ERROR]', err)
       setReadying(false)
       throw err
     }

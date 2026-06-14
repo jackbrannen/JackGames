@@ -251,6 +251,9 @@ export default function Lobby({ params }) {
 
   useEffect(() => {
     if (game?.phase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    // Only auto-join for dummy games
+    const isDummy = localStorage.getItem(`rc:${code}:isDummy`) === "true"
+    if (!isDummy) return
     const saved = loadProfile()
     if (!saved?.username) return
     hasAutoJoinedRef.current = true
@@ -266,6 +269,7 @@ export default function Lobby({ params }) {
       if (error || !data) { hasAutoJoinedRef.current = false; return }
       localStorage.setItem(`rc:${code}:playerId`, data.id)
       setMyPlayerId(data.id)
+      // Pre-fill clues for dummy games
       const clueCount = game?.min_clues_per_player || 2
       const { data: ideas } = await supabase.rpc("get_random_ideas", { p_count: clueCount, p_exclude: [] })
       if (ideas?.length) await supabase.from("reversecharades_clues").insert(ideas.map(text => ({ game_code: code, submitted_by: data.id, text })))

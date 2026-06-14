@@ -901,20 +901,25 @@ export default function PlayPage({ params }) {
   }
 
   async function onReadyNextBoard() {
+    console.log('[READY] Starting', { readying, myPlayerId, currentReadyIds: game.ready_player_ids })
     if (readying) return
     setReadying(true)
     try {
       // Optimistically update local state immediately so button changes right away
-      setGame(prev => ({
-        ...prev,
-        ready_player_ids: [...(prev.ready_player_ids || []), myPlayerId]
-      }))
+      setGame(prev => {
+        const newIds = [...(prev.ready_player_ids || []), myPlayerId]
+        console.log('[READY] Optimistic update', { oldIds: prev.ready_player_ids, newIds })
+        return { ...prev, ready_player_ids: newIds }
+      })
 
+      console.log('[READY] Calling RPC...', { code, myPlayerId })
       const { error } = await supabase.rpc("soclover_mark_ready", { p_code: code, p_player_id: myPlayerId })
+      console.log('[READY] RPC result', { error })
       if (error) throw new Error(error.message)
 
       // Reload state to get accurate ready count and handle auto-advance
       await loadState()
+      console.log('[READY] State reloaded', { ready_player_ids: game.ready_player_ids })
       // Don't reset readying - button stays disabled while waiting for others
     } catch (err) {
       console.error('[READY NEXT BOARD ERROR]', err)

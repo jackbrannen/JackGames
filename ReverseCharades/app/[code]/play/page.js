@@ -150,7 +150,7 @@ function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
           bottom: 0,
           width: `${percentRemaining}%`,
           background: playingTeam === "A" ? "white" : YELLOW,
-          transition: "width 0.5s linear",
+          transition: "width 0.1s linear",
         }} />
       </div>
 
@@ -250,7 +250,7 @@ export default function Play({ params }) {
     let poll = setInterval(loadState, 1500)
     function handleVisibility() { clearInterval(poll); if (!document.hidden) { loadState(); poll = setInterval(loadState, 1500) } }
     document.addEventListener("visibilitychange", handleVisibility)
-    const ticker = setInterval(() => setNowMs(Date.now()), 300)
+    const ticker = setInterval(() => setNowMs(Date.now()), 100)
     const channel = supabase.channel(`rc-play-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_games", filter: `code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_players" }, loadState)
@@ -503,7 +503,7 @@ export default function Play({ params }) {
 
       <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: YELLOW, notifBg: DARK }} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
         {amGuesser && (
-          <FooterButton onClick={doStartTurn} bg={YELLOW} textColor="#000">
+          <FooterButton key="start-turn" onClick={doStartTurn} bg={YELLOW} textColor="#000">
             Start
           </FooterButton>
         )}

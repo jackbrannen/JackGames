@@ -507,6 +507,7 @@ export default function PlayPage({ params }) {
     ])
     if (!gameData) { router.push(`/${code}`); return }
     if (gameData.phase === "lobby") { router.push(`/${code}`); return }
+    console.log('[LOAD STATE] ready_player_ids:', gameData.ready_player_ids, 'phase:', gameData.phase, 'board_index:', gameData.current_board_index)
     setGame(gameData)
     setPlayers(playerData ?? [])
     setBoards(boardData ?? [])
@@ -1114,6 +1115,7 @@ export default function PlayPage({ params }) {
     const lockedSlots = new Set(currentBoard.correct_slots_attempt1 ?? [])
     const readyCount  = (game.ready_player_ids ?? []).length
     const alreadyReady = (game.ready_player_ids ?? []).includes(myPlayerId)
+    console.log('[READY STATE] count:', readyCount, 'alreadyReady:', alreadyReady, 'ready_player_ids:', game.ready_player_ids)
 
     if (currentBoard.status === "scoring1") {
       const highlightSlots = {}

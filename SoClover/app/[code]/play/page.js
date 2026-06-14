@@ -514,6 +514,11 @@ export default function PlayPage({ params }) {
   }, [code, router])
 
 
+  // Reset submitting state when board status or attempt changes
+  useEffect(() => {
+    setSubmittingGuess(false)
+  }, [currentBoard?.status, currentBoard?.attempt])
+
   const clueInitRef = useRef(false)
   useEffect(() => {
     if (!myBoard || clueInitRef.current) return
@@ -571,6 +576,7 @@ export default function PlayPage({ params }) {
   }, [currentBoard, myPlayerId, game?.fifth_card_enabled])
 
   // Sync guess_slots for viewers (non-controllers) during guessing phase
+  const prevGuessSlots = useRef(null)
   useEffect(() => {
     if (!currentBoard || !game || game.phase !== "guessing") return
     const isController = currentBoard.player_id === myPlayerId
@@ -578,6 +584,40 @@ export default function PlayPage({ params }) {
 
     // Viewer: sync from database (serialize to detect deep changes)
     const dbSlots = currentBoard.guess_slots ?? {}
+
+    // Detect swaps for animation
+    if (prevGuessSlots.current) {
+      const prev = prevGuessSlots.current
+      // Check if exactly two slots changed (a swap)
+      const changedSlots = SLOT_NAMES.filter(s => {
+        const prevCard = prev[s]?.cardIndex
+        const newCard = dbSlots[s]?.cardIndex
+        return prevCard !== newCard
+      })
+
+      if (changedSlots.length === 2) {
+        const [slotA, slotB] = changedSlots
+        const cardA = prev[slotA]  // Use the OLD card that was in slotA
+        const cardB = prev[slotB]  // Use the OLD card that was in slotB
+        if (cardA && cardB) {
+          // Trigger swap animation
+          const elA = document.querySelector(`[data-slot="${slotA}"]`)
+          const elB = document.querySelector(`[data-slot="${slotB}"]`)
+          const rectA = elA?.getBoundingClientRect()
+          const rectB = elB?.getBoundingClientRect()
+          if (rectA && rectB) {
+            setSwapAnim([
+              { cardIndex: cardA.cardIndex, rotation: cardA.rotation, fromX: rectA.left, fromY: rectA.top, toX: rectB.left, toY: rectB.top, slotName: slotA },
+              { cardIndex: cardB.cardIndex, rotation: cardB.rotation, fromX: rectB.left, fromY: rectB.top, toX: rectA.left, toY: rectA.top, slotName: slotB },
+            ])
+            setHidingSlots(new Set([slotA, slotB]))
+            setTimeout(() => { setSwapAnim(null); setHidingSlots(new Set()) }, 420)
+          }
+        }
+      }
+    }
+
+    prevGuessSlots.current = dbSlots
     setGuessSlots(dbSlots)
 
     // Update pool to exclude placed cards
@@ -642,8 +682,8 @@ export default function PlayPage({ params }) {
     const rectTgt = elTgt?.getBoundingClientRect()
     if (!rectSrc || !rectTgt) return
     setSwapAnim([
-      { cardIndex: cardA, rotation: rotA, fromX: x - CARD_SIZE / 2, fromY: y - CARD_SIZE / 2, toX: rectTgt.left, toY: rectTgt.top },
-      { cardIndex: cardB, rotation: rotB, fromX: rectTgt.left, fromY: rectTgt.top, toX: rectSrc.left, toY: rectSrc.top },
+      { cardIndex: cardA, rotation: rotA, fromX: x - CARD_SIZE / 2, fromY: y - CARD_SIZE / 2, toX: rectTgt.left, toY: rectTgt.top, slotName: srcSlot },
+      { cardIndex: cardB, rotation: rotB, fromX: rectTgt.left, fromY: rectTgt.top, toX: rectSrc.left, toY: rectSrc.top, slotName: targetSlot },
     ])
     setHidingSlots(new Set([srcSlot, targetSlot]))
     setTimeout(() => { setSwapAnim(null); setHidingSlots(new Set()) }, 420)
@@ -815,24 +855,32 @@ export default function PlayPage({ params }) {
   const allGuessFilled = SLOT_NAMES.every(s => guessSlots[s] != null)
 
   async function onSubmitGuess() {
+    console.log('[SUBMIT GUESS] Called', { submittingGuess, allGuessFilled, currentBoard: !!currentBoard })
     if (submittingGuess || !allGuessFilled || !currentBoard) return
+    console.log('[SUBMIT GUESS] Calling RPC...')
     setSubmittingGuess(true)
     const { data, error } = await supabase.rpc("soclover_submit_guess", {
       p_code: code, p_board_id: currentBoard.id,
       p_player_id: myPlayerId, p_guess: guessSlots,
     })
+    console.log('[SUBMIT GUESS] RPC result:', { data, error })
     if (error) {
       setSubmittingGuess(false)
-      throw new Error(error.message) // Let FooterButton reset loading
+      throw new Error(error.message)
     }
     setGuessResult(data)
+    console.log('[SUBMIT GUESS] Loading state...')
     await loadState()
-    setSubmittingGuess(false)
+    console.log('[SUBMIT GUESS] Done')
   }
 
   async function onContinueAttempt2() {
     if (!currentBoard) return
-    await rpc("soclover_start_attempt2", { p_code: code, p_board_id: currentBoard.id })
+    console.log('[CONTINUE ATTEMPT 2] Calling RPC...')
+    const { error } = await supabase.rpc("soclover_start_attempt2", { p_code: code, p_board_id: currentBoard.id })
+    console.log('[CONTINUE ATTEMPT 2] RPC result:', { error })
+    if (error) throw new Error(error.message)
+    console.log('[CONTINUE ATTEMPT 2] Success, waiting for phase change...')
   }
 
   async function onReadyNextBoard() {
@@ -843,13 +891,10 @@ export default function PlayPage({ params }) {
     await loadState()
   }
 
-  const localRotateRef = useRef(false)
-
   function rotateBoardCW() {
     if (boardAnimating.current) return
     const el = boardRef.current
     if (!el) return
-    localRotateRef.current = true // Mark this as local rotation
     boardAnimating.current = true
     el.style.transition = "transform 0.4s ease"
     el.style.transform = "rotate(90deg)"
@@ -858,13 +903,12 @@ export default function PlayPage({ params }) {
       el.style.transform = "rotate(0deg)"
       setBoardRotation(r => {
         const next = (r + 1) % 4
+        // Update ref immediately so sync effect won't double-rotate
+        prevRemoteRotationRef.current = next
         if (currentBoard) supabase.from("soclover_boards").update({ board_rotation: next }).eq("id", currentBoard.id).then(() => {})
         return next
       })
-      requestAnimationFrame(() => {
-        boardAnimating.current = false
-        setTimeout(() => { localRotateRef.current = false }, 100) // Clear flag after db update propagates
-      })
+      requestAnimationFrame(() => { boardAnimating.current = false })
     }, 400)
   }
 
@@ -882,8 +926,7 @@ export default function PlayPage({ params }) {
     }
 
     // If remote rotation changed and is different from local, animate
-    // Skip if this is a local rotation (we already animated it)
-    if (remoteRot !== prevRemoteRotationRef.current && !localRotateRef.current) {
+    if (remoteRot !== prevRemoteRotationRef.current) {
       prevRemoteRotationRef.current = remoteRot
 
       if (boardAnimating.current) return
@@ -899,9 +942,6 @@ export default function PlayPage({ params }) {
         setBoardRotation(remoteRot)
         requestAnimationFrame(() => { boardAnimating.current = false })
       }, 400)
-    } else if (localRotateRef.current) {
-      // Update ref but don't animate (local rotation already handled it)
-      prevRemoteRotationRef.current = remoteRot
     }
   }, [currentBoard?.board_rotation])
 
@@ -1037,7 +1077,7 @@ export default function PlayPage({ params }) {
         {swapAnim && swapAnim.map((s, i) => <SwapCard key={i} cs={CARD_SIZE} {...s} boardRotation={boardRotation} />)}
       </div>
         {pokeSystemNode(
-          <FooterButton onClick={onSubmitClues} disabled={!allSlotsFilled || !allCluesFilled} nudge={nudgeClues} bg={ACCENT} textColor="#000">
+          <FooterButton key="submit-clues" onClick={onSubmitClues} disabled={!allSlotsFilled || !allCluesFilled} nudge={nudgeClues} bg={ACCENT} textColor="#000">
             {!allSlotsFilled ? "Fill all 4 slots" : !allCluesFilled ? "Write all 4 clues" : "Submit My Board"}
           </FooterButton>
         )}
@@ -1077,7 +1117,7 @@ export default function PlayPage({ params }) {
           </div>
         </div>
           {pokeSystemNode(amGuesser ? (
-            <FooterButton onClick={onContinueAttempt2} bg={ACCENT} textColor="#000">
+            <FooterButton key="continue-attempt2" onClick={onContinueAttempt2} bg={ACCENT} textColor="#000">
               Continue to Attempt 2 →
             </FooterButton>
           ) : null)}
@@ -1111,7 +1151,7 @@ export default function PlayPage({ params }) {
           </div>
         </div>
           {pokeSystemNode(
-            <FooterButton onClick={onReadyNextBoard} disabled={alreadyReady} bg={alreadyReady ? MID_DARK : ACCENT} textColor={alreadyReady ? WHITE : "#000"}>
+            <FooterButton key="ready-next-board" onClick={onReadyNextBoard} disabled={alreadyReady} bg={alreadyReady ? MID_DARK : ACCENT} textColor={alreadyReady ? WHITE : "#000"}>
               {alreadyReady ? "Waiting for others…" : "Next Board →"}
             </FooterButton>
           )}
@@ -1122,7 +1162,7 @@ export default function PlayPage({ params }) {
     // Active guessing
     const fifthCardOn = game?.fifth_card_enabled ?? false
     const spectatorSlots = amGuesser ? guessSlots : (currentBoard.guess_slots ?? {})
-    const displayBoardRotation = amGuesser ? boardRotation : (currentBoard.board_rotation ?? 0)
+    const displayBoardRotation = boardRotation
     // Spectator pool: cards from dealt set (+ decoy if fifth card on) that aren't placed
     const spectatorPlacedIndices = new Set(
       Object.values(currentBoard.guess_slots ?? {}).map(s => s?.cardIndex).filter(x => x != null)
@@ -1132,6 +1172,16 @@ export default function PlayPage({ params }) {
       : [...currentBoard.dealt_card_indices]
     const spectatorPool = baseCardPool.filter(i => !spectatorPlacedIndices.has(i))
     const poolToShow = amGuesser ? guessPool : spectatorPool
+    if (amGuesser && attempt === 2) {
+      console.log('[ATTEMPT 2 DEBUG]', {
+        guessPool,
+        guessSlots,
+        lockedSlots: Array.from(lockedSlots),
+        poolToShow,
+        allGuessFilled,
+        submittingGuess
+      })
+    }
     const totalCards = fifthCardOn ? 5 : 4
     const hint = attempt === 2
       ? `Attempt 2 — place the remaining ${4 - lockedSlots.size} card${4 - lockedSlots.size !== 1 ? "s" : ""}`
@@ -1156,7 +1206,7 @@ export default function PlayPage({ params }) {
             clues={currentBoard.clues ?? {}}
             interactive={amGuesser}
             boardRotation={displayBoardRotation}
-            boardRef={amGuesser ? boardRef : undefined}
+            boardRef={boardRef}
             onSlotPointerDown={amGuesser ? (e, slotName) => {
               if (lockedSlots.has(slotName) || !guessSlots[slotName]) return
               startDrag(e, guessSlots[slotName].cardIndex, "slot", slotName, guessSlots[slotName].rotation)
@@ -1203,7 +1253,7 @@ export default function PlayPage({ params }) {
         {swapAnim && swapAnim.map((s, i) => <SwapCard key={i} cs={CARD_SIZE} {...s} boardRotation={displayBoardRotation} />)}
       </div>
         {pokeSystemNode(amGuesser ? (
-          <FooterButton onClick={onSubmitGuess} disabled={!allGuessFilled} bg={ACCENT} textColor="#000">
+          <FooterButton key={`submit-guess-${attempt}`} onClick={onSubmitGuess} disabled={!allGuessFilled} bg={ACCENT} textColor="#000">
             {!allGuessFilled ? `Place all ${4 - SLOT_NAMES.filter(s => guessSlots[s]).length} remaining` : `Submit Guess${attempt === 2 ? " (2)" : ""}`}
           </FooterButton>
         ) : null)}
@@ -1292,7 +1342,7 @@ function DragOverlay({ dragCard, dragPos, cs, boardRotation = 0 }) {
   )
 }
 
-function SwapCard({ cardIndex, rotation, fromX, fromY, toX, toY, cs, boardRotation = 0 }) {
+function SwapCard({ cardIndex, rotation, fromX, fromY, toX, toY, cs, boardRotation = 0, slotName }) {
   const ref = useRef(null)
   useEffect(() => {
     const el = ref.current
@@ -1305,9 +1355,10 @@ function SwapCard({ cardIndex, rotation, fromX, fromY, toX, toY, cs, boardRotati
       el.style.transform = `translate(${toX}px, ${toY}px)`
     })
   }, [])
+  const activeEdges = slotName ? (SLOT_ACTIVE_EDGES[slotName] || []) : []
   return (
     <div ref={ref} style={{ position: "fixed", top: 0, left: 0, width: cs, height: cs, zIndex: 9998, pointerEvents: "none", boxShadow: "0 8px 28px rgba(0,0,0,0.45)", willChange: "transform" }}>
-      <CardFace words={CARDS[cardIndex]} rotation={rotation} boardRotation={boardRotation} size={cs} />
+      <CardFace words={CARDS[cardIndex]} rotation={rotation} boardRotation={boardRotation} size={cs} activeEdges={activeEdges} />
     </div>
   )
 }

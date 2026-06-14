@@ -451,15 +451,27 @@ export default function Play({ params }) {
         </div>
       </div>
 
-      {(console.log('[TURN START FOOTER CHECK]', { amGuesser, menuOpen }), amGuesser) && (
-        <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: YELLOW, notifBg: DARK }} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
+      <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: YELLOW, notifBg: DARK }} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
+        {amGuesser && (
           <FooterButton onClick={doStartTurn} bg={YELLOW} textColor="#000">
             Start
           </FooterButton>
-        </Footer>
-      )}
+        )}
+      </Footer>
 
-      {pokeSystemNode}
+      <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />
+      <Menu
+        supabase={supabase}
+        colors={POKE_COLORS}
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        roomCode={code}
+        currentPlayer={me.name}
+        playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, teamColor: p.team ? teamColor(p.team) : undefined, teamLabel: p.team ? teamLabel(p.team) : undefined, teamTextColor: p.team ? teamTextColor(p.team) : undefined }))}
+        gamePhase={game?.phase}
+        rules={instructions ? [["How to Play", instructions]] : null}
+        onResetToLobby={async () => { await rpc("rc_reset_game", { p_code: code }) }}
+      />
       </>
     )
   }

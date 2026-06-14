@@ -611,7 +611,7 @@ export default function PlayPage({ params }) {
       })
     channelRef.current = ch
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(ch) }
-  }, [code, loadState])
+  }, [code, loadState, myPlayerId])
 
   useEffect(() => {
     function onMove(e) {
@@ -957,7 +957,18 @@ export default function PlayPage({ params }) {
             </div>
             <div style={{ fontSize: 16, color: MUTED }}>Waiting for everyone to submit their clues…</div>
             <WaitingList
-              players={players.map(p => ({ name: p.name, done: !!p.clues_submitted, typing: typingPlayerIds.has(p.id) }))}
+              players={players.map(p => {
+                const onlinePlayerIds = new Set(
+                  Object.values(presenceState).flatMap(presences => presences.map(pr => pr.playerId))
+                )
+                const presenceReady = Object.keys(presenceState).length > 0
+                return {
+                  name: p.name,
+                  done: !!p.clues_submitted,
+                  typing: typingPlayerIds.has(p.id),
+                  away: presenceReady && p.id !== myPlayerId && !onlinePlayerIds.has(p.id),
+                }
+              })}
               myName={me?.name}
               colors={{ mid: MID_DARK }}
               onPoke={sendInlinePoke}

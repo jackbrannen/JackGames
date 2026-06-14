@@ -1107,7 +1107,7 @@ export default function PlayPage({ params }) {
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <StatusBar
             dark={COOL_DARK}
-            label={`BOARD ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`}
+            label={`${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`}
             right={
               <span>
                 <span style={{ background: ACCENT, color: "#000", padding: "3px 8px", fontWeight: 900 }}>
@@ -1146,7 +1146,7 @@ export default function PlayPage({ params }) {
       return (
         <>
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-          <StatusBar dark={COOL_DARK} label={`BOARD ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`} />
+          <StatusBar dark={COOL_DARK} label={`${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`} />
           <div style={{ flex: 1, padding: `16px 16px ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: 48, marginBottom: 4 }}>{perfect ? "🎉" : pts >= 3 ? "✨" : "💪"}</div>
@@ -1197,7 +1197,7 @@ export default function PlayPage({ params }) {
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
         <StatusBar
           dark={COOL_DARK}
-          label={`BOARD ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`}
+          label={`${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`}
           right={
             <span>
               <span style={{ background: ACCENT, color: "#000", padding: "3px 8px", fontWeight: 900 }}>

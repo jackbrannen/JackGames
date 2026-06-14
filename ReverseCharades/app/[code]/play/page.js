@@ -425,6 +425,13 @@ export default function Play({ params }) {
           </div>
         </div>
 
+        {/* Team turn strip */}
+        <div style={{ padding: "8px 20px", background: MID, textAlign: "center" }}>
+          <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: "white" }}>
+            {teamLabel(playingTeam)}&rsquo;s Turn
+          </div>
+        </div>
+
         {/* Main */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "32px 24px" }}>
           <div style={{

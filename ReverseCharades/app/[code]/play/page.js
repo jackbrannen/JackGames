@@ -451,7 +451,7 @@ export default function Play({ params }) {
         </div>
       </div>
 
-      {amGuesser && (
+      {(console.log('[TURN START FOOTER CHECK]', { amGuesser, menuOpen }), amGuesser) && (
         <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: YELLOW, notifBg: DARK }} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
           <FooterButton onClick={doStartTurn} bg={YELLOW} textColor="#000">
             Start

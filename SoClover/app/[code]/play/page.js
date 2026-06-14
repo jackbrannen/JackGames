@@ -1126,17 +1126,21 @@ export default function PlayPage({ params }) {
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <StatusBar
             dark={COOL_DARK}
-            label={`${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`}
-            right={
-              <span>
-                <span style={{ background: ACCENT, color: "#000", padding: "3px 8px", fontWeight: 900 }}>
-                  {guesser?.name ?? "Guesser"}
-                </span>
-                {" in charge"}
-              </span>
-            }
+            label={`Round ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}'s board`}
           />
           <div style={{ flex: 1, padding: `16px 16px ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: WHITE, textAlign: "center" }}>
+              {amGuesser ? (
+                "You are placing cards"
+              ) : (
+                <>
+                  <span style={{ background: ACCENT, color: "#000", padding: "3px 8px", fontWeight: 900 }}>
+                    {guesser?.name ?? "Guesser"}
+                  </span>
+                  {" is placing cards"}
+                </>
+              )}
+            </div>
             <div style={{ fontSize: 17, fontWeight: 900, color: WHITE }}>
               {lockedSlots.size} / 4 correct — attempt 2 coming up
             </div>
@@ -1165,7 +1169,7 @@ export default function PlayPage({ params }) {
       return (
         <>
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-          <StatusBar dark={COOL_DARK} label={`${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`} />
+          <StatusBar dark={COOL_DARK} label={`Round ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}'s board`} />
           <div style={{ flex: 1, padding: `16px 16px ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: 48, marginBottom: 4 }}>{perfect ? "🎉" : pts >= 3 ? "✨" : "💪"}</div>
@@ -1216,18 +1220,22 @@ export default function PlayPage({ params }) {
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
         <StatusBar
           dark={COOL_DARK}
-          label={`${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`}
-          right={
-            <span>
-              <span style={{ background: ACCENT, color: "#000", padding: "3px 8px", fontWeight: 900 }}>
-                {guesser?.name ?? "Guesser"}
-              </span>
-              {" in charge"}
-            </span>
-          }
+          label={`Round ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}'s board`}
         />
 
         <div style={{ flex: 1, padding: `12px 0 ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: GAP.result }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: WHITE, textAlign: "center" }}>
+            {amGuesser ? (
+              "You are placing cards"
+            ) : (
+              <>
+                <span style={{ background: ACCENT, color: "#000", padding: "3px 8px", fontWeight: 900 }}>
+                  {guesser?.name ?? "Guesser"}
+                </span>
+                {" is placing cards"}
+              </>
+            )}
+          </div>
 
           <CloverBoard
             slots={spectatorSlots}

@@ -571,6 +571,8 @@ export default function PlayPage({ params }) {
           pool.forEach(idx => { rots[idx] = Math.floor(Math.random() * 4) })
           return rots
         })
+        // Write initial attempt 2 state to database so viewers see locked slots
+        supabase.from("soclover_boards").update({ guess_slots: lockedSlotMap }).eq("id", currentBoard.id).then(() => {})
       }
     }
   }, [currentBoard, myPlayerId, game?.fifth_card_enabled])

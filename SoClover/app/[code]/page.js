@@ -127,6 +127,9 @@ export default function LobbyPage({ params }) {
   const hasAutoJoinedRef = useRef(false)
   useEffect(() => {
     if (gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    // Only auto-join for dummy games
+    const isDummy = localStorage.getItem(`soclover:${code}:isDummy`) === "true"
+    if (!isDummy) return
     const saved = loadProfile()
     if (!saved?.username) return
     hasAutoJoinedRef.current = true

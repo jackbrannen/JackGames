@@ -59,20 +59,26 @@ export default function FooterButton({
   textColor,
   disabled = false,
   nudge = false,
+  loading: externalLoading,
   style,
   children,
 }) {
-  const [loading, setLoading] = useState(false)
+  const [internalLoading, setInternalLoading] = useState(false)
+  const loading = externalLoading !== undefined ? externalLoading : internalLoading
   const v = VARIANTS[variant] ?? VARIANTS.primary
   const showNudge = nudge && !loading && !disabled
 
   async function handleClick() {
     if (loading || disabled) return
-    setLoading(true)
+    if (externalLoading === undefined) {
+      setInternalLoading(true)
+    }
     try {
       await onClick?.()
     } catch {
-      setLoading(false)
+      if (externalLoading === undefined) {
+        setInternalLoading(false)
+      }
     }
   }
 

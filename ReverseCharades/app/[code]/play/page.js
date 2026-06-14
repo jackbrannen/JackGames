@@ -339,6 +339,7 @@ export default function Play({ params }) {
     try {
       await rpc("rc_correct", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
       await loadState() // Immediate feedback for score/clue update
+      setActing(false)
     } catch (e) {
       setActing(false)
       throw e
@@ -352,6 +353,7 @@ export default function Play({ params }) {
     try {
       await rpc("rc_skip", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
       await loadState() // Immediate feedback for score/clue update
+      setActing(false)
     } catch (e) {
       setActing(false)
       throw e
@@ -577,13 +579,13 @@ export default function Play({ params }) {
           </div>
 
           <div style={{ padding: "16px 20px", paddingBottom: "max(20px, env(safe-area-inset-bottom, 20px))", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
-            <FooterButton key={`correct-${currentClue?.id}`} onClick={doCorrect} disabled={!currentClue} bg={YELLOW} textColor="#000" style={{ padding: "28px 16px", fontSize: 28 }}>
+            <FooterButton onClick={doCorrect} disabled={!currentClue} loading={acting} bg={YELLOW} textColor="#000" style={{ padding: "28px 16px", fontSize: 28 }}>
               ✓ Correct
             </FooterButton>
             <FooterButton
-              key={`skip-${currentClue?.id}`}
               onClick={doSkip}
               disabled={skipDisabled}
+              loading={acting}
               bg={skipDisabled ? MID : WARM}
               textColor="white"
               style={{

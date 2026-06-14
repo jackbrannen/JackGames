@@ -1126,7 +1126,8 @@ export default function PlayPage({ params }) {
     const lockedSlots = new Set(currentBoard.correct_slots_attempt1 ?? [])
     const readyCount  = (game.ready_player_ids ?? []).length
     const alreadyReady = (game.ready_player_ids ?? []).includes(myPlayerId)
-    console.log('[READY STATE] count:', readyCount, 'alreadyReady:', alreadyReady, 'ready_player_ids:', game.ready_player_ids)
+    const buttonKey = alreadyReady ? "waiting-for-others" : "ready-next-board"
+    console.log('[READY STATE] count:', readyCount, 'alreadyReady:', alreadyReady, 'buttonKey:', buttonKey, 'ready_player_ids:', game.ready_player_ids)
 
     if (currentBoard.status === "scoring1") {
       const highlightSlots = {}
@@ -1198,7 +1199,7 @@ export default function PlayPage({ params }) {
           </div>
         </div>
           {pokeSystemNode(
-            <FooterButton key="ready-next-board" onClick={onReadyNextBoard} disabled={alreadyReady} bg={alreadyReady ? MID_DARK : ACCENT} textColor={alreadyReady ? WHITE : "#000"}>
+            <FooterButton key={buttonKey} onClick={onReadyNextBoard} disabled={alreadyReady} bg={alreadyReady ? MID_DARK : ACCENT} textColor={alreadyReady ? WHITE : "#000"}>
               {alreadyReady ? "Waiting for others…" : "Next Board →"}
             </FooterButton>
           )}

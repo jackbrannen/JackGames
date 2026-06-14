@@ -577,6 +577,15 @@ export default function PlayPage({ params }) {
     }
   }, [currentBoard, myPlayerId, game?.fifth_card_enabled])
 
+  // Reset board rotation for viewers when board or attempt changes
+  useEffect(() => {
+    if (!currentBoard || !game || game.phase !== "guessing") return
+    const isGuesser = currentBoard.guesser_id === myPlayerId
+    if (!isGuesser) {
+      setBoardRotation(0)
+    }
+  }, [currentBoard?.id, currentBoard?.attempt, myPlayerId, game?.phase])
+
   // Sync guess_slots for viewers (non-guessers) during guessing phase
   const prevGuessSlots = useRef(null)
   useEffect(() => {

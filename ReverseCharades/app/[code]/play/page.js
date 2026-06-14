@@ -400,6 +400,7 @@ export default function Play({ params }) {
   if (game.phase === "turn_start") {
     const bigText = amGuesser ? "Your turn" : `${guesser?.name ?? "—"} is guessing`
     const controllerLine = amController ? "You control clues" : `${controller?.name ?? "—"} controls clues`
+    console.log('[TURN START]', { amGuesser, amController, bigText, controllerLine })
 
     return (
       <>

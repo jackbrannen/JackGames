@@ -42,7 +42,7 @@
       <FooterButton nudge={nudge} ...>Submit</FooterButton>
 */
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 const VARIANTS = {
   primary:   { bg: "#FBDF54", color: "#000",   fontWeight: 900 },
@@ -64,6 +64,14 @@ export default function FooterButton({
   children,
 }) {
   const [internalLoading, setInternalLoading] = useState(false)
+
+  // Reset internal loading when external loading is provided
+  useEffect(() => {
+    if (externalLoading !== undefined) {
+      setInternalLoading(false)
+    }
+  }, [externalLoading])
+
   const loading = externalLoading !== undefined ? externalLoading : internalLoading
   const v = VARIANTS[variant] ?? VARIANTS.primary
   const showNudge = nudge && !loading && !disabled

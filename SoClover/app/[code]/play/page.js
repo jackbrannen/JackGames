@@ -1105,15 +1105,23 @@ export default function PlayPage({ params }) {
       return (
         <>
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-          <StatusBar dark={COOL_DARK} label={`BOARD ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`} />
+          <StatusBar
+            dark={COOL_DARK}
+            label={`BOARD ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`}
+            right={
+              <span>
+                <span style={{ background: ACCENT, color: "#000", padding: "3px 8px", fontWeight: 900 }}>
+                  {guesser?.name ?? "Guesser"}
+                </span>
+                {" in charge"}
+              </span>
+            }
+          />
           <div style={{ flex: 1, padding: `16px 16px ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
             <div style={{ fontSize: 17, fontWeight: 900, color: WHITE }}>
               {lockedSlots.size} / 4 correct — attempt 2 coming up
             </div>
             <CloverBoard slots={currentBoard.guess_slots ?? {}} clues={currentBoard.clues ?? {}} interactive={false} boardRotation={boardRotation} showClues={false} lockedSlots={lockedSlots} highlightSlots={highlightSlots} CARD_SIZE={CARD_SIZE} LEAF_SIZE={LEAF_SIZE} hidingSlots={new Set()} />
-            <div style={{ fontSize: 14, color: MUTED, textAlign: "center" }}>
-              Correct slots stay locked. {guesser?.name} gets one more try with the remaining cards.
-            </div>
           </div>
         </div>
           {pokeSystemNode(amGuesser ? (
@@ -1183,23 +1191,24 @@ export default function PlayPage({ params }) {
       })
     }
     const totalCards = fifthCardOn ? 5 : 4
-    const hint = attempt === 2
-      ? `Attempt 2 — place the remaining ${4 - lockedSlots.size} card${4 - lockedSlots.size !== 1 ? "s" : ""}`
-      : `${guesser?.name ?? "Guesser"} — place all ${totalCards} cards, rotate to match the clues`
 
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
-        <StatusBar dark={COOL_DARK} label={`BOARD ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`} />
+        <StatusBar
+          dark={COOL_DARK}
+          label={`BOARD ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}`}
+          right={
+            <span>
+              <span style={{ background: ACCENT, color: "#000", padding: "3px 8px", fontWeight: 900 }}>
+                {guesser?.name ?? "Guesser"}
+              </span>
+              {" in charge"}
+            </span>
+          }
+        />
 
         <div style={{ flex: 1, padding: `12px 0 ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: GAP.result }}>
-          <div style={{ fontSize: 13, color: MUTED, textAlign: "center" }}>{hint}</div>
-
-          {amOwner && (
-            <div style={{ background: COOL_DARK, padding: "8px 14px", fontSize: 13, fontWeight: 700, color: MUTED }}>
-              Your board — watch {guesser?.name} guess
-            </div>
-          )}
 
           <CloverBoard
             slots={spectatorSlots}
@@ -1236,15 +1245,6 @@ export default function PlayPage({ params }) {
                   onRotate={amGuesser ? (ci => setGuessPoolRotations(prev => ({ ...prev, [ci]: rotateCW(prev[ci] ?? 0) }))) : undefined}
                 />
               ))}
-            </div>
-          )}
-          {amGuesser && poolToShow.length === 0 && (
-            <div style={{ fontSize: 13, color: MUTED }}>All placed — submit when ready</div>
-          )}
-
-          {!amGuesser && (
-            <div style={{ fontSize: 14, color: MUTED, textAlign: "center" }}>
-              {amOwner ? "Your board is being guessed!" : `${guesser?.name} is guessing…`}
             </div>
           )}
         </div>

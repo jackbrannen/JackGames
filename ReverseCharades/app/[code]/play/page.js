@@ -335,42 +335,26 @@ export default function Play({ params }) {
   async function doCorrect() {
     if (!currentClue || !myPlayerId || acting) return
     setActing(true)
-
-    const timeoutId = setTimeout(() => {
-      console.log('[CORRECT TIMEOUT] Resetting acting state after 2s')
-      setActing(false)
-    }, 2000)
-
     sfxCorrect()
     try {
       await rpc("rc_correct", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
       await loadState() // Immediate feedback for score/clue update
-      clearTimeout(timeoutId)
+    } catch (e) {
       setActing(false)
-    } catch {
-      clearTimeout(timeoutId)
-      setActing(false)
+      throw e
     }
   }
 
   async function doSkip() {
     if (!currentClue || !myPlayerId || acting) return
     setActing(true)
-
-    const timeoutId = setTimeout(() => {
-      console.log('[SKIP TIMEOUT] Resetting acting state after 2s')
-      setActing(false)
-    }, 2000)
-
     sfxSkip()
     try {
       await rpc("rc_skip", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
       await loadState() // Immediate feedback for score/clue update
-      clearTimeout(timeoutId)
+    } catch (e) {
       setActing(false)
-    } catch {
-      clearTimeout(timeoutId)
-      setActing(false)
+      throw e
     }
   }
 
@@ -593,10 +577,11 @@ export default function Play({ params }) {
           </div>
 
           <div style={{ padding: "16px 20px", paddingBottom: "max(20px, env(safe-area-inset-bottom, 20px))", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
-            <FooterButton onClick={doCorrect} disabled={!currentClue} bg={YELLOW} textColor="#000" style={{ padding: "28px 16px", fontSize: 28 }}>
+            <FooterButton key={`correct-${currentClue?.id}`} onClick={doCorrect} disabled={!currentClue} bg={YELLOW} textColor="#000" style={{ padding: "28px 16px", fontSize: 28 }}>
               ✓ Correct
             </FooterButton>
             <FooterButton
+              key={`skip-${currentClue?.id}`}
               onClick={doSkip}
               disabled={skipDisabled}
               bg={skipDisabled ? MID : WARM}

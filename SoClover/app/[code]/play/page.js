@@ -904,26 +904,37 @@ export default function PlayPage({ params }) {
     console.log('[READY] Starting', { readying, myPlayerId, currentReadyIds: game.ready_player_ids })
     if (readying) return
     setReadying(true)
-    try {
-      // Optimistically update local state immediately so button changes right away
-      setGame(prev => {
-        const newIds = [...(prev.ready_player_ids || []), myPlayerId]
-        console.log('[READY] Optimistic update', { oldIds: prev.ready_player_ids, newIds })
-        return { ...prev, ready_player_ids: newIds }
-      })
 
+    // Safety timeout: if button is still loading after 2 seconds, force update
+    const timeoutId = setTimeout(() => {
+      console.log('[READY] Timeout triggered - forcing state update')
+      setGame(prev => ({
+        ...prev,
+        ready_player_ids: [...new Set([...(prev.ready_player_ids || []), myPlayerId])]
+      }))
+      setReadying(false)
+    }, 2000)
+
+    try {
       console.log('[READY] Calling RPC...', { code, myPlayerId })
       const { error } = await supabase.rpc("soclover_mark_ready", { p_code: code, p_player_id: myPlayerId })
       console.log('[READY] RPC result', { error })
+
+      clearTimeout(timeoutId)
+
       if (error) throw new Error(error.message)
 
-      // Don't call loadState() - it overwrites our optimistic update with stale data
-      // The real-time subscription will update state when the database changes
+      // Optimistically update local state
+      setGame(prev => {
+        const newIds = [...new Set([...(prev.ready_player_ids || []), myPlayerId])]
+        console.log('[READY] Optimistic update after RPC', { oldIds: prev.ready_player_ids, newIds })
+        return { ...prev, ready_player_ids: newIds }
+      })
+
       // Don't reset readying - button stays disabled while waiting for others
     } catch (err) {
+      clearTimeout(timeoutId)
       console.error('[READY NEXT BOARD ERROR]', err)
-      // Revert optimistic update on error
-      await loadState()
       setReadying(false)
       throw err
     }

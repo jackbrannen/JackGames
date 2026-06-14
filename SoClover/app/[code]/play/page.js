@@ -1193,7 +1193,7 @@ export default function PlayPage({ params }) {
           </div>
         </div>
           {pokeSystemNode(
-            <FooterButton onClick={onReadyNextBoard} disabled={alreadyReady} loading={false} bg={alreadyReady ? MID_DARK : ACCENT} textColor={alreadyReady ? WHITE : "#000"}>
+            <FooterButton onClick={onReadyNextBoard} disabled={alreadyReady} loading={alreadyReady ? false : undefined} bg={alreadyReady ? MID_DARK : ACCENT} textColor={alreadyReady ? WHITE : "#000"}>
               {alreadyReady ? "Waiting for others…" : "Next Board →"}
             </FooterButton>
           )}

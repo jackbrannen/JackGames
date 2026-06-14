@@ -111,6 +111,9 @@ function StatChips({ correct, left }) {
 
 // Shared top bar used by all playing-phase views
 function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
+  const totalDuration = game.turn_duration_seconds ?? 45
+  const percentRemaining = (secondsRemaining / totalDuration) * 100
+
   return (
     <>
       <div style={{
@@ -136,6 +139,19 @@ function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
         <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, color: timerUrgent ? YELLOW : "white" }}>
           {secondsRemaining}<span style={{ fontSize: 18, fontWeight: 600, opacity: 0.55 }}>s</span>
         </div>
+      </div>
+
+      {/* Timer progress bar */}
+      <div style={{ height: 4, background: "rgba(0,0,0,0.2)", position: "relative", overflow: "hidden" }}>
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: `${percentRemaining}%`,
+          background: timerUrgent ? YELLOW : WARM,
+          transition: "width 0.3s linear, background 0.2s ease",
+        }} />
       </div>
 
       {/* Team turn strip */}
@@ -301,9 +317,17 @@ export default function Play({ params }) {
   async function doStartTurn() {
     if (!myPlayerId || acting) return
     setActing(true)
+
+    const timeoutId = setTimeout(() => {
+      console.log('[START TURN TIMEOUT] Resetting acting state after 2s')
+      setActing(false)
+    }, 2000)
+
     try {
       await rpc("rc_start_turn", { p_code: code, p_player_id: myPlayerId })
+      clearTimeout(timeoutId)
     } catch {
+      clearTimeout(timeoutId)
       setActing(false)
     }
   }
@@ -311,17 +335,39 @@ export default function Play({ params }) {
   async function doCorrect() {
     if (!currentClue || !myPlayerId || acting) return
     setActing(true)
+
+    const timeoutId = setTimeout(() => {
+      console.log('[CORRECT TIMEOUT] Resetting acting state after 2s')
+      setActing(false)
+    }, 2000)
+
     sfxCorrect()
-    await rpc("rc_correct", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
-    // Don't reset acting - let component unmount on phase change
+    try {
+      await rpc("rc_correct", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
+      clearTimeout(timeoutId)
+    } catch {
+      clearTimeout(timeoutId)
+      setActing(false)
+    }
   }
 
   async function doSkip() {
     if (!currentClue || !myPlayerId || acting) return
     setActing(true)
+
+    const timeoutId = setTimeout(() => {
+      console.log('[SKIP TIMEOUT] Resetting acting state after 2s')
+      setActing(false)
+    }, 2000)
+
     sfxSkip()
-    await rpc("rc_skip", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
-    // Don't reset acting - let component unmount on phase change
+    try {
+      await rpc("rc_skip", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
+      clearTimeout(timeoutId)
+    } catch {
+      clearTimeout(timeoutId)
+      setActing(false)
+    }
   }
 
   async function doResetGame() {
@@ -341,7 +387,7 @@ export default function Play({ params }) {
     )
   }
 
-  const skipDisabled = acting || !currentClue || pendingCount <= 1 || (game.skip_limit > 0 && game.skips_this_turn >= game.skip_limit)
+  const skipDisabled = acting || !currentClue || pendingCount < 1 || (game.skip_limit > 0 && game.skips_this_turn >= game.skip_limit)
   const timerUrgent = secondsRemaining <= 5
 
   // ─── FINISHED ───────────────────────────────────────────────────────────────

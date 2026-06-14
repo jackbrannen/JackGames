@@ -344,7 +344,9 @@ export default function Play({ params }) {
     sfxCorrect()
     try {
       await rpc("rc_correct", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
+      await loadState() // Immediate feedback for score/clue update
       clearTimeout(timeoutId)
+      setActing(false)
     } catch {
       clearTimeout(timeoutId)
       setActing(false)
@@ -363,7 +365,9 @@ export default function Play({ params }) {
     sfxSkip()
     try {
       await rpc("rc_skip", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
+      await loadState() // Immediate feedback for score/clue update
       clearTimeout(timeoutId)
+      setActing(false)
     } catch {
       clearTimeout(timeoutId)
       setActing(false)

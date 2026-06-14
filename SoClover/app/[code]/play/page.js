@@ -510,7 +510,7 @@ export default function PlayPage({ params }) {
       ])
       if (!gameData) { router.push(`/${code}`); return }
       if (gameData.phase === "lobby") { router.push(`/${code}`); return }
-      console.log('[LOAD STATE] ready_player_ids:', gameData.ready_player_ids, 'phase:', gameData.phase, 'board_index:', gameData.current_board_index)
+      // Removed noisy polling log
       setGame(gameData)
       setPlayers(playerData ?? [])
       setBoards(boardData ?? [])

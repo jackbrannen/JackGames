@@ -400,6 +400,8 @@ export default function PlayPage({ params }) {
   const router = useRouter()
   const code = useMemo(() => params.code.toUpperCase(), [params.code])
 
+  console.log('[SOCLOVER] Build timestamp: 2026-06-14 14:20 - Debug version with FooterButton logging')
+
   const [game, setGame]             = useState(null)
   const [players, setPlayers]       = useState([])
   const [boards, setBoards]         = useState([])

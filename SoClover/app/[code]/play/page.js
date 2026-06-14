@@ -931,7 +931,8 @@ export default function PlayPage({ params }) {
         return { ...prev, ready_player_ids: newIds }
       })
 
-      // Don't reset readying - button stays disabled while waiting for others
+      // Reset readying so the guard doesn't block future clicks
+      setReadying(false)
     } catch (err) {
       clearTimeout(timeoutId)
       console.error('[READY NEXT BOARD ERROR]', err)

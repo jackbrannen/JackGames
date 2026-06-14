@@ -142,7 +142,7 @@ function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
       </div>
 
       {/* Timer progress bar */}
-      <div style={{ height: 4, background: "rgba(0,0,0,0.2)", position: "relative", overflow: "hidden" }}>
+      <div style={{ height: 12, background: "rgba(0,0,0,0.2)", position: "relative", overflow: "hidden" }}>
         <div style={{
           position: "absolute",
           left: 0,

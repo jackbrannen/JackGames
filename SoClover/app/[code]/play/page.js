@@ -917,9 +917,8 @@ export default function PlayPage({ params }) {
       console.log('[READY] RPC result', { error })
       if (error) throw new Error(error.message)
 
-      // Reload state to get accurate ready count and handle auto-advance
-      await loadState()
-      console.log('[READY] State reloaded', { ready_player_ids: game.ready_player_ids })
+      // Don't call loadState() - it overwrites our optimistic update with stale data
+      // The real-time subscription will update state when the database changes
       // Don't reset readying - button stays disabled while waiting for others
     } catch (err) {
       console.error('[READY NEXT BOARD ERROR]', err)

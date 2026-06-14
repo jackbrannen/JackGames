@@ -23,7 +23,7 @@ const TEST_CLUES = [
 
 async function createTestGame() {
   const { supabase } = await import("../lib/supabase")
-  const code = Math.random().toString(36).slice(2, 8).toUpperCase()
+  const code = randomCode()
   const { error: gameError } = await supabase
     .from("reversecharades_games")
     .insert({ code, turn_duration_seconds: 10, min_clues_per_player: 0 })
@@ -45,6 +45,7 @@ async function createTestGame() {
   if (clueError) throw clueError
 
   localStorage.setItem(`rc:${code}:playerId`, hostData.id)
+  localStorage.setItem(`rc:${code}:isDummy`, "true")
   return code
 }
 

@@ -88,8 +88,8 @@ function clueTextSize(text) {
 }
 
 const teamLabel = (t) => t === "A" ? "Boys" : "Girls"
-const teamColor = (t) => t === "A" ? YELLOW : WARM
-const teamTextColor = (t) => t === "A" ? "#000" : "white"
+const teamColor = (t) => t === "A" ? YELLOW : "white"
+const teamTextColor = (t) => t === "A" ? "#000" : "#000"
 
 // Shared stat chip component (inline, no state)
 function StatChips({ correct, left }) {

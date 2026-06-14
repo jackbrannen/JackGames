@@ -149,8 +149,8 @@ function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
           top: 0,
           bottom: 0,
           width: `${percentRemaining}%`,
-          background: timerUrgent ? YELLOW : WARM,
-          transition: "width 0.3s linear, background 0.2s ease",
+          background: playingTeam === "A" ? "white" : YELLOW,
+          transition: "width 0.5s linear",
         }} />
       </div>
 

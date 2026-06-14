@@ -112,30 +112,39 @@ function StatChips({ correct, left }) {
 // Shared top bar used by all playing-phase views
 function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
   return (
-    <div style={{
-      padding: "12px 20px",
-      background: DARK,
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      flexShrink: 0,
-    }}>
-      <div style={{ display: "flex", gap: SPACE.md }}>
-        {[["A", game.team_a_score ?? 0], ["B", game.team_b_score ?? 0]].map(([t, score]) => (
-          <div key={t}>
-            <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.65, marginBottom: 2 }}>
-              {teamLabel(t)}
+    <>
+      <div style={{
+        padding: "12px 20px",
+        background: DARK,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexShrink: 0,
+      }}>
+        <div style={{ display: "flex", gap: SPACE.md }}>
+          {[["A", game.team_a_score ?? 0], ["B", game.team_b_score ?? 0]].map(([t, score]) => (
+            <div key={t}>
+              <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.65, marginBottom: 2 }}>
+                {teamLabel(t)}
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, color: t === playingTeam ? YELLOW : "white" }}>
+                {score}
+              </div>
             </div>
-            <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, color: t === playingTeam ? YELLOW : "white" }}>
-              {score}
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
+        <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, color: timerUrgent ? YELLOW : "white" }}>
+          {secondsRemaining}<span style={{ fontSize: 18, fontWeight: 600, opacity: 0.55 }}>s</span>
+        </div>
       </div>
-      <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, color: timerUrgent ? YELLOW : "white" }}>
-        {secondsRemaining}<span style={{ fontSize: 18, fontWeight: 600, opacity: 0.55 }}>s</span>
+
+      {/* Team turn strip */}
+      <div style={{ padding: "8px 20px", background: teamColor(playingTeam), textAlign: "center" }}>
+        <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: teamTextColor(playingTeam) }}>
+          {teamLabel(playingTeam)}&rsquo; Turn
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 

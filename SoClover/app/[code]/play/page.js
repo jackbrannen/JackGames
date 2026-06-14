@@ -897,9 +897,15 @@ export default function PlayPage({ params }) {
   async function onReadyNextBoard() {
     if (readying) return
     setReadying(true)
-    const { error } = await supabase.rpc("soclover_mark_ready", { p_code: code, p_player_id: myPlayerId })
-    if (error) { setReadying(false); return }
-    await loadState()
+    try {
+      const { error } = await supabase.rpc("soclover_mark_ready", { p_code: code, p_player_id: myPlayerId })
+      if (error) throw new Error(error.message)
+      await loadState()
+      // Don't reset readying - button stays disabled while waiting for others
+    } catch (err) {
+      setReadying(false)
+      throw err
+    }
   }
 
   function rotateBoardCW() {

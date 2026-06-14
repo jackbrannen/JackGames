@@ -403,7 +403,7 @@ export default function Play({ params }) {
 
     return (
       <>
-      <div style={{ minHeight: "100dvh", background: PRIMARY, color: "white", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100dvh", background: PRIMARY, color: "white", display: "flex", flexDirection: "column", paddingBottom: amGuesser ? `calc(${FOOTER_H}px + env(safe-area-inset-bottom))` : 0 }}>
 
         {/* Score bar */}
         <div style={{ padding: "16px 20px", background: DARK, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexShrink: 0 }}>
@@ -438,22 +438,27 @@ export default function Play({ params }) {
           <div style={{ fontSize: "clamp(36px, 10vw, 54px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 10 }}>
             {bigText}
           </div>
-          <div style={{ fontSize: 17, fontWeight: 600, opacity: 0.65, marginBottom: 48 }}>
+          <div style={{ fontSize: 17, fontWeight: 600, opacity: 0.65 }}>
             {controllerLine}
           </div>
 
-          {amGuesser ? (
-            <FooterButton onClick={doStartTurn} bg={YELLOW} textColor="#000" style={{ padding: "24px 32px", fontSize: 24 }}>
-              Start
-            </FooterButton>
-          ) : (
-            <div style={{ fontSize: 16, fontWeight: 600, opacity: 0.45 }}>
+          {!amGuesser && (
+            <div style={{ fontSize: 16, fontWeight: 600, opacity: 0.45, marginTop: 24 }}>
               Waiting for {guesser?.name ?? "the guesser"}…
             </div>
           )}
         </div>
       </div>
-        {pokeSystemNode}
+
+      {amGuesser && (
+        <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: YELLOW, notifBg: DARK }}>
+          <FooterButton onClick={doStartTurn} bg={YELLOW} textColor="#000">
+            Start
+          </FooterButton>
+        </Footer>
+      )}
+
+      {pokeSystemNode}
       </>
     )
   }

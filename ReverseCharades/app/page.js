@@ -26,7 +26,7 @@ async function createTestGame() {
   const code = randomCode()
   const { error: gameError } = await supabase
     .from("reversecharades_games")
-    .insert({ code, turn_duration_seconds: 10, min_clues_per_player: 0 })
+    .insert({ code, turn_duration_seconds: 10, min_clues_per_player: 0, is_dummy: true })
   if (gameError) throw gameError
 
   // Need one player row so clues have a valid submitted_by FK target

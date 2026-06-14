@@ -223,7 +223,7 @@ export default function Lobby({ params }) {
   async function loadGame() {
     const { data, error } = await supabase
       .from("reversecharades_games")
-      .select("code,phase,host_id,turn_duration_seconds,skip_limit,skip_penalty,min_clues_per_player,max_clues_per_player,game_style")
+      .select("code,phase,host_id,turn_duration_seconds,skip_limit,skip_penalty,min_clues_per_player,max_clues_per_player,game_style,is_dummy")
       .eq("code", code)
       .single()
     if (error || !data) { setGameExists(false); return }
@@ -251,8 +251,7 @@ export default function Lobby({ params }) {
   useEffect(() => {
     if (game?.phase !== "lobby" || myPlayerId) return
     // Only auto-join for dummy games
-    const isDummy = localStorage.getItem(`rc:${code}:isDummy`) === "true"
-    if (!isDummy) return
+    if (!game?.is_dummy) return
     const saved = loadProfile()
     if (!saved?.username) return
     if (hasAutoJoinedRef.current) return

@@ -1131,7 +1131,12 @@ export default function PlayPage({ params }) {
           <div style={{ flex: 1, padding: `16px 16px ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: WHITE, textAlign: "center" }}>
               {amGuesser ? (
-                "You are placing cards"
+                <>
+                  <span style={{ background: ACCENT, color: "#000", padding: "3px 8px", fontWeight: 900 }}>
+                    You
+                  </span>
+                  {" are placing cards"}
+                </>
               ) : (
                 <>
                   <span style={{ background: ACCENT, color: "#000", padding: "3px 8px", fontWeight: 900 }}>
@@ -1226,7 +1231,12 @@ export default function PlayPage({ params }) {
         <div style={{ flex: 1, padding: `12px 0 ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: GAP.result }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: WHITE, textAlign: "center" }}>
             {amGuesser ? (
-              "You are placing cards"
+              <>
+                <span style={{ background: ACCENT, color: "#000", padding: "3px 8px", fontWeight: 900 }}>
+                  You
+                </span>
+                {" are placing cards"}
+              </>
             ) : (
               <>
                 <span style={{ background: ACCENT, color: "#000", padding: "3px 8px", fontWeight: 900 }}>

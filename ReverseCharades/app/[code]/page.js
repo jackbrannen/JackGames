@@ -169,7 +169,6 @@ function AddClueForm({ code, playerId, onAdded, disabled, playerNames = [] }) {
           fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
           playerNames={playerNames}
           maxDraws={3}
-          onIdeaClick={idea => setText(idea)}
         />
       </div>
     </div>
@@ -606,8 +605,8 @@ export default function Lobby({ params }) {
                   disabled={!name.trim() || (!savedProfile && (!firstName.trim() || !lastName.trim()))}
                   style={{
                     flex: 1,
-                    background: team === "A" ? YELLOW : WARM,
-                    color: team === "A" ? "#000" : "white",
+                    background: YELLOW,
+                    color: "#000",
                     fontSize: 16,
                     fontWeight: 900,
                     padding: "18px 12px",

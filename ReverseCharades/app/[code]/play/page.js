@@ -428,7 +428,7 @@ export default function Play({ params }) {
         {/* Team turn strip */}
         <div style={{ padding: "8px 20px", background: teamColor(playingTeam), textAlign: "center" }}>
           <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: teamTextColor(playingTeam) }}>
-            {teamLabel(playingTeam)}&rsquo;s Turn
+            {teamLabel(playingTeam)}&rsquo; Turn
           </div>
         </div>
 

@@ -404,7 +404,7 @@ export default function Play({ params }) {
 
     return (
       <>
-      <div style={{ minHeight: "100dvh", background: PRIMARY, color: "white", display: "flex", flexDirection: "column", paddingBottom: amGuesser ? `calc(${FOOTER_H}px + env(safe-area-inset-bottom))` : 0 }}>
+      <div style={{ minHeight: "100dvh", background: PRIMARY, color: "white", display: "flex", flexDirection: "column", paddingBottom: amGuesser ? `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))` : 0 }}>
 
         {/* Score bar */}
         <div style={{ padding: "16px 20px", background: DARK, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexShrink: 0 }}>
@@ -452,7 +452,7 @@ export default function Play({ params }) {
       </div>
 
       {amGuesser && (
-        <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: YELLOW, notifBg: DARK }}>
+        <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: YELLOW, notifBg: DARK }} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
           <FooterButton onClick={doStartTurn} bg={YELLOW} textColor="#000">
             Start
           </FooterButton>

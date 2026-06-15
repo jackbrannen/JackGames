@@ -375,12 +375,16 @@ export default function Play({ params }) {
 
   async function doPause() {
     if (!myPlayerId || acting) return
+    console.log('[PAUSE] Starting pause')
     setActing(true)
     try {
       await rpc("rc_pause_turn", { p_code: code, p_player_id: myPlayerId })
+      console.log('[PAUSE] RPC complete, loading state')
       await loadState()
+      console.log('[PAUSE] State loaded, is_paused:', game?.is_paused)
       setActing(false)
     } catch (e) {
+      console.error('[PAUSE ERROR]', e)
       setActing(false)
       throw e
     }
@@ -388,12 +392,16 @@ export default function Play({ params }) {
 
   async function doResume() {
     if (!myPlayerId || acting) return
+    console.log('[RESUME] Starting resume')
     setActing(true)
     try {
       await rpc("rc_resume_turn", { p_code: code, p_player_id: myPlayerId })
+      console.log('[RESUME] RPC complete, loading state')
       await loadState()
+      console.log('[RESUME] State loaded, is_paused:', game?.is_paused)
       setActing(false)
     } catch (e) {
+      console.error('[RESUME ERROR]', e)
       setActing(false)
       throw e
     }
@@ -589,6 +597,22 @@ export default function Play({ params }) {
               Guess the word!
             </div>
             <StatChips correct={game.correct_this_turn ?? 0} left={null} />
+          </div>
+
+          <div style={{ padding: "16px 20px", paddingBottom: "max(20px, env(safe-area-inset-bottom, 20px))", background: DARK, flexShrink: 0 }}>
+            <FooterButton
+              onClick={game.is_paused ? doResume : doPause}
+              loading={acting}
+              bg={MID}
+              textColor="white"
+              style={{
+                padding: "16px",
+                fontSize: 16,
+                fontWeight: 800,
+              }}
+            >
+              {game.is_paused ? "Resume" : "Pause"}
+            </FooterButton>
           </div>
         </div>
       )

@@ -314,12 +314,16 @@ export default function Lobby({ params }) {
   }, [])
 
   useEffect(() => {
+    console.log('[AUTO-JOIN CHECK]', { gameExists, gamePhase, myPlayerId, hasAutoJoined: hasAutoJoinedRef.current })
     if (gameExists !== true || gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
     const saved = loadProfile()
+    console.log('[AUTO-JOIN] Saved profile:', saved)
     if (!saved?.username) return
     hasAutoJoinedRef.current = true
+    console.log('[AUTO-JOIN] Starting auto-join for', saved.username)
     ;(async () => {
       const { data: taken } = await supabase.from("players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
+      console.log('[AUTO-JOIN] Name check:', { username: saved.username, taken: taken?.length })
       if (taken?.length > 0) { hasAutoJoinedRef.current = false; return }
 
       // Fetch fresh player list to assign team
@@ -335,9 +339,11 @@ export default function Lobby({ params }) {
       const { data, error } = await supabase.from("players")
         .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName?.trim() ?? "", last_name: saved.lastName?.trim() ?? "", team, ready: false })
         .select("id").single()
+      console.log('[AUTO-JOIN] Insert result:', { data, error })
       if (error || !data) { hasAutoJoinedRef.current = false; return }
       localStorage.setItem(`fishbowl:${code}:playerId`, data.id)
       setMyPlayerId(data.id)
+      console.log('[AUTO-JOIN] Success! Player ID:', data.id)
       const clueCount = gameSettings.min_clues_per_player || 3
       const { data: ideas } = await supabase.rpc("get_random_ideas", { p_count: clueCount, p_exclude: [] })
       if (ideas?.length) await supabase.from("clues").insert(ideas.map(text => ({ game_code: code, player_id: data.id, text })))

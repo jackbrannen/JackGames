@@ -286,6 +286,12 @@ export default function Play({ params }) {
 
   const secondsRemaining = useMemo(() => {
     if (!game?.turn_started_at) return game?.turn_duration_seconds ?? 45
+
+    // If paused, return time remaining when pause started
+    if (game.is_paused && game.pause_elapsed_seconds != null) {
+      return Math.max(0, (game.turn_duration_seconds ?? 45) - game.pause_elapsed_seconds)
+    }
+
     const elapsed = Math.floor((nowMs - new Date(game.turn_started_at).getTime()) / 1000)
     return Math.max(0, (game.turn_duration_seconds ?? 45) - elapsed)
   }, [game, nowMs])
@@ -322,6 +328,7 @@ export default function Play({ params }) {
 
   useEffect(() => {
     if (game?.phase !== "playing") return
+    if (game?.is_paused) return  // Don't end turn while paused
     if (secondsRemaining > 0) return
     if (!game.turn_started_at) return
     if (endingRef.current) return

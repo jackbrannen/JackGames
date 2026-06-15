@@ -342,6 +342,17 @@ export default function Lobby({ params }) {
       await supabase.from("reversecharades_games").update({ host_id: data.id }).eq("code", code)
     }
 
+    // Pre-fill clues for dummy games
+    if (game?.is_dummy) {
+      const clueCount = game?.min_clues_per_player || 2
+      const { data: ideas } = await supabase.rpc("get_random_ideas", { p_count: clueCount, p_exclude: [] })
+      if (ideas?.length) {
+        await supabase.from("reversecharades_clues").insert(
+          ideas.map(text => ({ game_code: code, submitted_by: data.id, text }))
+        )
+      }
+    }
+
     localStorage.setItem(`rc:${code}:playerId`, data.id)
     setMyPlayerId(data.id)
     setName("")

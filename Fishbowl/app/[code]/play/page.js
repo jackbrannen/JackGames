@@ -682,7 +682,7 @@ export default function Play({ params }) {
                   to { width: 0%; }
                 }
               `}</style>
-              <div style={{ height: 12, background: "rgba(0,0,0,0.15)", position: "relative", overflow: "hidden" }}>
+              <div style={{ height: 16, background: "rgba(0,0,0,0.15)", position: "relative", overflow: "hidden" }}>
                 <div
                   key={`timer-${game.turn_started_at}`}
                   style={{
@@ -691,7 +691,7 @@ export default function Play({ params }) {
                     top: 0,
                     bottom: 0,
                     width: "100%",
-                    background: currentActor.team === 1 ? BOYS : GIRLS,
+                    background: currentActor.team === 1 ? GIRLS : BOYS,
                     animation: `fishbowlTimerDrain ${game.turn_seconds_remaining}s linear forwards`,
                     animationPlayState: isPaused ? 'paused' : 'running',
                   }}

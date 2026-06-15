@@ -267,11 +267,16 @@ export default function Play({ params }) {
   const isMyTurn = !!me && !!game?.turn_player_id && game.turn_player_id === me.id
   const isPaused = !!game && !!game.turn_paused
 
+  const elapsed = useMemo(() => {
+    if (!game?.turn_started_at) return 0
+    return Math.floor((Date.now() - new Date(game.turn_started_at).getTime()) / 1000)
+  }, [game?.turn_started_at])
+
   const secondsRemaining = useMemo(() => {
     if (!game) return 0
     if (!game.turn_running || !game.turn_started_at) return game.turn_seconds_remaining ?? 0
-    const elapsed = Math.floor((nowMs - new Date(game.turn_started_at).getTime()) / 1000)
-    return Math.max(0, (game.turn_seconds_remaining ?? 0) - elapsed)
+    const elapsedNow = Math.floor((nowMs - new Date(game.turn_started_at).getTime()) / 1000)
+    return Math.max(0, (game.turn_seconds_remaining ?? 0) - elapsedNow)
   }, [game, nowMs])
 
   useEffect(() => {
@@ -674,7 +679,7 @@ export default function Play({ params }) {
           </div>
 
           {/* Timer progress bar */}
-          {game.turn_running && game.turn_started_at && (
+          {(game.turn_started_at || isPaused) && (
             <>
               <style>{`
                 @keyframes fishbowlTimerDrain {
@@ -693,6 +698,7 @@ export default function Play({ params }) {
                     width: "100%",
                     background: currentActor.team === 1 ? GIRLS : BOYS,
                     animation: `fishbowlTimerDrain ${game.turn_seconds_remaining}s linear forwards`,
+                    animationDelay: `-${elapsed}s`,
                     animationPlayState: isPaused ? 'paused' : 'running',
                   }}
                 />
@@ -1002,8 +1008,8 @@ export default function Play({ params }) {
               >
                 {game.skip_penalty < 0 ? `Skip (${game.skip_penalty})` : "Skip"}
               </button>
-              <button onClick={doPause} style={{ background: WARM_LIGHT, color: "white", fontSize: 16, fontWeight: 800, padding: "16px 8px" }}>
-                Pause
+              <button onClick={isPaused ? doStartTurn : doPause} style={{ background: WARM_LIGHT, color: "white", fontSize: 16, fontWeight: 800, padding: "16px 8px" }}>
+                {isPaused ? "Resume" : "Pause"}
               </button>
               <button onClick={() => doEndTurn(activeClue ? "manual" : "pause_no_clues")} style={{ background: RED, color: "white", fontSize: 16, fontWeight: 800, padding: "16px 8px" }}>
                 End Early

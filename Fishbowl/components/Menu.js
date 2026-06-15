@@ -168,21 +168,21 @@ export default function Menu({
         <div style={{
           position: "fixed", bottom: drawerBottom, left: 0, right: 0,
           background: mid, borderTop: "1px solid rgba(255,255,255,0.1)",
-          zIndex: 78, animation: "drawerUp 0.22s ease",
+          zIndex: 78, animation: "drawerUp 0.22s ease", paddingBottom: 60,
         }}>
           <div onClick={onClose} style={{ padding: "10px 0 4px", display: "flex", justifyContent: "center", cursor: "pointer" }}>
             <div style={{ width: 36, height: 4, background: "rgba(255,255,255,0.22)", borderRadius: 2 }} />
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", paddingBottom: 12 }}>
+          <div style={{ display: "flex", flexWrap: "nowrap", overflowX: "auto", paddingBottom: 12 }}>
             {TILES.map(({ icon, label, action }) => (
               <button key={label} onClick={action} style={{
                 background: "transparent",
                 color: label === "Lobby" ? "rgba(255,120,100,0.9)" : "white",
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                padding: "14px 8px", gap: 6,
+                padding: "14px 16px", gap: 6, flex: "0 0 auto", flexShrink: 0,
               }}>
                 <span style={{ fontSize: 26 }}>{icon}</span>
-                <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.09em", opacity: 0.7 }}>{label}</span>
+                <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.09em", opacity: 0.7, whiteSpace: "nowrap" }}>{label}</span>
               </button>
             ))}
           </div>

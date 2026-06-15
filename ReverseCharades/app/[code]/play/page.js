@@ -649,7 +649,14 @@ export default function Play({ params }) {
           </div>
 
           <div style={{ padding: "16px 20px", paddingBottom: "max(20px, env(safe-area-inset-bottom, 20px))", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
-            <FooterButton onClick={doCorrect} disabled={!currentClue || game.is_paused} loading={acting} bg={YELLOW} textColor="#000" style={{ padding: "28px 16px", fontSize: 28 }}>
+            <FooterButton
+              onClick={doCorrect}
+              disabled={!currentClue || game.is_paused}
+              loading={acting}
+              bg={game.is_paused ? MID : YELLOW}
+              textColor={game.is_paused ? "rgba(255,255,255,0.5)" : "#000"}
+              style={{ padding: "28px 16px", fontSize: 28 }}
+            >
               ✓ Correct
             </FooterButton>
             <div style={{ display: "flex", gap: 8 }}>
@@ -657,8 +664,8 @@ export default function Play({ params }) {
                 onClick={doSkip}
                 disabled={skipDisabled || game.is_paused}
                 loading={acting}
-                bg={skipDisabled ? MID : WARM}
-                textColor="white"
+                bg={(skipDisabled || game.is_paused) ? MID : WARM}
+                textColor={(skipDisabled || game.is_paused) ? "rgba(255,255,255,0.5)" : "white"}
                 style={{
                   flex: 1,
                   padding: "18px 16px",

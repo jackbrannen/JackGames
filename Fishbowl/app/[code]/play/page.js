@@ -656,21 +656,50 @@ export default function Play({ params }) {
 
       {/* Turn banner */}
       {(game.phase === "play" || game.phase === "between_rounds") && currentActor && (
-        <div style={{
-          background: currentActor.team === 1 ? BOYS : GIRLS,
-          padding: "14px 20px",
-          textAlign: "center",
-          flexShrink: 0,
-        }}>
-          <div style={{ fontSize: 22, fontWeight: 900, color: "white", letterSpacing: "0.04em" }}>
-            {currentActor.team === 1 ? "Boys' Turn" : "Girls' Turn"}
-            {!isMyTurn && (
-              <span style={{ fontWeight: 600, opacity: 0.85 }}>
-                {me?.team === currentActor.team ? " — Guess!" : " — Don't Guess!"}
-              </span>
-            )}
+        <>
+          <div style={{
+            background: currentActor.team === 1 ? BOYS : GIRLS,
+            padding: "14px 20px",
+            textAlign: "center",
+            flexShrink: 0,
+          }}>
+            <div style={{ fontSize: 22, fontWeight: 900, color: "white", letterSpacing: "0.04em" }}>
+              {currentActor.team === 1 ? "Boys' Turn" : "Girls' Turn"}
+              {!isMyTurn && (
+                <span style={{ fontWeight: 600, opacity: 0.85 }}>
+                  {me?.team === currentActor.team ? " — Guess!" : " — Don't Guess!"}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
+
+          {/* Timer progress bar */}
+          {game.turn_running && game.turn_started_at && (
+            <>
+              <style>{`
+                @keyframes fishbowlTimerDrain {
+                  from { width: 100%; }
+                  to { width: 0%; }
+                }
+              `}</style>
+              <div style={{ height: 12, background: "rgba(0,0,0,0.15)", position: "relative", overflow: "hidden" }}>
+                <div
+                  key={`timer-${game.turn_started_at}`}
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: "100%",
+                    background: currentActor.team === 1 ? BOYS : GIRLS,
+                    animation: `fishbowlTimerDrain ${game.turn_seconds_remaining}s linear forwards`,
+                    animationPlayState: isPaused ? 'paused' : 'running',
+                  }}
+                />
+              </div>
+            </>
+          )}
+        </>
       )}
 
       {/* Main content */}

@@ -684,7 +684,7 @@ export default function Play({ params }) {
               `}</style>
               <div style={{ height: 16, background: "rgba(0,0,0,0.15)", position: "relative", overflow: "hidden" }}>
                 <div
-                  key={`timer-${game.turn_started_at}`}
+                  key={`timer-${game.turn_player_id}-${game.round_index}`}
                   style={{
                     position: "absolute",
                     left: 0,

@@ -97,10 +97,11 @@ export default function FooterButton({
           fontWeight: v.fontWeight,
           fontSize: 18,
           animation: showNudge ? "fbNudge 1.0s ease-in-out infinite" : "none",
+          opacity: loading ? 0.5 : 1,
           ...style,
         }}
       >
-        {loading ? "Loading…" : children}
+        {children}
       </button>
     </>
   )

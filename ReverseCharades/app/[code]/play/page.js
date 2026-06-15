@@ -113,7 +113,6 @@ function StatChips({ correct, left }) {
 function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
   const totalDuration = game.turn_duration_seconds ?? 45
   const elapsed = totalDuration - secondsRemaining
-  const animationDuration = secondsRemaining
 
   return (
     <>
@@ -159,7 +158,8 @@ function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
             bottom: 0,
             width: "100%",
             background: playingTeam === "A" ? "white" : YELLOW,
-            animation: `timerDrain ${animationDuration}s linear forwards`,
+            animation: `timerDrain ${totalDuration}s linear forwards`,
+            animationDelay: `-${elapsed}s`,
           }}
         />
       </div>

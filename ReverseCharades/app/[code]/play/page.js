@@ -112,10 +112,11 @@ function StatChips({ correct, left }) {
 // Shared top bar used by all playing-phase views
 function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
   const totalDuration = game.turn_duration_seconds ?? 45
-  // Calculate elapsed time from timestamp, not from secondsRemaining (which updates every tick)
-  const elapsed = game.turn_started_at
-    ? Math.floor((Date.now() - new Date(game.turn_started_at).getTime()) / 1000)
-    : 0
+  // Calculate elapsed time ONCE when turn starts, not on every render
+  const elapsed = useMemo(() => {
+    if (!game.turn_started_at) return 0
+    return Math.floor((Date.now() - new Date(game.turn_started_at).getTime()) / 1000)
+  }, [game.turn_started_at])
 
   return (
     <>

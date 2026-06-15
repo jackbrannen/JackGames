@@ -258,10 +258,18 @@ export default function Lobby({ params }) {
     hasAutoJoinedRef.current = true
     ;(async () => {
       const { data: taken } = await supabase.from("reversecharades_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
-      if (taken?.length > 0) return
-      const aCount = players.filter(p => p.team === "A").length
-      const bCount = players.filter(p => p.team === "B").length
-      const team = bCount <= aCount ? "B" : "A"
+      if (taken?.length > 0) { hasAutoJoinedRef.current = false; return }
+
+      // Fetch fresh player list to assign team
+      const { data: currentPlayers } = await supabase
+        .from("reversecharades_players")
+        .select("id,team")
+        .eq("game_code", code)
+
+      const aCount = (currentPlayers || []).filter(p => p.team === "A").length
+      const bCount = (currentPlayers || []).filter(p => p.team === "B").length
+      const team = bCount < aCount ? "B" : "A"
+
       const { data, error } = await supabase.from("reversecharades_players")
         .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName?.trim() ?? "", last_name: saved.lastName?.trim() ?? "", team, ready: false })
         .select("id").single()
@@ -275,7 +283,7 @@ export default function Lobby({ params }) {
       await refreshPlayers()
       await refreshMyClues(data.id)
     })()
-  }, [game?.phase, myPlayerId, players.length, code, game?.min_clues_per_player])
+  }, [game?.is_dummy, game?.phase, myPlayerId, code, game?.min_clues_per_player])
 
   useEffect(() => {
     const poll = setInterval(async () => {

@@ -320,10 +320,18 @@ export default function Lobby({ params }) {
     hasAutoJoinedRef.current = true
     ;(async () => {
       const { data: taken } = await supabase.from("players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
-      if (taken?.length > 0) return
-      const t1 = players.filter(p => p.team === 1).length
-      const t2 = players.filter(p => p.team === 2).length
-      const team = t2 <= t1 ? 2 : 1
+      if (taken?.length > 0) { hasAutoJoinedRef.current = false; return }
+
+      // Fetch fresh player list to assign team
+      const { data: currentPlayers } = await supabase
+        .from("players")
+        .select("id,team")
+        .eq("game_code", code)
+
+      const t1 = (currentPlayers || []).filter(p => p.team === 1).length
+      const t2 = (currentPlayers || []).filter(p => p.team === 2).length
+      const team = t2 < t1 ? 2 : 1
+
       const { data, error } = await supabase.from("players")
         .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName?.trim() ?? "", last_name: saved.lastName?.trim() ?? "", team, ready: false })
         .select("id").single()
@@ -336,7 +344,7 @@ export default function Lobby({ params }) {
       await refreshPlayers()
       await refreshMyClues(data.id)
     })()
-  }, [gameExists, gamePhase, myPlayerId, players.length, code])
+  }, [gameExists, gamePhase, myPlayerId, code, gameSettings.min_clues_per_player])
 
   useEffect(() => {
     const existing = localStorage.getItem(`fishbowl:${code}:playerId`)

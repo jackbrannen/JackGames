@@ -179,6 +179,8 @@ export default function Lobby({ params }) {
   const router = useRouter()
   const code = useMemo(() => params.code.toUpperCase(), [params.code])
 
+  console.log('[LOBBY MOUNT]', { code })
+
   const [gameExists, setGameExists] = useState(null)
   const [game, setGame] = useState(null)
   const [players, setPlayers] = useState([])
@@ -226,6 +228,7 @@ export default function Lobby({ params }) {
       .select("code,phase,host_id,turn_duration_seconds,skip_limit,skip_penalty,min_clues_per_player,max_clues_per_player,game_style,is_dummy")
       .eq("code", code)
       .single()
+    console.log('[LOAD GAME]', { data, error })
     if (error || !data) { setGameExists(false); return }
     setGameExists(true)
     setGame(data)
@@ -249,15 +252,19 @@ export default function Lobby({ params }) {
   }, [code])
 
   useEffect(() => {
+    console.log('[AUTO-JOIN CHECK]', { phase: game?.phase, myPlayerId, isDummy: game?.is_dummy, hasAutoJoined: hasAutoJoinedRef.current })
     if (game?.phase !== "lobby" || myPlayerId) return
     // Only auto-join for dummy games
     if (!game?.is_dummy) return
     const saved = loadProfile()
+    console.log('[AUTO-JOIN] Saved profile:', saved)
     if (!saved?.username) return
     if (hasAutoJoinedRef.current) return
     hasAutoJoinedRef.current = true
+    console.log('[AUTO-JOIN] Starting auto-join for', saved.username)
     ;(async () => {
       const { data: taken } = await supabase.from("reversecharades_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
+      console.log('[AUTO-JOIN] Name check:', { username: saved.username, taken: taken?.length })
       if (taken?.length > 0) { hasAutoJoinedRef.current = false; return }
 
       // Fetch fresh player list to assign team
@@ -273,9 +280,11 @@ export default function Lobby({ params }) {
       const { data, error } = await supabase.from("reversecharades_players")
         .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName?.trim() ?? "", last_name: saved.lastName?.trim() ?? "", team, ready: false })
         .select("id").single()
+      console.log('[AUTO-JOIN] Insert result:', { data, error })
       if (error || !data) { hasAutoJoinedRef.current = false; return }
       localStorage.setItem(`rc:${code}:playerId`, data.id)
       setMyPlayerId(data.id)
+      console.log('[AUTO-JOIN] Success! Player ID:', data.id)
       // Pre-fill clues for dummy games
       const clueCount = game?.min_clues_per_player || 2
       const { data: ideas } = await supabase.rpc("get_random_ideas", { p_count: clueCount, p_exclude: [] })

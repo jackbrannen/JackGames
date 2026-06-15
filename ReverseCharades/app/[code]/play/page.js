@@ -118,6 +118,9 @@ function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
     return Math.floor((Date.now() - new Date(game.turn_started_at).getTime()) / 1000)
   }, [game.turn_started_at])
 
+  const isPaused = game.is_paused
+  const animationPlayState = isPaused ? 'paused' : 'running'
+
   return (
     <>
       <style>{`
@@ -147,6 +150,7 @@ function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
           ))}
         </div>
         <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, color: timerUrgent ? YELLOW : "white" }}>
+          {isPaused && <span style={{ fontSize: 18, marginRight: 8, opacity: 0.75 }}>⏸</span>}
           {secondsRemaining}<span style={{ fontSize: 18, fontWeight: 600, opacity: 0.55 }}>s</span>
         </div>
       </div>
@@ -164,6 +168,7 @@ function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
             background: playingTeam === "A" ? "white" : YELLOW,
             animation: `timerDrain ${totalDuration}s linear forwards`,
             animationDelay: `-${elapsed}s`,
+            animationPlayState,
           }}
         />
       </div>
@@ -209,7 +214,7 @@ export default function Play({ params }) {
   async function loadState() {
     const { data: gameData } = await supabase
       .from("reversecharades_games")
-      .select("code,phase,host_id,current_team,current_guesser_id,current_controller_id,current_clue_id,turn_started_at,turn_duration_seconds,skip_limit,skip_penalty,skips_this_turn,correct_this_turn,last_turn_correct,last_turn_skips,last_turn_team,team_a_score,team_b_score,team_a_turns,team_b_turns,next_game,next_game_picker_name")
+      .select("code,phase,host_id,current_team,current_guesser_id,current_controller_id,current_clue_id,turn_started_at,turn_duration_seconds,skip_limit,skip_penalty,skips_this_turn,correct_this_turn,last_turn_correct,last_turn_skips,last_turn_team,team_a_score,team_b_score,team_a_turns,team_b_turns,next_game,next_game_picker_name,is_paused,paused_at,pause_elapsed_seconds")
       .eq("code", code)
       .single()
     if (!gameData) return
@@ -361,6 +366,32 @@ export default function Play({ params }) {
     try {
       await rpc("rc_skip", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
       await loadState() // Immediate feedback for score/clue update
+      setActing(false)
+    } catch (e) {
+      setActing(false)
+      throw e
+    }
+  }
+
+  async function doPause() {
+    if (!myPlayerId || acting) return
+    setActing(true)
+    try {
+      await rpc("rc_pause_turn", { p_code: code, p_player_id: myPlayerId })
+      await loadState()
+      setActing(false)
+    } catch (e) {
+      setActing(false)
+      throw e
+    }
+  }
+
+  async function doResume() {
+    if (!myPlayerId || acting) return
+    setActing(true)
+    try {
+      await rpc("rc_resume_turn", { p_code: code, p_player_id: myPlayerId })
+      await loadState()
       setActing(false)
     } catch (e) {
       setActing(false)
@@ -587,25 +618,42 @@ export default function Play({ params }) {
           </div>
 
           <div style={{ padding: "16px 20px", paddingBottom: "max(20px, env(safe-area-inset-bottom, 20px))", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
-            <FooterButton onClick={doCorrect} disabled={!currentClue} loading={acting} bg={YELLOW} textColor="#000" style={{ padding: "28px 16px", fontSize: 28 }}>
+            <FooterButton onClick={doCorrect} disabled={!currentClue || game.is_paused} loading={acting} bg={YELLOW} textColor="#000" style={{ padding: "28px 16px", fontSize: 28 }}>
               ✓ Correct
             </FooterButton>
-            <FooterButton
-              onClick={doSkip}
-              disabled={skipDisabled}
-              loading={acting}
-              bg={skipDisabled ? MID : WARM}
-              textColor="white"
-              style={{
-                padding: "18px 16px",
-                fontSize: 18,
-                fontWeight: 800,
-                textDecoration: (game.skip_limit > 0 && game.skips_this_turn >= game.skip_limit) ? "line-through" : "none",
-              }}
-            >
-              {game.skip_penalty < 0 ? `Skip (${game.skip_penalty})` : "Skip"}
-              {game.skip_limit > 0 && ` · ${game.skips_this_turn ?? 0}/${game.skip_limit} used`}
-            </FooterButton>
+            <div style={{ display: "flex", gap: 8 }}>
+              <FooterButton
+                onClick={doSkip}
+                disabled={skipDisabled || game.is_paused}
+                loading={acting}
+                bg={skipDisabled ? MID : WARM}
+                textColor="white"
+                style={{
+                  flex: 1,
+                  padding: "18px 16px",
+                  fontSize: 18,
+                  fontWeight: 800,
+                  textDecoration: (game.skip_limit > 0 && game.skips_this_turn >= game.skip_limit) ? "line-through" : "none",
+                }}
+              >
+                {game.skip_penalty < 0 ? `Skip (${game.skip_penalty})` : "Skip"}
+                {game.skip_limit > 0 && ` · ${game.skips_this_turn ?? 0}/${game.skip_limit} used`}
+              </FooterButton>
+              <FooterButton
+                onClick={game.is_paused ? doResume : doPause}
+                loading={acting}
+                bg={DARK}
+                textColor="white"
+                style={{
+                  flex: 1,
+                  padding: "18px 16px",
+                  fontSize: 18,
+                  fontWeight: 800,
+                }}
+              >
+                {game.is_paused ? "Resume" : "Pause"}
+              </FooterButton>
+            </div>
           </div>
         </div>
       )
@@ -634,10 +682,23 @@ export default function Play({ params }) {
             <StatChips correct={game.correct_this_turn ?? 0} left={null} />
           </div>
 
-          <div style={{ padding: "16px 20px", paddingBottom: "max(20px, env(safe-area-inset-bottom, 20px))", background: DARK, flexShrink: 0 }}>
+          <div style={{ padding: "16px 20px", paddingBottom: "max(20px, env(safe-area-inset-bottom, 20px))", background: DARK, flexShrink: 0, display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.65 }}>
               {controller?.name ?? "Someone"} has the controls
             </div>
+            <FooterButton
+              onClick={game.is_paused ? doResume : doPause}
+              loading={acting}
+              bg={MID}
+              textColor="white"
+              style={{
+                padding: "16px",
+                fontSize: 16,
+                fontWeight: 800,
+              }}
+            >
+              {game.is_paused ? "Resume" : "Pause"}
+            </FooterButton>
           </div>
         </div>
       )

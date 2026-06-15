@@ -112,10 +112,17 @@ function StatChips({ correct, left }) {
 // Shared top bar used by all playing-phase views
 function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
   const totalDuration = game.turn_duration_seconds ?? 45
-  const percentRemaining = (secondsRemaining / totalDuration) * 100
+  const elapsed = totalDuration - secondsRemaining
+  const animationDuration = secondsRemaining
 
   return (
     <>
+      <style>{`
+        @keyframes timerDrain {
+          from { width: 100%; }
+          to { width: 0%; }
+        }
+      `}</style>
       <div style={{
         padding: "12px 20px",
         background: DARK,
@@ -143,15 +150,18 @@ function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
 
       {/* Timer progress bar */}
       <div style={{ height: 12, background: "rgba(0,0,0,0.2)", position: "relative", overflow: "hidden" }}>
-        <div style={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: `${percentRemaining}%`,
-          background: playingTeam === "A" ? "white" : YELLOW,
-          transition: "width 0.1s linear",
-        }} />
+        <div
+          key={`timer-${game.current_clue_id}-${elapsed}`}
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: "100%",
+            background: playingTeam === "A" ? "white" : YELLOW,
+            animation: `timerDrain ${animationDuration}s linear forwards`,
+          }}
+        />
       </div>
 
       {/* Team turn strip */}

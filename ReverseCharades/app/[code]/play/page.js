@@ -610,8 +610,8 @@ export default function Play({ params }) {
             <FooterButton
               onClick={game.is_paused ? doResume : doPause}
               loading={acting}
-              bg={MID}
-              textColor="white"
+              bg={YELLOW}
+              textColor="#000"
               style={{
                 padding: "16px",
                 fontSize: 16,

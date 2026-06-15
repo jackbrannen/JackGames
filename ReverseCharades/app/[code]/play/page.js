@@ -151,7 +151,7 @@ function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
       {/* Timer progress bar */}
       <div style={{ height: 12, background: "rgba(0,0,0,0.2)", position: "relative", overflow: "hidden" }}>
         <div
-          key={`timer-${game.current_clue_id}-${elapsed}`}
+          key={`timer-${game.turn_started_at}`}
           style={{
             position: "absolute",
             left: 0,

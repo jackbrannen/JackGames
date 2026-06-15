@@ -330,18 +330,12 @@ export default function Play({ params }) {
   async function doStartTurn() {
     if (!myPlayerId || acting) return
     setActing(true)
-
-    const timeoutId = setTimeout(() => {
-      console.log('[START TURN TIMEOUT] Resetting acting state after 2s')
-      setActing(false)
-    }, 2000)
-
     try {
       await rpc("rc_start_turn", { p_code: code, p_player_id: myPlayerId })
-      clearTimeout(timeoutId)
-    } catch {
-      clearTimeout(timeoutId)
       setActing(false)
+    } catch (e) {
+      setActing(false)
+      throw e
     }
   }
 
@@ -518,7 +512,7 @@ export default function Play({ params }) {
 
       <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: YELLOW, notifBg: DARK }} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
         {amGuesser && (
-          <FooterButton key="start-turn" onClick={doStartTurn} bg={YELLOW} textColor="#000">
+          <FooterButton onClick={doStartTurn} loading={acting} bg={YELLOW} textColor="#000">
             Start
           </FooterButton>
         )}

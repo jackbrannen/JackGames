@@ -68,7 +68,7 @@ export default function Play({ params }) {
   const soundTriggerRef = useRef(null)
 
   useEffect(() => {
-    const stored = localStorage.getItem(`mw:${code}:playerId`)
+    const stored = localStorage.getItem(`mrwhite:${code}:playerId`)
     if (stored) setMyPlayerId(stored)
     else router.replace(`/${code}`)
   }, [code])

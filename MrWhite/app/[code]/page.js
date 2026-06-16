@@ -61,6 +61,7 @@ export default function LobbyPage({ params }) {
   const [instructions, setInstructions] = useState("")
   const [gameExists, setGameExists] = useState(null)
   const [gamePhase, setGamePhase] = useState("lobby")
+  const [isDummy, setIsDummy] = useState(false)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
   const [savedProfile, setSavedProfile] = useState(null)
@@ -86,12 +87,13 @@ export default function LobbyPage({ params }) {
   async function loadGame() {
     const { data, error } = await supabase
       .from("mrwhite_games")
-      .select("code,phase")
+      .select("code,phase,is_dummy")
       .eq("code", code)
       .single()
     if (error || !data) { setGameExists(false); return }
     setGameExists(true)
     setGamePhase(data.phase)
+    setIsDummy(!!data.is_dummy)
   }
 
   async function loadState() {
@@ -110,14 +112,11 @@ export default function LobbyPage({ params }) {
     supabase.from("game_instructions").select("body").eq("game_key", "mrwhite").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     loadState()
-    let poll = setInterval(loadState, 1500)
-    function handleVisibility() { clearInterval(poll); if (!document.hidden) { loadState(); poll = setInterval(loadState, 1500) } }
-    document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`mrwhite-lobby-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "mrwhite_players", filter: `game_code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "mrwhite_games", filter: `code=eq.${code}` }, loadState)
       .subscribe()
-    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
+    return () => { supabase.removeChannel(channel) }
   }, [code])
 
   useEffect(() => {
@@ -126,7 +125,7 @@ export default function LobbyPage({ params }) {
 
   const hasAutoJoinedRef = useRef(false)
   useEffect(() => {
-    if (gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    if (!isDummy || gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
     const saved = loadProfile()
     if (!saved?.username) return
     hasAutoJoinedRef.current = true
@@ -140,7 +139,7 @@ export default function LobbyPage({ params }) {
       localStorage.setItem(`mrwhite:${code}:playerId`, data.id)
       setMyPlayerId(data.id)
     })()
-  }, [gamePhase, myPlayerId, code])
+  }, [isDummy, gamePhase, myPlayerId, code])
 
   async function join() {
     const trimmed = name.trim()

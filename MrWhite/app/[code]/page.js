@@ -112,11 +112,14 @@ export default function LobbyPage({ params }) {
     supabase.from("game_instructions").select("body").eq("game_key", "mrwhite").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     loadState()
+    let poll = setInterval(loadState, 1500)
+    function handleVisibility() { clearInterval(poll); if (!document.hidden) { loadState(); poll = setInterval(loadState, 1500) } }
+    document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`mrwhite-lobby-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "mrwhite_players", filter: `game_code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "mrwhite_games", filter: `code=eq.${code}` }, loadState)
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
   useEffect(() => {

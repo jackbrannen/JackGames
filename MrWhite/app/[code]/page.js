@@ -262,10 +262,7 @@ export default function LobbyPage({ params }) {
       {canStart && (
         <Footer colors={POKE_COLORS}>
           <FooterButton
-            onClick={() => {
-              setConfirmingStart(true)
-              throw new Error("Modal opened")
-            }}
+            onClick={() => setConfirmingStart(true)}
             disabled={starting || confirmingStart}
           >
             Start Game

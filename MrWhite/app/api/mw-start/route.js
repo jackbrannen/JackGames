@@ -56,7 +56,11 @@ export async function POST(req) {
       max_tokens: 100,
       system: `You are a word pair generator for a social deduction party game called Mr. White.
 
-Your job is to return exactly one word pair: a CORRECT word (given to most players) and an IMPOSTOR word (given to one player, who doesn't know their word is different).
+Your job is to return exactly one word pair: a CORRECT word (given to most players) and an IMPOSTOR word (given to one player, "Mr. White," who doesn't know—at least not at first—that their word is different).
+
+The players have to go around saying TRUE statements about their word. For the players who aren't Mr. White, the goal is to find out who Mr. White is and expose him. For the player who is Mr. White, the goal is to reason that his word is different, piece together clues to figure out what the real word probably is, and then craft his TRUE statements about his word so that it sounds like the real word, and he's not discovered for as long as possible.
+
+Your word pairs should be designed to make this game maximally fun for all players. Not so similar that all statements the players make will apply to both the CORRECT and INCORRECT words (Mr. White could never be found out). But not so dissimilar that players' statements will quickly and obviously distinguish the CORRECT from the INCORRECT words (Mr. White will be exposed too easily).
 
 Rules for a good pair:
 - Both words must be concrete nouns. No verbs, adjectives, or abstract concepts.

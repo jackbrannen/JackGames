@@ -296,10 +296,6 @@ export default function Play({ params }) {
           </div>
 
           <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 10 }}>
-            <button onClick={async () => { await rpc("mw_reset_game", { p_code: code }) }}
-              style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
-              Play Again
-            </button>
             <a href="https://games.jackbrannen.com"
               style={{ display: "block", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%", textAlign: "center", textDecoration: "none" }}>
               Play Another Game
@@ -308,8 +304,16 @@ export default function Play({ params }) {
         </div>
 
         {renderUI(
-          <FooterButton onClick={() => router.replace(`/${code}`)} bg={YELLOW} textColor="#000">
-            Back to Lobby
+          <FooterButton
+            onClick={async () => {
+              await rpc("mw_reset_game", { p_code: code })
+              localStorage.removeItem(`mrwhite:${code}:playerId`)
+              router.replace(`/${code}`)
+            }}
+            bg={YELLOW}
+            textColor="#000"
+          >
+            Play Again
           </FooterButton>
         )}
       </div>
@@ -320,7 +324,8 @@ export default function Play({ params }) {
   if (game.phase === "reveal") {
     const revealFooterAction = (() => {
       if (!revealVisible) return footerWait("Revealing…")
-      if (eliminatedWasMrWhite !== false) return null
+      if (eliminatedWasMrWhite === true) return footerWait("Game ending…")
+      if (eliminatedWasMrWhite === null) return footerWait("Revealing…")
       if (isCurrentlyEliminated || isEliminated) return footerWait("Waiting for the group…")
       if (iHavePressedNextRound) return footerWait(`${nextRoundReadyCount} / ${nextRoundEligible.length} ready…`)
       return <FooterButton onClick={handleNextRound} bg={YELLOW} textColor="#000">Next Round</FooterButton>

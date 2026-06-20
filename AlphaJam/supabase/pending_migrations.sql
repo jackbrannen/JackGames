@@ -143,7 +143,7 @@ BEGIN
       used_letter_pairs = array_append(v_used_pairs, v_pair),
       new_letters_requests = '{}',
       phase = 'countdown',
-      reveal_at = now() + interval '5 seconds'
+      reveal_at = now() + interval '3 seconds'
     WHERE code = p_code;
   ELSE
     UPDATE alphajam_games
@@ -538,9 +538,9 @@ BEGIN
 
     -- Check if both players are ready
     IF v_player1_id = ANY(v_ready_ids) AND v_player2_id = ANY(v_ready_ids) THEN
-      -- Transition to countdown (5 seconds to ensure all clients receive timestamp before countdown starts)
+      -- Transition to countdown
       NEW.phase := 'countdown';
-      NEW.reveal_at := now() + interval '5 seconds';
+      NEW.reveal_at := now() + interval '3 seconds';
       NEW.ready_player_ids := '{}';
     END IF;
   END IF;

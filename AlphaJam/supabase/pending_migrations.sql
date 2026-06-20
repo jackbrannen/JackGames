@@ -281,13 +281,11 @@ BEGIN
     -- Tournament complete, check for ties
     PERFORM aj_check_tiebreaker(p_code);
   ELSE
-    -- Next matchup
+    -- Next matchup - go to matchup_preview for Ready stage
     UPDATE alphajam_games
     SET
       current_matchup_index = current_matchup_index + 1,
-      current_round = 1,
-      phase = 'countdown',
-      reveal_at = now() + interval '3 seconds'
+      current_round = 1
     WHERE code = p_code;
 
     PERFORM aj_generate_letters(p_code);
@@ -360,12 +358,10 @@ BEGIN
 
   UPDATE alphajam_games
   SET
-    phase = 'countdown',
     matchup_pairs = v_matchups,
     current_matchup_index = 0,
     current_round = 1,
-    rounds_per_matchup = p_rounds,
-    reveal_at = now() + interval '3 seconds'
+    rounds_per_matchup = p_rounds
   WHERE code = p_code;
 
   PERFORM aj_generate_letters(p_code);

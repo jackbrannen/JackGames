@@ -137,7 +137,7 @@ export default function Menu({
     : [{ label: null, players: playerDetails }]
 
   const TILES = [
-    { icon: hasScores ? "🏆" : "👥", label: hasScores ? "Scores" : "Players", action: () => setPanel("players") },
+    { icon: hasScores ? "🏆" : "👥", label: "Players", action: () => setPanel("players") },
     rules       ? { icon: "📋", label: "Rules",    action: () => setPanel("rules") }    : null,
     word !== null        ? { icon: "📖", label: "My Word",  action: () => setPanel("myWord") }  : null,
     roleContent !== null ? { icon: "🃏", label: "My Role",  action: () => setPanel("myRole") }  : null,

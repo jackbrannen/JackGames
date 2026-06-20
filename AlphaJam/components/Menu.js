@@ -177,7 +177,7 @@ export default function Menu({
             {TILES.map(({ icon, label, action }) => (
               <button key={label} onClick={action} style={{
                 background: "transparent",
-                color: label === "Lobby" ? "rgba(255,120,100,0.9)" : "white",
+                color: "white",
                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                 padding: "14px 8px", gap: 6,
               }}>

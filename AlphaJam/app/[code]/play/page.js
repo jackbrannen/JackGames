@@ -116,6 +116,74 @@ export default function PlayPage({ params }) {
     return () => clearInterval(interval)
   }, [gameState?.reveal_at, gameState?.phase, code])
 
+  async function handleAdjustScore(playerId, delta) {
+    try {
+      const { error } = await supabase.rpc("aj_adjust_score", {
+        p_player_id: playerId,
+        p_delta: delta,
+      })
+      if (error) throw error
+      await loadState()
+    } catch (e) {
+      alert("Error adjusting score: " + (e?.message ?? "unknown"))
+    }
+  }
+
+  async function handleResetToLobby() {
+    // AlphaJam doesn't have a reset function yet
+    alert("Reset to lobby is not available for this game.")
+  }
+
+  // Reusable Menu component for all phases
+  function renderMenu() {
+    return (
+      <Menu
+        supabase={supabase}
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        colors={{ dark: DARK, mid: MID, wl: WL, yellow: YELLOW, text: TEXT }}
+        roomCode={code}
+        currentPlayer={me?.name}
+        playerDetails={players.map(p => ({
+          name: p.name,
+          firstName: p.first_name,
+          lastName: p.last_name,
+          score: p.score ?? 0,
+        }))}
+        gamePhase={gameState?.phase}
+        rules={[
+          ["Objective", "Win the most head-to-head matchups by thinking of words faster than your opponents."],
+          ["How to Play", "Each matchup reveals two letters. Think of a word that starts with the first letter and ends with the second letter. The first player to find a valid word wins the round."],
+          ["Tournament", "You'll play against every other player in a round-robin tournament. The player with the most wins at the end wins the game."],
+        ]}
+        settingsContent={
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {players.map(p => (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "white" }}>{p.name}</div>
+                  <div style={{ fontSize: 14, color: "rgba(255,255,255,0.65)" }}>Score: {p.score ?? 0}</div>
+                </div>
+                <button
+                  onClick={() => handleAdjustScore(p.id, -1)}
+                  style={{ background: DARK, color: "rgba(255,255,255,0.8)", fontSize: 20, fontWeight: 900, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center" }}
+                >
+                  −
+                </button>
+                <button
+                  onClick={() => handleAdjustScore(p.id, 1)}
+                  style={{ background: DARK, color: "rgba(255,255,255,0.8)", fontSize: 20, fontWeight: 900, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center" }}
+                >
+                  +
+                </button>
+              </div>
+            ))}
+          </div>
+        }
+      />
+    )
+  }
+
   async function handleClaimWin() {
     const { error } = await supabase.rpc("aj_claim_win", { p_code: code, p_player_id: myPlayerId })
     if (error) {
@@ -270,6 +338,7 @@ export default function PlayPage({ params }) {
     return (
       <div style={{ background: BG, color: TEXT, minHeight: "100vh", paddingBottom: BOTTOM_PAD }}>
         <Notifications pokes={myPokes} onDismiss={dismissPoke} colors={{ dark: DARK, yellow: YELLOW, notifBg: MID }} />
+        {renderMenu()}
 
         {/* Status bar */}
         <div style={{ background: DARK, padding: `12px ${SPACE.md}px`, ...STYLE.eyebrow, opacity: OPACITY.moderate }}>
@@ -283,7 +352,7 @@ export default function PlayPage({ params }) {
         </div>
 
         <Footer
-          onToggle={() => setMenuOpen(true)}
+          onToggle={() => setMenuOpen(!menuOpen)}
           isOpen={menuOpen}
           colors={{ dark: DARK, wl: WL }}
         >
@@ -304,7 +373,7 @@ export default function PlayPage({ params }) {
           )}
         </Footer>
 
-        {/* Spectator ready status */}
+        {/* Ready status - only shown to spectators */}
         {!isMyTurn && (
           <div style={{ padding: `0 ${SPACE.md}px ${SPACE.lg}px`, maxWidth: 480, margin: "0 auto" }}>
             <div style={{ ...STYLE.sectionHeader, marginBottom: 12 }}>
@@ -328,63 +397,56 @@ export default function PlayPage({ params }) {
                 </div>
               )}
             </div>
-
-            {/* Matchups list */}
-            <div style={{ ...STYLE.sectionHeader, marginBottom: 12 }}>
-              Matchups
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-              {matchup_pairs && matchup_pairs.map((pair, i) => {
-                const p1 = players.find(p => p.id === pair.player1_id)
-                const p2 = players.find(p => p.id === pair.player2_id)
-                const isPast = i < (current_matchup_index ?? 0)
-                const isCurrent = i === current_matchup_index
-
-                return (
-                  <div key={i} style={{ display: "flex" }}>
-                    <div style={{
-                      background: isCurrent ? YELLOW : "rgba(255,255,255,0.15)",
-                      color: isCurrent ? "#000" : "rgba(255,255,255,0.75)",
-                      fontSize: 20,
-                      fontWeight: FONT_WEIGHT.black,
-                      minWidth: 52,
-                      textAlign: "center",
-                      padding: "10px 0",
-                      flexShrink: 0
-                    }}>
-                      {i + 1}
-                    </div>
-                    <div style={{
-                      background: MID,
-                      padding: `10px ${SPACE.md}px`,
-                      flex: 1,
-                      display: "flex",
-                      alignItems: "center"
-                    }}>
-                      <span style={{
-                        fontSize: FONT_SIZE.body,
-                        fontWeight: FONT_WEIGHT.bold,
-                        textDecoration: isPast ? "line-through" : "none",
-                        opacity: isPast ? OPACITY.muted : OPACITY.full
-                      }}>
-                        {p1?.name} vs {p2?.name}
-                      </span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
           </div>
         )}
 
-        <Menu
-          isOpen={menuOpen}
-          onClose={() => setMenuOpen(false)}
-          roomCode={code}
-          myName={me?.name}
-          playerDetails={playerDetails}
-          colors={{ bg: BG, dark: DARK, mid: MID, wl: WL, yellow: YELLOW, notifBg: MID }}
-        />
+        {/* Matchups list - shown to all players */}
+        <div style={{ padding: `0 ${SPACE.md}px ${SPACE.lg}px`, maxWidth: 480, margin: "0 auto" }}>
+          <div style={{ ...STYLE.sectionHeader, marginBottom: 12 }}>
+            Matchups
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {matchup_pairs && matchup_pairs.map((pair, i) => {
+              const p1 = players.find(p => p.id === pair.player1_id)
+              const p2 = players.find(p => p.id === pair.player2_id)
+              const isPast = i < (current_matchup_index ?? 0)
+              const isCurrent = i === current_matchup_index
+
+              return (
+                <div key={i} style={{ display: "flex" }}>
+                  <div style={{
+                    background: isCurrent ? YELLOW : "rgba(255,255,255,0.15)",
+                    color: isCurrent ? "#000" : "rgba(255,255,255,0.75)",
+                    fontSize: 20,
+                    fontWeight: FONT_WEIGHT.black,
+                    minWidth: 52,
+                    textAlign: "center",
+                    padding: "10px 0",
+                    flexShrink: 0
+                  }}>
+                    {i + 1}
+                  </div>
+                  <div style={{
+                    background: MID,
+                    padding: `10px ${SPACE.md}px`,
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center"
+                  }}>
+                    <span style={{
+                      fontSize: FONT_SIZE.body,
+                      fontWeight: FONT_WEIGHT.bold,
+                      textDecoration: isPast ? "line-through" : "none",
+                      opacity: isPast ? OPACITY.muted : OPACITY.full
+                    }}>
+                      {p1?.name} vs {p2?.name}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
       </div>
     )
   }

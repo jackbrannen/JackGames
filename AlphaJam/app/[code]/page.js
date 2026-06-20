@@ -309,7 +309,26 @@ export default function LobbyPage({ params }) {
 
       </div>
 
-      <Menu isOpen={menuOpen} onClose={() => setMenuOpen(false)} colors={{ dark: DARK, mid: MID, wl: WL, text: TEXT }} code={code} />
+      <Menu
+        supabase={supabase}
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        colors={{ dark: DARK, mid: MID, wl: WL, yellow: YELLOW, text: TEXT }}
+        roomCode={code}
+        currentPlayer={me?.name}
+        playerDetails={players.map(p => ({
+          name: p.name,
+          firstName: p.first_name,
+          lastName: p.last_name,
+          score: 0,
+        }))}
+        gamePhase={gamePhase}
+        rules={[
+          ["Objective", "Win the most head-to-head matchups by thinking of words faster than your opponents."],
+          ["How to Play", "Each matchup reveals two letters. Think of a word that starts with the first letter and ends with the second letter. The first player to find a valid word wins the round."],
+          ["Tournament", "You'll play against every other player in a round-robin tournament. The player with the most wins at the end wins the game."],
+        ]}
+      />
 
       <Footer colors={{ dark: DARK, wl: WL }} timerRunning={false} isOpen={menuOpen} onToggle={() => setMenuOpen(!menuOpen)}>
         {me ? (

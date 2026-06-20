@@ -69,9 +69,9 @@ export const STYLE = {
 // Warm shadow (warmer, not cooler): HSB(12, 70, 90) = #E6704D
 // Mid: HSB(15, 68, 95) = #F27B53
 // Warm-light: HSB(21, 60, 100) = #FF9166
-// Accent: #1A2942 (dark blue, replaces yellow)
+// Accent: #333546 (dark slate, replaces yellow)
 export const BG = "#FF865A"
 export const DARK = "#E6704D"
 export const MID = "#F27B53"
 export const WL = "#FF9166"
-export const YELLOW = "#1A2942"
+export const YELLOW = "#333546"

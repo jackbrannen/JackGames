@@ -328,6 +328,139 @@ export default function PlayPage({ params }) {
     )
   }
 
+  // Tiebreaker preview screen
+  if (phase === "tiebreaker_preview") {
+    const sortedPlayers = [...players].sort((a, b) => b.score - a.score)
+    const maxScore = sortedPlayers[0].score
+    const tiedPlayers = sortedPlayers.filter(p => p.score === maxScore)
+
+    return (
+      <div style={{ background: BG, color: TEXT, minHeight: "100vh", paddingBottom: BOTTOM_PAD }}>
+        <Notifications pokes={myPokes} onDismiss={dismissPoke} colors={{ dark: DARK, yellow: YELLOW, notifBg: MID }} />
+        {renderMenu()}
+
+        {/* Tiebreaker banner */}
+        <div style={{ background: YELLOW, color: "white", padding: `${SPACE.lg}px ${SPACE.md}px`, textAlign: "center" }}>
+          <div style={{ fontSize: FONT_SIZE.headingSm, fontWeight: FONT_WEIGHT.black, marginBottom: SPACE.sm }}>
+            TIEBREAKER
+          </div>
+          <div style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold }}>
+            {tiedPlayers.length === 2 ? "Best of 3" : "Sudden Death"}
+          </div>
+        </div>
+
+        {/* Scores */}
+        <div style={{ padding: `${SPACE.lg}px ${SPACE.md}px`, maxWidth: 480, margin: "0 auto" }}>
+          <div style={{ ...STYLE.sectionHeader, marginBottom: 12 }}>
+            Scores
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: SPACE.xl }}>
+            {sortedPlayers.map((p, i) => (
+              <div key={p.id} style={{ display: "flex" }}>
+                <div style={{
+                  padding: "13px 0", minWidth: 48, flexShrink: 0,
+                  background: DARK,
+                  fontSize: 18, fontWeight: 900, color: TEXT,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  {i + 1}
+                </div>
+                <div style={{
+                  padding: "13px 16px", flex: 1,
+                  background: tiedPlayers.includes(p) ? YELLOW : MID,
+                  color: "white",
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                }}>
+                  <div style={{ fontSize: 17, fontWeight: 700 }}>
+                    {p.name}
+                  </div>
+                  <div style={{ fontSize: 20, fontWeight: 900 }}>
+                    {p.score}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tiebreaker matchups */}
+          <div style={{ ...STYLE.sectionHeader, marginBottom: 12 }}>
+            Tiebreaker Matchups
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {matchup_pairs && matchup_pairs.map((pair, i) => {
+              const p1 = players.find(p => p.id === pair.player1_id)
+              const p2 = players.find(p => p.id === pair.player2_id)
+              const isCurrent = i === current_matchup_index
+
+              return (
+                <div key={i} style={{ display: "flex" }}>
+                  <div style={{
+                    background: isCurrent ? YELLOW : "rgba(255,255,255,0.15)",
+                    color: isCurrent ? "white" : "rgba(255,255,255,0.75)",
+                    fontSize: 20,
+                    fontWeight: FONT_WEIGHT.black,
+                    minWidth: 52,
+                    textAlign: "center",
+                    padding: "10px 0",
+                    flexShrink: 0
+                  }}>
+                    {i + 1}
+                  </div>
+                  <div style={{
+                    background: MID,
+                    padding: `10px ${SPACE.md}px`,
+                    flex: 1,
+                    display: "flex",
+                    alignItems: "center"
+                  }}>
+                    <span style={{
+                      fontSize: FONT_SIZE.body,
+                      fontWeight: FONT_WEIGHT.bold,
+                    }}>
+                      {p1?.name} vs {p2?.name}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        <Footer
+          onToggle={() => setMenuOpen(!menuOpen)}
+          isOpen={menuOpen}
+          colors={{ dark: DARK, wl: WL }}
+        >
+          {isMyTurn && !iAmReady && (
+            <FooterButton
+              onClick={async () => {
+                setReadyLoading(true)
+                try {
+                  const { error } = await supabase.rpc("aj_tiebreaker_ready", { p_code: code, p_player_id: myPlayerId })
+                  if (error) throw error
+                  await loadState()
+                } catch (e) {
+                  alert("Error: " + (e?.message ?? "unknown error"))
+                  setReadyLoading(false)
+                }
+              }}
+              loading={readyLoading}
+              bg={YELLOW}
+              textColor="white"
+            >
+              Ready
+            </FooterButton>
+          )}
+          {isMyTurn && iAmReady && !opponentReady && (
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold, opacity: OPACITY.normal }}>
+              Waiting for {opponent?.name}...
+            </div>
+          )}
+        </Footer>
+      </div>
+    )
+  }
+
   // Matchup preview screen (before countdown)
   if (phase === "matchup_preview") {
     const nextMatchups = []

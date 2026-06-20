@@ -356,15 +356,35 @@ BEGIN
     END LOOP;
   END LOOP;
 
+  -- Go to tiebreaker_preview to show explanation and scores
   UPDATE alphajam_games
   SET
+    phase = 'tiebreaker_preview',
     matchup_pairs = v_matchups,
     current_matchup_index = 0,
     current_round = 1,
-    rounds_per_matchup = p_rounds
+    rounds_per_matchup = p_rounds,
+    ready_player_ids = '{}'
   WHERE code = p_code;
 
   PERFORM aj_generate_letters(p_code);
+END;
+$$;
+
+-- RPC: Mark player as ready for tiebreaker (atomic append)
+CREATE OR REPLACE FUNCTION aj_tiebreaker_ready(
+  p_code text,
+  p_player_id uuid
+)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  UPDATE alphajam_games
+  SET ready_player_ids = array_append(ready_player_ids, p_player_id)
+  WHERE code = p_code
+    AND phase = 'tiebreaker_preview'
+    AND NOT (p_player_id = ANY(ready_player_ids));
 END;
 $$;
 
@@ -513,7 +533,7 @@ BEGIN
 END;
 $$;
 
--- Trigger to check when both players are ready in matchup_preview
+-- Trigger to check when both players are ready in matchup_preview or tiebreaker_preview
 CREATE OR REPLACE FUNCTION check_matchup_ready()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -523,7 +543,7 @@ DECLARE
   v_player2_id uuid;
   v_ready_ids uuid[];
 BEGIN
-  IF NEW.phase = 'matchup_preview' AND NEW.ready_player_ids IS NOT NULL THEN
+  IF NEW.phase IN ('matchup_preview', 'tiebreaker_preview') AND NEW.ready_player_ids IS NOT NULL THEN
     -- Get current matchup players
     SELECT
       (NEW.matchup_pairs->NEW.current_matchup_index->>'player1_id')::uuid,

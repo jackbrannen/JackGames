@@ -346,7 +346,7 @@ export default function PlayPage({ params }) {
           <div style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold, textAlign: "center", marginBottom: SPACE.md }}>
             {tiedPlayers.length === 2 ? "Best of 3" : "Sudden Death"}
           </div>
-          <div style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.medium, opacity: 0.9, lineHeight: 1.5 }}>
+          <div style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.medium, opacity: 0.9, lineHeight: 1.5, textAlign: "center" }}>
             {tiedPlayers.length === 2 ? (
               <>The tournament ended in a 2-way tie. {tiedPlayers.map(p => p.name).join(" and ")} will play a best-of-3 tiebreaker to determine the winner.</>
             ) : (

@@ -328,6 +328,14 @@ export default function LobbyPage({ params }) {
           ["How to Play", "Each matchup reveals two letters. Think of a word that starts with the first letter and ends with the second letter. The first player to find a valid word wins the round."],
           ["Tournament", "You'll play against every other player in a round-robin tournament. The player with the most wins at the end wins the game."],
         ]}
+        onResetToLobby={async () => {
+          try {
+            const { error } = await supabase.rpc("aj_reset_to_lobby", { p_code: code })
+            if (error) throw error
+          } catch (e) {
+            alert("Error resetting to lobby: " + (e?.message ?? "unknown"))
+          }
+        }}
       />
 
       <Footer colors={{ dark: DARK, wl: WL }} timerRunning={false} isOpen={menuOpen} onToggle={() => setMenuOpen(!menuOpen)}>

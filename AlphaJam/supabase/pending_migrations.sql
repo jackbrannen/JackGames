@@ -412,6 +412,36 @@ BEGIN
 END;
 $$;
 
+-- RPC: Reset game to lobby (from menu)
+CREATE OR REPLACE FUNCTION aj_reset_to_lobby(p_code text)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- Reset all player scores
+  UPDATE alphajam_players
+  SET score = 0
+  WHERE game_code = p_code;
+
+  -- Reset game state to lobby
+  UPDATE alphajam_games
+  SET
+    phase = 'lobby',
+    current_matchup_index = NULL,
+    current_round = NULL,
+    matchup_pairs = NULL,
+    letter_start = NULL,
+    letter_end = NULL,
+    reveal_at = NULL,
+    winner_player_id = NULL,
+    ready_player_ids = '{}',
+    used_letter_pairs = '{}',
+    new_letters_requests = '{}',
+    pending_winner_claim = NULL
+  WHERE code = p_code;
+END;
+$$;
+
 -- RPC: Claim win (sets pending_winner_claim for opponent to confirm)
 CREATE OR REPLACE FUNCTION aj_claim_win(
   p_code text,

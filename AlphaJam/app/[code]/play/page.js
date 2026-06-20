@@ -130,8 +130,12 @@ export default function PlayPage({ params }) {
   }
 
   async function handleResetToLobby() {
-    // AlphaJam doesn't have a reset function yet
-    alert("Reset to lobby is not available for this game.")
+    try {
+      const { error } = await supabase.rpc("aj_reset_to_lobby", { p_code: code })
+      if (error) throw error
+    } catch (e) {
+      alert("Error resetting to lobby: " + (e?.message ?? "unknown"))
+    }
   }
 
   // Reusable Menu component for all phases
@@ -156,6 +160,7 @@ export default function PlayPage({ params }) {
           ["How to Play", "Each matchup reveals two letters. Think of a word that starts with the first letter and ends with the second letter. The first player to find a valid word wins the round."],
           ["Tournament", "You'll play against every other player in a round-robin tournament. The player with the most wins at the end wins the game."],
         ]}
+        onResetToLobby={handleResetToLobby}
         settingsContent={
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {players.map(p => (

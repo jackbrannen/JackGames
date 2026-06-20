@@ -312,7 +312,7 @@ export default function PlayPage({ params }) {
           {label}
         </div>
         <div style={{
-          background: "white",
+          background: YELLOW,
           padding: `48px ${SPACE.lg}px`,
           display: "flex",
           alignItems: "center",
@@ -320,7 +320,7 @@ export default function PlayPage({ params }) {
           fontSize: 120,
           fontWeight: FONT_WEIGHT.black,
           lineHeight: 1,
-          color: BG,
+          color: "white",
         }}>
           {letter}
         </div>
@@ -421,7 +421,7 @@ export default function PlayPage({ params }) {
                 <div key={i} style={{ display: "flex" }}>
                   <div style={{
                     background: isCurrent ? YELLOW : "rgba(255,255,255,0.15)",
-                    color: isCurrent ? "#000" : "rgba(255,255,255,0.75)",
+                    color: isCurrent ? "white" : "rgba(255,255,255,0.75)",
                     fontSize: 20,
                     fontWeight: FONT_WEIGHT.black,
                     minWidth: 52,
@@ -649,7 +649,7 @@ export default function PlayPage({ params }) {
               <div style={{ ...STYLE.sectionHeader, marginBottom: 4 }}>
                 Starting
               </div>
-              <div style={{ background: "white", color: BG, width: 80, height: 80, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, fontWeight: FONT_WEIGHT.black }}>
+              <div style={{ background: YELLOW, color: "white", width: 80, height: 80, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, fontWeight: FONT_WEIGHT.black }}>
                 {letter_start}
               </div>
             </div>
@@ -657,7 +657,7 @@ export default function PlayPage({ params }) {
               <div style={{ ...STYLE.sectionHeader, marginBottom: 4 }}>
                 Ending
               </div>
-              <div style={{ background: "white", color: BG, width: 80, height: 80, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, fontWeight: FONT_WEIGHT.black }}>
+              <div style={{ background: YELLOW, color: "white", width: 80, height: 80, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, fontWeight: FONT_WEIGHT.black }}>
                 {letter_end}
               </div>
             </div>

@@ -212,7 +212,7 @@ export default function LobbyPage({ params }) {
           </p>
           <button
             onClick={() => router.push("/")}
-            style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "14px 24px" }}
+            style={{ background: YELLOW, color: "white", fontSize: 20, fontWeight: 900, padding: "14px 24px" }}
           >
             Go Home
           </button>
@@ -236,7 +236,7 @@ export default function LobbyPage({ params }) {
             </div>
             <button
               onClick={onInvite}
-              style={{ background: YELLOW, color: "#000", fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.heavy, padding: "10px 16px" }}
+              style={{ background: YELLOW, color: "white", fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.heavy, padding: "10px 16px" }}
             >
               Invite
             </button>
@@ -345,7 +345,7 @@ export default function LobbyPage({ params }) {
             disabled={!canStart}
             loading={starting}
             bg={YELLOW}
-            textColor="#000"
+            textColor="white"
           >
             Start Game
           </FooterButton>
@@ -355,7 +355,7 @@ export default function LobbyPage({ params }) {
             disabled={!name.trim() || (savedProfile ? false : (!firstName.trim() || !lastName.trim()))}
             loading={joining}
             bg={YELLOW}
-            textColor="#000"
+            textColor="white"
           >
             Join
           </FooterButton>

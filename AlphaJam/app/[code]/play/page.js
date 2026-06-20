@@ -366,7 +366,7 @@ export default function PlayPage({ params }) {
               onClick={handleReady}
               loading={readyLoading}
               bg={YELLOW}
-              textColor="#000"
+              textColor="white"
             >
               Ready
             </FooterButton>
@@ -492,7 +492,7 @@ export default function PlayPage({ params }) {
           {renderMenu()}
 
           {/* Don't Guess banner */}
-          <div style={{ background: YELLOW, color: "#000", padding: `${SPACE.lg}px ${SPACE.md}px`, textAlign: "center" }}>
+          <div style={{ background: YELLOW, color: "white", padding: `${SPACE.lg}px ${SPACE.md}px`, textAlign: "center" }}>
             <div style={{ fontSize: 28, fontWeight: FONT_WEIGHT.black, letterSpacing: "0.02em", marginBottom: SPACE.sm }}>
               DON'T GUESS
             </div>
@@ -577,7 +577,7 @@ export default function PlayPage({ params }) {
               onClick={handleClaimWin}
               disabled={pending_winner_claim !== null}
               bg={YELLOW}
-              textColor="#000"
+              textColor="white"
               style={pending_winner_claim ? { opacity: 0.7 } : {}}
             >
               {iClaimedWin ? `Waiting for ${opponent?.name} to verify` : "I Won"}
@@ -614,7 +614,7 @@ export default function PlayPage({ params }) {
                   </button>
                   <button
                     onClick={() => handleConfirmWin(true)}
-                    style={{ flex: 2, background: YELLOW, color: "#000", fontSize: 17, fontWeight: 900, padding: "14px" }}
+                    style={{ flex: 2, background: YELLOW, color: "white", fontSize: 17, fontWeight: 900, padding: "14px" }}
                   >
                     Yes, They Won
                   </button>
@@ -637,7 +637,7 @@ export default function PlayPage({ params }) {
           </div>
 
           {/* Don't Guess banner */}
-          <div style={{ background: YELLOW, color: "#000", padding: `${SPACE.lg}px ${SPACE.md}px`, textAlign: "center" }}>
+          <div style={{ background: YELLOW, color: "white", padding: `${SPACE.lg}px ${SPACE.md}px`, textAlign: "center" }}>
             <div style={{ fontSize: 28, fontWeight: FONT_WEIGHT.black, letterSpacing: "0.02em" }}>
               DON'T GUESS
             </div>
@@ -763,7 +763,7 @@ export default function PlayPage({ params }) {
               router.replace("/")
             }}
             bg={YELLOW}
-            textColor="#000"
+            textColor="white"
           >
             New Game
           </FooterButton>

@@ -117,6 +117,69 @@ Recurring bugs, their symptoms, diagnostic steps, and fixes. Check this when deb
 - **Why it works:** After `loadState()` runs, the component re-renders and detects the new data (e.g., `myAnswerRow` is now defined), causing it to render the "waiting" screen instead of the submit form. Since the component changed, FooterButton naturally stays in loading state (which is correct - see "Phase-changing button" pattern above).
 - **Note:** This is NOT a phase change, but it IS a screen transition (submit form → waiting screen). The pattern is the same: don't manually reset loading; let the component unmount naturally.
 
+### Missing useEffect to reset loading states on phase change
+- **Symptom:** Button stuck on "Loading..." after phase changes (e.g., after clicking "I Won", phase changes from 'playing' to 'countdown' but button never resets)
+- **Root cause:** External loading state (e.g., `iWinLoading`) is not reset when phase changes
+- **Diagnostic:** Check if there's a useEffect that resets ALL loading states when `gameState?.phase` changes
+- **Fix:** Add useEffect to reset all button loading states when phase changes:
+  ```js
+  useEffect(() => {
+    setReadyLoading(false)
+    setNewLettersLoading(false)
+    setIWinLoading(false)
+    // ... reset ALL loading states used in this component
+  }, [gameState?.phase])
+  ```
+- **Why needed:** When using external loading props on FooterButton, the button doesn't auto-reset on phase change. You must manually reset all loading states.
+- **Common mistake:** Adding new loading state variable but forgetting to add it to the reset useEffect
+
+### RPC only works in specific phase, but button allows clicks in wrong phase
+- **Symptom:** Button stuck on "Loading..." when clicked during wrong phase (e.g., clicking "I Won" during 'countdown' when RPC requires 'playing')
+- **Example:** User sees letters during countdown (time-based rendering) and clicks "I Won", but `aj_mark_winner` RPC only works when `phase = 'playing'`, so it silently exits, loadState() returns same phase, useEffect never fires, button stuck
+- **Root cause:** UI allows action before database phase has transitioned
+- **Diagnostic:** Add console.log to RPC handler to check phase before and after RPC
+- **Fix:** Update RPC to accept all relevant phases:
+  ```sql
+  -- BEFORE: only works in 'playing'
+  UPDATE games SET phase = 'processing' WHERE code = p_code AND phase = 'playing';
+  
+  -- AFTER: works in 'countdown' or 'playing'
+  UPDATE games SET phase = 'processing' WHERE code = p_code AND phase IN ('countdown', 'playing');
+  ```
+- **Alternative fix:** Disable button until phase matches: `disabled={phase !== 'playing'}`
+- **Why it happens:** Time-based rendering (show letters when `Date.now() >= revealTime`) can reveal UI before phase updates
+
+### FooterButton not accepting external loading prop
+- **Symptom:** Parent component resets loading state via useEffect, but button stays stuck on "Loading..."
+- **Root cause:** FooterButton only uses internal loading state, ignores external `loading` prop from parent
+- **Diagnostic:** Check if FooterButton component accepts `loading` prop in its parameters
+- **Fix:** Update FooterButton to accept optional external loading:
+  ```js
+  export default function FooterButton({
+    onClick,
+    loading: externalLoading,  // ← add this
+    ...
+  }) {
+    const [internalLoading, setInternalLoading] = useState(false)
+    const loading = externalLoading !== undefined ? externalLoading : internalLoading
+    
+    async function handleClick() {
+      if (loading || disabled) return
+      if (externalLoading === undefined) {
+        setInternalLoading(true)
+        try {
+          await onClick?.()
+        } catch {
+          setInternalLoading(false)
+        }
+      } else {
+        await onClick?.()
+      }
+    }
+  }
+  ```
+- **When to use:** When parent component needs to control loading state (e.g., reset via useEffect on phase change)
+
 ---
 
 ## React Hooks Violation

@@ -136,6 +136,7 @@ BEGIN
   END LOOP;
 
   -- If called during active play (countdown or playing), go directly to countdown
+  -- If already in tiebreaker_preview, stay there (don't overwrite)
   -- Otherwise go to matchup_preview (normal start of matchup)
   IF v_current_phase IN ('countdown', 'playing') THEN
     -- Dummy games skip countdown (0 seconds), real games have 3 second countdown
@@ -149,6 +150,14 @@ BEGIN
       new_letters_requests = '{}',
       phase = 'countdown',
       reveal_at = now() + (v_countdown_seconds || ' seconds')::interval
+    WHERE code = p_code;
+  ELSIF v_current_phase = 'tiebreaker_preview' THEN
+    -- Just update letters, don't change phase
+    UPDATE alphajam_games
+    SET
+      letter_start = v_start,
+      letter_end = v_end,
+      used_letter_pairs = array_append(v_used_pairs, v_pair)
     WHERE code = p_code;
   ELSE
     UPDATE alphajam_games

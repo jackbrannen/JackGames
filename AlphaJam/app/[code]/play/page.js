@@ -567,8 +567,8 @@ export default function PlayPage({ params }) {
                 onClick={handleNewLetters}
                 loading={newLettersLoading}
                 disabled={myNewLettersRequest}
-                bg={myNewLettersRequest ? WL : "rgba(255,255,255,0.15)"}
-                textColor={TEXT}
+                bg={YELLOW}
+                textColor="white"
               >
                 New Letters
               </FooterButton>
@@ -666,7 +666,7 @@ export default function PlayPage({ params }) {
           {/* Spectator status - show new letters requests or win claims */}
           {(new_letters_requests?.length > 0 || pending_winner_claim) && (
             <div style={{ padding: `0 ${SPACE.md}px ${SPACE.lg}px`, maxWidth: 480, margin: "0 auto" }}>
-              <div style={STYLE.sectionHeader}>
+              <div style={{ ...STYLE.sectionHeader, marginBottom: 12 }}>
                 Status
               </div>
               <div style={{ background: MID, padding: `${SPACE.md}px`, textAlign: "center" }}>

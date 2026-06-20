@@ -388,7 +388,7 @@ DECLARE
 BEGIN
   SELECT current_matchup_index INTO v_matchup_index
   FROM alphajam_games
-  WHERE code = p_code AND phase = 'playing';
+  WHERE code = p_code AND phase IN ('countdown', 'playing');
 
   IF NOT FOUND THEN
     RETURN;

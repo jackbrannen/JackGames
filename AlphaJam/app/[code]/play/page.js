@@ -567,8 +567,8 @@ export default function PlayPage({ params }) {
                 onClick={handleNewLetters}
                 loading={newLettersLoading}
                 disabled={myNewLettersRequest}
-                bg={YELLOW}
-                textColor="white"
+                bg={WL}
+                textColor={TEXT}
               >
                 New Letters
               </FooterButton>

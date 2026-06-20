@@ -287,8 +287,7 @@ export default function PlayPage({ params }) {
   const iAmReady = ready_player_ids?.includes(myPlayerId)
   const opponentReady = opponent && ready_player_ids?.includes(opponent.id)
   const iClaimedWin = pending_winner_claim === myPlayerId
-  const opponentClaimedWin = opponent && pending_winner_claim === opponent.id
-  const claimerName = iClaimedWin ? me?.name : (opponentClaimedWin ? opponent?.name : null)
+  const claimerName = pending_winner_claim ? players.find(p => p.id === pending_winner_claim)?.name : null
 
   // Determine what to show based on countdown state (which updates every 100ms)
   const showCountdown = countdownRemaining !== null && countdownRemaining > 0
@@ -724,8 +723,8 @@ export default function PlayPage({ params }) {
             </FooterButton>
           </Footer>
 
-          {/* Confirmation modal (shown to ALL players) */}
-          {pending_winner_claim && (
+          {/* Confirmation modal (shown to ALL players except the claimer) */}
+          {pending_winner_claim && !iClaimedWin && (
             <div
               style={{
                 position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
@@ -822,8 +821,8 @@ export default function PlayPage({ params }) {
             </div>
           )}
 
-          {/* Confirmation modal (shown to ALL players) */}
-          {pending_winner_claim && (
+          {/* Confirmation modal (shown to ALL players except the claimer) */}
+          {pending_winner_claim && !iClaimedWin && (
             <div
               style={{
                 position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",

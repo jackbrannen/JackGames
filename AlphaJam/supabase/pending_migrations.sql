@@ -143,7 +143,7 @@ BEGIN
       used_letter_pairs = array_append(v_used_pairs, v_pair),
       new_letters_requests = '{}',
       phase = 'countdown',
-      reveal_at = now() + interval '3 seconds'
+      reveal_at = now() + interval '5 seconds'
     WHERE code = p_code;
   ELSE
     UPDATE alphajam_games

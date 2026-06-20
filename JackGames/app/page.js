@@ -110,6 +110,20 @@ Cluegivers take turns giving a one-word clue plus a number ("Vehicles, 3"). Thei
 
 The first team to correctly identify all their words wins.`,
   },
+  // Orange
+  {
+    name: "Alpha Jam",
+    description: "Word race tournament",
+    players: "3+ players",
+    url: "https://alphajam.jackbrannen.com",
+    bg: "#FA955C",
+    color: "white",
+    instructions: `A head-to-head word-finding tournament. Each matchup shows two letters — a starting letter and an ending letter. The first player to think of a word that starts with the first letter and ends with the second letter wins the round.
+
+The game runs as a round-robin tournament where every player faces every other player. At the end, the player with the most wins is the champion.
+
+If players get stuck on impossible letters, both can agree to request new letters and keep playing.`,
+  },
   // Reds & Pinks
   {
     name: "Reverse Charades",
@@ -304,7 +318,7 @@ export default function Home() {
     setLogsOpen(true)
     setLogsLoading(true)
     try {
-      const [fishbowl, gow, codenames, avalon, ftw, tel, ec, rc, soclover, copycats, drawful, mrwhite] = await Promise.all([
+      const [fishbowl, gow, codenames, avalon, ftw, tel, ec, rc, soclover, copycats, drawful, mrwhite, alphajam] = await Promise.all([
         supabase.from("players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("gow_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("codenames_players").select("first_name,last_name,game_code,created_at").limit(2000),
@@ -317,6 +331,7 @@ export default function Home() {
         supabase.from("cc_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("drawful_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("mrwhite_players").select("first_name,last_name,game_code,created_at").limit(2000),
+        supabase.from("alphajam_players").select("first_name,last_name,game_code,created_at").limit(2000),
       ])
 
       // people[fullName][gameName] = { count, first, last }
@@ -347,6 +362,7 @@ export default function Home() {
       addRows(copycats.data, "Copycats")
       addRows(drawful.data, "Drawful")
       addRows(mrwhite.data, "Mr. White")
+      addRows(alphajam.data, "Alpha Jam")
 
       const toRows = entries => entries
         .map(([name, games]) => ({

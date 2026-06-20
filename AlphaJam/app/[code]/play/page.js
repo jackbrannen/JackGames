@@ -308,7 +308,7 @@ export default function PlayPage({ params }) {
   function LetterCard({ label, letter }) {
     return (
       <div style={{ width: "100%", maxWidth: 320 }}>
-        <div style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.bold, opacity: OPACITY.muted, marginBottom: SPACE.sm, textAlign: "center" }}>
+        <div style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.heavy, opacity: 0.9, marginBottom: SPACE.sm, textAlign: "center" }}>
           {label}
         </div>
         <div style={{
@@ -646,7 +646,7 @@ export default function PlayPage({ params }) {
           {/* Small letters */}
           <div style={{ padding: `${SPACE.xl}px ${SPACE.md}px`, display: "flex", justifyContent: "center", gap: SPACE.lg }}>
             <div style={{ textAlign: "center" }}>
-              <div style={{ ...STYLE.sectionHeader, marginBottom: 4 }}>
+              <div style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.heavy, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.9, marginBottom: 4 }}>
                 Starting
               </div>
               <div style={{ background: YELLOW, color: "white", width: 80, height: 80, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, fontWeight: FONT_WEIGHT.black }}>
@@ -654,7 +654,7 @@ export default function PlayPage({ params }) {
               </div>
             </div>
             <div style={{ textAlign: "center" }}>
-              <div style={{ ...STYLE.sectionHeader, marginBottom: 4 }}>
+              <div style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.heavy, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.9, marginBottom: 4 }}>
                 Ending
               </div>
               <div style={{ background: YELLOW, color: "white", width: 80, height: 80, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48, fontWeight: FONT_WEIGHT.black }}>

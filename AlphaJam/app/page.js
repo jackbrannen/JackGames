@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "../lib/supabase"
 import { useSubmitNudge } from "../lib/useSubmitNudge"
@@ -50,7 +50,7 @@ async function createGame(isDummy) {
   throw new Error("unable to allocate game code")
 }
 
-export default function Home() {
+function HomeContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isCreating, setIsCreating] = useState(false)
@@ -119,5 +119,13 @@ export default function Home() {
       isDummy={isCreating}
       colors={{ bg: BG, wl: WL, yellow: YELLOW }}
     />
+  )
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div style={{ background: BG, minHeight: "100vh" }} />}>
+      <HomeContent />
+    </Suspense>
   )
 }

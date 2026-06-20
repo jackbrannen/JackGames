@@ -65,13 +65,13 @@ export const STYLE = {
 }
 
 // Alpha Jam color scheme
-// Primary: #FF865A (HSB: 18, 65, 100)
-// Warm shadow (warmer, not cooler): HSB(12, 70, 90) = #E6704D
-// Mid: HSB(15, 68, 95) = #F27B53
-// Warm-light (warmer + lighter): HSB(12, 50, 100) = #FF9980
-// Accent: #333546 (dark slate, replaces yellow)
-export const BG = "#FF865A"
-export const DARK = "#E6704D"
-export const MID = "#F27B53"
-export const WL = "#FF9980"
+// Primary: #FA955C (HSB: 22, 63, 98)
+// Warm shadow (warmer + darker): HSB(16, 68, 88) = #E07A48
+// Mid: HSB(19, 65, 93) = #ED8750
+// Warm-light (warmer + lighter): HSB(16, 48, 100) = #FF9F85
+// Accent: #333546 (dark slate)
+export const BG = "#FA955C"
+export const DARK = "#E07A48"
+export const MID = "#ED8750"
+export const WL = "#FF9F85"
 export const YELLOW = "#333546"

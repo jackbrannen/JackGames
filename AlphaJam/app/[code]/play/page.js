@@ -340,12 +340,19 @@ export default function PlayPage({ params }) {
         {renderMenu()}
 
         {/* Tiebreaker banner */}
-        <div style={{ background: YELLOW, color: "white", padding: `${SPACE.lg}px ${SPACE.md}px`, textAlign: "center" }}>
-          <div style={{ fontSize: FONT_SIZE.headingSm, fontWeight: FONT_WEIGHT.black, marginBottom: SPACE.sm }}>
+        <div style={{ background: YELLOW, color: "white", padding: `${SPACE.lg}px ${SPACE.md}px` }}>
+          <div style={{ fontSize: FONT_SIZE.headingSm, fontWeight: FONT_WEIGHT.black, marginBottom: SPACE.sm, textAlign: "center" }}>
             TIEBREAKER
           </div>
-          <div style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold }}>
+          <div style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold, textAlign: "center", marginBottom: SPACE.md }}>
             {tiedPlayers.length === 2 ? "Best of 3" : "Sudden Death"}
+          </div>
+          <div style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.medium, opacity: 0.9, lineHeight: 1.5 }}>
+            {tiedPlayers.length === 2 ? (
+              <>The tournament ended in a 2-way tie. {tiedPlayers.map(p => p.name).join(" and ")} will play a best-of-3 tiebreaker to determine the winner.</>
+            ) : (
+              <>The tournament ended in a {tiedPlayers.length}-way tie. {tiedPlayers.map(p => p.name).join(", ").replace(/, ([^,]*)$/, ", and $1")} will play sudden death tiebreaker rounds. Each matchup winner advances until one player remains.</>
+            )}
           </div>
         </div>
 
@@ -717,8 +724,8 @@ export default function PlayPage({ params }) {
             </FooterButton>
           </Footer>
 
-          {/* Confirmation modal (shown to opponent) */}
-          {opponentClaimedWin && (
+          {/* Confirmation modal (shown to ALL players) */}
+          {pending_winner_claim && (
             <div
               style={{
                 position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
@@ -733,10 +740,10 @@ export default function PlayPage({ params }) {
                 }}
               >
                 <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 16, color: TEXT }}>
-                  Did {opponent?.name} win?
+                  Did {claimerName} win?
                 </div>
                 <div style={{ fontSize: 15, marginBottom: 24, opacity: 0.85, color: TEXT }}>
-                  {opponent?.name} claims to have won this round.
+                  {claimerName} claims to have won this round.
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
@@ -796,34 +803,60 @@ export default function PlayPage({ params }) {
             </div>
           </div>
 
-          {/* Spectator status - show new letters requests or win claims */}
-          {(new_letters_requests?.length > 0 || pending_winner_claim) && (
+          {/* Spectator status - show new letters requests only (win claims now shown in global modal) */}
+          {new_letters_requests?.length > 0 && (
             <div style={{ padding: `0 ${SPACE.md}px ${SPACE.lg}px`, maxWidth: 480, margin: "0 auto" }}>
               <div style={{ ...STYLE.sectionHeader, marginBottom: 12 }}>
                 Status
               </div>
               <div style={{ background: MID, padding: `${SPACE.md}px`, textAlign: "center" }}>
-                {pending_winner_claim ? (
-                  <>
-                    <div style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold, opacity: OPACITY.normal }}>
-                      {pending_winner_claim === player1?.id ? player1.name : player2?.name} claims to have won.
+                {new_letters_requests.map(playerId => {
+                  const player = players.find(p => p.id === playerId)
+                  return player ? (
+                    <div key={playerId} style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold, opacity: OPACITY.normal }}>
+                      {player.name} has requested new letters
                     </div>
-                    <div style={{ fontSize: FONT_SIZE.small, opacity: OPACITY.muted, marginTop: SPACE.sm }}>
-                      Waiting on {pending_winner_claim === player1?.id ? player2?.name : player1?.name} to confirm.
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {new_letters_requests.map(playerId => {
-                      const player = players.find(p => p.id === playerId)
-                      return player ? (
-                        <div key={playerId} style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold, opacity: OPACITY.normal }}>
-                          {player.name} has requested new letters
-                        </div>
-                      ) : null
-                    })}
-                  </>
-                )}
+                  ) : null
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Confirmation modal (shown to ALL players) */}
+          {pending_winner_claim && (
+            <div
+              style={{
+                position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                padding: 24, zIndex: 100,
+              }}
+            >
+              <div
+                style={{
+                  background: WL, borderRadius: 8, padding: 24,
+                  maxWidth: 400, width: "100%",
+                }}
+              >
+                <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 16, color: TEXT }}>
+                  Did {claimerName} win?
+                </div>
+                <div style={{ fontSize: 15, marginBottom: 24, opacity: 0.85, color: TEXT }}>
+                  {claimerName} claims to have won this round.
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => handleConfirmWin(false)}
+                    style={{ flex: 1, background: DARK, color: TEXT, fontSize: 17, fontWeight: 800, padding: "14px" }}
+                  >
+                    No
+                  </button>
+                  <button
+                    onClick={() => handleConfirmWin(true)}
+                    style={{ flex: 2, background: YELLOW, color: "white", fontSize: 17, fontWeight: 900, padding: "14px" }}
+                  >
+                    Yes, They Won
+                  </button>
+                </div>
               </div>
             </div>
           )}

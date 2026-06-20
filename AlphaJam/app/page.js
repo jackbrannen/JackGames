@@ -5,10 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "../lib/supabase"
 import { useSubmitNudge } from "../lib/useSubmitNudge"
 import HomeScreen from "../components/HomeScreen"
-
-const BG = "#FF865A"
-const WL = "#FF9166"
-const YELLOW = "#FBDF54"
+import { BG, WL, YELLOW } from "../components/styles"
 
 const WORDS_A = [
   "MAPLE","RIVER","OCEAN","VELVET","COPPER","SILVER","EMBER","FOREST","CLOUD",

@@ -115,8 +115,10 @@ DECLARE
   v_pair text;
   v_attempts int := 0;
   v_current_phase text;
+  v_is_dummy boolean;
+  v_countdown_seconds int;
 BEGIN
-  SELECT used_letter_pairs, phase INTO v_used_pairs, v_current_phase FROM alphajam_games WHERE code = p_code;
+  SELECT used_letter_pairs, phase, is_dummy INTO v_used_pairs, v_current_phase, v_is_dummy FROM alphajam_games WHERE code = p_code;
 
   LOOP
     v_start := v_allowed_start[1 + floor(random() * array_length(v_allowed_start, 1))::int];
@@ -136,6 +138,9 @@ BEGIN
   -- If called during active play (countdown or playing), go directly to countdown
   -- Otherwise go to matchup_preview (normal start of matchup)
   IF v_current_phase IN ('countdown', 'playing') THEN
+    -- Dummy games skip countdown (0 seconds), real games have 3 second countdown
+    v_countdown_seconds := CASE WHEN v_is_dummy THEN 0 ELSE 3 END;
+
     UPDATE alphajam_games
     SET
       letter_start = v_start,
@@ -143,7 +148,7 @@ BEGIN
       used_letter_pairs = array_append(v_used_pairs, v_pair),
       new_letters_requests = '{}',
       phase = 'countdown',
-      reveal_at = now() + interval '3 seconds'
+      reveal_at = now() + (v_countdown_seconds || ' seconds')::interval
     WHERE code = p_code;
   ELSE
     UPDATE alphajam_games
@@ -178,6 +183,8 @@ DECLARE
   v_letter_start text;
   v_letter_end text;
   v_phase_changed int;
+  v_is_dummy boolean;
+  v_countdown_seconds int;
 BEGIN
   -- Atomically transition from 'countdown' or 'playing' to 'processing' to prevent double-clicks
   UPDATE alphajam_games
@@ -196,13 +203,15 @@ BEGIN
     current_round,
     rounds_per_matchup,
     letter_start,
-    letter_end
+    letter_end,
+    is_dummy
   INTO
     v_matchup_index,
     v_current_round,
     v_rounds_per_matchup,
     v_letter_start,
-    v_letter_end
+    v_letter_end,
+    v_is_dummy
   FROM alphajam_games
   WHERE code = p_code;
 
@@ -249,11 +258,14 @@ BEGIN
     PERFORM aj_next_matchup(p_code);
   ELSE
     -- Next round of same matchup
+    -- Dummy games skip countdown (0 seconds), real games have 3 second countdown
+    v_countdown_seconds := CASE WHEN v_is_dummy THEN 0 ELSE 3 END;
+
     UPDATE alphajam_games
     SET
       current_round = current_round + 1,
       phase = 'countdown',
-      reveal_at = now() + interval '3 seconds'
+      reveal_at = now() + (v_countdown_seconds || ' seconds')::interval
     WHERE code = p_code;
 
     PERFORM aj_generate_letters(p_code);
@@ -542,6 +554,7 @@ DECLARE
   v_player1_id uuid;
   v_player2_id uuid;
   v_ready_ids uuid[];
+  v_countdown_seconds int;
 BEGIN
   IF NEW.phase IN ('matchup_preview', 'tiebreaker_preview') AND NEW.ready_player_ids IS NOT NULL THEN
     -- Get current matchup players
@@ -554,9 +567,11 @@ BEGIN
 
     -- Check if both players are ready
     IF v_player1_id = ANY(v_ready_ids) AND v_player2_id = ANY(v_ready_ids) THEN
-      -- Transition to countdown
+      -- Dummy games skip countdown (0 seconds), real games have 3 second countdown
+      v_countdown_seconds := CASE WHEN NEW.is_dummy THEN 0 ELSE 3 END;
+
       NEW.phase := 'countdown';
-      NEW.reveal_at := now() + interval '3 seconds';
+      NEW.reveal_at := now() + (v_countdown_seconds || ' seconds')::interval;
       NEW.ready_player_ids := '{}';
     END IF;
   END IF;

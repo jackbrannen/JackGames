@@ -100,6 +100,8 @@ END;
 $$;
 
 -- RPC: Generate random letters (excluding used pairs)
+-- When called during active play (from new letters request), goes to countdown
+-- When called at start of matchup, goes to matchup_preview
 CREATE OR REPLACE FUNCTION aj_generate_letters(p_code text)
 RETURNS void
 LANGUAGE plpgsql
@@ -112,8 +114,9 @@ DECLARE
   v_allowed_end text[] := ARRAY['A','B','C','D','E','F','G','H','I','L','M','N','O','P','Q','R','S','T','U','W','X','Y','Z'];
   v_pair text;
   v_attempts int := 0;
+  v_current_phase text;
 BEGIN
-  SELECT used_letter_pairs INTO v_used_pairs FROM alphajam_games WHERE code = p_code;
+  SELECT used_letter_pairs, phase INTO v_used_pairs, v_current_phase FROM alphajam_games WHERE code = p_code;
 
   LOOP
     v_start := v_allowed_start[1 + floor(random() * array_length(v_allowed_start, 1))::int];
@@ -130,16 +133,30 @@ BEGIN
     END IF;
   END LOOP;
 
-  UPDATE alphajam_games
-  SET
-    letter_start = v_start,
-    letter_end = v_end,
-    used_letter_pairs = array_append(v_used_pairs, v_pair),
-    new_letters_requests = '{}',
-    ready_player_ids = '{}',
-    phase = 'matchup_preview',
-    reveal_at = NULL
-  WHERE code = p_code;
+  -- If called during active play (countdown or playing), go directly to countdown
+  -- Otherwise go to matchup_preview (normal start of matchup)
+  IF v_current_phase IN ('countdown', 'playing') THEN
+    UPDATE alphajam_games
+    SET
+      letter_start = v_start,
+      letter_end = v_end,
+      used_letter_pairs = array_append(v_used_pairs, v_pair),
+      new_letters_requests = '{}',
+      phase = 'countdown',
+      reveal_at = now() + interval '3 seconds'
+    WHERE code = p_code;
+  ELSE
+    UPDATE alphajam_games
+    SET
+      letter_start = v_start,
+      letter_end = v_end,
+      used_letter_pairs = array_append(v_used_pairs, v_pair),
+      new_letters_requests = '{}',
+      ready_player_ids = '{}',
+      phase = 'matchup_preview',
+      reveal_at = NULL
+    WHERE code = p_code;
+  END IF;
 END;
 $$;
 

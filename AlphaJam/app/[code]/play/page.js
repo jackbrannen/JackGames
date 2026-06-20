@@ -663,19 +663,34 @@ export default function PlayPage({ params }) {
             </div>
           </div>
 
-          {/* Spectator status - show if someone claimed win */}
-          {pending_winner_claim && (
+          {/* Spectator status - show new letters requests or win claims */}
+          {(new_letters_requests?.length > 0 || pending_winner_claim) && (
             <div style={{ padding: `0 ${SPACE.md}px ${SPACE.lg}px`, maxWidth: 480, margin: "0 auto" }}>
               <div style={STYLE.sectionHeader}>
                 Status
               </div>
               <div style={{ background: MID, padding: `${SPACE.md}px`, textAlign: "center" }}>
-                <div style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold, opacity: OPACITY.normal }}>
-                  {pending_winner_claim === player1?.id ? player1.name : player2?.name} claims to have won.
-                </div>
-                <div style={{ fontSize: FONT_SIZE.small, opacity: OPACITY.muted, marginTop: SPACE.sm }}>
-                  Waiting on {pending_winner_claim === player1?.id ? player2?.name : player1?.name} to confirm.
-                </div>
+                {pending_winner_claim ? (
+                  <>
+                    <div style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold, opacity: OPACITY.normal }}>
+                      {pending_winner_claim === player1?.id ? player1.name : player2?.name} claims to have won.
+                    </div>
+                    <div style={{ fontSize: FONT_SIZE.small, opacity: OPACITY.muted, marginTop: SPACE.sm }}>
+                      Waiting on {pending_winner_claim === player1?.id ? player2?.name : player1?.name} to confirm.
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {new_letters_requests.map(playerId => {
+                      const player = players.find(p => p.id === playerId)
+                      return player ? (
+                        <div key={playerId} style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold, opacity: OPACITY.normal }}>
+                          {player.name} has requested new letters
+                        </div>
+                      ) : null
+                    })}
+                  </>
+                )}
               </div>
             </div>
           )}

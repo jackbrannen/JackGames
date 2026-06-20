@@ -66,6 +66,7 @@ A series of multiplayer web games built with Next.js 14 and Supabase. Players co
 - If a feature isn't working and touches the database, check whether the column/table actually exists before debugging code
 - Table naming: `{game}_games` and `{game}_players` (exception: Fishbowl uses unprefixed `games`, `players`, `clues`)
 - Use RPC functions for atomic operations. Name them `{game}_{operation}` (e.g. `gow_start_game`)
+- **When SQL migrations are needed:** Use `mcp__plugin_supabase_supabase__execute_sql` with project_id `hgbvzuqqdwaobxnxvvsu` (Games project). Never ask the user to run SQL manually.
 
 ---
 

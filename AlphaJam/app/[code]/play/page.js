@@ -463,6 +463,7 @@ export default function PlayPage({ params }) {
       return (
         <div style={{ background: BG, color: TEXT, minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <Notifications pokes={myPokes} onDismiss={dismissPoke} colors={{ dark: DARK, yellow: YELLOW, notifBg: MID }} />
+          {renderMenu()}
 
           {opponent && (
             <div style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold, opacity: OPACITY.normal, marginBottom: SPACE.lg, textAlign: "center" }}>
@@ -477,18 +478,9 @@ export default function PlayPage({ params }) {
           )}
 
           <Footer
-            onToggle={() => setMenuOpen(true)}
+            onToggle={() => setMenuOpen(!menuOpen)}
             isOpen={menuOpen}
-            colors={{ dark: DARK }}
-          />
-
-          <Menu
-            open={menuOpen}
-            onClose={() => setMenuOpen(false)}
-            roomCode={code}
-            myName={me?.name}
-            playerDetails={playerDetails}
-            colors={{ bg: BG, dark: DARK, mid: MID, wl: WL, yellow: YELLOW, notifBg: MID }}
+            colors={{ dark: DARK, wl: WL }}
           />
         </div>
       )
@@ -497,6 +489,7 @@ export default function PlayPage({ params }) {
       return (
         <div style={{ background: BG, color: TEXT, minHeight: "100vh", paddingBottom: BOTTOM_PAD }}>
           <Notifications pokes={myPokes} onDismiss={dismissPoke} colors={{ dark: DARK, yellow: YELLOW, notifBg: MID }} />
+          {renderMenu()}
 
           {/* Don't Guess banner */}
           <div style={{ background: YELLOW, color: "#000", padding: `${SPACE.lg}px ${SPACE.md}px`, textAlign: "center" }}>
@@ -518,18 +511,9 @@ export default function PlayPage({ params }) {
           </div>
 
           <Footer
-            onToggle={() => setMenuOpen(true)}
+            onToggle={() => setMenuOpen(!menuOpen)}
             isOpen={menuOpen}
-            colors={{ dark: DARK }}
-          />
-
-          <Menu
-            open={menuOpen}
-            onClose={() => setMenuOpen(false)}
-            roomCode={code}
-            myName={me?.name}
-            playerDetails={playerDetails}
-            colors={{ bg: BG, dark: DARK, mid: MID, wl: WL, yellow: YELLOW, notifBg: MID }}
+            colors={{ dark: DARK, wl: WL }}
           />
         </div>
       )
@@ -542,6 +526,7 @@ export default function PlayPage({ params }) {
       return (
         <div style={{ background: BG, color: TEXT, minHeight: "100vh", paddingBottom: BOTTOM_PAD }}>
           <Notifications pokes={myPokes} onDismiss={dismissPoke} colors={{ dark: DARK, yellow: YELLOW, notifBg: MID }} />
+          {renderMenu()}
 
           {/* Status bar */}
           <div style={{ background: DARK, padding: `12px ${SPACE.md}px`, ...STYLE.eyebrow, opacity: OPACITY.moderate }}>
@@ -573,9 +558,9 @@ export default function PlayPage({ params }) {
 
           {/* Footer */}
           <Footer
-            onToggle={() => setMenuOpen(true)}
+            onToggle={() => setMenuOpen(!menuOpen)}
             isOpen={menuOpen}
-            colors={{ dark: DARK }}
+            colors={{ dark: DARK, wl: WL }}
           >
             {!pending_winner_claim && (
               <FooterButton
@@ -637,16 +622,6 @@ export default function PlayPage({ params }) {
               </div>
             </div>
           )}
-
-
-          <Menu
-            open={menuOpen}
-            onClose={() => setMenuOpen(false)}
-            roomCode={code}
-            myName={me?.name}
-            playerDetails={playerDetails}
-            colors={{ bg: BG, dark: DARK, mid: MID, wl: WL, yellow: YELLOW, notifBg: MID }}
-          />
         </div>
       )
     } else {
@@ -654,6 +629,7 @@ export default function PlayPage({ params }) {
       return (
         <div style={{ background: BG, color: TEXT, minHeight: "100vh", paddingBottom: BOTTOM_PAD }}>
           <Notifications pokes={myPokes} onDismiss={dismissPoke} colors={{ dark: DARK, yellow: YELLOW, notifBg: MID }} />
+          {renderMenu()}
 
           {/* Status bar */}
           <div style={{ background: DARK, padding: `12px ${SPACE.md}px`, ...STYLE.eyebrow, opacity: OPACITY.moderate }}>
@@ -705,18 +681,9 @@ export default function PlayPage({ params }) {
           )}
 
           <Footer
-            onToggle={() => setMenuOpen(true)}
+            onToggle={() => setMenuOpen(!menuOpen)}
             isOpen={menuOpen}
-            colors={{ dark: DARK }}
-          />
-
-          <Menu
-            open={menuOpen}
-            onClose={() => setMenuOpen(false)}
-            roomCode={code}
-            myName={me?.name}
-            playerDetails={playerDetails}
-            colors={{ bg: BG, dark: DARK, mid: MID, wl: WL, yellow: YELLOW, notifBg: MID }}
+            colors={{ dark: DARK, wl: WL }}
           />
         </div>
       )
@@ -731,6 +698,7 @@ export default function PlayPage({ params }) {
     return (
       <div style={{ background: BG, color: TEXT, minHeight: "100vh", paddingBottom: BOTTOM_PAD }}>
         <Notifications pokes={myPokes} onDismiss={dismissPoke} colors={{ dark: DARK, yellow: YELLOW, notifBg: MID }} />
+        {renderMenu()}
 
         <div style={{ padding: "48px 16px" }}>
           <div style={{ fontSize: 48, fontWeight: 900, marginBottom: 8, textAlign: "center" }}>
@@ -770,7 +738,7 @@ export default function PlayPage({ params }) {
         </div>
 
         <Footer
-          onToggle={() => setMenuOpen(true)}
+          onToggle={() => setMenuOpen(!menuOpen)}
           isOpen={menuOpen}
           colors={{ dark: DARK, wl: WL }}
         >
@@ -785,15 +753,6 @@ export default function PlayPage({ params }) {
             New Game
           </FooterButton>
         </Footer>
-
-        <Menu
-          isOpen={menuOpen}
-          onClose={() => setMenuOpen(false)}
-          roomCode={code}
-          myName={me?.name}
-          playerDetails={playerDetails}
-          colors={{ bg: BG, dark: DARK, mid: MID, wl: WL, yellow: YELLOW, notifBg: MID }}
-        />
       </div>
     )
   }

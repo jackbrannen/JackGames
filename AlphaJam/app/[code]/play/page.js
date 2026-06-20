@@ -66,13 +66,15 @@ export default function PlayPage({ params }) {
   useEffect(() => {
     loadState()
     loadPokes()
-    const poll = setInterval(loadState, 1500)
+    const poll = setInterval(loadState, 30000)
+    function handleVisibility() { if (!document.hidden) loadState() }
+    document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`alphajam-play-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "alphajam_games", filter: `code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "alphajam_players", filter: `game_code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "pokes", filter: `room_code=eq.${code}` }, loadPokes)
       .subscribe()
-    return () => { clearInterval(poll); supabase.removeChannel(channel) }
+    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
   // Reset loading states when phase changes

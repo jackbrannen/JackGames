@@ -167,7 +167,7 @@ export default function Lobby({ params }) {
   }, [gameExists, gamePhase, myPlayerId, players.length, code])
 
   useEffect(() => {
-    const poll = setInterval(async () => {
+    async function loadState() {
       await refreshPlayers()
       const { data } = await supabase
         .from("codenames_games")
@@ -179,9 +179,18 @@ export default function Lobby({ params }) {
         setFirstTurnTeam(data.first_turn_team || "red")
         setLastUsedWords(data.last_used_words || [])
       }
-    }, 1500)
+    }
 
-    return () => clearInterval(poll)
+    loadState()
+    const poll = setInterval(loadState, 30000)
+    function handleVisibility() { if (!document.hidden) loadState() }
+    document.addEventListener("visibilitychange", handleVisibility)
+    const channel = supabase.channel(`codenames-lobby-${code}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "codenames_players", filter: `game_code=eq.${code}` }, loadState)
+      .on("postgres_changes", { event: "*", schema: "public", table: "codenames_games", filter: `code=eq.${code}` }, loadState)
+      .subscribe()
+
+    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
   useEffect(() => {

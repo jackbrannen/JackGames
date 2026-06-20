@@ -181,8 +181,14 @@ export default function Play({ params }) {
     supabase.from("game_instructions").select("body").eq("game_key", "avalon").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     refresh()
-    const t = setInterval(refresh, 1500)
-    return () => clearInterval(t)
+    const t = setInterval(refresh, 30000)
+    function handleVisibility() { if (!document.hidden) refresh() }
+    document.addEventListener("visibilitychange", handleVisibility)
+    const channel = supabase.channel(`avalon-play-${code}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "avalon_games", filter: `code=eq.${code}` }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "avalon_players", filter: `game_code=eq.${code}` }, refresh)
+      .subscribe()
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
   // Redirect to lobby if game resets (Play Again)

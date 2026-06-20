@@ -653,8 +653,8 @@ export default function PlayPage({ params }) {
     const pid = localStorage.getItem(`soclover:${code}:playerId`)
     if (pid) setMyPlayerId(pid)
     loadState()
-    let poll = setInterval(loadState, 1500)
-    function handleVisibility() { clearInterval(poll); if (!document.hidden) { loadState(); poll = setInterval(loadState, 1500) } }
+    const poll = setInterval(loadState, 30000)
+    function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const ch = supabase.channel(`soclover-play-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "soclover_games", filter: `code=eq.${code}` }, loadState)

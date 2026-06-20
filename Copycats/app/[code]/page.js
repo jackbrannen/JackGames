@@ -143,8 +143,8 @@ export default function LobbyPage({ params }) {
 
   useEffect(() => {
     loadState()
-    let poll = setInterval(loadState, 1500)
-    function handleVisibility() { clearInterval(poll); if (!document.hidden) { loadState(); poll = setInterval(loadState, 1500) } }
+    const poll = setInterval(loadState, 30000)
+    function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility) }
   }, [code])

@@ -102,8 +102,8 @@ export default function Play({ params }) {
     supabase.from("game_instructions").select("body").eq("game_key", "mrwhite").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     loadState()
-    let poll = setInterval(loadState, 1500)
-    function handleVisibility() { clearInterval(poll); if (!document.hidden) { loadState(); poll = setInterval(loadState, 1500) } }
+    const poll = setInterval(loadState, 30000)
+    function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`mw-play-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "mrwhite_games", filter: `code=eq.${code}` }, loadState)

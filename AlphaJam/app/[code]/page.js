@@ -102,8 +102,8 @@ export default function LobbyPage({ params }) {
     const existing = localStorage.getItem(`alphajam:${code}:playerId`)
     if (existing) setMyPlayerId(existing)
     loadState()
-    let poll = setInterval(loadState, 1500)
-    function handleVisibility() { clearInterval(poll); if (!document.hidden) { loadState(); poll = setInterval(loadState, 1500) } }
+    const poll = setInterval(loadState, 30000)
+    function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`alphajam-lobby-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "alphajam_players", filter: `game_code=eq.${code}` }, loadState)

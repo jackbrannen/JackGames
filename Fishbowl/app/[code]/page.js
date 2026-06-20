@@ -399,7 +399,7 @@ export default function Lobby({ params }) {
   }, [])
 
   useEffect(() => {
-    const poll = setInterval(async () => {
+    async function loadState() {
       await refreshPlayers()
 
       const { data } = await supabase
@@ -418,7 +418,12 @@ export default function Lobby({ params }) {
         setSettingsEditorPlayerId(data.settings_editor_player_id ?? null)
         setSettingsLockExpiresAt(data.settings_lock_expires_at ?? null)
       }
-    }, 1500)
+    }
+
+    loadState()
+    const poll = setInterval(loadState, 30000)
+    function handleVisibility() { if (!document.hidden) loadState() }
+    document.addEventListener("visibilitychange", handleVisibility)
 
     const channel = supabase
       .channel("game-" + code)
@@ -442,6 +447,7 @@ export default function Lobby({ params }) {
 
     return () => {
       clearInterval(poll)
+      document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)
     }
   }, [code])

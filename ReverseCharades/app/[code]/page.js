@@ -295,17 +295,22 @@ export default function Lobby({ params }) {
   }, [game?.is_dummy, game?.phase, myPlayerId, code, game?.min_clues_per_player])
 
   useEffect(() => {
-    const poll = setInterval(async () => {
+    async function loadState() {
       await loadGame()
       await refreshPlayers()
-    }, 1500)
+    }
+
+    loadState()
+    const poll = setInterval(loadState, 30000)
+    function handleVisibility() { if (!document.hidden) loadState() }
+    document.addEventListener("visibilitychange", handleVisibility)
 
     const channel = supabase.channel(`rc-lobby-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_players" }, refreshPlayers)
       .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_games", filter: `code=eq.${code}` }, () => loadGame())
       .subscribe()
 
-    return () => { clearInterval(poll); supabase.removeChannel(channel) }
+    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
   const me = players.find(p => p.id === myPlayerId)

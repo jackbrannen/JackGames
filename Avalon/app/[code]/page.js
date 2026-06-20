@@ -110,8 +110,8 @@ export default function LobbyPage({ params }) {
     supabase.from("game_instructions").select("body").eq("game_key", "avalon").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     loadState()
-    let poll = setInterval(loadState, 1500)
-    function handleVisibility() { clearInterval(poll); if (!document.hidden) { loadState(); poll = setInterval(loadState, 1500) } }
+    const poll = setInterval(loadState, 30000)
+    function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`avalon-lobby-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "avalon_players", filter: `game_code=eq.${code}` }, loadState)

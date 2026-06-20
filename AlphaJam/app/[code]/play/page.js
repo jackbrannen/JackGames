@@ -533,27 +533,27 @@ export default function PlayPage({ params }) {
             {me?.name.toUpperCase()} VS {opponent?.name.toUpperCase()} · MATCHUP {(current_matchup_index ?? 0) + 1} OF {totalMatchups}
           </div>
 
+          {/* New letters status banner */}
+          {myNewLettersRequest && !opponentNewLettersRequest && (
+            <div style={{ background: YELLOW, color: "white", padding: `${SPACE.md}px`, textAlign: "center", fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold }}>
+              Waiting for {opponent?.name} to confirm new letters
+            </div>
+          )}
+          {opponentNewLettersRequest && !myNewLettersRequest && (
+            <div style={{ background: YELLOW, color: "white", padding: `${SPACE.md}px`, textAlign: "center", fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold }}>
+              {opponent?.name} wants new letters
+            </div>
+          )}
+          {myNewLettersRequest && opponentNewLettersRequest && (
+            <div style={{ background: YELLOW, color: "white", padding: `${SPACE.md}px`, textAlign: "center", fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold }}>
+              Both requested new letters...
+            </div>
+          )}
+
           {/* Letter cards */}
           <div style={{ padding: `${SPACE.xl}px ${SPACE.md}px`, display: "flex", flexDirection: "column", gap: SPACE.md, alignItems: "center" }}>
             <LetterCard label="Starting letter" letter={letter_start} />
             <LetterCard label="Ending letter" letter={letter_end} />
-
-            {/* New letters status */}
-            {myNewLettersRequest && !opponentNewLettersRequest && (
-              <div style={{ fontSize: FONT_SIZE.body, opacity: OPACITY.normal, textAlign: "center", marginTop: SPACE.md }}>
-                Waiting for {opponent?.name} to confirm new letters
-              </div>
-            )}
-            {opponentNewLettersRequest && !myNewLettersRequest && (
-              <div style={{ fontSize: FONT_SIZE.body, opacity: OPACITY.normal, textAlign: "center", marginTop: SPACE.md }}>
-                {opponent?.name} wants new letters
-              </div>
-            )}
-            {myNewLettersRequest && opponentNewLettersRequest && (
-              <div style={{ fontSize: FONT_SIZE.body, opacity: OPACITY.normal, textAlign: "center", marginTop: SPACE.md }}>
-                Both requested new letters...
-              </div>
-            )}
           </div>
 
           {/* Footer */}

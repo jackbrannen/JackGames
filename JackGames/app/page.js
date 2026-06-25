@@ -27,6 +27,23 @@ Round 3 — Act it out: No words at all.
 The same clues rotate through all rounds, so by Round 3 everyone has heard them and the game gets fast and chaotic. The team with the most points wins.`,
   },
   {
+    name: "What On Earth",
+    description: "Alien translation party game",
+    players: "3+ players",
+    url: "https://whatonearth.jackbrannen.com",
+    bg: "#1A1F2E",
+    color: "white",
+    instructions: `One player is the Earthling translator, one is the backup. Everyone else is an alien trying to guess the secret word or phrase.
+
+The Earthling gets limited letters to communicate the word — but some are blanks. They have to get creative with how they spell and describe it using only those letters.
+
+Round 1: full letters
+Round 2: some blanks
+Round 3: more blanks
+
+If an alien guesses correctly, both the alien and the active Earthling score points. After all rounds, highest score wins.`,
+  },
+  {
     name: "Exquisite Corpse",
     description: "Cooperative blind drawing game.",
     players: "4+ players",
@@ -318,7 +335,7 @@ export default function Home() {
     setLogsOpen(true)
     setLogsLoading(true)
     try {
-      const [fishbowl, gow, codenames, avalon, ftw, tel, ec, rc, soclover, copycats, drawful, mrwhite, alphajam] = await Promise.all([
+      const [fishbowl, gow, codenames, avalon, ftw, tel, ec, rc, soclover, copycats, drawful, mrwhite, alphajam, woe] = await Promise.all([
         supabase.from("players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("gow_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("codenames_players").select("first_name,last_name,game_code,created_at").limit(2000),
@@ -332,6 +349,7 @@ export default function Home() {
         supabase.from("drawful_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("mrwhite_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("alphajam_players").select("first_name,last_name,game_code,created_at").limit(2000),
+        supabase.from("woe_players").select("first_name,last_name,game_code,created_at").limit(2000),
       ])
 
       // people[fullName][gameName] = { count, first, last }
@@ -363,6 +381,7 @@ export default function Home() {
       addRows(drawful.data, "Drawful")
       addRows(mrwhite.data, "Mr. White")
       addRows(alphajam.data, "Alpha Jam")
+      addRows(woe.data, "What On Earth")
 
       const toRows = entries => entries
         .map(([name, games]) => ({

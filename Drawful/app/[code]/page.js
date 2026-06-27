@@ -126,7 +126,8 @@ export default function LobbyPage({ params }) {
 
   const hasAutoJoinedRef = useRef(false)
   useEffect(() => {
-    if (!game || game.phase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    // Only auto-join in dummy games
+    if (!game || game.phase !== "lobby" || !game.is_dummy || myPlayerId || hasAutoJoinedRef.current) return
     const saved = loadProfile()
     if (!saved?.username) return
     hasAutoJoinedRef.current = true
@@ -140,7 +141,7 @@ export default function LobbyPage({ params }) {
       localStorage.setItem(`drawful:${code}:playerId`, data.id)
       setMyPlayerId(data.id)
     })()
-  }, [game?.phase, myPlayerId, code])
+  }, [game?.phase, game?.is_dummy, myPlayerId, code])
 
   async function join() {
     const trimmedUsername = username.trim()

@@ -122,7 +122,7 @@ export default function Menu({
     setLobbyResetting(false)
   }
 
-  const drawerBottom = `calc(${peekBarHeight} + ${FOOTER_H}px)`
+  const drawerBottom = `calc(${peekBarHeight} + ${FOOTER_H}px + env(safe-area-inset-bottom))`
   const hasScores = playerDetails.some(p => p.score !== undefined && p.score !== null)
   const hasTeams  = playerDetails.some(p => p.teamColor)
 
@@ -160,7 +160,7 @@ export default function Menu({
 
       {/* Backdrop to close drawer */}
       {isOpen && !panel && (
-        <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 71 }} />
+        <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 81 }} />
       )}
 
       {/* Drawer */}
@@ -168,7 +168,7 @@ export default function Menu({
         <div style={{
           position: "fixed", bottom: drawerBottom, left: 0, right: 0,
           background: mid, borderTop: "1px solid rgba(255,255,255,0.1)",
-          zIndex: 78, animation: "drawerUp 0.22s ease",
+          zIndex: 82, animation: "drawerUp 0.22s ease",
         }}>
           <div onClick={onClose} style={{ padding: "10px 0 4px", display: "flex", justifyContent: "center", cursor: "pointer" }}>
             <div style={{ width: 36, height: 4, background: "rgba(255,255,255,0.22)", borderRadius: 2 }} />

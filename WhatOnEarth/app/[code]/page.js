@@ -69,6 +69,7 @@ export default function LobbyPage({ params }) {
   const [joining, setJoining] = useState(false)
   const [joinError, setJoinError] = useState("")
   const [starting, setStarting] = useState(false)
+  const [confirmingStart, setConfirmingStart] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
   const me = players.find(p => p.id === myPlayerId)
@@ -243,84 +244,6 @@ export default function LobbyPage({ params }) {
     )
   }
 
-  if (!me) {
-    return (
-      <>
-        <Menu
-          supabase={supabase}
-          isOpen={menuOpen}
-          onClose={() => setMenuOpen(false)}
-          colors={{ dark: DARK, mid: MID, wl: WL, yellow: YELLOW, text: TEXT }}
-          roomCode={code}
-          currentPlayer={null}
-          instructions={instructions}
-        />
-        <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
-          <button
-            onClick={() => setMenuOpen(true)}
-            aria-label="Menu"
-            style={{ position: "fixed", top: 16, right: 16, background: WL, border: "none", color: "rgba(255,255,255,0.45)", fontSize: 22, width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
-          >
-            ☰
-          </button>
-
-          <div style={{ width: "100%", maxWidth: 400 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "rgba(255,255,255,0.4)", marginBottom: 8 }}>Join Game</div>
-            <div style={{ fontSize: 32, fontWeight: 900, color: "white", marginBottom: 32, wordBreak: "break-word" }}>
-              <span style={{ opacity: 0.5 }}>{codeLeft}</span>
-              <span>{codeRight}</span>
-            </div>
-
-            <div style={{ marginBottom: 8 }}>
-              <input
-                value={savedProfile?.firstName ?? firstName}
-                onChange={e => setFirstName(e.target.value)}
-                placeholder="First name"
-                maxLength={40}
-                disabled={!!savedProfile}
-                style={{ ...inputStyle, opacity: savedProfile ? 0.5 : 1 }}
-              />
-            </div>
-            <div style={{ marginBottom: 8 }}>
-              <input
-                value={savedProfile?.lastName ?? lastName}
-                onChange={e => setLastName(e.target.value)}
-                placeholder="Last name"
-                maxLength={40}
-                disabled={!!savedProfile}
-                style={{ ...inputStyle, opacity: savedProfile ? 0.5 : 1 }}
-              />
-            </div>
-            <div style={{ marginBottom: 16 }}>
-              <input
-                value={name}
-                onChange={e => setName(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && join()}
-                placeholder="Display name (username)"
-                maxLength={40}
-                style={inputStyle}
-              />
-            </div>
-
-            {joinError && (
-              <div style={{ background: "rgba(251,223,84,0.15)", border: "2px solid " + YELLOW, color: YELLOW, padding: "12px", marginBottom: 16, fontSize: 14, fontWeight: 600 }}>
-                {joinError}
-              </div>
-            )}
-
-            <button
-              onClick={join}
-              disabled={joining || !name.trim() || !(savedProfile?.firstName || firstName.trim()) || !(savedProfile?.lastName || lastName.trim())}
-              style={{ background: joining ? WL : YELLOW, color: joining ? "white" : "#000", fontSize: 20, fontWeight: 900, padding: "18px", width: "100%", border: "none", cursor: joining ? "default" : "pointer", opacity: joining || !name.trim() || !(savedProfile?.firstName || firstName.trim()) || !(savedProfile?.lastName || lastName.trim()) ? 0.35 : 1 }}
-            >
-              {joining ? "Joining..." : "Join Game"}
-            </button>
-          </div>
-        </div>
-      </>
-    )
-  }
-
   const canStart = players.length >= MIN_PLAYERS
 
   return (
@@ -339,13 +262,42 @@ export default function LobbyPage({ params }) {
               <span style={{ color: "rgba(255,255,255,0.75)" }}>{codeRight}</span>
             </>
           }
+          joinContent={
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", color: "rgba(255,255,255,0.35)", marginBottom: 14 }}>
+                Join Game
+              </div>
+              {!savedProfile && (
+                <>
+                  <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First name" maxLength={40} style={{ ...inputStyle, marginBottom: 8 }} />
+                  <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" maxLength={40} style={{ ...inputStyle, marginBottom: 8 }} />
+                </>
+              )}
+              <input
+                value={name}
+                onChange={e => setName(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && join()}
+                placeholder="Display Name"
+                maxLength={40}
+                style={inputStyle}
+              />
+              <button
+                onClick={join}
+                disabled={!name.trim() || (!savedProfile && (!firstName.trim() || !lastName.trim())) || joining}
+                style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "18px", width: "100%", marginTop: 8, display: "block" }}
+              >
+                {joining ? "Joining…" : "Join"}
+              </button>
+              {joinError && <p style={{ marginTop: 10, fontSize: 14, fontWeight: 700, color: YELLOW }}>{joinError}</p>}
+            </div>
+          }
           settingsContent={
             <div>
               <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "rgba(255,255,255,0.4)", marginBottom: 12 }}>
                 Turn Timer
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {[30, 45, 60, 90, 0].map(duration => (
+                {[30, 45, 60, 90, 120, 0].map(duration => (
                   <button
                     key={duration}
                     onClick={() => updateTimer(duration)}
@@ -374,13 +326,73 @@ export default function LobbyPage({ params }) {
       {canStart && me && (
         <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
           <FooterButton
-            onClick={startGame}
-            disabled={starting}
+            onClick={() => setConfirmingStart(true)}
             bg={YELLOW}
           >
-            {starting ? "Starting..." : "Start Game"}
+            Start Game
           </FooterButton>
         </Footer>
+      )}
+
+      {confirmingStart && (
+        <div
+          onClick={() => setConfirmingStart(false)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 24, zIndex: 100,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: DARK, width: "100%", maxWidth: 400, padding: "28px 24px" }}
+          >
+            <h2 style={{ fontSize: 22, fontWeight: 900, color: TEXT, marginBottom: 8 }}>
+              Start the game?
+            </h2>
+            <p style={{ fontSize: 15, color: TEXT, opacity: 0.75, fontWeight: 600, marginBottom: 20 }}>
+              This will begin for everyone. Are all players in?
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 24 }}>
+              {players.map((p, i) => (
+                <div key={p.id} style={{ display: "flex" }}>
+                  <div style={{
+                    padding: "10px 0", minWidth: 40, flexShrink: 0,
+                    background: MID,
+                    fontSize: 15, fontWeight: 900, color: TEXT,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    {i + 1}
+                  </div>
+                  <div style={{
+                    padding: "10px 14px", flex: 1,
+                    background: MID,
+                    display: "flex", alignItems: "center",
+                  }}>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: TEXT }}>
+                      {p.name}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setConfirmingStart(false)}
+                style={{ flex: 1, background: WL, color: TEXT, fontSize: 17, fontWeight: 800, padding: "16px" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { setConfirmingStart(false); startGame() }}
+                disabled={starting}
+                style={{ flex: 2, background: YELLOW, color: "#000", fontSize: 17, fontWeight: 900, padding: "16px" }}
+              >
+                {starting ? "Starting…" : "Start Game"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {menuOpen && (
@@ -391,7 +403,7 @@ export default function LobbyPage({ params }) {
           colors={{ dark: DARK, mid: MID, wl: WL, yellow: YELLOW, text: TEXT }}
           roomCode={code}
           currentPlayer={me?.name}
-          instructions={instructions}
+          rules={instructions ? [["How to Play", instructions]] : null}
         />
       )}
     </>

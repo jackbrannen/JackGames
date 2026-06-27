@@ -34,7 +34,7 @@ async function createGame(isDummy) {
     if ((count ?? 0) > 0) continue
     const { data, error } = await supabase
       .from("woe_games")
-      .insert({ code, is_dummy: isDummy })
+      .insert({ code, is_dummy: isDummy, turn_duration_seconds: isDummy ? 30 : 90 })
       .select("code")
       .single()
     if (error) throw error

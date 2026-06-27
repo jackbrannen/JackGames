@@ -57,6 +57,7 @@ DECLARE
   v_player RECORD;
   v_seat_counter int := 0;
   v_prompt_text text;
+  v_random_player_name text;
 BEGIN
   -- Assign seats to players (in order of creation)
   FOR v_player IN
@@ -78,6 +79,17 @@ BEGIN
     WHERE used_at IS NULL
     ORDER BY random()
     LIMIT 1;
+
+    -- If prompt contains [Player], replace with a random player's first name
+    IF v_prompt_text IS NOT NULL AND v_prompt_text LIKE '%[Player]%' THEN
+      SELECT first_name INTO v_random_player_name
+      FROM drawful_players
+      WHERE game_code = p_code
+      ORDER BY random()
+      LIMIT 1;
+
+      v_prompt_text := replace(v_prompt_text, '[Player]', v_random_player_name);
+    END IF;
 
     -- Assign it to the player and mark as used
     IF v_prompt_text IS NOT NULL THEN

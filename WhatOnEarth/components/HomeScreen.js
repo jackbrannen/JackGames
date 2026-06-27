@@ -97,7 +97,7 @@ export default function HomeScreen({
           disabled={isCreating}
           style={{
             background: yellow,
-            color: "white",
+            color: "#000",
             fontSize: 22,
             fontWeight: 900,
             padding: "22px 40px",

@@ -557,7 +557,7 @@ export default function Play({ params }) {
     if (!timerExpired || submittingDrawing || !me || game?.phase !== "drawing") return
     if (me.drawing_url) return // already submitted
     submitDrawing(true)
-  }, [timerExpired, me?.drawing_url])
+  }, [timerExpired, submittingDrawing, me?.drawing_url, game?.phase])
 
   // Dummy game auto-submit removed — users should draw manually per spec
 
@@ -585,12 +585,12 @@ export default function Play({ params }) {
   )
   const nudgeAnswer = useSubmitNudge(answerText, !!myAnswer)
 
-  // Pre-fill fake answer (dummy games)
+  // Pre-fill fake answer (dummy games only)
   useEffect(() => {
-    if (game?.phase !== "guessing" || amArtist || myAnswer) return
+    if (!game?.is_dummy || game?.phase !== "guessing" || amArtist || myAnswer) return
     supabase.rpc("get_random_ideas", { p_count: 1, p_exclude: [] })
       .then(({ data }) => { if (data?.[0]) setAnswerText(prev => prev || data[0]) })
-  }, [game?.phase, game?.current_drawing_index, myPlayerId, amArtist, !!myAnswer])
+  }, [game?.is_dummy, game?.phase, game?.current_drawing_index, myPlayerId, amArtist, !!myAnswer])
 
   const myVote = useMemo(() =>
     votes.find(v => v.drawing_player_id === currentArtist?.id && v.voter_id === myPlayerId),
@@ -706,6 +706,7 @@ export default function Play({ params }) {
     const getExport = getExportRef.current
     if (!getExport && !autoSubmit) { alert("Canvas not ready"); return }
 
+    console.log("[SUBMIT] Starting drawing submission, autoSubmit:", autoSubmit)
     setSubmittingDrawing(true)
     try {
       const dataUrl = getExport ? getExport() : (() => {
@@ -713,19 +714,25 @@ export default function Play({ params }) {
         const ctx = c.getContext("2d"); ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,400,400)
         return c.toDataURL("image/jpeg", 0.6)
       })()
+      console.log("[SUBMIT] Canvas exported, uploading...")
       const res = await fetch(dataUrl)
       const blob = await res.blob()
       const filename = `drawful/${code}/${Date.now()}-${crypto.randomUUID()}.jpg`
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("drawings").upload(filename, blob, { contentType: "image/jpeg" })
       if (uploadError) throw uploadError
+      console.log("[SUBMIT] Uploaded, calling RPC...")
       const { data: urlData } = supabase.storage.from("drawings").getPublicUrl(uploadData.path)
       const { error } = await supabase.rpc("drawful_submit_drawing", {
         p_code: code, p_player_id: me.id, p_drawing_url: urlData.publicUrl,
       })
       if (error) throw error
+      console.log("[SUBMIT] RPC succeeded, reloading state...")
       await loadState()
+      console.log("[SUBMIT] Success!")
+      setSubmittingDrawing(false)
     } catch (e) {
+      console.error("[SUBMIT] Error:", e)
       alert("Error submitting: " + e.message)
       setSubmittingDrawing(false)
     }
@@ -986,16 +993,18 @@ export default function Play({ params }) {
                 bg={WARM_LIGHT}
                 fontSize={18}
               />
-              <div style={{ marginTop: 16 }}>
-                <RandomIdeas
-                  bg={WARM_LIGHT}
-                  yellow={ACCENT}
-                  fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
-                  playerNames={players.filter(p => p.id !== myPlayerId && !p.is_bot).map(p => p.first_name || p.name)}
-                  maxDraws={3}
-                  onIdeaClick={idea => setAnswerText(idea)}
-                />
-              </div>
+              {game?.is_dummy && (
+                <div style={{ marginTop: 16 }}>
+                  <RandomIdeas
+                    bg={WARM_LIGHT}
+                    yellow={ACCENT}
+                    fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
+                    playerNames={players.filter(p => p.id !== myPlayerId && !p.is_bot).map(p => p.first_name || p.name)}
+                    maxDraws={3}
+                    onIdeaClick={idea => setAnswerText(idea)}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS woe_games (
   is_dummy BOOLEAN NOT NULL DEFAULT FALSE,
 
   -- Settings
-  turn_duration_seconds INTEGER NOT NULL DEFAULT 30,
+  turn_duration_seconds INTEGER NOT NULL DEFAULT 90,
 
   -- Game state
   rotation JSONB, -- Array of {round, primary_id, backup_id}
@@ -24,7 +24,15 @@ CREATE TABLE IF NOT EXISTS woe_games (
 
   -- Timer
   attempt_start_at TIMESTAMPTZ,
-  attempt_duration_seconds INTEGER
+  attempt_duration_seconds INTEGER,
+
+  -- Pause
+  paused BOOLEAN NOT NULL DEFAULT FALSE,
+  paused_by UUID REFERENCES woe_players(id),
+  paused_at TIMESTAMPTZ,
+
+  -- Awarding points
+  awarding_points_by UUID REFERENCES woe_players(id)
 );
 
 -- Players table
@@ -144,8 +152,14 @@ BEGIN
   -- Random length 7-10
   v_length := 7 + floor(random() * 4)::int;
 
-  -- Blanks: 3 for attempt 1, 4 for attempt 2, 5 for attempt 3
-  v_blanks := 2 + p_attempt;
+  -- Blanks: 0 for attempt 1, 2 for attempt 2, 4 for attempt 3
+  IF p_attempt = 1 THEN
+    v_blanks := 0;
+  ELSIF p_attempt = 2 THEN
+    v_blanks := 2;
+  ELSE
+    v_blanks := 4;
+  END IF;
 
   -- Generate weighted random letters
   FOR v_i IN 1..(v_length - v_blanks) LOOP
@@ -171,16 +185,61 @@ BEGIN
     v_letters := v_letters || v_pool[1 + floor(random() * array_length(v_pool, 1))::int];
   END LOOP;
 
-  -- Insert blanks at random positions
-  FOR v_i IN 1..v_blanks LOOP
-    v_letters := overlay(v_letters placing '_' from (1 + floor(random() * (length(v_letters) + 1))::int) for 0);
-  END LOOP;
+  -- If no blanks, return letters directly
+  IF v_blanks = 0 THEN
+    RETURN v_letters;
+  END IF;
 
-  RETURN v_letters;
+  -- Create array for final sequence and place blanks with spacing
+  DECLARE
+    v_result TEXT[];
+    v_total_slots INTEGER;
+    v_blank_positions INTEGER[];
+    v_pos INTEGER;
+    v_attempts INTEGER;
+  BEGIN
+    v_total_slots := v_length;
+    v_result := ARRAY_FILL(NULL::TEXT, ARRAY[v_total_slots]);
+    v_blank_positions := ARRAY[]::INTEGER[];
+
+    -- Pick positions ensuring at least 1 space between blanks
+    v_attempts := 0;
+    WHILE array_length(v_blank_positions, 1) IS NULL OR array_length(v_blank_positions, 1) < v_blanks LOOP
+      v_pos := 1 + floor(random() * v_total_slots)::int;
+
+      IF NOT (v_pos = ANY(v_blank_positions)) THEN
+        IF array_length(v_blank_positions, 1) IS NULL OR
+           (NOT ((v_pos - 1) = ANY(v_blank_positions)) AND NOT ((v_pos + 1) = ANY(v_blank_positions))) THEN
+          v_blank_positions := v_blank_positions || v_pos;
+        END IF;
+      END IF;
+
+      v_attempts := v_attempts + 1;
+      IF v_attempts > 1000 THEN
+        EXIT;
+      END IF;
+    END LOOP;
+
+    -- Fill in blanks
+    FOR v_i IN 1..array_length(v_blank_positions, 1) LOOP
+      v_result[v_blank_positions[v_i]] := '_';
+    END LOOP;
+
+    -- Fill in letters
+    v_i := 1;
+    FOR v_pos IN 1..v_total_slots LOOP
+      IF v_result[v_pos] IS NULL THEN
+        v_result[v_pos] := substring(v_letters, v_i, 1);
+        v_i := v_i + 1;
+      END IF;
+    END LOOP;
+
+    RETURN array_to_string(v_result, '');
+  END;
 END;
 $$;
 
--- Mark ready and start countdown
+-- Mark ready and start playing (only primary player has ready button)
 CREATE OR REPLACE FUNCTION woe_mark_ready(p_code TEXT, p_player_id UUID)
 RETURNS void
 LANGUAGE plpgsql
@@ -192,8 +251,6 @@ DECLARE
   v_current_round INTEGER;
   v_primary_id UUID;
   v_is_dummy BOOLEAN;
-  v_ready_count INTEGER;
-  v_total_count INTEGER;
 BEGIN
   SELECT phase, rotation, current_round, is_dummy
   INTO v_phase, v_rotation, v_current_round, v_is_dummy
@@ -204,68 +261,51 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Mark player ready
-  UPDATE woe_players
-  SET ready = TRUE
-  WHERE id = p_player_id AND game_code = p_code;
+  -- Get primary for current round
+  v_primary_id := (v_rotation->(v_current_round - 1)->>'primary_id')::uuid;
 
-  -- Check if enough ready
-  SELECT COUNT(*) FILTER (WHERE ready), COUNT(*)
-  INTO v_ready_count, v_total_count
-  FROM woe_players
-  WHERE game_code = p_code;
-
-  -- Dummy games: only need 1 ready
-  -- Regular games: need 50%+ ready
-  IF (v_is_dummy AND v_ready_count >= 1) OR (NOT v_is_dummy AND v_ready_count >= (v_total_count / 2.0)) THEN
-    -- Start countdown
-    UPDATE woe_games
-    SET phase = 'countdown'
-    WHERE code = p_code;
-
-    -- Reset ready flags
-    UPDATE woe_players
-    SET ready = FALSE
-    WHERE game_code = p_code;
+  -- Only the primary player should be clicking Ready
+  IF p_player_id != v_primary_id THEN
+    RETURN;
   END IF;
+
+  -- Go to intermediate phase first (will auto-advance after 2 seconds)
+  UPDATE woe_games
+  SET phase = 'intermediate'
+  WHERE code = p_code;
 END;
 $$;
 
--- Start playing (after countdown)
+-- Start playing (from intermediate) - handles both first attempt and subsequent attempts
 CREATE OR REPLACE FUNCTION woe_start_playing(p_code TEXT)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
+  v_phase TEXT;
+  v_current_attempt INTEGER;
+  v_turn_duration INTEGER;
   v_letters TEXT;
-  v_duration INTEGER;
-  v_is_dummy BOOLEAN;
 BEGIN
-  SELECT turn_duration_seconds, is_dummy
-  INTO v_duration, v_is_dummy
-  FROM woe_games
-  WHERE code = p_code AND phase = 'countdown';
+  SELECT phase, current_attempt, turn_duration_seconds
+  INTO v_phase, v_current_attempt, v_turn_duration
+  FROM woe_games WHERE code = p_code;
 
-  IF NOT FOUND THEN
+  IF v_phase != 'intermediate' THEN
     RETURN;
   END IF;
 
-  -- Generate letters for attempt 1
-  v_letters := woe_generate_letters(1);
-
-  -- Dummy games: 3 second timer
-  IF v_is_dummy THEN
-    v_duration := 3;
-  END IF;
+  -- Generate letters for current attempt (already set correctly in intermediate)
+  v_letters := woe_generate_letters(v_current_attempt);
 
   UPDATE woe_games
   SET
     phase = 'playing',
     current_letters = v_letters,
-    attempt_start_at = CASE WHEN v_duration > 0 THEN NOW() ELSE NULL END,
-    attempt_duration_seconds = v_duration
-  WHERE code = p_code;
+    attempt_start_at = CASE WHEN v_turn_duration > 0 THEN NOW() ELSE NULL END,
+    attempt_duration_seconds = v_turn_duration
+  WHERE code = p_code AND phase = 'intermediate';
 END;
 $$;
 
@@ -277,12 +317,16 @@ SECURITY DEFINER
 AS $$
 BEGIN
   UPDATE woe_games
-  SET attempt_start_at = NOW() - INTERVAL '1 hour' -- Force timer to 0
+  SET
+    attempt_start_at = NOW() - INTERVAL '1 hour', -- Force timer to 0
+    paused = FALSE,
+    paused_by = NULL,
+    paused_at = NULL
   WHERE code = p_code AND phase = 'playing';
 END;
 $$;
 
--- Award points and advance
+-- Award points and advance (with logging)
 CREATE OR REPLACE FUNCTION woe_award_points(
   p_code TEXT,
   p_alien_id UUID DEFAULT NULL -- NULL = no one guessed
@@ -314,9 +358,9 @@ BEGIN
 
   v_total_rounds := jsonb_array_length(v_rotation);
 
-  -- Get primary and backup for current round
-  v_primary_id := (v_rotation->((v_current_round - 1)::text)->>'primary_id')::uuid;
-  v_backup_id := (v_rotation->((v_current_round - 1)::text)->>'backup_id')::uuid;
+  -- Get primary and backup for current round (use integer indexing, not string)
+  v_primary_id := (v_rotation->(v_current_round - 1)->>'primary_id')::uuid;
+  v_backup_id := (v_rotation->(v_current_round - 1)->>'backup_id')::uuid;
 
   -- Determine active earthling
   IF v_current_attempt = 2 THEN
@@ -331,7 +375,7 @@ BEGIN
 
     UPDATE woe_players
     SET score = score + v_points
-    WHERE id IN (v_earthling_id, p_alien_id);
+    WHERE id IN (v_earthling_id, p_alien_id) AND game_code = p_code;
 
     -- Advance to next round
     IF v_current_round >= v_total_rounds THEN
@@ -363,21 +407,25 @@ BEGIN
         attempt_start_at = NULL,
         previous_word = v_current_word,
         previous_earthling_id = v_earthling_id,
-        previous_alien_id = p_alien_id
+        previous_alien_id = p_alien_id,
+        awarding_points_by = NULL
       WHERE code = p_code;
     END IF;
   ELSE
     -- No one guessed - advance to next attempt or round
     IF v_current_attempt < 3 THEN
-      -- Move to next attempt (intermediate screen)
+      -- Increment attempt and move to intermediate screen
       UPDATE woe_games
-      SET phase = 'intermediate'
+      SET
+        phase = 'intermediate',
+        current_attempt = current_attempt + 1,
+        awarding_points_by = NULL
       WHERE code = p_code;
     ELSE
       -- All 3 attempts failed - move to next round
       IF v_current_round >= v_total_rounds THEN
         UPDATE woe_games
-        SET phase = 'finished'
+        SET phase = 'finished', awarding_points_by = NULL
         WHERE code = p_code;
       ELSE
         SELECT word INTO v_next_word
@@ -400,8 +448,9 @@ BEGIN
           current_letters = NULL,
           attempt_start_at = NULL,
           previous_word = v_current_word,
-          previous_earthling_id = NULL,
-          previous_alien_id = NULL
+          previous_earthling_id = v_earthling_id,
+          previous_alien_id = NULL,
+          awarding_points_by = NULL
         WHERE code = p_code;
       END IF;
     END IF;
@@ -410,41 +459,47 @@ END;
 $$;
 
 -- Advance from intermediate to next attempt
-CREATE OR REPLACE FUNCTION woe_advance_attempt(p_code TEXT)
+-- Pause game
+CREATE OR REPLACE FUNCTION woe_pause_game(p_code TEXT, p_player_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE woe_games
+  SET
+    paused = TRUE,
+    paused_by = p_player_id,
+    paused_at = NOW()
+  WHERE code = p_code AND phase = 'playing' AND NOT paused;
+END;
+$$;
+
+-- Resume game
+CREATE OR REPLACE FUNCTION woe_resume_game(p_code TEXT)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  v_current_attempt INTEGER;
-  v_letters TEXT;
-  v_duration INTEGER;
-  v_is_dummy BOOLEAN;
+  v_paused_duration INTERVAL;
 BEGIN
-  SELECT current_attempt, turn_duration_seconds, is_dummy
-  INTO v_current_attempt, v_duration, v_is_dummy
+  SELECT NOW() - paused_at INTO v_paused_duration
   FROM woe_games
-  WHERE code = p_code AND phase = 'intermediate';
+  WHERE code = p_code AND phase = 'playing' AND paused;
 
   IF NOT FOUND THEN
     RETURN;
   END IF;
 
-  -- Generate letters for next attempt
-  v_letters := woe_generate_letters(v_current_attempt + 1);
-
-  IF v_is_dummy THEN
-    v_duration := 3;
-  END IF;
-
+  -- Adjust attempt_start_at to account for pause duration
   UPDATE woe_games
   SET
-    phase = 'playing',
-    current_attempt = current_attempt + 1,
-    current_letters = v_letters,
-    attempt_start_at = CASE WHEN v_duration > 0 THEN NOW() ELSE NULL END,
-    attempt_duration_seconds = v_duration
-  WHERE code = p_code;
+    paused = FALSE,
+    paused_by = NULL,
+    paused_at = NULL,
+    attempt_start_at = attempt_start_at + v_paused_duration
+  WHERE code = p_code AND paused = TRUE;
 END;
 $$;
 
@@ -463,11 +518,27 @@ BEGIN
     current_attempt = 1,
     current_word = NULL,
     current_letters = NULL,
-    attempt_start_at = NULL
+    attempt_start_at = NULL,
+    paused = FALSE,
+    paused_by = NULL,
+    paused_at = NULL
   WHERE code = p_code;
 
   UPDATE woe_players
   SET score = 0, ready = FALSE
   WHERE game_code = p_code;
+END;
+$$;
+
+-- Score adjustment function
+CREATE OR REPLACE FUNCTION woe_adjust_score(p_player_id UUID, p_delta INTEGER)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE woe_players
+  SET score = GREATEST(0, COALESCE(score, 0) + p_delta)
+  WHERE id = p_player_id;
 END;
 $$;

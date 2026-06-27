@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
+import { topUpWordPool } from "../../../lib/words"
 import { BG, DARK, MID, WL, YELLOW, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE } from "../../../components/styles"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import FooterButton from "../../../components/FooterButton"
@@ -232,6 +233,9 @@ export default function PlayPage({ params }) {
         p_alien_id: selectedAlien
       })
       if (error) throw error
+      // A round just advanced, consuming a word from the pool — top it up if
+      // it's getting low so future rounds/games never run dry.
+      topUpWordPool()
       await loadState()
       setShowGotItModal(false)
       setShowConfirmModal(false)

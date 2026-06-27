@@ -14,11 +14,18 @@ DECLARE
   v_total_players int;
   v_drawings_done int;
   v_player RECORD;
+  v_current_phase text;
 BEGIN
+  -- Only proceed if still in drawing phase
+  SELECT phase INTO v_current_phase FROM drawful_games WHERE code = p_code;
+  IF v_current_phase != 'drawing' THEN
+    RETURN;
+  END IF;
+
   -- Update player's drawing
   UPDATE drawful_players
   SET drawing_url = p_drawing_url
-  WHERE game_code = p_code AND id = p_player_id;
+  WHERE game_code = p_code AND id = p_player_id AND drawing_url IS NULL;
 
   -- Count total players and how many have finished drawing
   SELECT count(*) INTO v_total_players
@@ -43,9 +50,10 @@ BEGIN
       ON CONFLICT DO NOTHING;
     END LOOP;
 
+    -- Advance to guessing phase
     UPDATE drawful_games
     SET phase = 'guessing', current_drawing_index = 0
-    WHERE code = p_code;
+    WHERE code = p_code AND phase = 'drawing';
   END IF;
 END;
 $$;

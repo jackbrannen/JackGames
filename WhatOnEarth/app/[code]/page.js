@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../lib/supabase"
+import { topUpWordPool } from "../../lib/words"
 import Lobby from "../../components/Lobby"
 import Footer from "../../components/Footer"
 import FooterButton from "../../components/FooterButton"
@@ -202,6 +203,10 @@ export default function LobbyPage({ params }) {
   async function startGame() {
     setStarting(true)
     try {
+      // Make sure the word pool isn't empty before starting, otherwise
+      // woe_start_game raises "No words available in pool". Awaited so the
+      // very first game on a fresh database has words to draw from.
+      await topUpWordPool({ wait: true })
       const { error } = await supabase.rpc("woe_start_game", { p_code: code })
       if (error) throw error
       await loadState()

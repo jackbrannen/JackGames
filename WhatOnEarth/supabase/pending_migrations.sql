@@ -152,13 +152,13 @@ BEGIN
   -- Random length 7-10
   v_length := 7 + floor(random() * 4)::int;
 
-  -- Blanks: 0 for attempt 1, 2 for attempt 2, 4 for attempt 3
+  -- Blanks: 0 for attempt 1, 2 for attempt 2, 3 for attempt 3
   IF p_attempt = 1 THEN
     v_blanks := 0;
   ELSIF p_attempt = 2 THEN
     v_blanks := 2;
   ELSE
-    v_blanks := 4;
+    v_blanks := 3;
   END IF;
 
   -- Generate weighted random letters

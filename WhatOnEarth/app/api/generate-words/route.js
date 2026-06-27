@@ -47,32 +47,34 @@ export async function POST() {
       max_tokens: 2048,
       messages: [{
         role: "user",
-        content: `Generate ${BATCH_SIZE} short phrases for a translation party game. These will be secret words that players try to communicate using limited letters.
+        content: `Generate ${BATCH_SIZE} words/phrases for a translation party game where players communicate using limited letters.
 
 Rules:
-- Mix of 1-3 word phrases
-- Should be appropriate for 11-year-olds, but can have a hint of something slightly transgressive or topical
-- Good mix of actions, objects, concepts, and cultural references
-- Should be concrete enough to translate creatively but not too easy
+- MOST should be 1-2 words. A few can be 3 words MAX.
+- Must be guessable from creative letter usage - avoid obscure multi-word phrases
+- Appropriate for 11-year-olds, can have slight edge
+- Mix of: compound words, iconic terms, actions, cultural references, body parts, food items
+- Should be "a thing" everyone knows, not generic descriptions
+- NO generic adjective+noun (like "big sandwich" or "ugly sweater")
 
-Examples that capture the right vibe:
-- flat earthers
+Good examples (mostly 1-2 words):
 - spooning
-- doing the worm
+- flat earthers
 - swear jar
 - whipped cream
 - area 51
-- kissing booth
 - nude beach
-- hyperventilating
 - crop circles
-- trust fall
-- dumpster diving
-- speed dating
 - belly button
-- mullet haircut
+- speed dating
+- trust fall
 
-Format: one phrase per line, no numbering, no quotes, no punctuation at the end.`,
+Bad examples (too long/obscure):
+- middle school dance
+- hot lava floor
+- competitive eating contest
+
+Format: one per line, no numbering, no quotes, no punctuation.`,
       }],
     })
 

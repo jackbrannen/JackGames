@@ -8,9 +8,12 @@ const POOL_THRESHOLD = 10
 const BATCH_SIZE = 50
 
 export async function POST() {
+  // Prefer the service role key, but fall back to the anon key. RLS is disabled
+  // on these tables, so the anon key has write access — this keeps the route
+  // working without requiring the service role key to be configured.
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   )
   try {
     // Only refill when the pool is running low. This makes the route safe to

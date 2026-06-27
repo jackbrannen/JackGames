@@ -8,14 +8,26 @@ const POOL_THRESHOLD = 10
 const BATCH_SIZE = 50
 
 export async function POST() {
-  // Prefer the service role key, but fall back to the anon key. RLS is disabled
-  // on these tables, so the anon key has write access — this keeps the route
-  // working without requiring the service role key to be configured.
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  )
   try {
+    // Validate config up front so a missing env var returns a readable error
+    // instead of a blank 500 (an uncaught throw before this point gives no body).
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    // Prefer the service role key, but fall back to the anon key. RLS is disabled
+    // on these tables, so the anon key has write access — this keeps the route
+    // working without requiring the service role key to be configured.
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const anthropicKey = process.env.ANTHROPIC_API_KEY
+
+    const missing = []
+    if (!supabaseUrl) missing.push("NEXT_PUBLIC_SUPABASE_URL")
+    if (!supabaseKey) missing.push("SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY")
+    if (!anthropicKey) missing.push("ANTHROPIC_API_KEY")
+    if (missing.length > 0) {
+      return Response.json({ error: "Missing environment variables: " + missing.join(", ") }, { status: 500 })
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
     // Only refill when the pool is running low. This makes the route safe to
     // call liberally (on game start, after every round) without spamming the
     // model or growing the pool unbounded.
@@ -29,7 +41,7 @@ export async function POST() {
       return Response.json({ count, generated: 0, skipped: true })
     }
 
-    const client = new Anthropic()
+    const client = new Anthropic({ apiKey: anthropicKey })
     const message = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 2048,
@@ -87,6 +99,6 @@ Format: one phrase per line, no numbering, no quotes, no punctuation at the end.
     return Response.json({ count: count + words.length, generated: words.length })
   } catch (e) {
     console.error("generate-words error:", e)
-    return Response.json({ error: e.message }, { status: 500 })
+    return Response.json({ error: e?.message || String(e) }, { status: 500 })
   }
 }

@@ -143,10 +143,17 @@ export default function LobbyPage({ params }) {
 
   useEffect(() => {
     loadState()
-    const poll = setInterval(loadState, 30000)
+    // Short poll as a fallback in case a realtime event is missed.
+    const poll = setInterval(loadState, 5000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
-    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility) }
+    // Realtime so the live player list and the lobby->game redirect happen
+    // immediately instead of only on the next poll.
+    const channel = supabase.channel(`gow-lobby-${code}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "gow_games", filter: `code=eq.${code}` }, loadState)
+      .on("postgres_changes", { event: "*", schema: "public", table: "gow_players", filter: `game_code=eq.${code}` }, loadState)
+      .subscribe()
+    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
   useEffect(() => {

@@ -235,11 +235,19 @@ export default function Play({ params }) {
 
   useEffect(() => {
     loadState()
-    const poll = setInterval(loadState, 30000)
+    // Short poll as a fallback in case a realtime event is missed.
+    const poll = setInterval(loadState, 5000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const ticker = setInterval(() => setNowMs(Date.now()), 300)
-    return () => { clearInterval(poll); clearInterval(ticker); document.removeEventListener("visibilitychange", handleVisibility) }
+    // Realtime so turn changes, scores, and the clue bowl reach the watching
+    // team immediately instead of only on the next poll.
+    const channel = supabase.channel(`fishbowl-play-${code}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "games", filter: `code=eq.${code}` }, loadState)
+      .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `game_code=eq.${code}` }, loadState)
+      .on("postgres_changes", { event: "*", schema: "public", table: "clues", filter: `game_code=eq.${code}` }, loadState)
+      .subscribe()
+    return () => { clearInterval(poll); clearInterval(ticker); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
   // Redirect everyone back to lobby when a Play Again reset happens (detected via poll)

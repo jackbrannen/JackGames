@@ -143,10 +143,18 @@ export default function Play({ params }) {
     supabase.from("game_instructions").select("body").eq("game_key", "codenames").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     loadState()
-    const poll = setInterval(loadState, 30000)
+    // Short poll as a fallback in case a realtime event is missed.
+    const poll = setInterval(loadState, 5000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
-    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility) }
+    // Realtime so clues, card reveals, and turn changes reach every player
+    // immediately instead of only on the next poll.
+    const channel = supabase.channel(`codenames-play-${code}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "codenames_games", filter: `code=eq.${code}` }, loadState)
+      .on("postgres_changes", { event: "*", schema: "public", table: "codenames_players", filter: `game_code=eq.${code}` }, loadState)
+      .on("postgres_changes", { event: "*", schema: "public", table: "codenames_cards", filter: `game_code=eq.${code}` }, loadState)
+      .subscribe()
+    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
   useEffect(() => {

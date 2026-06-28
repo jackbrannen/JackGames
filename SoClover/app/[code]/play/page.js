@@ -15,7 +15,7 @@ import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import CARDS from "../../../lib/cards_data.json"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
-import { SLOT_NAMES, LEAF_NAMES, rotateCW, scoreGuess } from "../../../lib/clover.js"
+import { SLOT_NAMES, LEAF_NAMES, rotateCW } from "../../../lib/clover.js"
 
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1)
 
@@ -578,7 +578,7 @@ export default function PlayPage({ params }) {
           return rots
         })
         // Write initial attempt 2 state to database so viewers see locked slots
-        supabase.from("soclover_boards").update({ guess_slots: lockedSlotMap }).eq("id", currentBoard.id).then(() => {})
+        persistBoard({ guess_slots: lockedSlotMap })
       }
     }
   }, [currentBoard, myPlayerId, game?.fifth_card_enabled])
@@ -709,6 +709,15 @@ export default function PlayPage({ params }) {
     setTimeout(() => { setSwapAnim(null); setHidingSlots(new Set()) }, 420)
   }
 
+  // Persist a board patch from the client (the guesser's live placements /
+  // rotation). Fire-and-forget, but on failure we log and resync so a dropped
+  // write doesn't silently diverge from what other players see.
+  function persistBoard(patch) {
+    if (!currentBoard) return
+    supabase.from("soclover_boards").update(patch).eq("id", currentBoard.id)
+      .then(({ error }) => { if (error) { console.error("[soclover] board write failed", error); loadState() } })
+  }
+
   function handleDrop(x, y) {
     if (!dragRef.current) return
     const { cardIndex, sourceType, slotName: srcSlot, rotation: srcRot } = dragRef.current
@@ -749,13 +758,13 @@ export default function PlayPage({ params }) {
             [targetSlot]: { cardIndex, rotation: srcRot ?? 0 },
           }
           setGuessSlots(next)
-          if (currentBoard) supabase.from("soclover_boards").update({ guess_slots: next }).eq("id", currentBoard.id).then(() => {})
+          persistBoard({ guess_slots: next })
         } else {
           setGuessSlots(prev => {
             const next = { ...prev }
             if (existing) setGuessPool(p => [...p, existing.cardIndex])
             next[targetSlot] = { cardIndex, rotation: srcRot ?? 0 }
-            if (currentBoard) supabase.from("soclover_boards").update({ guess_slots: next }).eq("id", currentBoard.id).then(() => {})
+            persistBoard({ guess_slots: next })
             return next
           })
         }
@@ -766,7 +775,7 @@ export default function PlayPage({ params }) {
         setGuessPool(p => [...p, cardIndex])
         if (sourceType === "slot" && srcSlot && currentBoard) {
           const next = { ...guessSlots, [srcSlot]: null }
-          supabase.from("soclover_boards").update({ guess_slots: next }).eq("id", currentBoard.id).then(() => {})
+          persistBoard({ guess_slots: next })
         }
       }
     }
@@ -871,27 +880,22 @@ export default function PlayPage({ params }) {
     if (!guessSlots[slotName]) return
     const next = { ...guessSlots, [slotName]: { ...guessSlots[slotName], rotation: rotateCW(guessSlots[slotName].rotation) } }
     setGuessSlots(next)
-    if (currentBoard) supabase.from("soclover_boards").update({ guess_slots: next }).eq("id", currentBoard.id).then(() => {})
+    persistBoard({ guess_slots: next })
   }
 
   const allGuessFilled = SLOT_NAMES.every(s => guessSlots[s] != null)
 
   async function onSubmitGuess() {
-    console.log('[SUBMIT GUESS] Called', { submittingGuess, allGuessFilled, currentBoard: !!currentBoard })
     if (submittingGuess || !allGuessFilled || !currentBoard) return
-    console.log('[SUBMIT GUESS] Calling RPC...')
     setSubmittingGuess(true)
     try {
       const { data, error } = await supabase.rpc("soclover_submit_guess", {
         p_code: code, p_board_id: currentBoard.id,
         p_player_id: myPlayerId, p_guess: guessSlots,
       })
-      console.log('[SUBMIT GUESS] RPC result:', { data, error })
       if (error) throw new Error(error.message)
       setGuessResult(data)
-      console.log('[SUBMIT GUESS] Loading state...')
       await loadState()
-      console.log('[SUBMIT GUESS] Done')
       // Don't reset loading - component will unmount or useEffect will reset it
     } catch (e) {
       console.error('[SUBMIT GUESS] Error:', e)
@@ -902,22 +906,17 @@ export default function PlayPage({ params }) {
 
   async function onContinueAttempt2() {
     if (!currentBoard) return
-    console.log('[CONTINUE ATTEMPT 2] Calling RPC...')
     const { error } = await supabase.rpc("soclover_start_attempt2", { p_code: code, p_board_id: currentBoard.id })
-    console.log('[CONTINUE ATTEMPT 2] RPC result:', { error })
     if (error) throw new Error(error.message)
-    console.log('[CONTINUE ATTEMPT 2] Success, refreshing state...')
     await loadState()
   }
 
   async function onReadyNextBoard() {
-    console.log('[READY] Starting', { readying, myPlayerId, currentReadyIds: game.ready_player_ids })
     if (readying) return
     setReadying(true)
 
     // Safety timeout: if button is still loading after 2 seconds, force update
     const timeoutId = setTimeout(() => {
-      console.log('[READY] Timeout triggered - forcing state update')
       setGame(prev => ({
         ...prev,
         ready_player_ids: [...new Set([...(prev.ready_player_ids || []), myPlayerId])]
@@ -926,20 +925,17 @@ export default function PlayPage({ params }) {
     }, 2000)
 
     try {
-      console.log('[READY] Calling RPC...', { code, myPlayerId })
       const { error } = await supabase.rpc("soclover_mark_ready", { p_code: code, p_player_id: myPlayerId })
-      console.log('[READY] RPC result', { error })
 
       clearTimeout(timeoutId)
 
       if (error) throw new Error(error.message)
 
       // Optimistically update local state
-      setGame(prev => {
-        const newIds = [...new Set([...(prev.ready_player_ids || []), myPlayerId])]
-        console.log('[READY] Optimistic update after RPC', { oldIds: prev.ready_player_ids, newIds })
-        return { ...prev, ready_player_ids: newIds }
-      })
+      setGame(prev => ({
+        ...prev,
+        ready_player_ids: [...new Set([...(prev.ready_player_ids || []), myPlayerId])],
+      }))
 
       // Reset readying so the guard doesn't block future clicks
       setReadying(false)
@@ -965,7 +961,7 @@ export default function PlayPage({ params }) {
         const next = (r + 1) % 4
         // Update ref immediately so sync effect won't double-rotate
         prevRemoteRotationRef.current = next
-        if (currentBoard) supabase.from("soclover_boards").update({ board_rotation: next }).eq("id", currentBoard.id).then(() => {})
+        persistBoard({ board_rotation: next })
         return next
       })
       requestAnimationFrame(() => { boardAnimating.current = false })
@@ -1157,7 +1153,6 @@ export default function PlayPage({ params }) {
     const lockedSlots = new Set(currentBoard.correct_slots_attempt1 ?? [])
     const readyCount  = (game.ready_player_ids ?? []).length
     const alreadyReady = (game.ready_player_ids ?? []).includes(myPlayerId)
-    const buttonKey = alreadyReady ? "waiting-for-others" : "ready-next-board"
 
     if (currentBoard.status === "scoring1") {
       const highlightSlots = {}
@@ -1250,16 +1245,6 @@ export default function PlayPage({ params }) {
       : [...currentBoard.dealt_card_indices]
     const spectatorPool = baseCardPool.filter(i => !spectatorPlacedIndices.has(i))
     const poolToShow = amGuesser ? guessPool : spectatorPool
-    if (amGuesser && attempt === 2) {
-      console.log('[ATTEMPT 2 DEBUG]', {
-        guessPool,
-        guessSlots,
-        lockedSlots: Array.from(lockedSlots),
-        poolToShow,
-        allGuessFilled,
-        submittingGuess
-      })
-    }
     const totalCards = fifthCardOn ? 5 : 4
 
     return (

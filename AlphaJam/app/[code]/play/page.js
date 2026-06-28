@@ -63,6 +63,13 @@ export default function PlayPage({ params }) {
     else router.replace(`/${code}`)
   }, [code, router])
 
+  // Return to the lobby when the game is reset to lobby ("Play Again"). Without
+  // this the play page has no 'lobby' branch and players get stuck on a
+  // fallback screen after a reset.
+  useEffect(() => {
+    if (gameState?.phase === "lobby") router.replace(`/${code}`)
+  }, [gameState?.phase, code, router])
+
   useEffect(() => {
     loadState()
     loadPokes()
@@ -291,9 +298,15 @@ export default function PlayPage({ params }) {
   const iClaimedWin = pending_winner_claim === myPlayerId
   const claimerName = pending_winner_claim ? players.find(p => p.id === pending_winner_claim)?.name : null
 
-  // Determine what to show based on countdown state (which updates every 100ms)
-  const showCountdown = countdownRemaining !== null && countdownRemaining > 0
-  const showLetters = (countdownRemaining !== null && countdownRemaining <= 0) || (phase === "playing")
+  // Determine what to show. Compute the reveal cutoff synchronously from the DB
+  // reveal_at + phase rather than from the countdownRemaining state, which is
+  // updated by an effect that runs a frame after render. Relying on that state
+  // left a one-frame window where freshly generated letters rendered before the
+  // countdown kicked in — the "new letters flash" bug.
+  const revealMs = gameState?.reveal_at ? new Date(gameState.reveal_at).getTime() : null
+  const countdownActive = phase === "countdown" && revealMs !== null && Date.now() < revealMs
+  const showCountdown = countdownActive
+  const showLetters = !countdownActive && (phase === "playing" || phase === "countdown")
 
   // Notifications
   const myPokes = pokes.filter(p => !p.to_player || p.to_player === me?.name)

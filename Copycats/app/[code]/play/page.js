@@ -137,24 +137,28 @@ export default function PlayPage({ params }) {
     const id = localStorage.getItem(`cc:${code}:playerId`)
     if (id) setMyId(id)
     loadState()
-    const poll = setInterval(loadState, 30000)
+    // Poll as a fallback in case a realtime event is missed. Kept short so a
+    // player never sits on a stale waiting screen for long after others advance.
+    const poll = setInterval(loadState, 5000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
 
-    // Disable realtime in dev to prevent WebSocket remount loop
-    // const channel = supabase.channel(`cc-play-${code}`)
-    //   .on("postgres_changes", { event: "*", schema: "public", table: "cc_games", filter: `code=eq.${code}` }, loadState)
-    //   .on("postgres_changes", { event: "*", schema: "public", table: "cc_players", filter: `game_code=eq.${code}` }, loadState)
-    //   .on("postgres_changes", { event: "*", schema: "public", table: "cc_answers", filter: `game_code=eq.${code}` }, loadState)
-    //   .on("postgres_changes", { event: "*", schema: "public", table: "cc_votes", filter: `game_code=eq.${code}` }, loadState)
-    //   .on("presence", { event: "sync" }, () => setPresenceState({ ...channel.presenceState() }))
-    //   .subscribe(async status => {
-    //     if (status === "SUBSCRIBED" && myId) {
-    //       await channel.track({ playerId: myId, typing: false })
-    //     }
-    //   })
-    // channelRef.current = channel
-    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); /* supabase.removeChannel(channel) */ }
+    // Realtime so phase/round changes propagate to every client immediately.
+    // Deps are [code] only, so the channel is created once per game (no remount
+    // loop). Uses the localStorage id directly to avoid a stale myId closure.
+    const channel = supabase.channel(`cc-play-${code}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "cc_games", filter: `code=eq.${code}` }, loadState)
+      .on("postgres_changes", { event: "*", schema: "public", table: "cc_players", filter: `game_code=eq.${code}` }, loadState)
+      .on("postgres_changes", { event: "*", schema: "public", table: "cc_answers", filter: `game_code=eq.${code}` }, loadState)
+      .on("postgres_changes", { event: "*", schema: "public", table: "cc_votes", filter: `game_code=eq.${code}` }, loadState)
+      .on("presence", { event: "sync" }, () => setPresenceState({ ...channel.presenceState() }))
+      .subscribe(async status => {
+        if (status === "SUBSCRIBED" && id) {
+          await channel.track({ playerId: id, typing: false })
+        }
+      })
+    channelRef.current = channel
+    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
 

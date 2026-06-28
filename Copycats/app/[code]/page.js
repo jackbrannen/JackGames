@@ -143,10 +143,16 @@ export default function LobbyPage({ params }) {
 
   useEffect(() => {
     loadState()
-    const poll = setInterval(loadState, 30000)
+    // Short poll as a fallback; realtime handles the lobby->game redirect and
+    // live player list so no one is stranded in the lobby after the host starts.
+    const poll = setInterval(loadState, 5000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
-    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility) }
+    const channel = supabase.channel(`cc-lobby-${code}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "cc_games", filter: `code=eq.${code}` }, loadState)
+      .on("postgres_changes", { event: "*", schema: "public", table: "cc_players", filter: `game_code=eq.${code}` }, loadState)
+      .subscribe()
+    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
   useEffect(() => {

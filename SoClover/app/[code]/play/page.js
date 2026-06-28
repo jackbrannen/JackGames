@@ -663,6 +663,9 @@ export default function PlayPage({ params }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "soclover_games", filter: `code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "soclover_players", filter: `game_code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "soclover_boards", filter: `game_code=eq.${code}` }, loadState)
+      // Fast path: peers reload instantly on a broadcast nudge (skips the
+      // slower DB-replication path that postgres_changes rides on).
+      .on("broadcast", { event: "sync" }, () => loadState())
       .on("presence", { event: "sync" }, () => setPresenceState({ ...ch.presenceState() }))
       .subscribe(async status => {
         if (status === "SUBSCRIBED" && myPlayerId) {
@@ -709,13 +712,19 @@ export default function PlayPage({ params }) {
     setTimeout(() => { setSwapAnim(null); setHidingSlots(new Set()) }, 420)
   }
 
+  // Tell peers to reload immediately (fast broadcast path). Send only after the
+  // DB write has committed so peers don't read stale data.
+  function nudgeSync() {
+    channelRef.current?.send({ type: "broadcast", event: "sync" })
+  }
+
   // Persist a board patch from the client (the guesser's live placements /
   // rotation). Fire-and-forget, but on failure we log and resync so a dropped
   // write doesn't silently diverge from what other players see.
   function persistBoard(patch) {
     if (!currentBoard) return
     supabase.from("soclover_boards").update(patch).eq("id", currentBoard.id)
-      .then(({ error }) => { if (error) { console.error("[soclover] board write failed", error); loadState() } })
+      .then(({ error }) => { if (error) { console.error("[soclover] board write failed", error); loadState() } else nudgeSync() })
   }
 
   function handleDrop(x, y) {
@@ -870,6 +879,7 @@ export default function PlayPage({ params }) {
       setSubmitting(false)
       throw new Error(error.message) // Let FooterButton reset loading
     }
+    nudgeSync()
     await loadState()
     // Don't reset submitting - component will unmount when phase changes
   }
@@ -894,6 +904,7 @@ export default function PlayPage({ params }) {
         p_player_id: myPlayerId, p_guess: guessSlots,
       })
       if (error) throw new Error(error.message)
+      nudgeSync()
       setGuessResult(data)
       await loadState()
       // Don't reset loading - component will unmount or useEffect will reset it
@@ -908,6 +919,7 @@ export default function PlayPage({ params }) {
     if (!currentBoard) return
     const { error } = await supabase.rpc("soclover_start_attempt2", { p_code: code, p_board_id: currentBoard.id })
     if (error) throw new Error(error.message)
+    nudgeSync()
     await loadState()
   }
 
@@ -930,6 +942,7 @@ export default function PlayPage({ params }) {
       clearTimeout(timeoutId)
 
       if (error) throw new Error(error.message)
+      nudgeSync()
 
       // Optimistically update local state
       setGame(prev => ({

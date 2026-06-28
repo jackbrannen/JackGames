@@ -112,7 +112,7 @@ export default function LobbyPage({ params }) {
     supabase.from("game_instructions").select("body").eq("game_key", "exquisitecorpse").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     loadState()
-    const poll = setInterval(loadState, 30000)
+    const poll = setInterval(loadState, 5000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`exquisitecorpse-lobby-${code}`)

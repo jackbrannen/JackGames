@@ -172,7 +172,7 @@ export default function Play({ params }) {
 
   useEffect(() => {
     loadState()
-    const poll = setInterval(loadState, 30000)
+    const poll = setInterval(loadState, 5000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`gow-play-${code}`)

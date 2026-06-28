@@ -181,7 +181,7 @@ export default function Play({ params }) {
     supabase.from("game_instructions").select("body").eq("game_key", "avalon").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     refresh()
-    const t = setInterval(refresh, 30000)
+    const t = setInterval(refresh, 5000)
     function handleVisibility() { if (!document.hidden) refresh() }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`avalon-play-${code}`)

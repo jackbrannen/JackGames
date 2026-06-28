@@ -250,9 +250,16 @@ export default function LobbyPage({ params }) {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
             {players.map((p, i) => (
-              <div key={p.id} style={{ background: MID, padding: `${FONT_SIZE.small}px ${SPACE.md}px` }}>
-                <span style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold }}>{p.name}</span>
-                {p.id === myPlayerId && <span style={{ fontSize: FONT_SIZE.min, opacity: OPACITY.muted, marginLeft: 6 }}>you</span>}
+              <div key={p.id} style={{ background: MID, padding: `${FONT_SIZE.small}px ${SPACE.md}px`, display: "flex", alignItems: "center" }}>
+                <span style={{ flex: 1, fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold }}>
+                  {p.name}
+                  {p.id === myPlayerId && <span style={{ fontSize: FONT_SIZE.min, opacity: OPACITY.muted, marginLeft: 6 }}>you</span>}
+                </span>
+                {p.id !== myPlayerId && (
+                  <button onClick={async () => { if (window.confirm(`Remove ${p.name}?`)) { await supabase.from("alphajam_players").delete().eq("id", p.id); loadState() } }}
+                    aria-label={`Remove ${p.name}`}
+                    style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 18, fontWeight: 800, cursor: "pointer", padding: "2px 4px", lineHeight: 1 }}>✕</button>
+                )}
               </div>
             ))}
           </div>

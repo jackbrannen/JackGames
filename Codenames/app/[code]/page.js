@@ -453,6 +453,11 @@ export default function Lobby({ params }) {
                         </div>
                       )}
                     </div>
+                    {p.id !== myPlayerId && (
+                      <button onClick={async (e) => { e.stopPropagation(); if (window.confirm(`Remove ${p.name}?`)) { await supabase.from("codenames_players").delete().eq("id", p.id); loadState() } }}
+                        aria-label={`Remove ${p.name}`}
+                        style={{ background: "transparent", border: "none", color: "rgba(0,0,0,0.4)", fontSize: 16, fontWeight: 800, cursor: "pointer", padding: "2px 4px", lineHeight: 1, flexShrink: 0 }}>✕</button>
+                    )}
                   </div>
                 ))}
               </div>

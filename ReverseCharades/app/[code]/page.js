@@ -605,9 +605,14 @@ export default function Lobby({ params }) {
                   {tPlayers.map(p => (
                     <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
                       <div style={{ width: 7, height: 7, borderRadius: "50%", background: p.ready ? YELLOW : "rgba(255,255,255,0.25)", flexShrink: 0 }} />
-                      <span style={{ fontSize: 16, fontWeight: 700 }}>
+                      <span style={{ flex: 1, fontSize: 16, fontWeight: 700 }}>
                         {p.name}
                       </span>
+                      {me && p.id !== me.id && (
+                        <button onClick={async () => { if (window.confirm(`Remove ${p.name}?`)) { await supabase.from("reversecharades_players").delete().eq("id", p.id); loadState() } }}
+                          aria-label={`Remove ${p.name}`}
+                          style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 16, fontWeight: 800, cursor: "pointer", padding: "2px 4px", lineHeight: 1, flexShrink: 0 }}>✕</button>
+                      )}
                     </div>
                   ))}
                 </div>

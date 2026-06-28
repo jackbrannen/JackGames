@@ -349,6 +349,7 @@ export default function LobbyPage({ params }) {
           minPlayers={MIN_PLAYERS}
           notFound={gameExists === false}
           loading={gameExists === null}
+          onRemovePlayer={async (id) => { await supabase.from("ftw_players").delete().eq("id", id); loadState() }}
         />
       </div>
 

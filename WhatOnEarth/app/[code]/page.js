@@ -320,6 +320,7 @@ export default function LobbyPage({ params }) {
           colors={{ bg: BG, dark: DARK, mid: MID, wl: WL, yellow: YELLOW }}
           minPlayers={MIN_PLAYERS}
           loading={!gameExists}
+          onRemovePlayer={async (id) => { await supabase.from("woe_players").delete().eq("id", id); loadState() }}
         />
       </div>
 

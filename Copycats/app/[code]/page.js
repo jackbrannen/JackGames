@@ -281,6 +281,7 @@ export default function LobbyPage({ params }) {
           minPlayers={4}
           notFound={notFound}
           loading={!game}
+          onRemovePlayer={async (id) => { await supabase.from("cc_players").delete().eq("id", id); loadState() }}
         />
       </div>
 

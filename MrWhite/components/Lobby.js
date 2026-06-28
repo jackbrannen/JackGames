@@ -85,13 +85,22 @@ function SettingsModal({ isOpen, onClose, children, colors }) {
   )
 }
 
-function PlayerRow({ p, myPlayerId, mid }) {
+function PlayerRow({ p, myPlayerId, mid, onRemove }) {
   return (
     <div style={{ padding: "13px 16px", background: mid, display: "flex", alignItems: "center" }}>
-      <div style={{ fontSize: FONT_SIZE.sectionHeader, fontWeight: FONT_WEIGHT.bold }}>
+      <div style={{ flex: 1, fontSize: FONT_SIZE.sectionHeader, fontWeight: FONT_WEIGHT.bold }}>
         {p.name}
         {p.id === myPlayerId && <span style={{ fontSize: 12, opacity: OPACITY.muted, marginLeft: 6 }}>you</span>}
       </div>
+      {onRemove && p.id !== myPlayerId && (
+        <button
+          onClick={() => { if (typeof window !== "undefined" && window.confirm(`Remove ${p.name}?`)) onRemove(p.id) }}
+          aria-label={`Remove ${p.name}`}
+          style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 18, fontWeight: 800, cursor: "pointer", padding: "2px 4px", lineHeight: 1, flexShrink: 0 }}
+        >
+          ✕
+        </button>
+      )}
     </div>
   )
 }
@@ -113,6 +122,7 @@ export default function Lobby({
   minPlayers = 4,
   notFound = false,
   loading = false,
+  onRemovePlayer,
 }) {
   const { dark = "#333", mid = "#444", wl = "#555", yellow = "#FBDF54", bg } = colors
   const [showHowToPlay, setShowHowToPlay] = useState(false)
@@ -214,7 +224,7 @@ export default function Lobby({
           if (!hasTeams) {
             return (
               <div style={{ display: "flex", flexDirection: "column", gap: GAP.card }}>
-                {players.map(p => <PlayerRow key={p.id} p={p} myPlayerId={myPlayerId} mid={mid} />)}
+                {players.map(p => <PlayerRow key={p.id} p={p} myPlayerId={myPlayerId} mid={mid} onRemove={onRemovePlayer} />)}
               </div>
             )
           }
@@ -232,7 +242,7 @@ export default function Lobby({
                 {label}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: GAP.card }}>
-                {teamMap[label].players.map(p => <PlayerRow key={p.id} p={p} myPlayerId={myPlayerId} mid={mid} />)}
+                {teamMap[label].players.map(p => <PlayerRow key={p.id} p={p} myPlayerId={myPlayerId} mid={mid} onRemove={onRemovePlayer} />)}
               </div>
             </div>
           ))

@@ -95,3 +95,51 @@ BEGIN
   );
 END;
 $$;
+
+-- Fix rounds being skipped: advance only when ALL players are ready (was half),
+-- and make the round increment atomic so duplicate/concurrent triggers advance once.
+CREATE OR REPLACE FUNCTION cc_mark_ready(p_code text, p_player_id uuid)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+  v_ready int;
+  v_total int;
+BEGIN
+  UPDATE cc_games
+  SET ready_player_ids = array_append(COALESCE(ready_player_ids, '{}'), p_player_id)
+  WHERE code = p_code AND NOT (p_player_id = ANY(COALESCE(ready_player_ids, '{}')));
+
+  SELECT COALESCE(array_length(ready_player_ids, 1), 0),
+         (SELECT count(*) FROM cc_players WHERE game_code = p_code)
+  INTO v_ready, v_total
+  FROM cc_games WHERE code = p_code;
+
+  IF v_total > 0 AND v_ready >= v_total THEN
+    PERFORM cc_next_round(p_code);
+  END IF;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION cc_next_round(p_code text)
+RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+  v_round int;
+  v_total int;
+BEGIN
+  SELECT current_round INTO v_round FROM cc_games WHERE code = p_code;
+  SELECT count(*) INTO v_total FROM cc_players WHERE game_code = p_code;
+
+  IF v_round + 1 < v_total THEN
+    UPDATE cc_games
+    SET phase = 'answering', current_round = v_round + 1, ready_player_ids = '{}'
+    WHERE code = p_code AND current_round = v_round;
+  ELSE
+    UPDATE cc_games
+    SET phase = 'finished', ready_player_ids = '{}'
+    WHERE code = p_code AND current_round = v_round;
+  END IF;
+END;
+$$;
+
+-- cc_submit_vote: claim the voting->results transition atomically so the round's
+-- scoring runs exactly once (a double-clicked final vote was scoring twice).
+-- Full body applied via DB; see DB for the complete scoring logic.

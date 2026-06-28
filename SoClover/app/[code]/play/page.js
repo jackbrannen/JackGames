@@ -878,19 +878,23 @@ export default function PlayPage({ params }) {
     if (submittingGuess || !allGuessFilled || !currentBoard) return
     console.log('[SUBMIT GUESS] Calling RPC...')
     setSubmittingGuess(true)
-    const { data, error } = await supabase.rpc("soclover_submit_guess", {
-      p_code: code, p_board_id: currentBoard.id,
-      p_player_id: myPlayerId, p_guess: guessSlots,
-    })
-    console.log('[SUBMIT GUESS] RPC result:', { data, error })
-    if (error) {
+    try {
+      const { data, error } = await supabase.rpc("soclover_submit_guess", {
+        p_code: code, p_board_id: currentBoard.id,
+        p_player_id: myPlayerId, p_guess: guessSlots,
+      })
+      console.log('[SUBMIT GUESS] RPC result:', { data, error })
+      if (error) throw new Error(error.message)
+      setGuessResult(data)
+      console.log('[SUBMIT GUESS] Loading state...')
+      await loadState()
+      console.log('[SUBMIT GUESS] Done')
+      // Don't reset loading - component will unmount or useEffect will reset it
+    } catch (e) {
+      console.error('[SUBMIT GUESS] Error:', e)
       setSubmittingGuess(false)
-      throw new Error(error.message)
+      throw e
     }
-    setGuessResult(data)
-    console.log('[SUBMIT GUESS] Loading state...')
-    await loadState()
-    console.log('[SUBMIT GUESS] Done')
   }
 
   async function onContinueAttempt2() {

@@ -653,7 +653,10 @@ export default function PlayPage({ params }) {
     const pid = localStorage.getItem(`soclover:${code}:playerId`)
     if (pid) setMyPlayerId(pid)
     loadState()
-    const poll = setInterval(loadState, 30000)
+    // Poll as a fallback in case a realtime event is missed. Kept short so
+    // players recover from any dropped event within a few seconds rather than
+    // sitting out of sync for half a minute.
+    const poll = setInterval(loadState, 5000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const ch = supabase.channel(`soclover-play-${code}`)
@@ -903,7 +906,8 @@ export default function PlayPage({ params }) {
     const { error } = await supabase.rpc("soclover_start_attempt2", { p_code: code, p_board_id: currentBoard.id })
     console.log('[CONTINUE ATTEMPT 2] RPC result:', { error })
     if (error) throw new Error(error.message)
-    console.log('[CONTINUE ATTEMPT 2] Success, waiting for phase change...')
+    console.log('[CONTINUE ATTEMPT 2] Success, refreshing state...')
+    await loadState()
   }
 
   async function onReadyNextBoard() {

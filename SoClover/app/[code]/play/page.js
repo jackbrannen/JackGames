@@ -1044,9 +1044,9 @@ export default function PlayPage({ params }) {
 
     if (submitted) {
       return (
-        <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
+        <div style={{ height: "100dvh", overflow: "hidden", background: BG, display: "flex", flexDirection: "column" }}>
           <StatusBar dark={COOL_DARK} label="WRITING CLUES" />
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, gap: SPACE.md, color: WHITE }}>
+          <div style={{ flex: 1, minHeight: 0, overflow: "auto", WebkitOverflowScrolling: "touch", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: `24px 24px ${BOTTOM_PAD}`, gap: SPACE.md, color: WHITE }}>
             <div style={{ fontSize: 40 }}>⏳</div>
             <div style={{ fontSize: 22, fontWeight: 900 }}>
               {submittedCount} / {totalCount} ready
@@ -1078,10 +1078,10 @@ export default function PlayPage({ params }) {
 
     return (
       <>
-      <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
+      <div style={{ height: "100dvh", overflow: "hidden", background: BG, display: "flex", flexDirection: "column" }}>
         <StatusBar dark={COOL_DARK} label="ARRANGE YOUR BOARD" />
 
-        <div style={{ flex: 1, padding: `0 0 ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: GAP.result }}>
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto", WebkitOverflowScrolling: "touch", padding: `0 0 ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: GAP.result }}>
           <CloverBoard
             slots={localSlots}
             clues={localClues}
@@ -1160,12 +1160,12 @@ export default function PlayPage({ params }) {
 
       return (
         <>
-        <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
+        <div style={{ height: "100dvh", overflow: "hidden", background: BG, display: "flex", flexDirection: "column" }}>
           <StatusBar
             dark={COOL_DARK}
             label={`Round ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}'s board`}
           />
-          <div style={{ flex: 1, padding: `16px 16px ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+          <div style={{ flex: 1, minHeight: 0, overflow: "auto", WebkitOverflowScrolling: "touch", padding: `16px 16px ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: WHITE, textAlign: "center" }}>
               {amGuesser ? (
                 <>
@@ -1210,9 +1210,9 @@ export default function PlayPage({ params }) {
 
       return (
         <>
-        <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
+        <div style={{ height: "100dvh", overflow: "hidden", background: BG, display: "flex", flexDirection: "column" }}>
           <StatusBar dark={COOL_DARK} label={`Round ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}'s board`} />
-          <div style={{ flex: 1, padding: `16px 16px ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+          <div style={{ flex: 1, minHeight: 0, overflow: "auto", WebkitOverflowScrolling: "touch", padding: `16px 16px ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: 48, marginBottom: 4 }}>{perfect ? "🎉" : pts >= 3 ? "✨" : "💪"}</div>
               <div style={{ fontSize: 28, fontWeight: 900, color: ACCENT }}>{pts} point{pts !== 1 ? "s" : ""}</div>
@@ -1249,13 +1249,13 @@ export default function PlayPage({ params }) {
 
     return (
       <>
-      <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
+      <div style={{ height: "100dvh", overflow: "hidden", background: BG, display: "flex", flexDirection: "column" }}>
         <StatusBar
           dark={COOL_DARK}
           label={`Round ${boardNum} / ${totalBoards} — ${boardOwner?.name ?? ""}'s board`}
         />
 
-        <div style={{ flex: 1, padding: `12px 0 ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: GAP.result }}>
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto", WebkitOverflowScrolling: "touch", padding: `12px 0 ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: GAP.result }}>
           <div style={{ fontSize: 16, fontWeight: 700, color: WHITE, textAlign: "center" }}>
             {amGuesser ? (
               <>
@@ -1332,9 +1332,9 @@ export default function PlayPage({ params }) {
 
     return (
       <>
-      <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
+      <div style={{ height: "100dvh", overflow: "hidden", background: BG, display: "flex", flexDirection: "column" }}>
         <StatusBar dark={COOL_DARK} label="FINAL SCORE" />
-        <div style={{ flex: 1, padding: `24px 16px ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: GAP.section, width: "100%" }}>
+        <div style={{ flex: 1, minHeight: 0, overflow: "auto", WebkitOverflowScrolling: "touch", padding: `24px 16px ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: GAP.section, width: "100%" }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: 56, marginBottom: 8 }}>🍀</div>
             <div style={{ fontSize: 48, fontWeight: 900, color: ACCENT }}>{totalPts}</div>
@@ -1361,14 +1361,14 @@ export default function PlayPage({ params }) {
               })}
             </div>
           </div>
-        </div>
 
-          <div style={{ width: "100%", maxWidth: 360 }}>
+          <div style={{ width: "100%", maxWidth: 360, marginTop: 8 }}>
             <a href="https://games.jackbrannen.com"
               style={{ display: "block", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%", textAlign: "center", textDecoration: "none" }}>
               Play Another Game
             </a>
           </div>
+        </div>
       </div>
         {pokeSystemNode()}
       </>

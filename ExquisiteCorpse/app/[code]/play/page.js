@@ -602,10 +602,8 @@ export default function Play({ params }) {
       .from("ec_games").select("*").eq("code", code).single()
 
     if (!gameData) { router.replace(`/${code}`); return }
-    if (gameData.phase === "lobby") {
-      if (prevPhaseRef.current !== "finished") router.replace(`/${code}`)
-      return
-    }
+    // Reset to lobby ("Play Again") returns everyone to the lobby together.
+    if (gameData.phase === "lobby") { router.replace(`/${code}`); return }
     prevPhaseRef.current = gameData.phase
 
     const { data: playerData } = await supabase
@@ -641,12 +639,6 @@ export default function Play({ params }) {
 
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
-
-  useEffect(() => {
-    if (game?.phase !== "finished") return
-    const t = setTimeout(() => supabase.rpc("ec_reset_game", { p_code: code }), 30000)
-    return () => clearTimeout(t)
-  }, [game?.phase, code])
 
   // ── Derived state ─────────────────────────────────────────────────────────
 

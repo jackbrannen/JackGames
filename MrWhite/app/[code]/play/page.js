@@ -307,7 +307,6 @@ export default function Play({ params }) {
           <FooterButton
             onClick={async () => {
               await rpc("mw_reset_game", { p_code: code })
-              localStorage.removeItem(`mrwhite:${code}:playerId`)
               router.replace(`/${code}`)
             }}
             bg={YELLOW}

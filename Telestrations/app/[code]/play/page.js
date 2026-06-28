@@ -484,11 +484,8 @@ export default function Play({ params }) {
       .from("tel_games").select("phase,is_dummy,current_step,total_steps,reveal_order,current_reveal_chain,current_reveal_step,timer_seconds,step_started_at,next_game,next_game_picker_name").eq("code", code).single()
 
     if (!gameData) { router.replace(`/${code}`); return }
-    if (gameData.phase === "lobby") {
-      // Don't auto-redirect players who are viewing the finished screen
-      if (prevPhaseRef.current !== "finished") router.replace(`/${code}`)
-      return
-    }
+    // Reset to lobby ("Play Again") returns everyone to the lobby together.
+    if (gameData.phase === "lobby") { router.replace(`/${code}`); return }
     prevPhaseRef.current = gameData.phase
 
     const { data: playerData } = await supabase
@@ -528,13 +525,6 @@ export default function Play({ params }) {
 
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code, myPlayerId])
-
-  // Auto-reset after 30s on finished so late-joiners aren't stuck on the in-progress screen
-  useEffect(() => {
-    if (game?.phase !== "finished") return
-    const t = setTimeout(() => supabase.rpc("tel_reset_game", { p_code: code }), 30000)
-    return () => clearTimeout(t)
-  }, [game?.phase, code])
 
   // ── Derived state (must come before any useEffect that references these) ──
 
@@ -954,7 +944,6 @@ export default function Play({ params }) {
               onClick={async () => {
                 try {
                   await supabase.rpc("tel_reset_game", { p_code: code })
-                  localStorage.removeItem(`telestrations:${code}:playerId`)
                   router.push(`/${code}`)
                 } catch (e) {
                   console.error("Play again failed:", e)

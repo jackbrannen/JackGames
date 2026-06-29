@@ -241,31 +241,20 @@ export default function PlayPage({ params }) {
     soundTriggerRef.current = game?.phase
     if (!prev || !game) return
 
-    // Play sound when entering ready phase for primary player
+    // Play sound when entering ready phase for the current earthlings
     if (game.phase === "ready" && prev !== "ready") {
       const rotation = game.rotation || []
       const currentRound = game.current_round || 1
       const roundData = rotation[currentRound - 1]
-      if (roundData?.primary_id === myPlayerId) {
+      if ((roundData?.earthling_ids ?? []).includes(myPlayerId)) {
         playYourTurn()
       }
     }
 
-    // Play sound when entering playing phase for active earthling or aliens
+    // Play sound when entering playing phase (everyone is active: earthlings
+    // co-op, aliens guess)
     if (game.phase === "playing" && prev !== "playing") {
-      const rotation = game.rotation || []
-      const currentRound = game.current_round || 1
-      const currentAttempt = game.current_attempt || 1
-      const roundData = rotation[currentRound - 1]
-      const isPrimary = roundData?.primary_id === myPlayerId
-      const isBackup = roundData?.backup_id === myPlayerId
-      const isAlien = !isPrimary && !isBackup
-      const isActiveEarthling = (currentAttempt === 1 && isPrimary) || (currentAttempt === 2 && isBackup) || (currentAttempt === 3 && isPrimary)
-
-      // Play for active earthling or any alien
-      if (isActiveEarthling || isAlien) {
-        playYourTurn()
-      }
+      playYourTurn()
     }
   }, [game?.phase, game?.rotation, game?.current_round, game?.current_attempt, myPlayerId])
 
@@ -452,28 +441,14 @@ export default function PlayPage({ params }) {
   const currentRound = game.current_round || 1
   const currentAttempt = game.current_attempt || 1
   const currentRoundData = rotation[currentRound - 1] || {}
-  const primaryId = currentRoundData.primary_id
-  const backupId = currentRoundData.backup_id
+  const earthlingIds = currentRoundData.earthling_ids || []
 
-  const primary = players.find(p => p.id === primaryId)
-  const backup = players.find(p => p.id === backupId)
-  const aliens = players.filter(p => p.id !== primaryId && p.id !== backupId)
+  const earthlings = earthlingIds.map(id => players.find(p => p.id === id)).filter(Boolean)
+  const aliens = players.filter(p => !earthlingIds.includes(p.id))
 
-  const isPrimary = myPlayerId === primaryId
-  const isBackup = myPlayerId === backupId
-  const isAlien = !isPrimary && !isBackup
-
-  const activeEarthlingId = currentAttempt === 2 ? backupId : primaryId
-  const isActiveEarthling = myPlayerId === activeEarthlingId
-
-  // Previous round result
-  const prevRoundData = currentRound > 1 ? rotation[currentRound - 2] : null
-  let prevWord = null
-  let prevWinner = null
-  let prevEarthling = null
-  if (prevRoundData && game.phase === "ready") {
-    // Would need to track this in game state - for now skip
-  }
+  const isEarthling = earthlingIds.includes(myPlayerId)
+  const isAlien = !isEarthling
+  const isCooperative = !!game.cooperative
 
   // Ready screen
   if (game.phase === "ready") {
@@ -484,9 +459,9 @@ export default function PlayPage({ params }) {
 
     // Previous round data
     const previousWord = game.previous_word
-    const previousEarthlingId = game.previous_earthling_id
+    const previousEarthlingIds = game.previous_earthling_ids || []
     const previousAlienId = game.previous_alien_id
-    const previousEarthling = players.find(p => p.id === previousEarthlingId)
+    const previousEarthlings = previousEarthlingIds.map(id => players.find(p => p.id === id)).filter(Boolean)
     const previousAlien = players.find(p => p.id === previousAlienId)
 
     return (
@@ -547,8 +522,8 @@ export default function PlayPage({ params }) {
             {currentRound > 1 && previousWord && (
               <div style={{ textAlign: "center", marginBottom: SPACE.xxl, opacity: OPACITY.muted }}>
                 <div style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.medium, color: TEXT, marginBottom: SPACE.xs }}>
-                  {previousAlienId && previousEarthling && previousAlien
-                    ? `${previousEarthling.name} and ${previousAlien.name} got it!`
+                  {previousAlienId && previousEarthlings.length > 0 && previousAlien
+                    ? `${previousEarthlings.map(e => e.name).join(" & ")} + ${previousAlien.name} got it!`
                     : "No one got it!"}
                 </div>
                 <div style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.bold, color: TEXT }}>
@@ -560,17 +535,14 @@ export default function PlayPage({ params }) {
             {/* Role assignments */}
             <div style={{ background: MID, padding: SPACE.lg, marginBottom: SPACE.xxl }}>
               <div style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.black, textTransform: "uppercase", letterSpacing: "0.1em", color: TEXT, opacity: 0.4, marginBottom: SPACE.md }}>
-                Earthling
+                Earthlings
               </div>
-              <div style={{ fontSize: FONT_SIZE.large, fontWeight: FONT_WEIGHT.black, color: TEXT, marginBottom: SPACE.lg }}>
-                {primary?.name}
-              </div>
-
-              <div style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.black, textTransform: "uppercase", letterSpacing: "0.1em", color: TEXT, opacity: 0.4, marginBottom: SPACE.md }}>
-                Backup Earthling
-              </div>
-              <div style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold, color: TEXT, opacity: OPACITY.strong, marginBottom: SPACE.lg }}>
-                {backup?.name}
+              <div style={{ display: "flex", flexDirection: "column", gap: SPACE.xs, marginBottom: SPACE.lg }}>
+                {earthlings.map(e => (
+                  <div key={e.id} style={{ fontSize: FONT_SIZE.large, fontWeight: FONT_WEIGHT.black, color: TEXT }}>
+                    {e.name}
+                  </div>
+                ))}
               </div>
 
               <div style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.black, textTransform: "uppercase", letterSpacing: "0.1em", color: TEXT, opacity: 0.4, marginBottom: SPACE.md }}>
@@ -588,39 +560,46 @@ export default function PlayPage({ params }) {
             {/* Waiting message */}
             <div style={{ textAlign: "center", marginBottom: SPACE.xxl }}>
               <div style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold, color: YELLOW }}>
-                Waiting on {primary?.name} to hit Ready
+                Waiting on the earthlings to hit Ready
               </div>
             </div>
 
             {/* Scoreboard */}
             <div>
               <div style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.black, textTransform: "uppercase", letterSpacing: "0.1em", color: TEXT, opacity: 0.4, marginBottom: SPACE.md }}>
-                Scores
+                {isCooperative ? "Group Score" : "Scores"}
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: SPACE.xs }}>
-                {(() => {
-                  const sortedPlayers = players.sort((a, b) => b.score - a.score)
-                  const topScore = sortedPlayers[0]?.score ?? 0
-                  return sortedPlayers.map((p) => {
-                    const isLeader = p.score === topScore && topScore > 0
-                    return (
-                      <div key={p.id} style={{ display: "flex" }}>
-                        <div style={{ background: isLeader ? YELLOW : "rgba(255,255,255,0.15)", color: isLeader ? "#000" : "rgba(255,255,255,0.75)", fontSize: 20, fontWeight: 900, minWidth: 52, textAlign: "center", padding: "10px 0", flexShrink: 0 }}>
-                          {p.score}
+              {isCooperative ? (
+                <div style={{ background: MID, padding: "16px", textAlign: "center" }}>
+                  <span style={{ fontSize: 36, fontWeight: 900, color: YELLOW }}>{game.group_score ?? 0}</span>
+                  <span style={{ fontSize: 20, fontWeight: 700, color: TEXT, opacity: 0.6 }}> / {rotation.length * 3}</span>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: SPACE.xs }}>
+                  {(() => {
+                    const sortedPlayers = [...players].sort((a, b) => b.score - a.score)
+                    const topScore = sortedPlayers[0]?.score ?? 0
+                    return sortedPlayers.map((p) => {
+                      const isLeader = p.score === topScore && topScore > 0
+                      return (
+                        <div key={p.id} style={{ display: "flex" }}>
+                          <div style={{ background: isLeader ? YELLOW : "rgba(255,255,255,0.15)", color: isLeader ? "#000" : "rgba(255,255,255,0.75)", fontSize: 20, fontWeight: 900, minWidth: 52, textAlign: "center", padding: "10px 0", flexShrink: 0 }}>
+                            {p.score}
+                          </div>
+                          <div style={{ background: MID, padding: "10px 16px", flex: 1, display: "flex", alignItems: "center" }}>
+                            <span style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold, color: TEXT }}>{p.name}</span>
+                          </div>
                         </div>
-                        <div style={{ background: MID, padding: "10px 16px", flex: 1, display: "flex", alignItems: "center" }}>
-                          <span style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold, color: TEXT }}>{p.name}</span>
-                        </div>
-                      </div>
-                    )
-                  })
-                })()}
-              </div>
+                      )
+                    })
+                  })()}
+                </div>
+              )}
             </div>
           </div>
 
           <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
-            {isPrimary && (
+            {isEarthling && (
               <FooterButton key={`ready-${currentRound}`} onClick={handleReady} loading={readyLoading} bg={YELLOW}>
                 Ready
               </FooterButton>
@@ -703,7 +682,7 @@ export default function PlayPage({ params }) {
           {/* Status bar */}
           <div style={{ padding: "14px 20px", background: WL, flexShrink: 0 }}>
             <div style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.medium, color: TEXT }}>
-              Attempt {currentAttempt} of 3 — {currentAttempt === 2 ? backup?.name : primary?.name}
+              Attempt {currentAttempt} of 3 — {earthlings.map(e => e.name).join(" & ")}
             </div>
           </div>
 
@@ -736,14 +715,9 @@ export default function PlayPage({ params }) {
           )}
 
           {/* Role banner */}
-          {isActiveEarthling && (
+          {isEarthling && (
             <div style={{ background: YELLOW, color: "#000", textAlign: "center", padding: `${SPACE.md}px`, fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold }}>
               Your turn!
-            </div>
-          )}
-          {(isPrimary || isBackup) && !isActiveEarthling && (
-            <div style={{ background: "#8B4A4A", color: "#fff", textAlign: "center", padding: `${SPACE.md}px`, fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold }}>
-              Not your turn
             </div>
           )}
           {isAlien && (
@@ -759,7 +733,7 @@ export default function PlayPage({ params }) {
 
           <div style={{ padding: "40px 24px", textAlign: "center" }}>
             {/* Earthlings see the word */}
-            {(isPrimary || isBackup) && (
+            {isEarthling && (
               <div style={{ fontSize: 48, fontWeight: FONT_WEIGHT.black, color: TEXT, marginBottom: 40 }}>
                 {word}
               </div>
@@ -782,8 +756,8 @@ export default function PlayPage({ params }) {
             )}
           </div>
 
-          <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} height={isActiveEarthling ? 112 : 56}>
-            {isActiveEarthling ? (
+          <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} height={isEarthling ? 112 : 56}>
+            {isEarthling && (
               <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
                 <FooterButton key={`got-it-${game.current_round}-${game.current_attempt}`} onClick={handleGotIt} bg={YELLOW} textColor="#000">
                   Got it!
@@ -796,15 +770,6 @@ export default function PlayPage({ params }) {
                     Pause
                   </FooterButton>
                 </div>
-              </div>
-            ) : (
-              <div style={{ flex: 1, display: "flex" }}>
-                <FooterButton key={`pause-${game.current_round}-${game.current_attempt}`} onClick={handlePause} loading={pauseLoading} bg={WL} textColor="#fff">
-                  Pause
-                </FooterButton>
-                <FooterButton key={`got-it-${game.current_round}-${game.current_attempt}`} onClick={handleGotIt} bg={YELLOW} textColor="#000">
-                  Got it!
-                </FooterButton>
               </div>
             )}
           </Footer>
@@ -850,7 +815,7 @@ export default function PlayPage({ params }) {
                   </div>
                   <div style={{ marginBottom: 20 }}>
                     {[
-                      { name: (currentAttempt === 2 ? backup?.name : primary?.name), points: 4 - currentAttempt },
+                      ...earthlings.map(e => ({ name: e.name, points: 4 - currentAttempt })),
                       { name: aliens.find(a => a.id === selectedAlien)?.name, points: 4 - currentAttempt }
                     ].map((p, i) => (
                       <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "12px", background: WL, marginBottom: 8 }}>
@@ -976,12 +941,10 @@ export default function PlayPage({ params }) {
   if (game.phase === "intermediate") {
     const rotation = game.rotation || []
     const roundData = rotation[currentRound - 1]
-    const primary = players.find(p => p.id === roundData?.primary_id)
-    const backup = players.find(p => p.id === roundData?.backup_id)
-    const aliens = players.filter(p => p.id !== roundData?.primary_id && p.id !== roundData?.backup_id)
-
-    const earthling = currentAttempt === 2 ? backup : primary
-    const alienNames = aliens.map(a => a.name).join(", ")
+    const eIds = roundData?.earthling_ids || []
+    const roundEarthlings = eIds.map(id => players.find(p => p.id === id)).filter(Boolean)
+    const roundAliens = players.filter(p => !eIds.includes(p.id))
+    const alienNames = roundAliens.map(a => a.name).join(", ")
 
     return (
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
@@ -991,10 +954,10 @@ export default function PlayPage({ params }) {
           </div>
           <div style={{ marginBottom: SPACE.xxl * 1.5 }}>
             <div style={{ fontSize: FONT_SIZE.large * 2, fontWeight: FONT_WEIGHT.medium, color: TEXT, opacity: 0.75, marginBottom: SPACE.md }}>
-              Earthling giving clues:
+              Earthlings giving clues:
             </div>
             <div style={{ fontSize: FONT_SIZE.xxl * 2, fontWeight: FONT_WEIGHT.black, color: YELLOW }}>
-              {earthling?.name}
+              {roundEarthlings.map(e => e.name).join(" & ")}
             </div>
           </div>
           <div>
@@ -1013,6 +976,28 @@ export default function PlayPage({ params }) {
   // Results
   if (game.phase === "finished") {
     const sortedPlayers = [...players].sort((a, b) => b.score - a.score)
+
+    // Cooperative (3-player) games show a shared group total out of a perfect score.
+    if (isCooperative) {
+      const maxGroup = (game.rotation?.length ?? 0) * 3
+      return (
+        <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: TEXT, padding: "40px 24px", textAlign: "center" }}>
+          <div style={{ fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.black, marginBottom: SPACE.xl }}>
+            Translation Complete!
+          </div>
+          <div style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.black, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.4, marginBottom: SPACE.md }}>
+            Group Score
+          </div>
+          <div style={{ marginBottom: SPACE.xxl }}>
+            <span style={{ fontSize: 72, fontWeight: 900, color: YELLOW }}>{game.group_score ?? 0}</span>
+            <span style={{ fontSize: 32, fontWeight: 700, opacity: 0.6 }}> / {maxGroup}</span>
+          </div>
+          <button onClick={handleResetToLobby} style={{ background: YELLOW, color: "#000", fontSize: FONT_SIZE.large, fontWeight: 900, padding: "16px 32px", border: "none", cursor: "pointer" }}>
+            Play Again
+          </button>
+        </div>
+      )
+    }
 
     return (
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column", color: TEXT }}>

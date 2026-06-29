@@ -60,7 +60,6 @@ export default function Play({ params }) {
   const [nextRoundPressed, setNextRoundPressed] = useState(false)
   const [confirmElimination, setConfirmElimination] = useState(false)
   const [eliminating, setEliminating] = useState(false)
-  const [finishing, setFinishing] = useState(false)
   const [instructions, setInstructions] = useState("")
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -157,12 +156,18 @@ export default function Play({ params }) {
     return () => clearTimeout(t)
   }, [game?.phase, game?.reveal_at])
 
-  // When reveal is visible and Mr. White was caught, finish the game
+  // When reveal is visible and Mr. White was caught, finish the game.
+  // Retry until the server phase actually changes — a one-shot call can be
+  // lost to a transient error or the triggering client dropping, which would
+  // strand everyone on "Game ending…". The UPDATE is idempotent (guarded by
+  // phase = 'reveal'), so every client firing it repeatedly is safe.
   useEffect(() => {
-    if (!revealVisible || eliminatedWasMrWhite !== true || finishing) return
-    setFinishing(true)
-    supabase.rpc("mw_finish_game", { p_code: code })
-  }, [revealVisible, eliminatedWasMrWhite])
+    if (game?.phase !== "reveal" || !revealVisible || eliminatedWasMrWhite !== true) return
+    const fire = () => { supabase.rpc("mw_finish_game", { p_code: code }) }
+    fire()
+    const retry = setInterval(fire, 2000)
+    return () => clearInterval(retry)
+  }, [game?.phase, revealVisible, eliminatedWasMrWhite, code])
 
   // Reset ready state when phase changes
   useEffect(() => {

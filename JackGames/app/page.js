@@ -44,6 +44,23 @@ Round 3: more blanks
 If an alien guesses correctly, both the alien and the active Earthling score points. After all rounds, highest score wins.`,
   },
   {
+    name: "Decrypto",
+    description: "Clue your team to a secret code — without the other team cracking it.",
+    players: "4+ players",
+    url: "https://decrypto.jackbrannen.com",
+    bg: "#B7DAEE",
+    color: "#15314A",
+    instructions: `Two teams, each with four secret keywords numbered 1–4 that only your team can see.
+
+Each round, one teammate is the Encryptor. They get a secret 3-digit code (three different digits from 1–4) and give one clue for each digit, hinting at the keyword in that position.
+
+Both teams then guess the code. Your team has to decode it correctly — guess wrong and you take a Miscommunication. The other team tries to intercept it using every clue you've given so far — if they crack it, they take an Interception.
+
+(Round 1 can't be intercepted — there's no clue history yet.)
+
+Win by landing 2 Interceptions. Lose if you rack up 2 Miscommunications. If no one's decided after 8 rounds, the most Interceptions wins.`,
+  },
+  {
     name: "Exquisite Corpse",
     description: "Cooperative blind drawing game.",
     players: "4+ players",
@@ -335,7 +352,7 @@ export default function Home() {
     setLogsOpen(true)
     setLogsLoading(true)
     try {
-      const [fishbowl, gow, codenames, avalon, ftw, tel, ec, rc, soclover, copycats, drawful, mrwhite, alphajam, woe] = await Promise.all([
+      const [fishbowl, gow, codenames, avalon, ftw, tel, ec, rc, soclover, copycats, drawful, mrwhite, alphajam, woe, decrypto] = await Promise.all([
         supabase.from("players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("gow_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("codenames_players").select("first_name,last_name,game_code,created_at").limit(2000),
@@ -350,6 +367,7 @@ export default function Home() {
         supabase.from("mrwhite_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("alphajam_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("woe_players").select("first_name,last_name,game_code,created_at").limit(2000),
+        supabase.from("dc_players").select("first_name,last_name,game_code,created_at").eq("is_bot", false).limit(2000),
       ])
 
       // people[fullName][gameName] = { count, first, last }
@@ -382,6 +400,7 @@ export default function Home() {
       addRows(mrwhite.data, "Mr. White")
       addRows(alphajam.data, "Alpha Jam")
       addRows(woe.data, "What On Earth")
+      addRows(decrypto.data, "Decrypto")
 
       const toRows = entries => entries
         .map(([name, games]) => ({

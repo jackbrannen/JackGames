@@ -280,7 +280,7 @@ export default function Lobby({
                 ✕
               </button>
             </div>
-            <div style={{ fontSize: FONT_SIZE.small + 1, color: `rgba(255,255,255,${OPACITY.normal})`, lineHeight: 1.7, fontWeight: FONT_WEIGHT.regular }}>
+            <div style={{ fontSize: FONT_SIZE.small + 1, color: `rgba(255,255,255,${OPACITY.normal})`, lineHeight: 1.7, fontWeight: FONT_WEIGHT.regular, whiteSpace: "pre-wrap" }}>
               {howToPlayContent}
             </div>
           </div>

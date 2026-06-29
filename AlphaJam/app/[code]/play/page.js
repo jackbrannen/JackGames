@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import { BG, DARK, MID, WL, YELLOW, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, STYLE } from "../../../components/styles"
@@ -28,6 +28,12 @@ export default function PlayPage({ params }) {
   const [confirmingWin, setConfirmingWin] = useState(false)
 
   const me = players.find(p => p.id === myPlayerId)
+
+  // Offset between this device's clock and the database clock. The reveal is
+  // anchored to a server timestamp (reveal_at); without this, each phone counts
+  // down on its own (possibly skewed) clock and reveals seconds apart.
+  const clockOffsetRef = useRef(0)
+  const serverNow = () => Date.now() + clockOffsetRef.current
 
   async function loadState() {
     const { data: game } = await supabase
@@ -62,6 +68,24 @@ export default function PlayPage({ params }) {
     if (stored) setMyPlayerId(stored)
     else router.replace(`/${code}`)
   }, [code, router])
+
+  // Sync this device's clock to the database clock so all players reveal in
+  // unison. Re-sync periodically to handle drift.
+  useEffect(() => {
+    let cancelled = false
+    async function syncClock() {
+      const t0 = Date.now()
+      const { data, error } = await supabase.rpc("server_now")
+      const t1 = Date.now()
+      if (cancelled || error || data == null) return
+      // Estimate server time at t1 assuming symmetric round-trip latency.
+      const serverAtT1 = Number(data) + (t1 - t0) / 2
+      clockOffsetRef.current = serverAtT1 - t1
+    }
+    syncClock()
+    const id = setInterval(syncClock, 60000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [])
 
   // Return to the lobby when the game is reset to lobby ("Play Again"). Without
   // this the play page has no 'lobby' branch and players get stuck on a
@@ -115,7 +139,7 @@ export default function PlayPage({ params }) {
 
     function updateCountdown() {
       const revealTime = new Date(gameState.reveal_at).getTime()
-      const now = Date.now()
+      const now = serverNow()
       const remaining = Math.max(0, Math.round((revealTime - now) / 1000))
       setCountdownRemaining(remaining)
     }
@@ -304,7 +328,7 @@ export default function PlayPage({ params }) {
   // left a one-frame window where freshly generated letters rendered before the
   // countdown kicked in — the "new letters flash" bug.
   const revealMs = gameState?.reveal_at ? new Date(gameState.reveal_at).getTime() : null
-  const countdownActive = phase === "countdown" && revealMs !== null && Date.now() < revealMs
+  const countdownActive = phase === "countdown" && revealMs !== null && serverNow() < revealMs
   const showCountdown = countdownActive
   const showLetters = !countdownActive && (phase === "playing" || phase === "countdown")
 

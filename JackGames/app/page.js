@@ -33,15 +33,15 @@ The same clues rotate through all rounds, so by Round 3 everyone has heard them 
     url: "https://whatonearth.jackbrannen.com",
     bg: "#1A1F2E",
     color: "white",
-    instructions: `One player is the Earthling translator, one is the backup. Everyone else is an alien trying to guess the secret word or phrase.
+    instructions: `Each turn, two players team up as co-Earthlings trying to beam a secret word to everyone else. The rest are Aliens trying to guess it.
 
-The Earthling gets limited letters to communicate the word — but some are blanks. They have to get creative with how they spell and describe it using only those letters.
+The Earthlings share a translator card of scrambled letters plus a few blanks, and must spell the word using only those letters. A blank is a wildcard for any letter. Get creative with spacing and arrangement — you just can't use letters that aren't on the card.
 
-Round 1: full letters
-Round 2: some blanks
-Round 3: more blanks
+The Earthlings get three attempts at the same word, each one easier than the last: first 1 blank, then 2, then 4.
 
-If an alien guesses correctly, both the alien and the active Earthling score points. After all rounds, highest score wins.`,
+A correct guess scores 3 points on attempt 1, 2 on attempt 2, and 1 on attempt 3. Both Earthlings and the Alien who guessed all score those points. Everyone is an Earthling for two turns, and the highest score wins.
+
+With exactly 3 players the game is fully cooperative — chase one shared team score, aiming for a perfect 9.`,
   },
   {
     name: "Decrypto",

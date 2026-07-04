@@ -329,12 +329,12 @@ function GameCard({ game, onInfo }) {
         <div style={{ fontSize: 20, fontWeight: 900, lineHeight: 1.2, marginBottom: 6 }}>
           {game.name}
         </div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: game.color, opacity: 1, marginBottom: 6 }}>
+          {"⚡".repeat(game.intensity)}
+        </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 7 }}>
           <span style={{ fontSize: 11, fontWeight: 700, background: "rgba(0,0,0,0.15)", color: game.color, padding: "3px 7px", opacity: 0.65 }}>
             {game.players}
-          </span>
-          <span style={{ fontSize: 11, fontWeight: 700, background: "rgba(0,0,0,0.15)", color: game.color, padding: "3px 7px", opacity: 0.65 }}>
-            {"⚡".repeat(game.intensity)}
           </span>
           {game.types.map(t => (
             <span key={t} style={{ fontSize: 11, fontWeight: 700, background: "rgba(0,0,0,0.15)", color: game.color, padding: "3px 7px", opacity: 0.65 }}>

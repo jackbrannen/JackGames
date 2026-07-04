@@ -116,6 +116,30 @@ Good wins if 3 quests succeed — but evil gets one last chance: the Assassin ca
 Evil wins if 3 quests fail, 5 consecutive proposals are rejected, or the Assassin identifies Merlin.`,
   },
   {
+    name: "Word Birds",
+    description: "Shout a word using every card on the table",
+    players: "2+ players", minPlayers: 2, intensity: 2, types: ["Word games"],
+    url: "https://wordbirds.jackbrannen.com", bg: "#FEE471", color: "#221A12",
+    instructions: `Everyone plays at once. Each round shows 3-5 cards on the table: letters you must work into a single word, red letters that are forbidden, and sometimes a reverse-arrow (only red letters count, everything else is forbidden) or a voice/accent card (say your word in that voice).
+
+Race to be the first to shout a valid word using the required letters while avoiding the forbidden ones — the group judges validity, there's no typing or app-side checking.
+
+Whoever says an invalid word (or is the last player left when everyone else has gone) loses a point. Hit zero and you're eliminated, though you can keep watching. Last player with points left wins.`,
+  },
+  {
+    name: "Things in Rings",
+    description: "Deduce the Knower's secret rules for a 3-ring Venn diagram",
+    players: "3+ players", minPlayers: 3, intensity: 2, types: ["Word games"],
+    url: "https://thingsinrings.jackbrannen.com", bg: "#C0C9BC", color: "#2A303C",
+    instructions: `One player is the Knower and secretly writes a rule for each of three rings on a Venn diagram. Everyone else is a Finder, trying to figure out those rules by testing where words belong.
+
+Finders submit words into a shared pool, then take turns picking a word from their hand and guessing which zone of the diagram it belongs in — a single ring, an overlap, or entirely outside.
+
+The Knower taps where the word actually goes. Guess right and the word is set aside for good; guess wrong and you draw a replacement — either way, the turn passes to the next Finder.
+
+Tap any zone at any time to see what's already been placed there and gather clues. First Finder to empty their hand wins — though anyone who hasn't gone yet this round with exactly one word left gets a final chance to also finish and tie.`,
+  },
+  {
     name: "Codenames",
     description: "Two teams race to find their secret agents using one-word clues",
     players: "4+ players", minPlayers: 4, intensity: 3, types: ["Teams", "Word games"],
@@ -224,30 +248,6 @@ Each player says one statement about their word without saying it directly. Afte
 If they're right, Mr. White loses — unless they can guess what the real word was.
 
 If the group is wrong, Mr. White survives to another round. Last player standing wins.`,
-  },
-  {
-    name: "Things in Rings",
-    description: "Deduce the Knower's secret rules for a 3-ring Venn diagram",
-    players: "3+ players", minPlayers: 3, intensity: 2, types: ["Word games"],
-    url: "https://thingsinrings.jackbrannen.com", bg: "#C0C9BC", color: "#2A303C",
-    instructions: `One player is the Knower and secretly writes a rule for each of three rings on a Venn diagram. Everyone else is a Finder, trying to figure out those rules by testing where words belong.
-
-Finders submit words into a shared pool, then take turns picking a word from their hand and guessing which zone of the diagram it belongs in — a single ring, an overlap, or entirely outside.
-
-The Knower taps where the word actually goes. Guess right and the word is set aside for good; guess wrong and you draw a replacement — either way, the turn passes to the next Finder.
-
-Tap any zone at any time to see what's already been placed there and gather clues. First Finder to empty their hand wins — though anyone who hasn't gone yet this round with exactly one word left gets a final chance to also finish and tie.`,
-  },
-  {
-    name: "Word Birds",
-    description: "Shout a word using every card on the table",
-    players: "2+ players", minPlayers: 2, intensity: 2, types: ["Word games"],
-    url: "https://wordbirds.jackbrannen.com", bg: "#FEE471", color: "#221A12",
-    instructions: `Everyone plays at once. Each round shows 3-5 cards on the table: letters you must work into a single word, red letters that are forbidden, and sometimes a reverse-arrow (only red letters count, everything else is forbidden) or a voice/accent card (say your word in that voice).
-
-Race to be the first to shout a valid word using the required letters while avoiding the forbidden ones — the group judges validity, there's no typing or app-side checking.
-
-Whoever says an invalid word (or is the last player left when everyone else has gone) loses a point. Hit zero and you're eliminated, though you can keep watching. Last player with points left wins.`,
   },
 ]
 

@@ -225,6 +225,19 @@ If they're right, Mr. White loses — unless they can guess what the real word w
 
 If the group is wrong, Mr. White survives to another round. Last player standing wins.`,
   },
+  {
+    name: "Things in Rings",
+    description: "Deduce the Knower's secret rules for a 3-ring Venn diagram",
+    players: "3+ players", minPlayers: 3, intensity: 2, types: ["Word games", "Cooperative"],
+    url: "https://thingsinrings.jackbrannen.com", bg: "#C0C9BC", color: "#2A303C",
+    instructions: `One player is the Knower and secretly writes a rule for each of three rings on a Venn diagram. Everyone else is a Finder, trying to figure out those rules by testing where words belong.
+
+Finders submit words into a shared pool, then take turns picking a word from their hand and guessing which zone of the diagram it belongs in — a single ring, an overlap, or entirely outside.
+
+The Knower taps where the word actually goes. Guess right and the word is set aside for good; guess wrong and you draw a replacement — either way, the turn passes to the next Finder.
+
+Tap any zone at any time to see what's already been placed there and gather clues. First Finder to empty their hand wins — though anyone who hasn't gone yet this round with exactly one word left gets a final chance to also finish and tie.`,
+  },
 ]
 
 const EXTERNAL_GAMES = [

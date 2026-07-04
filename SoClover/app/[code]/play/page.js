@@ -430,6 +430,7 @@ export default function PlayPage({ params }) {
   const [guessPoolRotations, setGuessPoolRotations] = useState({})
   const [boardRotation, setBoardRotation] = useState(0)
   const channelRef = useRef(null)
+  const syncKeyRef = useRef(null)
   const typingTimerRef = useRef(null)
   const [presenceState, setPresenceState] = useState({})
 
@@ -507,12 +508,17 @@ export default function PlayPage({ params }) {
         supabase.from("soclover_boards").select("*").eq("game_code", code),
       ])
       if (!gameData) { router.push(`/${code}`); return }
+      if (gameData.replay_code) { router.push(`/${gameData.replay_code}`); return }
       if (gameData.phase === "lobby") { router.push(`/${code}`); return }
       // Removed noisy polling log
       setGame(gameData)
       setPlayers(playerData ?? [])
       setBoards(boardData ?? [])
       setLoading(false)
+      // Gossip: re-broadcast on a state change so peers that missed the realtime push catch up fast.
+      const key = `${gameData.phase}:${(boardData ?? []).map(b => `${b.id}${b.status}${b.attempt ?? ""}`).sort().join("|")}`
+      if (syncKeyRef.current !== null && syncKeyRef.current !== key) nudgeSync()
+      syncKeyRef.current = key
     } catch (err) {
       console.error('[LOAD STATE ERROR]', err)
       // Don't throw - allow component to continue functioning
@@ -868,6 +874,8 @@ export default function PlayPage({ params }) {
 
   async function onSubmitClues() {
     if (submitting) return
+    const validationError = validateClues()
+    if (validationError) { setClueError(validationError); return }
     setClueError("")
     setSubmitting(true)
     const { error } = await supabase.rpc("soclover_submit_clues", {
@@ -1375,7 +1383,18 @@ export default function PlayPage({ params }) {
             </div>
           </div>
 
-          <div style={{ width: "100%", maxWidth: 360, marginTop: 8 }}>
+          <div style={{ width: "100%", maxWidth: 360, marginTop: 8, display: "flex", flexDirection: "column", gap: 10 }}>
+            <button
+              onClick={async () => {
+                if (game.replay_code) { router.push(`/${game.replay_code}`); return }
+                const { data, error } = await supabase.rpc("soclover_create_replay", { p_code: code })
+                if (error) { alert(error.message); return }
+                nudgeSync()
+                router.push(`/${data}`)
+              }}
+              style={{ background: ACCENT, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%", border: "none", cursor: "pointer" }}>
+              Play Again
+            </button>
             <a href="https://games.jackbrannen.com"
               style={{ display: "block", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%", textAlign: "center", textDecoration: "none" }}>
               Play Another Game

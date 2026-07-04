@@ -123,6 +123,8 @@ export default function Play({ params }) {
   const animatingRef = useRef(false) // true during swipe animation — prevents stale loadState from clobbering prefetched clue
   const loadEpochRef = useRef(0)     // incremented on every loadState call; stale completions are discarded
   const soundTriggerRef = useRef(null)
+  const syncChRef = useRef(null)
+  const syncKeyRef = useRef(null)
 
   useEffect(() => {
     if (!game || !myPlayerId) return
@@ -149,12 +151,13 @@ export default function Play({ params }) {
     const { data: gameData } = await supabase
       .from("games")
       .select(
-        "code,phase,locked,round_index,rounds_total,turn_team,turn_player_id,turn_running,turn_started_at,turn_duration_seconds,turn_seconds_remaining,turn_index_team1,turn_index_team2,team1_score,team2_score,skip_mode,skip_limit,skip_penalty,turn_skips_used,turn_skipped_clue_ids,active_clue_id,turn_new_round_continuation,turn_paused,next_game"
+        "code,phase,locked,round_index,rounds_total,turn_team,turn_player_id,turn_running,turn_started_at,turn_duration_seconds,turn_seconds_remaining,turn_index_team1,turn_index_team2,team1_score,team2_score,skip_mode,skip_limit,skip_penalty,turn_skips_used,turn_skipped_clue_ids,active_clue_id,turn_new_round_continuation,turn_paused,next_game,replay_code"
       )
       .eq("code", code)
       .single()
 
     if (!gameData) return
+    if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
 
     const { data: playerData } = await supabase
       .from("players")
@@ -212,6 +215,10 @@ export default function Play({ params }) {
     // ── 3. Apply all state updates together (React batches into one render) ──
     setGame(gameData)
     setPlayers(playerData ?? [])
+    // Gossip: re-broadcast on a state change so a peer that missed the realtime push catches up fast.
+    const syncKey = `${gameData.phase}:${gameData.round ?? ""}:${gameData.current_player_id ?? ""}`
+    if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    syncKeyRef.current = syncKey
     setManualT1(String(gameData.team1_score ?? 0))
     setManualT2(String(gameData.team2_score ?? 0))
     setRoundsTotal(String(gameData.rounds_total ?? 3))
@@ -246,7 +253,9 @@ export default function Play({ params }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "games", filter: `code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `game_code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "clues", filter: `game_code=eq.${code}` }, loadState)
+      .on("broadcast", { event: "sync" }, loadState)
       .subscribe()
+    syncChRef.current = channel
     return () => { clearInterval(poll); clearInterval(ticker); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
@@ -394,8 +403,11 @@ export default function Play({ params }) {
 
   async function doPlayAgain() {
     setPlayAgainError(null)
-    await rpc("reset_game_for_replay", { p_code: code })
-    router.replace(`/${code}`)
+    if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
+    const { data, error } = await supabase.rpc("create_fishbowl_replay", { p_code: code })
+    if (error) { setPlayAgainError(error.message); return }
+    syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    router.replace(`/${data}`)
   }
 
   if (!game) {

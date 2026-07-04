@@ -131,7 +131,7 @@ export default function Home() {
   return (
     <HomeScreen
       title={<>Code<br />Names</>}
-      subtitle="Teams · Clues · Guessing"
+      subtitle="Two teams race to find their secret agents using one-word clues"
       onCreate={onCreateClick}
       isCreating={isCreating}
       joinCode={joinCode}

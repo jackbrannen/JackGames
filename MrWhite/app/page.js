@@ -97,7 +97,7 @@ export default function Home() {
   return (
     <HomeScreen
       title={<>Mr.<br />White</>}
-      subtitle="Deduce · Deceive · Discover"
+      subtitle="One player has a slightly different word—find the impostor"
       onCreate={onCreateClick}
       isCreating={isCreating}
       joinCode={joinCode}

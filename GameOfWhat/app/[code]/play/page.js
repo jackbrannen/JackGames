@@ -66,6 +66,8 @@ export default function Play({ params }) {
   const botIdsRef = useRef([])
   const botActionsRef = useRef(new Set())
   const soundTriggerRef = useRef(null)
+  const syncChRef = useRef(null)
+  const syncKeyRef = useRef(null)
   const [resultSnapshot, setResultSnapshot] = useState(null)
   const [resultsAcknowledged, setResultsAcknowledged] = useState(null)
   const lastFetchedResultsIdRef = useRef(null)
@@ -99,11 +101,12 @@ export default function Play({ params }) {
   async function loadState() {
     const { data: gameData } = await supabase
       .from("gow_games")
-      .select("code,phase,round_index,rounds_total,current_question_id,question_phase,used_prompts,next_game,next_game_picker_name,next_game_code,last_completed_question_id")
+      .select("code,phase,round_index,rounds_total,current_question_id,question_phase,used_prompts,next_game,next_game_picker_name,next_game_code,last_completed_question_id,replay_code")
       .eq("code", code)
       .single()
     if (!gameData) return
 
+    if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
     if (gameData.phase === "lobby") { router.replace(`/${code}`); return }
 
     const { data: playerData } = await supabase
@@ -115,6 +118,10 @@ export default function Play({ params }) {
     setGame(gameData)
     setPlayers(playerData ?? [])
     if (gameData.phase === "finished") setGameOverPlayers(p => p ?? playerData ?? [])
+    // Gossip: re-broadcast on a state change so a peer that missed the realtime push catches up fast.
+    const syncKey = `${gameData.phase}:${gameData.question_phase}:${gameData.round_index}`
+    if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    syncKeyRef.current = syncKey
 
     if (gameData.current_question_id) {
       const { data: qData } = await supabase
@@ -180,7 +187,9 @@ export default function Play({ params }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "gow_players", filter: `game_code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "gow_answers" }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "gow_votes" }, loadState)
+      .on("broadcast", { event: "sync" }, loadState)
       .subscribe()
+    syncChRef.current = channel
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
@@ -462,7 +471,11 @@ export default function Play({ params }) {
 
   // ── GAME OVER ──────────────────────────────────────────────
   async function resetGame() {
-    await rpc("gow_reset_game", { p_code: code })
+    if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
+    const { data, error } = await supabase.rpc("gow_create_replay", { p_code: code })
+    if (error) throw error
+    syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    router.replace(`/${data}`)
   }
 
   if (game.phase === "finished") {

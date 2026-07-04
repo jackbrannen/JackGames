@@ -76,20 +76,11 @@ export default function Home() {
     try {
       const { supabase } = await import("../lib/supabase")
       const code = await createGame()
-      const bots = [
-        { name: "Boy Bot", team: "boys", is_bot: true },
-        { name: "Girl 1", team: "girls", is_bot: true },
-        { name: "Girl 2", team: "girls", is_bot: true },
-      ]
-      await supabase.from("dc_players").insert(bots.map(b => ({ ...b, game_code: code })))
-      const { data: meData } = await supabase
-        .from("dc_players")
-        .insert({ game_code: code, name: "You", team: "boys", is_bot: false })
-        .select("id").single()
-      localStorage.setItem(`decrypto:${code}:playerId`, meData.id)
+      // A dummy game is just a normal game flagged is_dummy. The lobby then
+      // auto-joins known players (those with a saved profile) and the play page
+      // pre-fills the encryptor's clue fields with the code digits. No bots.
       await supabase.from("dc_games").update({ is_dummy: true }).eq("code", code)
-      await supabase.rpc("dc_start_game", { p_code: code })
-      router.push(`/${code}/play`)
+      router.push(`/${code}`)
     } catch (e) {
       setError(e?.message ?? "unknown error")
       setIsCreating(false)
@@ -104,7 +95,7 @@ export default function Home() {
   return (
     <HomeScreen
       title="Decrypto"
-      subtitle="Clue · Decode · Intercept"
+      subtitle="Clue your team to keywords without the other team cracking it"
       onCreate={onCreateClick}
       isCreating={isCreating}
       joinCode={joinCode}

@@ -81,8 +81,9 @@ export default function LobbyPage({ params }) {
 
   async function loadState() {
     const { data: gameData } = await supabase
-      .from("drawful_games").select("code,phase,is_dummy,host_id").eq("code", code).single()
+      .from("drawful_games").select("code,phase,is_dummy,host_id,replay_code,replay_of").eq("code", code).single()
     if (!gameData) { setNotFound(true); return }
+    if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
     const { data: playerData } = await supabase
       .from("drawful_players").select("id,name,is_bot,created_at")
       .eq("game_code", code).order("created_at", { ascending: true })
@@ -118,10 +119,15 @@ export default function LobbyPage({ params }) {
     if (game?.phase === "drawing" && me) router.replace(`/${code}/play`)
   }, [game?.phase, me])
 
+  const hasAutoResetRef = useRef(false)
   useEffect(() => {
-    if (game?.phase === "finished" && me) {
-      supabase.rpc("drawful_reset_game", { p_code: code })
-    }
+    if (game?.phase !== "finished" || !me || hasAutoResetRef.current) return
+    hasAutoResetRef.current = true
+    ;(async () => {
+      const { data, error } = await supabase.rpc("drawful_create_replay", { p_code: code })
+      if (error) { hasAutoResetRef.current = false; return }
+      router.replace(`/${data}`)
+    })()
   }, [game?.phase, me])
 
   const hasAutoJoinedRef = useRef(false)
@@ -142,6 +148,33 @@ export default function LobbyPage({ params }) {
       setMyPlayerId(data.id)
     })()
   }, [game?.phase, game?.is_dummy, myPlayerId, code])
+
+  // Auto-join returning players from a "Play Again" replay — only for browsers
+  // that held a playerId in the parent game, so this can't be used to skip
+  // the join form on an arbitrary shared link.
+  const hasReplayJoinedRef = useRef(false)
+  useEffect(() => {
+    if (!game?.replay_of || game.phase !== "lobby" || myPlayerId || hasReplayJoinedRef.current) return
+    const wasInParent = localStorage.getItem(`drawful:${game.replay_of}:playerId`)
+    if (!wasInParent) return
+    const saved = loadProfile()
+    if (!saved?.username) return
+    hasReplayJoinedRef.current = true
+    ;(async () => {
+      const { data: taken } = await supabase.from("drawful_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
+      if (taken?.length > 0) {
+        localStorage.setItem(`drawful:${code}:playerId`, taken[0].id)
+        setMyPlayerId(taken[0].id)
+        return
+      }
+      const { data, error } = await supabase.from("drawful_players")
+        .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName?.trim() ?? "", last_name: saved.lastName?.trim() ?? "", is_bot: false })
+        .select("id").single()
+      if (error || !data) { hasReplayJoinedRef.current = false; return }
+      localStorage.setItem(`drawful:${code}:playerId`, data.id)
+      setMyPlayerId(data.id)
+    })()
+  }, [game?.replay_of, game?.phase, myPlayerId, code])
 
   async function join() {
     const trimmedUsername = username.trim()

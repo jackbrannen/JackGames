@@ -33,6 +33,8 @@ export default function PlayPage({ params }) {
   // anchored to a server timestamp (reveal_at); without this, each phone counts
   // down on its own (possibly skewed) clock and reveals seconds apart.
   const clockOffsetRef = useRef(0)
+  const syncChRef = useRef(null)
+  const syncKeyRef = useRef(null)
   const serverNow = () => Date.now() + clockOffsetRef.current
 
   async function loadState() {
@@ -42,6 +44,7 @@ export default function PlayPage({ params }) {
       .eq("code", code)
       .single()
 
+    if (game?.replay_code) { router.replace(`/${game.replay_code}`); return }
     if (game) setGameState(game)
 
     const { data: playerData } = await supabase
@@ -51,6 +54,13 @@ export default function PlayPage({ params }) {
       .order("created_at", { ascending: true})
 
     if (playerData) setPlayers(playerData)
+    // Gossip: re-broadcast on a state change so a peer that missed the realtime push catches up fast.
+    // (Synchronized reveals still flip off reveal_at locally; this only speeds up how fast peers learn it.)
+    if (game) {
+      const syncKey = `${game.phase}:${game.current_round ?? ""}:${game.current_matchup_index ?? ""}:${game.winner_claim ?? ""}:${game.reveal_at ?? ""}`
+      if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+      syncKeyRef.current = syncKey
+    }
   }
 
   async function loadPokes() {
@@ -104,7 +114,9 @@ export default function PlayPage({ params }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "alphajam_games", filter: `code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "alphajam_players", filter: `game_code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "pokes", filter: `room_code=eq.${code}` }, loadPokes)
+      .on("broadcast", { event: "sync" }, loadState)
       .subscribe()
+    syncChRef.current = channel
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
@@ -532,6 +544,11 @@ export default function PlayPage({ params }) {
           <div style={{ fontSize: FONT_SIZE.heading, fontWeight: FONT_WEIGHT.black }}>
             {player1?.name} vs {player2?.name}
           </div>
+          {players.length === 2 && (
+            <div style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.bold, opacity: OPACITY.normal, marginTop: SPACE.sm }}>
+              Best of 5 — first to 3 wins
+            </div>
+          )}
         </div>
 
         <Footer
@@ -954,24 +971,32 @@ export default function PlayPage({ params }) {
               </div>
             ))}
           </div>
+
+          <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 10 }}>
+            <button
+              onClick={async () => {
+                if (gameState.replay_code) { router.replace(`/${gameState.replay_code}`); return }
+                const { data, error } = await supabase.rpc("aj_create_replay", { p_code: code })
+                if (error) { alert(error.message); return }
+                syncChRef.current?.send({ type: "broadcast", event: "sync" })
+                router.replace(`/${data}`)
+              }}
+              style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%", border: "none", cursor: "pointer" }}
+            >
+              Play Again
+            </button>
+            <a href="https://games.jackbrannen.com"
+              style={{ display: "block", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%", textAlign: "center", textDecoration: "none" }}>
+              Play Another Game
+            </a>
+          </div>
         </div>
 
         <Footer
           onToggle={() => setMenuOpen(!menuOpen)}
           isOpen={menuOpen}
           colors={{ dark: DARK, wl: WL }}
-        >
-          <FooterButton
-            onClick={() => {
-              localStorage.removeItem(`alphajam:${code}:playerId`)
-              router.replace("/")
-            }}
-            bg={YELLOW}
-            textColor="white"
-          >
-            New Game
-          </FooterButton>
-        </Footer>
+        />
       </div>
     )
   }

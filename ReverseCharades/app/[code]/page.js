@@ -225,11 +225,12 @@ export default function Lobby({ params }) {
   async function loadGame() {
     const { data, error } = await supabase
       .from("reversecharades_games")
-      .select("code,phase,host_id,turn_duration_seconds,skip_limit,skip_penalty,min_clues_per_player,max_clues_per_player,game_style,is_dummy")
+      .select("code,phase,host_id,turn_duration_seconds,skip_limit,skip_penalty,min_clues_per_player,max_clues_per_player,game_style,is_dummy,replay_of,replay_code")
       .eq("code", code)
       .single()
     console.log('[LOAD GAME]', { data, error })
     if (error || !data) { setGameExists(false); return }
+    if (data.replay_code) { router.replace(`/${data.replay_code}`); return }
     setGameExists(true)
     setGame(data)
   }
@@ -293,6 +294,41 @@ export default function Lobby({ params }) {
       await refreshMyClues(data.id)
     })()
   }, [game?.is_dummy, game?.phase, myPlayerId, code, game?.min_clues_per_player])
+
+  // Auto-join returning players from a "Play Again" replay — only for browsers
+  // that held a playerId in the parent game, so this can't be used to skip
+  // the join form on an arbitrary shared link.
+  const hasReplayJoinedRef = useRef(false)
+  useEffect(() => {
+    if (!game?.replay_of || game.phase !== "lobby" || myPlayerId || hasReplayJoinedRef.current) return
+    const wasInParent = localStorage.getItem(`rc:${game.replay_of}:playerId`)
+    if (!wasInParent) return
+    const saved = loadProfile()
+    if (!saved?.username) return
+    hasReplayJoinedRef.current = true
+    ;(async () => {
+      const { data: taken } = await supabase.from("reversecharades_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
+      if (taken?.length > 0) {
+        localStorage.setItem(`rc:${code}:playerId`, taken[0].id)
+        setMyPlayerId(taken[0].id)
+        return
+      }
+      const { data: currentPlayers } = await supabase
+        .from("reversecharades_players")
+        .select("id,team")
+        .eq("game_code", code)
+      const aCount = (currentPlayers || []).filter(p => p.team === "A").length
+      const bCount = (currentPlayers || []).filter(p => p.team === "B").length
+      const team = bCount < aCount ? "B" : "A"
+      const { data, error } = await supabase.from("reversecharades_players")
+        .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName?.trim() ?? "", last_name: saved.lastName?.trim() ?? "", team, ready: false })
+        .select("id").single()
+      if (error || !data) { hasReplayJoinedRef.current = false; return }
+      localStorage.setItem(`rc:${code}:playerId`, data.id)
+      setMyPlayerId(data.id)
+      refreshPlayers()
+    })()
+  }, [game?.replay_of, game?.phase, myPlayerId, code])
 
   useEffect(() => {
     async function loadState() {

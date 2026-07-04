@@ -40,7 +40,7 @@
       }
 */
 
-import { useRef } from "react"
+import { useRef, useEffect } from "react"
 import { FONT_SIZE, FONT_WEIGHT } from "./styles"
 
 export default function TextEntry({
@@ -60,6 +60,18 @@ export default function TextEntry({
   style,
 }) {
   const typingTimer = useRef(null)
+  const onTypingChangeRef = useRef(onTypingChange)
+  onTypingChangeRef.current = onTypingChange
+
+  // If the component unmounts (e.g. phase changes) while the 2s debounce is
+  // still pending, the "stopped typing" call never fires and the typing
+  // indicator sticks on for other players. Clear it on unmount too.
+  useEffect(() => {
+    return () => {
+      clearTimeout(typingTimer.current)
+      onTypingChangeRef.current?.(false)
+    }
+  }, [])
 
   function handleChange(e) {
     onChange?.(e.target.value)

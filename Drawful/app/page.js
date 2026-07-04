@@ -138,7 +138,7 @@ export default function Home() {
   return (
     <HomeScreen
       title="Drawful"
-      subtitle="Draw weird. Guess weirder."
+      subtitle="Guess prompts based on the drawing"
       onCreate={onCreateClick}
       isCreating={isCreating}
       joinCode={joinCode}

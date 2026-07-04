@@ -46,7 +46,7 @@ ul, ol {
 }
 
 ::placeholder {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(21, 49, 74, 0.4);
 }
 
 @keyframes nudgePulse {

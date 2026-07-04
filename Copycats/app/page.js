@@ -83,7 +83,7 @@ export default function Home() {
   return (
     <HomeScreen
       title="Copycats"
-      subtitle="Answer as another player."
+      subtitle="Answer questions as each other"
       onCreate={onCreateClick}
       isCreating={isCreating}
       joinCode={joinCode}

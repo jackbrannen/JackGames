@@ -125,7 +125,7 @@ export default function Home() {
   return (
     <HomeScreen
       title={<>First to<br />Worst</>}
-      subtitle="Rank · Guess · Score"
+      subtitle="Rank 5 things, then the group guesses your order"
       onCreate={onCreate}
       isCreating={creating}
       joinCode={joinCode}

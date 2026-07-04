@@ -81,7 +81,7 @@ export default function Home() {
   return (
     <HomeScreen
       title="Avalon"
-      subtitle="5–10 Players"
+      subtitle="Find the traitors before they sabotage the quests"
       onCreate={onCreate}
       isCreating={creating}
       joinCode={joinCode}

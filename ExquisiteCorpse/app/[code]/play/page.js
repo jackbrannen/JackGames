@@ -542,6 +542,8 @@ export default function Play({ params }) {
   const prevPhaseRef = useRef(null)
   const soundTriggerRef = useRef(null)
   const revealEndRef = useRef(null)
+  const syncChRef = useRef(null)
+  const syncKeyRef = useRef(null)
 
   const me = players.find(p => p.id === myPlayerId)
 
@@ -602,6 +604,7 @@ export default function Play({ params }) {
       .from("ec_games").select("*").eq("code", code).single()
 
     if (!gameData) { router.replace(`/${code}`); return }
+    if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
     // Reset to lobby ("Play Again") returns everyone to the lobby together.
     if (gameData.phase === "lobby") { router.replace(`/${code}`); return }
     prevPhaseRef.current = gameData.phase
@@ -617,6 +620,10 @@ export default function Play({ params }) {
     setGame(gameData)
     setPlayers(playerData ?? [])
     setDrawings(drawingData ?? [])
+    // Gossip: re-broadcast on a state change so a peer that missed the realtime push catches up fast.
+    const syncKey = `${gameData.phase}:${gameData.current_round ?? ""}`
+    if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    syncKeyRef.current = syncKey
   }
 
   useEffect(() => {
@@ -635,7 +642,9 @@ export default function Play({ params }) {
     const channel = supabase.channel(`ec-play-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "ec_games", filter: `code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "ec_drawings", filter: `game_code=eq.${code}` }, loadState)
+      .on("broadcast", { event: "sync" }, loadState)
       .subscribe()
+    syncChRef.current = channel
 
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
@@ -848,7 +857,13 @@ export default function Play({ params }) {
 
         {/* Play again / another game */}
         <div style={{ padding: "0 24px 48px", display: "flex", flexDirection: "column", gap: 10 }}>
-          <button onClick={async () => { await rpc("ec_reset_game", { p_code: code }); await loadState() }}
+          <button onClick={async () => {
+            if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
+            const { data, error } = await supabase.rpc("ec_create_replay", { p_code: code })
+            if (error) { alert(error.message); return }
+            syncChRef.current?.send({ type: "broadcast", event: "sync" })
+            router.replace(`/${data}`)
+          }}
             style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
             Play Again
           </button>

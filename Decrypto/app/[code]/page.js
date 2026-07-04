@@ -56,6 +56,7 @@ export default function Lobby({ params }) {
 
   const [gameExists, setGameExists] = useState(null)
   const [gamePhase, setGamePhase] = useState("lobby")
+  const [isDummy, setIsDummy] = useState(false)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
   const [savedProfile, setSavedProfile] = useState(null)
@@ -67,6 +68,9 @@ export default function Lobby({ params }) {
   const [showInstructions, setShowInstructions] = useState(false)
   const [starting, setStarting] = useState(false)
   const hasAutoJoinedRef = useRef(false)
+  const hasReplayJoinedRef = useRef(false)
+  const [replayOf, setReplayOf] = useState(null)
+  const channelRef = useRef(null)
 
   const me = players.find(p => p.id === myPlayerId)
   const boysTeam = players.filter(p => p.team === "boys")
@@ -79,10 +83,12 @@ export default function Lobby({ params }) {
     setPlayers(data ?? [])
   }
   async function loadGame() {
-    const { data, error } = await supabase.from("dc_games").select("code,phase").eq("code", code).single()
+    const { data, error } = await supabase.from("dc_games").select("code,phase,is_dummy,replay_of").eq("code", code).single()
     if (error || !data) { setGameExists(false); return }
     setGameExists(true)
     setGamePhase(data.phase || "lobby")
+    setIsDummy(!!data.is_dummy)
+    setReplayOf(data.replay_of ?? null)
   }
 
   useEffect(() => {
@@ -96,9 +102,10 @@ export default function Lobby({ params }) {
     loadGame().then(refreshPlayers)
   }, [code])
 
-  // Auto-join from saved profile, balancing teams
+  // Auto-join from saved profile, balancing teams — dummy games only.
+  // Real games require players to pick a team explicitly.
   useEffect(() => {
-    if (gameExists !== true || gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    if (!isDummy || gameExists !== true || gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
     const saved = loadProfile()
     if (!saved?.username) return
     hasAutoJoinedRef.current = true
@@ -114,7 +121,35 @@ export default function Lobby({ params }) {
       setMyPlayerId(data.id)
       refreshPlayers()
     })()
-  }, [gameExists, gamePhase, myPlayerId, players.length, code])
+  }, [isDummy, gameExists, gamePhase, myPlayerId, players.length, code])
+
+  // Auto-join returning players from a "Play Again" replay — only for browsers
+  // that held a playerId in the parent game, so this can't be used to skip
+  // the join form on an arbitrary shared link.
+  useEffect(() => {
+    if (!replayOf || gameExists !== true || gamePhase !== "lobby" || myPlayerId || hasReplayJoinedRef.current) return
+    const wasInParent = localStorage.getItem(`decrypto:${replayOf}:playerId`)
+    if (!wasInParent) return
+    const saved = loadProfile()
+    if (!saved?.username) return
+    hasReplayJoinedRef.current = true
+    ;(async () => {
+      const { data: taken } = await supabase.from("dc_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
+      if (taken?.length > 0) {
+        localStorage.setItem(`decrypto:${code}:playerId`, taken[0].id)
+        setMyPlayerId(taken[0].id)
+        return
+      }
+      const team = girlsTeam.length < boysTeam.length ? "girls" : "boys"
+      const { data, error } = await supabase.from("dc_players")
+        .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName?.trim() ?? "", last_name: saved.lastName?.trim() ?? "", team })
+        .select("id").single()
+      if (error || !data) { hasReplayJoinedRef.current = false; return }
+      localStorage.setItem(`decrypto:${code}:playerId`, data.id)
+      setMyPlayerId(data.id)
+      refreshPlayers()
+    })()
+  }, [replayOf, gameExists, gamePhase, myPlayerId, code])
 
   useEffect(() => {
     function loadState() { loadGame(); refreshPlayers() }
@@ -125,7 +160,9 @@ export default function Lobby({ params }) {
     const channel = supabase.channel(`decrypto-lobby-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "dc_players", filter: `game_code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "dc_games", filter: `code=eq.${code}` }, loadState)
+      .on("broadcast", { event: "sync" }, loadState)
       .subscribe()
+    channelRef.current = channel
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
@@ -159,9 +196,11 @@ export default function Lobby({ params }) {
 
   async function startGame() {
     if (starting) return
+    if (!window.confirm("Start the game for everyone?")) return
     setStarting(true)
     const { error } = await supabase.rpc("dc_start_game", { p_code: code })
     if (error) { alert("Start failed: " + error.message); setStarting(false); return }
+    channelRef.current?.send({ type: "broadcast", event: "sync" })
     router.push(`/${code}/play`)
   }
 
@@ -244,7 +283,7 @@ export default function Lobby({ params }) {
           <>
             <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.4, marginBottom: 14 }}>You</div>
             <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 16 }}>{me.name} <span style={{ fontSize: 14, opacity: 0.6 }}>· {me.team === "boys" ? "Boys" : "Girls"}</span></div>
-            <button onClick={switchTeam} style={{ background: "rgba(255,255,255,0.45)", color: INK, fontSize: 14, fontWeight: 800, padding: "12px 18px" }}>Switch Team</button>
+            <button onClick={switchTeam} style={{ background: "rgba(255,255,255,0.45)", color: INK, fontSize: 14, fontWeight: 800, padding: "12px 18px" }}>Switch Genders</button>
           </>
         )}
       </div>

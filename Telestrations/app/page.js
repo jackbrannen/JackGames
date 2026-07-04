@@ -141,7 +141,7 @@ export default function Home() {
   return (
     <HomeScreen
       title="Telestrations"
-      subtitle="Draw · Guess · Laugh"
+      subtitle="Write a sentence, draw it, then write a sentence, then a drawing…"
       onCreate={onCreateClick}
       isCreating={isCreating}
       joinCode={joinCode}

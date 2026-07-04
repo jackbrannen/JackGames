@@ -40,6 +40,7 @@ export default function PlayPage({ params }) {
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [showEndEarlyModal, setShowEndEarlyModal] = useState(false)
   const [showPauseModal, setShowPauseModal] = useState(false)
+  const [showNewWordModal, setShowNewWordModal] = useState(false)
 
   // Loading states
   const [readyLoading, setReadyLoading] = useState(false)
@@ -47,10 +48,13 @@ export default function PlayPage({ params }) {
   const [confirmLoading, setConfirmLoading] = useState(false)
   const [pauseLoading, setPauseLoading] = useState(false)
   const [resumeLoading, setResumeLoading] = useState(false)
+  const [newWordLoading, setNewWordLoading] = useState(false)
 
   // Timer state when modal opens
   const timerStateRef = useRef(null)
   const pauseCounterRef = useRef(0)
+  const syncChRef = useRef(null)
+  const syncKeyRef = useRef(null)
 
   const me = players.find(p => p.id === myPlayerId)
 
@@ -69,8 +73,13 @@ export default function PlayPage({ params }) {
       .single()
 
     if (gameData) {
+      if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
       if (gameData.phase === "lobby") { router.replace(`/${code}`); return }
       setGame(gameData)
+      // Gossip: re-broadcast on a state change so a peer that missed the realtime push catches up fast.
+      const syncKey = `${gameData.phase}:${gameData.round_number ?? ""}:${gameData.current_player_id ?? ""}`
+      if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+      syncKeyRef.current = syncKey
     }
 
     const { data: playerData } = await supabase
@@ -123,7 +132,9 @@ export default function PlayPage({ params }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "woe_games", filter: `code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "woe_players", filter: `game_code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "pokes", filter: `room_code=eq.${code}` }, loadPokes)
+      .on("broadcast", { event: "sync" }, loadState)
       .subscribe()
+    syncChRef.current = channel
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
@@ -144,16 +155,19 @@ export default function PlayPage({ params }) {
     setShowConfirmModal(false)
     setShowEndEarlyModal(false)
     setShowPauseModal(false)
+    setShowNewWordModal(false)
     setSelectedAlien(null)
   }, [game?.current_round, game?.current_attempt])
 
-  // Show pause modal when game is paused or someone is awarding points
+
+  // Show pause modal when game is paused or someone is awarding points.
+  // Suppressed for the earthling who opened the "new word" flow — they see that modal instead.
   useEffect(() => {
     const wasPaused = showPauseModal
     const isAwardingPoints = game?.awarding_points_by && game.awarding_points_by !== myPlayerId
 
     if (game?.paused || isAwardingPoints) {
-      setShowPauseModal(true)
+      if (!showNewWordModal) setShowPauseModal(true)
     } else {
       setShowPauseModal(false)
       setPauseLoading(false)
@@ -164,7 +178,7 @@ export default function PlayPage({ params }) {
         pauseCounterRef.current += 1
       }
     }
-  }, [game?.paused, game?.awarding_points_by, myPlayerId, showPauseModal])
+  }, [game?.paused, game?.awarding_points_by, myPlayerId, showPauseModal, showNewWordModal])
 
   // Countdown timer (ready -> playing)
   useEffect(() => {
@@ -408,6 +422,29 @@ export default function PlayPage({ params }) {
     }
   }
 
+  async function handleNewWord() {
+    // Show modal first so it's visible before the realtime pause update arrives
+    setShowNewWordModal(true)
+    await supabase.rpc("woe_pause_game", { p_code: code, p_player_id: myPlayerId })
+  }
+
+  async function handleCancelNewWord() {
+    setShowNewWordModal(false)
+    await supabase.rpc("woe_resume_game", { p_code: code })
+  }
+
+  async function handleConfirmNewWord() {
+    setNewWordLoading(true)
+    try {
+      const { error } = await supabase.rpc("woe_swap_word", { p_code: code })
+      if (error) throw error
+      setShowNewWordModal(false)
+    } catch (e) {
+      alert("Error swapping word: " + (e?.message ?? "unknown"))
+      setNewWordLoading(false)
+    }
+  }
+
   async function handleResume() {
     setResumeLoading(true)
     try {
@@ -426,6 +463,18 @@ export default function PlayPage({ params }) {
       if (error) throw error
     } catch (e) {
       alert("Error resetting: " + (e?.message ?? "unknown"))
+    }
+  }
+
+  async function playAgain() {
+    try {
+      if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
+      const { data, error } = await supabase.rpc("woe_create_replay", { p_code: code })
+      if (error) throw error
+      syncChRef.current?.send({ type: "broadcast", event: "sync" })
+      router.replace(`/${data}`)
+    } catch (e) {
+      alert("Error starting replay: " + (e?.message ?? "unknown"))
     }
   }
 
@@ -734,8 +783,18 @@ export default function PlayPage({ params }) {
           <div style={{ padding: "40px 24px", textAlign: "center" }}>
             {/* Earthlings see the word */}
             {isEarthling && (
-              <div style={{ fontSize: 48, fontWeight: FONT_WEIGHT.black, color: TEXT, marginBottom: 40 }}>
-                {word}
+              <div style={{ marginBottom: 40 }}>
+                <div style={{ fontSize: 48, fontWeight: FONT_WEIGHT.black, color: TEXT, marginBottom: 10 }}>
+                  {word}
+                </div>
+                {currentAttempt === 1 && !game.word_swap_used && (
+                  <button
+                    onClick={handleNewWord}
+                    style={{ background: MID, border: "none", color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 700, cursor: "pointer", padding: "8px 16px" }}
+                  >
+                    New word
+                  </button>
+                )}
               </div>
             )}
 
@@ -887,8 +946,38 @@ export default function PlayPage({ params }) {
           </div>
         )}
 
+        {/* New word modal */}
+        {showNewWordModal && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: "24px" }}>
+            <div style={{ background: MID, padding: "24px", maxWidth: 400, width: "100%" }}>
+              <div style={{ fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.black, color: TEXT, marginBottom: 12, textAlign: "center" }}>
+                Get a new word?
+              </div>
+              <div style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.medium, color: TEXT, opacity: 0.65, marginBottom: 24, textAlign: "center" }}>
+                You can only do this once per round, on the first attempt.
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={handleCancelNewWord}
+                  disabled={newWordLoading}
+                  style={{ flex: 1, background: WL, color: TEXT, fontSize: FONT_SIZE.large, fontWeight: FONT_WEIGHT.bold, padding: "16px", border: "none", cursor: newWordLoading ? "default" : "pointer", opacity: newWordLoading ? 0.5 : 1 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmNewWord}
+                  disabled={newWordLoading}
+                  style={{ flex: 1, background: YELLOW, color: "#000", fontSize: FONT_SIZE.large, fontWeight: FONT_WEIGHT.bold, padding: "16px", border: "none", cursor: newWordLoading ? "default" : "pointer", opacity: newWordLoading ? 0.5 : 1 }}
+                >
+                  {newWordLoading ? "Getting word..." : "Get new word"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Pause modal */}
-        {showPauseModal && (() => {
+        {showPauseModal && !showNewWordModal && (() => {
           const pausedPlayer = players.find(p => p.id === game.paused_by)
           const awardingPlayer = players.find(p => p.id === game.awarding_points_by)
           const isPauser = myPlayerId === game.paused_by
@@ -992,7 +1081,7 @@ export default function PlayPage({ params }) {
             <span style={{ fontSize: 72, fontWeight: 900, color: YELLOW }}>{game.group_score ?? 0}</span>
             <span style={{ fontSize: 32, fontWeight: 700, opacity: 0.6 }}> / {maxGroup}</span>
           </div>
-          <button onClick={handleResetToLobby} style={{ background: YELLOW, color: "#000", fontSize: FONT_SIZE.large, fontWeight: 900, padding: "16px 32px", border: "none", cursor: "pointer" }}>
+          <button onClick={playAgain} style={{ background: YELLOW, color: "#000", fontSize: FONT_SIZE.large, fontWeight: 900, padding: "16px 32px", border: "none", cursor: "pointer" }}>
             Play Again
           </button>
         </div>
@@ -1004,7 +1093,7 @@ export default function PlayPage({ params }) {
         <EndGame
           title="Translation Complete!"
           players={sortedPlayers}
-          onPlayAgain={handleResetToLobby}
+          onPlayAgain={playAgain}
           colors={{ bg: BG, dark: DARK, mid: MID, wl: WL, yellow: YELLOW, text: TEXT }}
           code={code}
         />

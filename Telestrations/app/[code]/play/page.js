@@ -450,6 +450,7 @@ export default function Play({ params }) {
 
   // Track previous phase so we don't auto-redirect when game resets after finishing
   const prevPhaseRef = useRef(null)
+  const syncKeyRef = useRef(null)
   const channelRef = useRef(null)
   const typingTimerRef = useRef(null)
   const [presenceState, setPresenceState] = useState({})
@@ -481,9 +482,10 @@ export default function Play({ params }) {
 
   async function loadState() {
     const { data: gameData } = await supabase
-      .from("tel_games").select("phase,is_dummy,current_step,total_steps,reveal_order,current_reveal_chain,current_reveal_step,timer_seconds,step_started_at,next_game,next_game_picker_name").eq("code", code).single()
+      .from("tel_games").select("phase,is_dummy,current_step,total_steps,reveal_order,current_reveal_chain,current_reveal_step,timer_seconds,step_started_at,next_game,next_game_picker_name,replay_code").eq("code", code).single()
 
     if (!gameData) { router.replace(`/${code}`); return }
+    if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
     // Reset to lobby ("Play Again") returns everyone to the lobby together.
     if (gameData.phase === "lobby") { router.replace(`/${code}`); return }
     prevPhaseRef.current = gameData.phase
@@ -499,6 +501,10 @@ export default function Play({ params }) {
     setGame(gameData)
     setPlayers(playerData ?? [])
     setSteps(stepData ?? [])
+    // Gossip: re-broadcast on a state change so a peer that missed the realtime push catches up fast.
+    const syncKey = `${gameData.phase}:${gameData.current_step ?? ""}:${gameData.current_reveal_chain ?? ""}:${gameData.current_reveal_step ?? ""}`
+    if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) channelRef.current?.send({ type: "broadcast", event: "sync" })
+    syncKeyRef.current = syncKey
   }
 
   useEffect(() => {
@@ -515,6 +521,7 @@ export default function Play({ params }) {
     const channel = supabase.channel(`tel-play-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "tel_games", filter: `code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "tel_steps", filter: `game_code=eq.${code}` }, loadState)
+      .on("broadcast", { event: "sync" }, loadState)
       .on("presence", { event: "sync" }, () => setPresenceState({ ...channel.presenceState() }))
       .subscribe(async status => {
         if (status === "SUBSCRIBED" && myPlayerId) {
@@ -943,8 +950,11 @@ export default function Play({ params }) {
             <button
               onClick={async () => {
                 try {
-                  await supabase.rpc("tel_reset_game", { p_code: code })
-                  router.push(`/${code}`)
+                  if (game.replay_code) { router.push(`/${game.replay_code}`); return }
+                  const { data, error } = await supabase.rpc("tel_create_replay", { p_code: code })
+                  if (error) throw error
+                  channelRef.current?.send({ type: "broadcast", event: "sync" })
+                  router.push(`/${data}`)
                 } catch (e) {
                   console.error("Play again failed:", e)
                 }

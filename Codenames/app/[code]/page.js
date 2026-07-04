@@ -117,10 +117,11 @@ export default function Lobby({ params }) {
   async function loadGame() {
     const { data, error } = await supabase
       .from("codenames_games")
-      .select("code,phase,first_turn_team,last_used_words")
+      .select("code,phase,first_turn_team,last_used_words,replay_code")
       .eq("code", code)
       .single()
     if (error || !data) { setGameExists(false); return }
+    if (data.replay_code) { router.replace(`/${data.replay_code}`); return }
     setGameExists(true)
     setGamePhase(data.phase || "lobby")
     setFirstTurnTeam(data.first_turn_team || "red")
@@ -171,9 +172,10 @@ export default function Lobby({ params }) {
       await refreshPlayers()
       const { data } = await supabase
         .from("codenames_games")
-        .select("phase,first_turn_team,last_used_words")
+        .select("phase,first_turn_team,last_used_words,replay_code")
         .eq("code", code)
         .single()
+      if (data?.replay_code) { router.replace(`/${data.replay_code}`); return }
       if (data) {
         setGamePhase(data.phase || "lobby")
         setFirstTurnTeam(data.first_turn_team || "red")

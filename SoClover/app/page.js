@@ -113,7 +113,7 @@ export default function Home() {
   return (
     <HomeScreen
       title={<>So<br />Clover</>}
-      subtitle="Keyword · Clues · Guessing"
+      subtitle="Arrange keyword cards, write clues, guess each other's boards"
       onCreate={onCreate}
       isCreating={creating}
       joinCode={joinCode}

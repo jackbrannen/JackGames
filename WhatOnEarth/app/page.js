@@ -100,7 +100,7 @@ function HomeContent() {
   return (
     <HomeScreen
       title={<>What On<br />Earth</>}
-      subtitle="Alien Translation Game"
+      subtitle="Translate words for aliens"
       onCreate={onCreateClick}
       isCreating={isCreating}
       joinCode={joinCode}

@@ -59,6 +59,7 @@ export default function LobbyPage({ params }) {
   const [gameExists, setGameExists] = useState(null)
   const [gamePhase, setGamePhase] = useState("lobby")
   const [isDummy, setIsDummy] = useState(false)
+  const [replayOf, setReplayOf] = useState(null)
   const [timerDuration, setTimerDuration] = useState(30)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
@@ -86,14 +87,16 @@ export default function LobbyPage({ params }) {
   async function loadGame() {
     const { data, error } = await supabase
       .from("woe_games")
-      .select("code,phase,is_dummy,turn_duration_seconds")
+      .select("code,phase,is_dummy,turn_duration_seconds,replay_of,replay_code")
       .eq("code", code)
       .single()
     if (error || !data) { setGameExists(false); return }
+    if (data.replay_code) { router.replace(`/${data.replay_code}`); return }
     setGameExists(true)
     setGamePhase(data.phase)
     setIsDummy(!!data.is_dummy)
     setTimerDuration(data.turn_duration_seconds)
+    setReplayOf(data.replay_of ?? null)
   }
 
   async function loadState() {
@@ -150,6 +153,33 @@ export default function LobbyPage({ params }) {
       setMyPlayerId(data.id)
     })()
   }, [isDummy, gamePhase, myPlayerId, code])
+
+  // Auto-join returning players from a "Play Again" replay — only for browsers
+  // that held a playerId in the parent game, so this can't be used to skip
+  // the join form on an arbitrary shared link.
+  const hasReplayJoinedRef = useRef(false)
+  useEffect(() => {
+    if (!replayOf || gamePhase !== "lobby" || myPlayerId || hasReplayJoinedRef.current) return
+    const wasInParent = localStorage.getItem(`whatonearth:${replayOf}:playerId`)
+    if (!wasInParent) return
+    const saved = loadProfile()
+    if (!saved?.username) return
+    hasReplayJoinedRef.current = true
+    ;(async () => {
+      const { data: taken } = await supabase.from("woe_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
+      if (taken?.length > 0) {
+        localStorage.setItem(`whatonearth:${code}:playerId`, taken[0].id)
+        setMyPlayerId(taken[0].id)
+        return
+      }
+      const { data, error } = await supabase.from("woe_players")
+        .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName?.trim() ?? "", last_name: saved.lastName?.trim() ?? "" })
+        .select("id").single()
+      if (error || !data) { hasReplayJoinedRef.current = false; return }
+      localStorage.setItem(`whatonearth:${code}:playerId`, data.id)
+      setMyPlayerId(data.id)
+    })()
+  }, [replayOf, gamePhase, myPlayerId, code])
 
   async function join() {
     const trimmed = name.trim()

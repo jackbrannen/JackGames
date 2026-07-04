@@ -164,7 +164,7 @@ export default function Home() {
   return (
     <HomeScreen
       title="Fishbowl"
-      subtitle="Teams · Turns · Clues"
+      subtitle="Teams guess clues from a bowl"
       onCreate={onCreateClick}
       isCreating={isCreating}
       joinCode={joinCode}

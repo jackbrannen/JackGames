@@ -9,7 +9,8 @@ import FooterButton from "../../components/FooterButton"
 import Menu from "../../components/Menu"
 
 const TEXT = "white"
-const MIN_PLAYERS = 3
+// 2 players → a single best-of-5 head-to-head (first to 3). 3+ → round-robin tournament.
+const MIN_PLAYERS = 2
 
 const WORDS_A = ["AMBER","CEDAR","CRIMSON","DAGGER","EMBER","FALCON","GLACIER","HARBOR","INDIGO","JASPER","KODIAK","LANTERN","MARBLE","NEBULA","ONYX","PHANTOM","QUARTZ","RAVEN","SILVER","TOPAZ"]
 
@@ -54,6 +55,7 @@ export default function LobbyPage({ params }) {
   const [gameExists, setGameExists] = useState(null)
   const [gamePhase, setGamePhase] = useState("lobby")
   const [isDummy, setIsDummy] = useState(false)
+  const [replayOf, setReplayOf] = useState(null)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
   const [savedProfile, setSavedProfile] = useState(null)
@@ -79,13 +81,15 @@ export default function LobbyPage({ params }) {
   async function loadGame() {
     const { data, error } = await supabase
       .from("alphajam_games")
-      .select("code,phase,is_dummy")
+      .select("code,phase,is_dummy,replay_of,replay_code")
       .eq("code", code)
       .single()
     if (error || !data) { setGameExists(false); return }
+    if (data.replay_code) { router.replace(`/${data.replay_code}`); return }
     setGameExists(true)
     setGamePhase(data.phase)
     setIsDummy(!!data.is_dummy)
+    setReplayOf(data.replay_of ?? null)
   }
 
   async function loadState() {
@@ -140,6 +144,33 @@ export default function LobbyPage({ params }) {
       setMyPlayerId(data.id)
     })()
   }, [isDummy, gamePhase, myPlayerId, code])
+
+  // Auto-join returning players from a "Play Again" replay — only for browsers
+  // that held a playerId in the parent game, so this can't be used to skip
+  // the join form on an arbitrary shared link.
+  const hasReplayJoinedRef = useRef(false)
+  useEffect(() => {
+    if (!replayOf || gamePhase !== "lobby" || myPlayerId || hasReplayJoinedRef.current) return
+    const wasInParent = localStorage.getItem(`alphajam:${replayOf}:playerId`)
+    if (!wasInParent) return
+    const saved = loadProfile()
+    if (!saved?.username) return
+    hasReplayJoinedRef.current = true
+    ;(async () => {
+      const { data: taken } = await supabase.from("alphajam_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
+      if (taken?.length > 0) {
+        localStorage.setItem(`alphajam:${code}:playerId`, taken[0].id)
+        setMyPlayerId(taken[0].id)
+        return
+      }
+      const { data, error } = await supabase.from("alphajam_players")
+        .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName?.trim() ?? "", last_name: saved.lastName?.trim() ?? "" })
+        .select("id").single()
+      if (error || !data) { hasReplayJoinedRef.current = false; return }
+      localStorage.setItem(`alphajam:${code}:playerId`, data.id)
+      setMyPlayerId(data.id)
+    })()
+  }, [replayOf, gamePhase, myPlayerId, code])
 
   async function join() {
     const trimmed = name.trim()

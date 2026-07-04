@@ -677,3 +677,33 @@ async function handleAdvance() {
 - Include the step/index/chain number in the key
 - Don't try to manually reset FooterButton's internal loading state
 - Let React's component lifecycle handle state reset naturally
+
+---
+
+## State-Advancing RPC Advances Prematurely (client `disabled` is the only guard)
+
+**Symptom:** A player "accidentally" advances a shared phase (e.g. locks in the group's guess, submits, ends a turn) when it should be impossible — most often right after a phase transition, or with an empty/incomplete board.
+
+**Cause (two compounding bugs):**
+1. **The RPC trusts the client.** The phase-advancing RPC just flips the phase (`UPDATE ... SET phase='next' WHERE phase='current'`) with **no server-side validation** that the preconditions are met (board full, all players submitted, etc.). The only thing preventing a premature advance is the button's client-side `disabled` prop.
+2. **The client guard flashes enabled across a transition.** The `disabled`/`allPlaced` flag is derived from **local** state (e.g. local `slots`) that carries **stale-full values for one render frame** when the phase changes, before the reset effect (`useEffect` on `boardKey`) clears it. Effects run after paint, so the button is briefly painted enabled. Since the footer button occupies the same screen position across phases, a lingering/double tap from the *previous* action lands on it and fires the RPC.
+
+**Example (Typecast, `tc_submit_guess`):** assign→guess flip left each player's local `slots` full from their just-submitted casting; for one frame "Lock in the group's guess" rendered enabled on an empty shared board; a double-tap advanced the round scoring 0. The RPC had no check that `pending` was filled.
+
+**Fix — always both layers:**
+1. **Server (authoritative):** validate preconditions inside the RPC before advancing. Read the state first, `RETURN` (no-op) if not ready:
+   ```sql
+   SELECT pending, ... INTO v_pending, ... FROM tc_games WHERE code=p_code AND phase='guess';
+   IF NOT FOUND THEN RETURN; END IF;
+   IF array_length(v_pending,1) IS DISTINCT FROM v_slots
+      OR EXISTS (SELECT 1 FROM unnest(v_pending) w WHERE w IS NULL OR w='') THEN
+     RETURN;  -- board not full: refuse to advance regardless of client
+   END IF;
+   UPDATE tc_games SET phase='reveal' WHERE code=p_code AND phase='guess';
+   ```
+2. **Client:** derive the guard from the **shared/DB truth** (exactly what the RPC will act on), not local optimistic state, so the button can't flash enabled across a transition. E.g. gate the guess button on `pendingFromDb` (the synced board) rather than local `slots`.
+
+**Prevention:**
+- Any RPC that advances a shared phase or scores must re-check its preconditions server-side. Client `disabled` is UX, never a security/consistency guarantee.
+- When a guard depends on state that resets on phase change, base it on the synced/DB value, or ensure the reset happens before the button can render enabled.
+- Audit other games' phase-advancing RPCs (`*_submit_*`, `*_next_*`, `*_advance_*`, `*_end_turn`) for the same missing server-side validation.

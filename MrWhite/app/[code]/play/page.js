@@ -65,6 +65,8 @@ export default function Play({ params }) {
 
   const prevPhaseRef = useRef(null)
   const soundTriggerRef = useRef(null)
+  const syncChRef = useRef(null)
+  const syncKeyRef = useRef(null)
 
   useEffect(() => {
     const stored = localStorage.getItem(`mrwhite:${code}:playerId`)
@@ -80,7 +82,7 @@ export default function Play({ params }) {
   async function loadState() {
     const { data: gameData } = await supabase
       .from("mrwhite_games")
-      .select("code,phase,eliminated_player_id,reveal_at,ready_player_ids,mr_white_wins,round_number,next_game,next_game_picker_name")
+      .select("code,phase,eliminated_player_id,reveal_at,ready_player_ids,mr_white_wins,round_number,next_game,next_game_picker_name,replay_code")
       .eq("code", code)
       .single()
 
@@ -91,8 +93,13 @@ export default function Play({ params }) {
       .order("created_at", { ascending: true })
 
     if (gameData) {
+      if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
       if (gameData.phase === "lobby") { router.replace(`/${code}`); return }
       setGame(gameData)
+      // Gossip: re-broadcast on a state change so a peer that missed the realtime push catches up fast.
+      const syncKey = `${gameData.phase}:${gameData.round_number ?? ""}:${gameData.eliminated_player_id ?? ""}`
+      if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+      syncKeyRef.current = syncKey
     }
     if (playerData) setPlayers(playerData.filter(p => !p.is_bot))
   }
@@ -107,7 +114,9 @@ export default function Play({ params }) {
     const channel = supabase.channel(`mw-play-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "mrwhite_games", filter: `code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "mrwhite_players", filter: `game_code=eq.${code}` }, loadState)
+      .on("broadcast", { event: "sync" }, loadState)
       .subscribe()
+    syncChRef.current = channel
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
@@ -311,8 +320,11 @@ export default function Play({ params }) {
         {renderUI(
           <FooterButton
             onClick={async () => {
-              await rpc("mw_reset_game", { p_code: code })
-              router.replace(`/${code}`)
+              if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
+              const { data, error } = await supabase.rpc("mw_create_replay", { p_code: code })
+              if (error) throw error
+              syncChRef.current?.send({ type: "broadcast", event: "sync" })
+              router.replace(`/${data}`)
             }}
             bg={YELLOW}
             textColor="#000"

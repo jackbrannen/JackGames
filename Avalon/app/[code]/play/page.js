@@ -153,6 +153,8 @@ export default function Play({ params }) {
   const [animReady, setAnimReady]       = useState(false)
   const [instructions, setInstructions] = useState("")
   const soundTriggerRef = useRef(null)
+  const syncChRef = useRef(null)
+  const syncKeyRef = useRef(null)
 
   useEffect(() => {
     if (!game || !myId) return
@@ -173,8 +175,15 @@ export default function Play({ params }) {
       supabase.from("avalon_games").select("*").eq("code", code).single(),
       supabase.from("avalon_players").select("*").eq("game_code", code).order("seat"),
     ])
+    if (g?.replay_code) { router.replace(`/${g.replay_code}`); return }
     if (g) setGame(g)
     if (p) setPlayers(p)
+    // Gossip: re-broadcast on a state change so a peer that missed the realtime push catches up fast.
+    if (g) {
+      const syncKey = `${g.phase}:${g.quest_number ?? ""}:${g.leader_id ?? ""}:${g.reject_count ?? ""}:${(g.proposed_ids ?? []).join(",")}:${(g.quest_results ?? []).join(",")}`
+      if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+      syncKeyRef.current = syncKey
+    }
   }
 
   useEffect(() => {
@@ -187,7 +196,9 @@ export default function Play({ params }) {
     const channel = supabase.channel(`avalon-play-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "avalon_games", filter: `code=eq.${code}` }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "avalon_players", filter: `game_code=eq.${code}` }, refresh)
+      .on("broadcast", { event: "sync" }, refresh)
       .subscribe()
+    syncChRef.current = channel
     return () => { clearInterval(t); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
@@ -268,15 +279,11 @@ export default function Play({ params }) {
       <FooterButton
         variant="secondary"
         onClick={async () => {
-          await supabase.from("avalon_games").update({
-            phase: "lobby", quest_results: [], winning_team: null,
-            proposed_ids: [], reject_count: 0, quest_number: 1,
-            leader_id: null, player_count: null, reveal_at: null,
-          }).eq("code", code)
-          await supabase.from("avalon_players").update({
-            role: null, team: null, seat: null, submitted_card: null, ready: false,
-          }).eq("game_code", code)
-          router.replace(`/${code}`)
+          if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
+          const { data, error } = await supabase.rpc("avalon_create_replay", { p_code: code })
+          if (error) { alert(error.message); throw error }
+          syncChRef.current?.send({ type: "broadcast", event: "sync" })
+          router.replace(`/${data}`)
         }}
       >
         Play Again

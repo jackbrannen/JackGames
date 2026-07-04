@@ -412,6 +412,8 @@ export default function Play({ params }) {
   const prevPhaseRef = useRef(null)
   const prevDrawingIndexRef = useRef(-1)
   const soundTriggerRef = useRef(null)
+  const syncChRef = useRef(null)
+  const syncKeyRef = useRef(null)
 
   const me = players.find(p => p.id === myPlayerId)
 
@@ -461,9 +463,10 @@ export default function Play({ params }) {
       console.log("loadState called for code:", code)
       console.log("About to query supabase, supabase is:", typeof supabase)
       const { data: gameData, error: gameError } = await supabase
-        .from("drawful_games").select("phase,drawing_started_at,current_drawing_index,is_dummy,ready_player_ids,next_game,next_game_picker_name").eq("code", code).single()
+        .from("drawful_games").select("phase,drawing_started_at,current_drawing_index,is_dummy,ready_player_ids,next_game,next_game_picker_name,replay_code").eq("code", code).single()
       console.log("loadState game:", { gameData, gameError })
       if (!gameData) { router.replace(`/${code}`); return }
+      if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
       if (gameData.phase === "lobby") { router.replace(`/${code}`); return }
       prevPhaseRef.current = gameData.phase
 
@@ -484,6 +487,10 @@ export default function Play({ params }) {
       setPlayers(playerData ?? [])
       setAnswers(answerData ?? [])
       setVotes(voteData ?? [])
+      // Gossip: re-broadcast on a state change so a peer that missed the realtime push catches up fast.
+      const syncKey = `${gameData.phase}:${gameData.current_drawing_index ?? ""}`
+      if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+      syncKeyRef.current = syncKey
     } catch (e) {
       console.error("loadState error:", e)
     }
@@ -519,7 +526,9 @@ export default function Play({ params }) {
         .on("postgres_changes", { event: "*", schema: "public", table: "drawful_games", filter: `code=eq.${code}` }, loadState)
         .on("postgres_changes", { event: "*", schema: "public", table: "drawful_answers", filter: `game_code=eq.${code}` }, loadState)
         .on("postgres_changes", { event: "*", schema: "public", table: "drawful_votes", filter: `game_code=eq.${code}` }, loadState)
+        .on("broadcast", { event: "sync" }, loadState)
         .subscribe()
+      syncChRef.current = channel
       cleanup = () => supabase.removeChannel(channel)
     })()
     return () => cleanup?.()
@@ -820,7 +829,11 @@ export default function Play({ params }) {
     const finalPlayers = [...players].sort((a, b) => b.score - a.score)
 
     const resetGame = async () => {
-      await rpc("drawful_reset_game", { p_code: code })
+      if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
+      const { data, error } = await supabase.rpc("drawful_create_replay", { p_code: code })
+      if (error) throw error
+      syncChRef.current?.send({ type: "broadcast", event: "sync" })
+      router.replace(`/${data}`)
     }
 
     const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`

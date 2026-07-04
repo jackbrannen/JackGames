@@ -130,6 +130,7 @@ export default function PlayPage({ params }) {
 
   const channelRef = useRef(null)
   const typingTimerRef = useRef(null)
+  const syncKeyRef = useRef(null)
   const [presenceState, setPresenceState] = useState({})
   const [bonusMatchName, setBonusMatchName] = useState(null)
 
@@ -151,6 +152,7 @@ export default function PlayPage({ params }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "cc_players", filter: `game_code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "cc_answers", filter: `game_code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "cc_votes", filter: `game_code=eq.${code}` }, loadState)
+      .on("broadcast", { event: "sync" }, loadState)
       .on("presence", { event: "sync" }, () => setPresenceState({ ...channel.presenceState() }))
       .subscribe(async status => {
         if (status === "SUBSCRIBED" && id) {
@@ -194,10 +196,15 @@ export default function PlayPage({ params }) {
       supabase.from("cc_votes").select("*").eq("game_code", code).order("created_at"),
     ])
     if (!g) { router.push(`/${code}`); return }
+    if (g.replay_code) { router.replace(`/${g.replay_code}`); return }
     if (g.phase === "lobby") { router.replace(`/${code}`); return }
     setGame(g)
     setPlayers(ps ?? [])
     setAnswers(an ?? [])
+    // Gossip: re-broadcast on a state change so a peer that missed the realtime push catches up fast.
+    const syncKey = `${g.phase}:${g.current_round ?? ""}`
+    if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) channelRef.current?.send({ type: "broadcast", event: "sync" })
+    syncKeyRef.current = syncKey
     setVotes(vs ?? [])
   }
 
@@ -859,7 +866,13 @@ export default function PlayPage({ params }) {
         <EndGame
           players={finalPlayers}
           myPlayerId={myId}
-          onPlayAgain={async () => { await rpc("cc_reset_to_lobby", { p_code: code }) }}
+          onPlayAgain={async () => {
+            if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
+            const { data, error } = await supabase.rpc("cc_create_replay", { p_code: code })
+            if (error) throw error
+            channelRef.current?.send({ type: "broadcast", event: "sync" })
+            router.replace(`/${data}`)
+          }}
           bottomPad={BOTTOM_PAD}
           colors={{ yellow: YELLOW, wl: MID }}
         />

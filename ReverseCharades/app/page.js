@@ -123,7 +123,7 @@ export default function Home() {
   return (
     <HomeScreen
       title={<>Reverse<br />Charades</>}
-      subtitle="Group acts · One guesses"
+      subtitle="The team gives clues, one person guesses"
       onCreate={onCreateClick}
       isCreating={creating}
       joinCode={joinCode}

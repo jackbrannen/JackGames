@@ -363,7 +363,7 @@ export default function Lobby({ params }) {
         const { data, error } = await supabase
           .from("games")
           .select(
-            "code,locked,phase,is_demo,rounds_total,turn_duration_seconds,skip_limit,skip_penalty,min_clues_per_player,max_clues_per_player,settings_editor_player_id,settings_lock_expires_at"
+            "code,locked,phase,is_demo,rounds_total,turn_duration_seconds,skip_limit,skip_penalty,min_clues_per_player,max_clues_per_player,settings_editor_player_id,settings_lock_expires_at,replay_code"
           )
           .eq("code", code)
           .single()
@@ -374,6 +374,8 @@ export default function Lobby({ params }) {
           setGameExists(false)
           return
         }
+
+        if (data.replay_code) { router.replace(`/${data.replay_code}`); return }
 
         setGameExists(true)
         setGameLocked(!!data.locked)

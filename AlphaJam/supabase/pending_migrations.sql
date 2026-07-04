@@ -57,6 +57,7 @@ DECLARE
   v_player_ids uuid[];
   v_player_count int;
   v_matchups jsonb := '[]'::jsonb;
+  v_rounds int;
   i int;
   j int;
 BEGIN
@@ -68,9 +69,13 @@ BEGIN
 
   v_player_count := array_length(v_player_ids, 1);
 
-  IF v_player_count < 3 THEN
-    RAISE EXCEPTION 'Need at least 3 players';
+  IF v_player_count < 2 THEN
+    RAISE EXCEPTION 'Need at least 2 players';
   END IF;
+
+  -- Two players: a single best-of-5 head-to-head, first to 3 wins.
+  -- (The "first to 3" early finish is handled by the clinch check in aj_mark_winner.)
+  v_rounds := CASE WHEN v_player_count = 2 THEN 5 ELSE p_rounds_per_matchup END;
 
   -- Generate round-robin matchups (each player vs every other player)
   FOR i IN 1..v_player_count LOOP
@@ -82,11 +87,15 @@ BEGIN
     END LOOP;
   END LOOP;
 
+  -- Start the audit log clean so per-matchup clinch counts are accurate
+  -- (also covers replaying a game on the same code).
+  DELETE FROM alphajam_matchup_results WHERE game_code = p_code;
+
   -- Update game to matchup_preview phase
   UPDATE alphajam_games
   SET
     phase = 'matchup_preview',
-    rounds_per_matchup = p_rounds_per_matchup,
+    rounds_per_matchup = v_rounds,
     current_matchup_index = 0,
     current_round = 1,
     matchup_pairs = v_matchups,
@@ -194,6 +203,7 @@ DECLARE
   v_phase_changed int;
   v_is_dummy boolean;
   v_countdown_seconds int;
+  v_player_wins int;
 BEGIN
   -- Atomically transition from 'countdown' or 'playing' to 'processing' to prevent double-clicks
   UPDATE alphajam_games
@@ -261,8 +271,18 @@ BEGIN
   SET score = score + 1
   WHERE id = p_player_id;
 
-  -- Check if matchup is complete
-  IF v_current_round >= v_rounds_per_matchup THEN
+  -- Count this player's wins in the current matchup. Results are cleared at the
+  -- start of each matchup-set (game start / tiebreaker start), so matchup_index
+  -- uniquely scopes the current matchup's rounds.
+  SELECT count(*) INTO v_player_wins
+  FROM alphajam_matchup_results
+  WHERE game_code = p_code AND matchup_index = v_matchup_index AND winner_id = p_player_id;
+
+  -- Matchup ends when a player clinches the majority of a best-of-N (e.g. 2 of 3,
+  -- 3 of 5) or when the scheduled rounds run out. Best-of-1 matchups (the normal
+  -- round-robin) clinch after the single round, exactly as before.
+  IF v_player_wins >= ceil(v_rounds_per_matchup::numeric / 2)::int
+     OR v_current_round >= v_rounds_per_matchup THEN
     -- Move to next matchup
     PERFORM aj_next_matchup(p_code);
   ELSE
@@ -377,6 +397,10 @@ BEGIN
     END LOOP;
   END LOOP;
 
+  -- Clear the audit log so tiebreaker matchups (which reuse matchup_index 0..)
+  -- don't collide with the just-finished tournament's results in the clinch count.
+  DELETE FROM alphajam_matchup_results WHERE game_code = p_code;
+
   -- Go to tiebreaker_preview to show explanation and scores
   UPDATE alphajam_games
   SET
@@ -476,6 +500,9 @@ BEGIN
   UPDATE alphajam_players
   SET score = 0
   WHERE game_code = p_code;
+
+  -- Clear the matchup audit log for a clean replay
+  DELETE FROM alphajam_matchup_results WHERE game_code = p_code;
 
   -- Reset game state to lobby
   UPDATE alphajam_games

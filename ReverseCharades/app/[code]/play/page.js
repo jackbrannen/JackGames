@@ -200,6 +200,8 @@ export default function Play({ params }) {
   const [instructions, setInstructions] = useState("")
   const endingRef = useRef(false)
   const soundTriggerRef = useRef(null)
+  const syncChRef = useRef(null)
+  const syncKeyRef = useRef(null)
 
   useEffect(() => {
     const existing = localStorage.getItem(`rc:${code}:playerId`)
@@ -214,10 +216,11 @@ export default function Play({ params }) {
   async function loadState() {
     const { data: gameData } = await supabase
       .from("reversecharades_games")
-      .select("code,phase,host_id,current_team,current_guesser_id,current_controller_id,current_clue_id,turn_started_at,turn_duration_seconds,skip_limit,skip_penalty,skips_this_turn,correct_this_turn,last_turn_correct,last_turn_skips,last_turn_team,team_a_score,team_b_score,team_a_turns,team_b_turns,next_game,next_game_picker_name,is_paused,paused_at,pause_elapsed_seconds")
+      .select("code,phase,host_id,current_team,current_guesser_id,current_controller_id,current_clue_id,turn_started_at,turn_duration_seconds,skip_limit,skip_penalty,skips_this_turn,correct_this_turn,last_turn_correct,last_turn_skips,last_turn_team,team_a_score,team_b_score,team_a_turns,team_b_turns,next_game,next_game_picker_name,is_paused,paused_at,pause_elapsed_seconds,replay_code")
       .eq("code", code)
       .single()
     if (!gameData) return
+    if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
 
     const { data: playerData } = await supabase
       .from("reversecharades_players")
@@ -249,6 +252,10 @@ export default function Play({ params }) {
     setPlayers(playerData ?? [])
     setCurrentClue(clueData)
     setPendingCount(count)
+    // Gossip: re-broadcast on a state change so a peer that missed the realtime push catches up fast.
+    const syncKey = `${gameData.phase}:${gameData.current_team ?? ""}:${gameData.current_clue_id ?? ""}:${gameData.correct_this_turn ?? ""}`
+    if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    syncKeyRef.current = syncKey
   }
 
   useEffect(() => {
@@ -273,7 +280,9 @@ export default function Play({ params }) {
     const channel = supabase.channel(`rc-play-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_games", filter: `code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_players" }, loadState)
+      .on("broadcast", { event: "sync" }, loadState)
       .subscribe()
+    syncChRef.current = channel
     return () => { clearInterval(poll); clearInterval(ticker); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
@@ -415,8 +424,11 @@ export default function Play({ params }) {
   }
 
   async function doResetGame() {
-    await supabase.rpc("rc_reset_game", { p_code: code })
-    router.replace(`/${code}`)
+    if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
+    const { data, error } = await supabase.rpc("rc_create_replay", { p_code: code })
+    if (error) { alert(error.message); return }
+    syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    router.replace(`/${data}`)
   }
 
 

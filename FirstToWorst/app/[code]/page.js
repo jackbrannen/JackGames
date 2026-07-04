@@ -62,6 +62,7 @@ export default function LobbyPage({ params }) {
   const [gameExists, setGameExists] = useState(null)
   const [gamePhase, setGamePhase] = useState("lobby")
   const [isDemo, setIsDemo] = useState(false)
+  const [replayOf, setReplayOf] = useState(null)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
   const [savedProfile, setSavedProfile] = useState(null)
@@ -89,13 +90,15 @@ export default function LobbyPage({ params }) {
   async function loadGame() {
     const { data, error } = await supabase
       .from("ftw_games")
-      .select("code,phase,is_demo")
+      .select("code,phase,is_demo,replay_of,replay_code")
       .eq("code", code)
       .single()
     if (error || !data) { setGameExists(false); return }
+    if (data.replay_code) { router.replace(`/${data.replay_code}`); return }
     setGameExists(true)
     setGamePhase(data.phase)
     setIsDemo(!!data.is_demo)
+    setReplayOf(data.replay_of ?? null)
   }
 
   async function loadState() {
@@ -148,6 +151,33 @@ export default function LobbyPage({ params }) {
   }, [gameExists, gamePhase, myPlayerId, code, isDemo])
 
   // Dummy games use normal auto-join (no special Player N logic)
+
+  // Auto-join returning players from a "Play Again" replay — only for browsers
+  // that held a playerId in the parent game, so this can't be used to skip
+  // the join form on an arbitrary shared link.
+  const hasReplayJoinedRef = useRef(false)
+  useEffect(() => {
+    if (!replayOf || !gameExists || gamePhase !== "lobby" || myPlayerId || hasReplayJoinedRef.current) return
+    const wasInParent = localStorage.getItem(`ftw:${replayOf}:playerId`)
+    if (!wasInParent) return
+    const saved = loadProfile()
+    if (!saved?.username) return
+    hasReplayJoinedRef.current = true
+    ;(async () => {
+      const { data: taken } = await supabase.from("ftw_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
+      if (taken?.length > 0) {
+        localStorage.setItem(`ftw:${code}:playerId`, taken[0].id)
+        setMyPlayerId(taken[0].id)
+        return
+      }
+      const { data, error } = await supabase.from("ftw_players")
+        .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName?.trim() ?? "", last_name: saved.lastName?.trim() ?? "" })
+        .select("id").single()
+      if (error || !data) { hasReplayJoinedRef.current = false; return }
+      localStorage.setItem(`ftw:${code}:playerId`, data.id)
+      setMyPlayerId(data.id)
+    })()
+  }, [replayOf, gameExists, gamePhase, myPlayerId, code])
 
   async function join() {
     const trimmed = name.trim()

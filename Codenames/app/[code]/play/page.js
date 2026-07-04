@@ -98,6 +98,8 @@ export default function Play({ params }) {
   const [showColors, setShowColors] = useState(true)
   const [instructions, setInstructions] = useState("")
   const loadEpochRef = useRef(0)
+  const syncChRef = useRef(null)
+  const syncKeyRef = useRef(null)
 
   // Reset loading states when turn changes
   useEffect(() => {
@@ -115,7 +117,7 @@ export default function Play({ params }) {
 
     const [{ data: gameData }, { data: playerData }, { data: cardData }] = await Promise.all([
       supabase.from("codenames_games")
-        .select("code,phase,turn_team,turn_phase,current_clue_word,current_clue_number,guesses_used,first_turn_team,winning_team,turn_selected_card_id,next_game,next_game_picker_name")
+        .select("code,phase,turn_team,turn_phase,current_clue_word,current_clue_number,guesses_used,first_turn_team,winning_team,turn_selected_card_id,next_game,next_game_picker_name,replay_code")
         .eq("code", code)
         .single(),
       supabase.from("codenames_players")
@@ -129,9 +131,16 @@ export default function Play({ params }) {
     ])
 
     if (epoch !== loadEpochRef.current) return
+    if (gameData?.replay_code) { router.replace(`/${gameData.replay_code}`); return }
     if (gameData) setGame(gameData)
     if (playerData) setPlayers(playerData)
     if (cardData) setCards(cardData)
+    // Gossip: re-broadcast on a state change so a peer that missed the realtime push catches up fast.
+    if (gameData) {
+      const syncKey = `${gameData.phase}:${gameData.turn_phase ?? ""}:${gameData.turn_team ?? ""}:${gameData.turn_selected_card_id ?? ""}`
+      if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+      syncKeyRef.current = syncKey
+    }
   }
 
   useEffect(() => {
@@ -153,7 +162,9 @@ export default function Play({ params }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "codenames_games", filter: `code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "codenames_players", filter: `game_code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "codenames_cards", filter: `game_code=eq.${code}` }, loadState)
+      .on("broadcast", { event: "sync" }, loadState)
       .subscribe()
+    syncChRef.current = channel
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
@@ -224,8 +235,11 @@ export default function Play({ params }) {
   }
 
   async function playAgain() {
-    await supabase.rpc("reset_codenames_game", { p_code: code })
-    router.replace(`/${code}`)
+    if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
+    const { data, error } = await supabase.rpc("create_codenames_replay", { p_code: code })
+    if (error) { alert(error.message); return }
+    syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    router.replace(`/${data}`)
   }
 
 

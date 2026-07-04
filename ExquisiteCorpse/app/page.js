@@ -130,7 +130,7 @@ export default function Home() {
   return (
     <HomeScreen
       title={<>Exquisite<br />Corpse</>}
-      subtitle="Collaborative drawing chains"
+      subtitle="Cooperative blind drawing game"
       onCreate={onCreateClick}
       isCreating={isCreating}
       joinCode={joinCode}

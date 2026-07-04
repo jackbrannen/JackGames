@@ -417,6 +417,8 @@ export default function Play({ params }) {
   const [instructions, setInstructions] = useState("")
 
   const ideasRef = useRef(null)
+  const syncChRef = useRef(null)
+  const syncKeyRef = useRef(null)
 
   useEffect(() => {
     const existing = localStorage.getItem(`ftw:${code}:playerId`)
@@ -449,6 +451,10 @@ export default function Play({ params }) {
     soundTriggerRef.current = game.phase
     if (!prev) return
     if (prev !== game.phase) playYourTurn()
+  }, [game?.phase])
+
+  useEffect(() => {
+    if (game?.phase !== "submitting") onTypingChange(false)
   }, [game?.phase])
 
   useEffect(() => {
@@ -506,6 +512,7 @@ export default function Play({ params }) {
       .single()
 
     if (!gameData) return
+    if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
     if (gameData.phase === "lobby") { router.replace(`/${code}`); return }
 
     // Cross-player button highlight via last_move DB column
@@ -533,6 +540,10 @@ export default function Play({ params }) {
     setGame(gameData)
     setPlayers(playerData ?? [])
     setAllWords(wordData ?? [])
+    // Gossip: re-broadcast on a state change so a peer that missed the realtime push catches up fast.
+    const syncKey = `${gameData.phase}:${gameData.round_phase ?? ""}:${gameData.current_round ?? ""}`
+    if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    syncKeyRef.current = syncKey
   }
 
   useEffect(() => {
@@ -543,7 +554,9 @@ export default function Play({ params }) {
     const channel = supabase.channel(`ftw-play-${code}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "ftw_games", filter: `code=eq.${code}` }, loadState)
       .on("postgres_changes", { event: "*", schema: "public", table: "ftw_players", filter: `game_code=eq.${code}` }, loadState)
+      .on("broadcast", { event: "sync" }, loadState)
       .subscribe()
+    syncChRef.current = channel
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
   }, [code])
 
@@ -1374,7 +1387,7 @@ export default function Play({ params }) {
 
           <Scoreboard right={right} wrong={wrong} />
 
-          <p style={{ fontSize: 16, fontWeight: 600, opacity: 0.65, marginBottom: 40, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 16, fontWeight: 600, opacity: 0.65, marginBottom: 32, lineHeight: 1.5 }}>
             {tie
               ? `Exactly even — ${right} right, ${wrong} wrong.`
               : groupWon
@@ -1382,8 +1395,32 @@ export default function Play({ params }) {
                 : `More wrong than right. The words had you stumped.`}
           </p>
 
+          <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 16 }}>
+            Everyone&rsquo;s words
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20, marginBottom: 40 }}>
+            {players.map(p => {
+              const words = allWords.filter(w => w.player_id === p.id).map(w => w.text)
+              if (!words.length) return null
+              return (
+                <div key={p.id}>
+                  <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>{p.name}</div>
+                  <div style={{ fontSize: 15, fontWeight: 600, opacity: 0.65, lineHeight: 1.5 }}>
+                    {words.join(", ")}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <button onClick={async () => { await supabase.rpc("ftw_new_game", { p_code: code }); await loadState() }}
+            <button onClick={async () => {
+              if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
+              const { data, error } = await supabase.rpc("ftw_create_replay", { p_code: code })
+              if (error) { alert(error.message); return }
+              syncChRef.current?.send({ type: "broadcast", event: "sync" })
+              router.replace(`/${data}`)
+            }}
               style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
               Play Again
             </button>

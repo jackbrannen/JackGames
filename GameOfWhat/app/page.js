@@ -82,7 +82,7 @@ export default function Home() {
   return (
     <HomeScreen
       title={<>The Game<br />of What</>}
-      subtitle="Questions · Answers · Votes"
+      subtitle="Like Quiplash but with DIY questions"
       onCreate={onCreateClick}
       isCreating={isCreating}
       joinCode={joinCode}

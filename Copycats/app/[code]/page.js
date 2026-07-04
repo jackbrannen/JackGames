@@ -89,11 +89,12 @@ export default function LobbyPage({ params }) {
   async function loadState() {
     const { data: gameData } = await supabase
       .from("cc_games")
-      .select("code,phase,current_round")
+      .select("code,phase,current_round,replay_code")
       .eq("code", code)
       .single()
 
     if (!gameData) { setNotFound(true); return }
+    if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
 
     const { data: playerData } = await supabase
       .from("cc_players")

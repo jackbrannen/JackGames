@@ -43,7 +43,7 @@ ALTER TABLE sp_answers REPLICA IDENTITY FULL;
 ALTER PUBLICATION supabase_realtime ADD TABLE sp_games, sp_players, sp_answers;
 
 -- RPCs (full bodies applied via MCP; see live DB):
---   sp_generate_round(code)                pick 3 prompts (prefer unused) + 3 letters (rarest 5 excluded), reset flags
+--   sp_generate_round(code)                pick 3 prompts (prefer unused) + 3 letters (weighted toward common word-initial letters; J/Q/X/Y/Z excluded), reset flags
 --   sp_start_game(code, rounds)            require >=3 players, clamp rounds 4-12, deal round 1
 --   sp_submit_answers(code, player, text[])  upsert a player's 3 answers; -> reveal when all in
 --   sp_toggle_match(code, index, value)    set match_flags[index] (reveal only)

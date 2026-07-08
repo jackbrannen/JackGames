@@ -14,7 +14,7 @@ const GAMES = [
   {
     name: "Fishbowl",
     description: "Teams guess clues from a bowl",
-    players: "4+ players", minPlayers: 4, intensity: 3, types: ["Teams"],
+    players: "4+ players", minPlayers: 4, tags: ["Energetic"], types: ["Teams"],
     url: "https://fishbowl.jackbrannen.com", bg: "#3378FF", color: "white",
     instructions: `Everyone splits into two teams. Before the game starts, each player secretly submits several clue words — people, places, things, phrases, anything goes. All the clues go into a shared "fishbowl."
 
@@ -29,7 +29,7 @@ The same clues rotate through all rounds, so by Round 3 everyone has heard them 
   {
     name: "What On Earth",
     description: "Translate words for aliens",
-    players: "3+ players", minPlayers: 3, intensity: 2, types: ["Word games", "Cooperative"],
+    players: "3+ players", minPlayers: 3, tags: [], types: ["Word games", "Cooperative"],
     url: "https://whatonearth.jackbrannen.com", bg: "#1A1F2E", color: "white",
     instructions: `Each turn, two players team up as co-Earthlings trying to beam a secret word to everyone else. The rest are Aliens trying to guess it.
 
@@ -44,7 +44,7 @@ With exactly 3 players the game is fully cooperative — chase one shared team s
   {
     name: "Decrypto",
     description: "Clue your team to keywords without the other team cracking it",
-    players: "4+ players", minPlayers: 4, intensity: 3, types: ["Teams", "Word games"],
+    players: "4+ players", minPlayers: 4, tags: ["Longer"], types: ["Teams", "Word games"],
     url: "https://decrypto.jackbrannen.com", bg: "#B7DAEE", color: "#15314A",
     instructions: `Two teams, each with four secret keywords numbered 1–4 that only your team can see.
 
@@ -59,7 +59,7 @@ Win by landing 2 Interceptions. Lose if you rack up 2 Miscommunications. If no o
   {
     name: "Exquisite Corpse",
     description: "Cooperative blind drawing game",
-    players: "4+ players", minPlayers: 4, intensity: 1, types: ["Drawing", "Cooperative"],
+    players: "4+ players", minPlayers: 4, tags: ["Chill"], types: ["Drawing", "Cooperative"],
     url: "https://exquisitecorpse.jackbrannen.com", bg: "#1A3A5C", color: "white",
     instructions: `A collaborative drawing chain. Each player starts a drawing, then folds their paper (digitally) to hide most of it — leaving only a small strip visible at the fold line as a hint for the next person.
 
@@ -70,7 +70,7 @@ At the end, the full exquisite corpse — assembled from everyone's individual d
   {
     name: "Drawful",
     description: "Guess prompts based on the drawing",
-    players: "4+ players", minPlayers: 4, intensity: 1, types: ["Drawing", "Voting/Judging"],
+    players: "4+ players", minPlayers: 4, tags: [], types: ["Drawing", "Voting/Judging"],
     url: "https://drawful.jackbrannen.com", bg: "#307977", color: "white",
     instructions: `Each player gets a secret prompt and draws it on their phone. No labels allowed.
 
@@ -81,7 +81,7 @@ You score points by voting for the real prompt, or by writing a fake that fools 
   {
     name: "First to Worst",
     description: "Rank 5 things, then the group guesses your order",
-    players: "4+ players", minPlayers: 4, intensity: 2, types: ["Word games", "Voting/Judging", "Cooperative"],
+    players: "4+ players", minPlayers: 4, tags: ["Chill"], types: ["Word games", "Voting/Judging", "Cooperative"],
     url: "https://firsttoworst.jackbrannen.com", bg: "#004F45", color: "white",
     instructions: `A ranking game. Each player picks a theme (or it's random) and submits 5 words that fit the theme. Your words go to another player, who ranks them from first to worst.
 
@@ -92,7 +92,7 @@ After the group locks in their guess, the real ranking is revealed. Everyone sco
   {
     name: "So Clover",
     description: "Arrange keyword cards, write clues, guess each other's boards",
-    players: "2+ players", minPlayers: 2, intensity: 2, types: ["Word games", "Cooperative"],
+    players: "2+ players", minPlayers: 2, tags: [], types: ["Word games", "Cooperative"],
     url: "https://soclover.jackbrannen.com", bg: "#6B8C2A", color: "white",
     instructions: `A cooperative word game. Each player gets a board with 4 keyword cards. Where two words from a card touch an edge, you write a single clue word that connects both keywords.
 
@@ -103,7 +103,7 @@ Points are earned for correct placements. Perfect guesses earn a bonus point. Ev
   {
     name: "Avalon",
     description: "Find the traitors before they sabotage the quests",
-    players: "5–10 players", minPlayers: 5, intensity: 3, types: ["Hidden roles", "Teams"],
+    players: "5–10 players", minPlayers: 5, tags: ["Longer"], types: ["Hidden roles", "Teams"],
     url: "https://avalon.jackbrannen.com", bg: "#C9A84C", color: "#2A1800",
     instructions: `A social deduction game of good vs. evil. Each player is secretly assigned a role — either a Loyal Servant (good) or a Minion of Mordred (evil). Evil players know each other. Merlin knows who is evil but must stay hidden.
 
@@ -118,7 +118,7 @@ Evil wins if 3 quests fail, 5 consecutive proposals are rejected, or the Assassi
   {
     name: "Word Birds",
     description: "Shout a word using every card on the table",
-    players: "2+ players", minPlayers: 2, intensity: 2, types: ["Word games"],
+    players: "2+ players", minPlayers: 2, tags: ["Energetic"], types: ["Word games"],
     url: "https://wordbirds.jackbrannen.com", bg: "#FEE471", color: "#221A12",
     instructions: `Everyone plays at once. Each round shows 3-5 cards on the table: letters you must work into a single word, red letters that are forbidden, and sometimes a reverse-arrow (only red letters count, everything else is forbidden) or a voice/accent card (say your word in that voice).
 
@@ -129,7 +129,7 @@ Whoever says an invalid word (or is the last player left when everyone else has 
   {
     name: "Things in Rings",
     description: "Deduce the Knower's secret rules for a 3-ring Venn diagram",
-    players: "3+ players", minPlayers: 3, intensity: 2, types: ["Word games"],
+    players: "3+ players", minPlayers: 3, tags: [], types: ["Word games"],
     url: "https://thingsinrings.jackbrannen.com", bg: "#C0C9BC", color: "#2A303C",
     instructions: `One player is the Knower and secretly writes a rule for each of three rings on a Venn diagram. Everyone else is a Finder, trying to figure out those rules by testing where words belong.
 
@@ -142,7 +142,7 @@ Tap any zone at any time to see what's already been placed there and gather clue
   {
     name: "Codenames",
     description: "Two teams race to find their secret agents using one-word clues",
-    players: "4+ players", minPlayers: 4, intensity: 3, types: ["Teams", "Word games"],
+    players: "4+ players", minPlayers: 4, tags: ["Longer"], types: ["Teams", "Word games"],
     url: "https://codenames.jackbrannen.com", bg: "#C0B298", color: "#2C1A0A",
     instructions: `Two teams — Red and Blue. Each team has a Cluegiver who can see which words belong to their team, the other team, neutral bystanders, or the instant-lose Assassin.
 
@@ -153,7 +153,7 @@ The first team to correctly identify all their words wins.`,
   {
     name: "Alpha Jam",
     description: "Word race tournament",
-    players: "2+ players", minPlayers: 2, intensity: 2, types: ["Word games"],
+    players: "2+ players", minPlayers: 2, tags: ["Short"], types: ["Word games"],
     url: "https://alphajam.jackbrannen.com", bg: "#FA955C", color: "white",
     instructions: `A head-to-head word-finding tournament. Each matchup shows two letters — a starting letter and an ending letter. The first player to think of a word that starts with the first letter and ends with the second letter wins the round.
 
@@ -164,7 +164,7 @@ If players get stuck on impossible letters, both can agree to request new letter
   {
     name: "Typecast",
     description: "Assign a word for each player, then guess how everyone else did",
-    players: "3+ players", minPlayers: 3, intensity: 1, types: ["Word games", "Cooperative"],
+    players: "3+ players", minPlayers: 3, tags: ["Chill", "Short"], types: ["Word games", "Cooperative"],
     url: "https://typecast.jackbrannen.com", bg: "#E8553A", color: "white",
     instructions: `Everyone gets a handful of random words and, at the same time, drags one word onto each other player — whoever it fits best. There are a couple of spare words to leave out.
 
@@ -175,7 +175,7 @@ You score a point for every word placed on the same person the caster chose. It'
   {
     name: "Reverse Charades",
     description: "The team gives clues, one person guesses",
-    players: "4+ players", minPlayers: 4, intensity: 3, types: ["Teams", "Word games"],
+    players: "4+ players", minPlayers: 4, tags: ["Energetic"], types: ["Teams", "Word games"],
     url: "https://reversecharades.jackbrannen.com", bg: "#974344", color: "white",
     instructions: `Normal Charades in reverse: instead of one person acting for the group, the whole team acts while the guesser calls out guesses until they get it.
 
@@ -189,7 +189,7 @@ Teams alternate turns. The team with the most points wins.`,
   {
     name: "The Game of What",
     description: "Like Quiplash but with DIY questions",
-    players: "4+ players", minPlayers: 4, intensity: 2, types: ["Word games", "Voting/Judging"],
+    players: "4+ players", minPlayers: 4, tags: ["Chill"], types: ["Word games", "Voting/Judging"],
     url: "https://gameofwhat.jackbrannen.com", bg: "#A02866", color: "white",
     instructions: `A voting game about creativity and knowing your crowd.
 
@@ -202,7 +202,7 @@ Highest score after all rounds wins.`,
   {
     name: "Same Page",
     description: "Try to come up with the same answer as everyone else",
-    players: "2+ players", minPlayers: 2, intensity: 1, types: ["Word games", "Cooperative"],
+    players: "2+ players", minPlayers: 2, tags: [], types: ["Word games", "Cooperative"],
     url: "https://samepage.jackbrannen.com", bg: "#FF85FD", color: "#3C3022",
     instructions: `Everyone sees the same three prompts each round, each with a letter. Privately write an answer for each one.
 
@@ -215,7 +215,7 @@ Survive every round to win; run out of matches and it's game over.`,
   {
     name: "Copycats",
     description: "Answer questions as each other",
-    players: "3+ players", minPlayers: 3, intensity: 2, types: ["Voting/Judging"],
+    players: "3+ players", minPlayers: 3, tags: ["Chill"], types: ["Voting/Judging"],
     url: "https://copycats.jackbrannen.com", bg: "#5C2D8C", color: "white",
     instructions: `Each round, one player is the target and another is the questioner. The questioner writes a personal question directed at the target.
 
@@ -228,7 +228,7 @@ Points: guess the real answer → earn points. Your fake fools someone → earn 
   {
     name: "Telestrations",
     description: "Write a sentence, draw it, then write a sentence, then a drawing…",
-    players: "5+ players", minPlayers: 5, intensity: 1, types: ["Drawing"],
+    players: "5+ players", minPlayers: 5, tags: ["Chill"], types: ["Drawing"],
     url: "https://telestrations.jackbrannen.com", bg: "#2B0F6B", color: "white",
     instructions: `A telephone-style game alternating between drawing and guessing.
 
@@ -239,7 +239,7 @@ At the end, the original phrase and the final result are revealed side by side. 
   {
     name: "Mr. White",
     description: "One player has a slightly different word—find the impostor",
-    players: "4+ players", minPlayers: 4, intensity: 2, types: ["Hidden roles"],
+    players: "4+ players", minPlayers: 4, tags: [], types: ["Hidden roles"],
     url: "https://mrwhite.jackbrannen.com", bg: "#2C2540", color: "white",
     instructions: `One player secretly gets a different word from everyone else — they're Mr. White.
 
@@ -255,25 +255,25 @@ const EXTERNAL_GAMES = [
   {
     name: "Secret Hitler",
     description: "No login required.",
-    players: "5–10 players", minPlayers: 5, intensity: 3, types: ["Hidden roles"],
+    players: "5–10 players", minPlayers: 5, tags: [], types: ["Hidden roles"],
     url: "https://secret-hitler.online", bg: "#C73B32", color: "white",
   },
   {
     name: "Wavelength",
     description: "iPhone game",
-    players: "4+ players", minPlayers: 4, intensity: 2, types: ["Cooperative", "Voting/Judging"],
+    players: "4+ players", minPlayers: 4, tags: [], types: ["Cooperative", "Voting/Judging"],
     url: "https://apps.apple.com/us/app/wavelength/id1512834505", bg: "#C4486C", color: "white",
   },
   {
     name: "Heads Up!",
     description: "iPhone game",
-    players: "3+ players", minPlayers: 3, intensity: 3, types: ["Teams", "Word games"],
+    players: "3+ players", minPlayers: 3, tags: [], types: ["Teams", "Word games"],
     url: "https://apps.apple.com/us/app/heads-up/id623592465", bg: "#2171C7", color: "white",
   },
   {
     name: "Among Us",
     description: "iPhone game",
-    players: "4–15 players", minPlayers: 4, intensity: 3, types: [],
+    players: "4–15 players", minPlayers: 4, tags: [], types: [],
     url: "https://apps.apple.com/us/app/among-us/id1351168404", bg: "#1B1B2E", color: "white",
   },
 ]
@@ -300,9 +300,8 @@ function shortDate(ts) {
   return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
 }
 
-function matchesFilters(game, playerCount, intensityFilter, typeFilter) {
+function matchesFilters(game, playerCount, typeFilter) {
   if (playerCount !== null && game.minPlayers > playerCount) return false
-  if (intensityFilter.size > 0 && !intensityFilter.has(game.intensity)) return false
   if (typeFilter.size > 0 && !game.types.some(t => typeFilter.has(t))) return false
   return true
 }
@@ -344,17 +343,19 @@ function GameCard({ game, onInfo }) {
           <span style={{ fontSize: 11, fontWeight: 700, background: "rgba(0,0,0,0.15)", color: game.color, padding: "3px 7px", opacity: 0.65 }}>
             {game.players}
           </span>
+          {game.tags?.map(t => (
+            <span key={t} style={{ fontSize: 11, fontWeight: 700, background: "rgba(0,0,0,0.15)", color: game.color, padding: "3px 7px", opacity: 0.65 }}>
+              {t}
+            </span>
+          ))}
           {game.types.map(t => (
             <span key={t} style={{ fontSize: 11, fontWeight: 700, background: "rgba(0,0,0,0.15)", color: game.color, padding: "3px 7px", opacity: 0.65 }}>
               {t}
             </span>
           ))}
         </div>
-        <div style={{ fontSize: 15, fontWeight: 600, opacity: 0.85, marginBottom: 6 }}>
+        <div style={{ fontSize: 15, fontWeight: 600, opacity: 0.85 }}>
           {game.description}
-        </div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: game.color, opacity: 1 }}>
-          {"⚡".repeat(game.intensity)}
         </div>
       </a>
       {onInfo && (
@@ -383,7 +384,6 @@ export default function Home() {
   const [logsLoading, setLogsLoading] = useState(false)
 
   const [playerCount, setPlayerCount] = useState(null)
-  const [intensityFilter, setIntensityFilter] = useState(new Set())
   const [typeFilter, setTypeFilter] = useState(new Set())
 
   useEffect(() => {
@@ -405,21 +405,18 @@ export default function Home() {
     setTimeout(() => setSettingsOpen(false), 700)
   }
 
-  function toggleIntensity(i) {
-    setIntensityFilter(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n })
-  }
   function toggleType(t) {
     setTypeFilter(prev => { const n = new Set(prev); n.has(t) ? n.delete(t) : n.add(t); return n })
   }
   function clearFilters() {
-    setPlayerCount(null); setIntensityFilter(new Set()); setTypeFilter(new Set())
+    setPlayerCount(null); setTypeFilter(new Set())
   }
 
-  const filtersActive = playerCount !== null || intensityFilter.size > 0 || typeFilter.size > 0
-  const activeCount = (playerCount !== null ? 1 : 0) + intensityFilter.size + typeFilter.size
+  const filtersActive = playerCount !== null || typeFilter.size > 0
+  const activeCount = (playerCount !== null ? 1 : 0) + typeFilter.size
 
-  const filteredGames = GAMES.filter(g => matchesFilters(g, playerCount, intensityFilter, typeFilter))
-  const filteredExternal = EXTERNAL_GAMES.filter(g => matchesFilters(g, playerCount, intensityFilter, typeFilter))
+  const filteredGames = GAMES.filter(g => matchesFilters(g, playerCount, typeFilter))
+  const filteredExternal = EXTERNAL_GAMES.filter(g => matchesFilters(g, playerCount, typeFilter))
 
   async function openLogs() {
     setLogsOpen(true); setLogsLoading(true)
@@ -603,23 +600,6 @@ export default function Home() {
                   onClick={() => setPlayerCount(c => c === null ? 2 : (c >= 10 ? null : c + 1))}
                   style={{ ...chipBase, background: "rgba(255,255,255,0.12)", color: "white", width: 36, textAlign: "center" }}
                 >+</button>
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div style={{ height: 1, background: "rgba(255,255,255,0.07)", marginBottom: 20 }} />
-
-            {/* Intensity */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: "white", marginBottom: 2 }}>Intensity</div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.3)", marginBottom: 10 }}>Length, complexity, and energy and creativity required.</div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {[1, 2, 3].map(i => (
-                  <button key={i} onClick={() => toggleIntensity(i)}
-                    style={{ ...chipBase, background: intensityFilter.has(i) ? YELLOW : "rgba(255,255,255,0.1)", color: intensityFilter.has(i) ? "#000" : "rgba(255,255,255,0.55)", flex: 1, textAlign: "center" }}>
-                    {"⚡".repeat(i)}
-                  </button>
-                ))}
               </div>
             </div>
 

@@ -707,3 +707,74 @@ async function handleAdvance() {
 - Any RPC that advances a shared phase or scores must re-check its preconditions server-side. Client `disabled` is UX, never a security/consistency guarantee.
 - When a guard depends on state that resets on phase change, base it on the synced/DB value, or ensure the reset happens before the button can render enabled.
 - Audit other games' phase-advancing RPCs (`*_submit_*`, `*_next_*`, `*_advance_*`, `*_end_turn`) for the same missing server-side validation.
+
+---
+
+## Shared Word/Prompt Pool Deals the Same Item to Two Concurrent Games
+
+**Symptom:** The same word/clue/prompt shows up in two different games run close together in time, even though the pool is supposed to hand out each item once and remove it.
+
+**Cause:** `woe_start_game` and `woe_award_points` picked a word with `SELECT word FROM woe_words ORDER BY random() LIMIT 1`, then removed it with a **separate** `DELETE FROM woe_words WHERE word = ...` statement. Postgres transactions don't see each other's uncommitted writes, so if two games' RPC calls land close together (same few seconds), both `SELECT`s can see the same still-present row before either `DELETE` commits — both games get dealt the same word.
+
+Note: this is a real, fixed bug, but it is NOT what caused the "Carpool Karaoke" report below — that repeat happened across games days apart, which this race can't explain. See the swap-word entry for the actual cause of that report.
+
+**Fix:** Make the pick and the removal a single atomic statement, using `FOR UPDATE SKIP LOCKED` so a concurrent transaction skips a row another transaction is mid-delete on instead of also selecting it:
+```sql
+-- WRONG — two statements, race window between them
+SELECT word INTO v_word FROM woe_words ORDER BY random() LIMIT 1;
+DELETE FROM woe_words WHERE word = v_word;
+
+-- CORRECT — one atomic statement, no race window
+DELETE FROM woe_words
+WHERE word = (SELECT word FROM woe_words ORDER BY random() LIMIT 1 FOR UPDATE SKIP LOCKED)
+RETURNING word INTO v_word;
+```
+
+**Fixed in:** WhatOnEarth (`woe_start_game`, `woe_award_points` both branches, `woe_swap_word`), 2026-07-04.
+
+**Still needs auditing** — same `ORDER BY random()` + separate delete/mark-used pattern found in: ExquisiteCorpse, Drawful (`drawful_prompts`), Telestrations. Not confirmed broken, but same shape of bug is possible wherever a shared pool is drawn down across concurrent games.
+
+---
+
+## Swapped-Away Word Returns to the Pool, Reappears in a Later Game
+
+**Symptom:** A word/clue that already appeared in an earlier game (possibly days ago) shows up again in an unrelated later game — not a near-simultaneous repeat, just a plain "haven't we seen this before" days later.
+
+**Example:** WhatOnEarth — a group saw "Carpool Karaoke" reappear days after an earlier game. Initially misdiagnosed as the concurrent-pick race above (wrong: that only explains near-simultaneous repeats, and these games were days apart).
+
+**Actual cause:** `woe_swap_word` lets a team swap out the current word for a new one (available on attempt 1, while paused). The old code put the swapped-out word right back into the shared pool:
+```sql
+DELETE FROM woe_words WHERE word = v_new_word;              -- take the replacement out
+INSERT INTO woe_words (word) VALUES (v_old_word)             -- put the swapped-out word BACK
+  ON CONFLICT (word) DO NOTHING;
+```
+So a word that had already been *shown* to one table (then swapped away) went back into circulation and could be dealt to any future game — explaining a repeat arbitrarily far apart in time.
+
+**Fix:** Don't reinsert the swapped-out word. Once a word has been shown to a table at all, it's retired for good, regardless of whether it was played, completed, or swapped away.
+
+**Fixed in:** WhatOnEarth `woe_swap_word`, 2026-07-04.
+
+**Prevention:** Any "skip/swap/redraw" feature on a depleting shared pool must not return the skipped item — that defeats the entire point of tracking what's been "used." Audit other games with a similar skip/redraw mechanic for the same pattern.
+
+---
+
+## FooterButton Stuck on "Loading…" Because the RPC Silently No-ops on a JSONB Key Mismatch
+
+**Symptom:** Button stuck on "Loading…" forever after submitting — not intermittent, happens on literally every attempt. No error shown to the user.
+
+**Example (SoClover):** submitting clues after placing cards never advanced. `onSubmitClues` sets `submitting = true`, calls the RPC, and — per the standard "phase-changing button" pattern — deliberately does NOT reset `submitting` on success, trusting the component to unmount when `myBoard.status` flips to `"submitted"`. But it never flipped.
+
+**Cause:** `soclover_submit_clues`'s validation guard checked clue keys `'NW','NE','SE','SW'`:
+```sql
+FOR v_leaf IN SELECT unnest(ARRAY['NW','NE','SE','SW']) LOOP
+  v_clue := trim(p_clues ->> v_leaf);
+  IF v_clue IS NULL OR v_clue = '' THEN RETURN; END IF;
+END LOOP;
+```
+but the client (`lib/clover.js` `LEAF_NAMES`) sends clues keyed `topLeft, topRight, bottomRight, bottomLeft`. `p_clues->>'NW'` never matches any key the client actually sends, so it's always `NULL`, the guard trips on the first iteration, and the function hits a silent `RETURN` — the `UPDATE ... SET status = 'submitted'` never runs, and no exception is raised. The client sees `error = null` and thinks it worked; the board just never changes state, so the button waits forever for a phase change that isn't coming.
+
+**Fix:** Match the RPC's validation keys to whatever the client actually sends. Don't assume the two are in sync just because neither side errors — check the exact key strings, e.g. `grep` the client's payload-building code against the RPC's `->>`/`->` accessors.
+
+**Fixed in:** SoClover `soclover_submit_clues`, 2026-07-05.
+
+**Prevention:** Any RPC that reads named JSONB keys sent from the client should have those key names double-checked against the client's actual object shape (not just assumed from variable/column naming elsewhere in the codebase) — a mismatch here doesn't throw, it just silently does nothing, which is worse than a crash because it looks like a hang/loading bug instead of pointing at the real cause.

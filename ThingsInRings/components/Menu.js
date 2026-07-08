@@ -65,7 +65,6 @@ export default function Menu({
   settingsContent = null,
   rules,
   peekBarHeight = "0px",
-  footerHeight = FOOTER_H,
 }) {
   const {
     dark    = "#1A1A2E",
@@ -123,7 +122,7 @@ export default function Menu({
     setLobbyResetting(false)
   }
 
-  const drawerBottom = `calc(${peekBarHeight} + ${footerHeight}px)`
+  const drawerBottom = `calc(${peekBarHeight} + ${FOOTER_H}px)`
   const hasScores = playerDetails.some(p => p.score !== undefined && p.score !== null)
   const hasTeams  = playerDetails.some(p => p.teamColor)
 

@@ -481,11 +481,6 @@ export default function Home() {
     <>
     <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
 
-      {/* Cog — top right */}
-      <button onClick={openSettings} aria-label="Settings" style={{ position: "fixed", top: 16, right: 16, background: WARM_LIGHT, border: "none", color: "rgba(255,255,255,0.45)", fontSize: 22, width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-        ⚙
-      </button>
-
       {/* Settings overlay */}
       {settingsOpen && (
         <div onClick={e => { if (e.target === e.currentTarget) setSettingsOpen(false) }} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 100, paddingTop: 60 }}>
@@ -564,21 +559,33 @@ export default function Home() {
 
       <div style={{ width: "100%", maxWidth: 480, display: "flex", flexDirection: "column", gap: 10 }}>
 
-        {/* ── Filter toggle button ── */}
-        <button
-          onClick={() => setFiltersOpen(o => !o)}
-          style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            background: filtersActive ? YELLOW : WARM_LIGHT,
-            color: filtersActive ? "#000" : "rgba(255,255,255,0.6)",
-            border: "none", cursor: "pointer",
-            padding: "13px 20px", fontSize: 14, fontWeight: 800,
-            width: "100%",
-          }}
-        >
-          <FilterIcon color={filtersActive ? "#000" : "rgba(255,255,255,0.5)"} />
-          Filters{activeCount > 0 ? ` (${activeCount})` : ""}
-        </button>
+        {/* ── Filter and Settings buttons ── */}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <button
+            onClick={() => setFiltersOpen(o => !o)}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              background: filtersActive ? YELLOW : WARM_LIGHT,
+              color: filtersActive ? "#000" : "rgba(255,255,255,0.6)",
+              border: "none", cursor: "pointer",
+              padding: "13px 20px", fontSize: 14, fontWeight: 800,
+            }}
+          >
+            <FilterIcon color={filtersActive ? "#000" : "rgba(255,255,255,0.5)"} />
+            Filters{activeCount > 0 ? ` (${activeCount})` : ""}
+          </button>
+          <button
+            onClick={openSettings}
+            aria-label="Settings"
+            style={{
+              background: WARM_LIGHT, border: "none", color: "rgba(255,255,255,0.45)",
+              fontSize: 22, width: 44, height: 44, display: "flex", alignItems: "center",
+              justifyContent: "center", cursor: "pointer", padding: 0
+            }}
+          >
+            ⚙
+          </button>
+        </div>
 
         {/* ── Filter panel ── */}
         {filtersOpen && (

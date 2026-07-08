@@ -81,7 +81,7 @@ You score points by voting for the real prompt, or by writing a fake that fools 
   {
     name: "First to Worst",
     description: "Rank 5 things, then the group guesses your order",
-    players: "4+ players", minPlayers: 4, tags: ["Chill"], types: ["Word games", "Voting/Judging", "Cooperative"],
+    players: "4+ players", minPlayers: 4, tags: ["Chill", "Short"], types: ["Word games", "Voting/Judging", "Cooperative"],
     url: "https://firsttoworst.jackbrannen.com", bg: "#004F45", color: "white",
     instructions: `A ranking game. Each player picks a theme (or it's random) and submits 5 words that fit the theme. Your words go to another player, who ranks them from first to worst.
 

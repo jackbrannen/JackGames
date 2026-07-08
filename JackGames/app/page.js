@@ -302,7 +302,7 @@ function shortDate(ts) {
 
 function matchesFilters(game, playerCount, vibeFilter, typeFilter) {
   if (playerCount !== null && game.minPlayers > playerCount) return false
-  if (vibeFilter.size > 0 && !game.tags?.some(t => vibeFilter.has(t))) return false
+  if (vibeFilter.size > 0 && ![...vibeFilter].every(v => game.tags?.includes(v))) return false
   if (typeFilter.size > 0 && !game.types.some(t => typeFilter.has(t))) return false
   return true
 }

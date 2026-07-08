@@ -316,6 +316,16 @@ function FilterIcon({ size = 14, color = "currentColor" }) {
   )
 }
 
+// Simple profile icon
+function ProfileIcon({ size = 14, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill={color} style={{ display: "block", flexShrink: 0 }}>
+      <circle cx="8" cy="5" r="3"/>
+      <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6v1H2v-1z"/>
+    </svg>
+  )
+}
+
 const inputStyle = {
   background: WARM_LIGHT,
   color: "white",
@@ -583,7 +593,7 @@ export default function Home() {
               cursor: "pointer", padding: "13px 20px", fontSize: 14, fontWeight: 800,
             }}
           >
-            <span style={{ fontSize: 18 }}>👤</span>
+            <ProfileIcon color="rgba(255,255,255,0.5)" />
             Profile
           </button>
         </div>

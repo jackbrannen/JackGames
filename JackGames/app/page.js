@@ -576,14 +576,15 @@ export default function Home() {
           </button>
           <button
             onClick={openSettings}
-            aria-label="Settings"
+            aria-label="Profile"
             style={{
-              background: WARM_LIGHT, border: "none", color: "rgba(255,255,255,0.45)",
-              fontSize: 22, width: 44, height: 44, display: "flex", alignItems: "center",
-              justifyContent: "center", cursor: "pointer", padding: 0
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              background: WARM_LIGHT, border: "none", color: "rgba(255,255,255,0.6)",
+              cursor: "pointer", padding: "13px 20px", fontSize: 14, fontWeight: 800,
             }}
           >
-            ⚙
+            <span style={{ fontSize: 18 }}>👤</span>
+            Profile
           </button>
         </div>
 

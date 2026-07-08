@@ -300,8 +300,9 @@ function shortDate(ts) {
   return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
 }
 
-function matchesFilters(game, playerCount, typeFilter) {
+function matchesFilters(game, playerCount, vibeFilter, typeFilter) {
   if (playerCount !== null && game.minPlayers > playerCount) return false
+  if (vibeFilter.size > 0 && !game.tags?.some(t => vibeFilter.has(t))) return false
   if (typeFilter.size > 0 && !game.types.some(t => typeFilter.has(t))) return false
   return true
 }
@@ -384,6 +385,7 @@ export default function Home() {
   const [logsLoading, setLogsLoading] = useState(false)
 
   const [playerCount, setPlayerCount] = useState(null)
+  const [vibeFilter, setVibeFilter] = useState(new Set())
   const [typeFilter, setTypeFilter] = useState(new Set())
 
   useEffect(() => {
@@ -405,18 +407,21 @@ export default function Home() {
     setTimeout(() => setSettingsOpen(false), 700)
   }
 
+  function toggleVibe(v) {
+    setVibeFilter(prev => { const n = new Set(prev); n.has(v) ? n.delete(v) : n.add(v); return n })
+  }
   function toggleType(t) {
     setTypeFilter(prev => { const n = new Set(prev); n.has(t) ? n.delete(t) : n.add(t); return n })
   }
   function clearFilters() {
-    setPlayerCount(null); setTypeFilter(new Set())
+    setPlayerCount(null); setVibeFilter(new Set()); setTypeFilter(new Set())
   }
 
-  const filtersActive = playerCount !== null || typeFilter.size > 0
-  const activeCount = (playerCount !== null ? 1 : 0) + typeFilter.size
+  const filtersActive = playerCount !== null || vibeFilter.size > 0 || typeFilter.size > 0
+  const activeCount = (playerCount !== null ? 1 : 0) + vibeFilter.size + typeFilter.size
 
-  const filteredGames = GAMES.filter(g => matchesFilters(g, playerCount, typeFilter))
-  const filteredExternal = EXTERNAL_GAMES.filter(g => matchesFilters(g, playerCount, typeFilter))
+  const filteredGames = GAMES.filter(g => matchesFilters(g, playerCount, vibeFilter, typeFilter))
+  const filteredExternal = EXTERNAL_GAMES.filter(g => matchesFilters(g, playerCount, vibeFilter, typeFilter))
 
   async function openLogs() {
     setLogsOpen(true); setLogsLoading(true)
@@ -600,6 +605,22 @@ export default function Home() {
                   onClick={() => setPlayerCount(c => c === null ? 2 : (c >= 10 ? null : c + 1))}
                   style={{ ...chipBase, background: "rgba(255,255,255,0.12)", color: "white", width: 36, textAlign: "center" }}
                 >+</button>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div style={{ height: 1, background: "rgba(255,255,255,0.07)", marginBottom: 20 }} />
+
+            {/* Vibe */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: "white", marginBottom: 10 }}>Vibe</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                {["Energetic", "Longer", "Chill", "Short"].map(v => (
+                  <button key={v} onClick={() => toggleVibe(v)}
+                    style={{ ...chipBase, background: vibeFilter.has(v) ? YELLOW : "rgba(255,255,255,0.1)", color: vibeFilter.has(v) ? "#000" : "rgba(255,255,255,0.55)" }}>
+                    {v}
+                  </button>
+                ))}
               </div>
             </div>
 

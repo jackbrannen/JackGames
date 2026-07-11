@@ -434,6 +434,8 @@ export default function PlayPage({ params }) {
           setAnswerError(error.message || "Something went wrong.")
           throw error
         }
+        // Gossip: broadcast so peers see answer instantly
+        channelRef.current?.send({ type: "broadcast", event: "sync" })
       } catch (err) {
         console.log('[COPYCATS] Error in RPC or timeout:', err)
         setAnswerError(err.message || "Request timed out")
@@ -660,6 +662,8 @@ export default function PlayPage({ params }) {
         p_voted_for_player_id: id,
       })
       if (error) { setSelectedVote(null); throw error }
+      // Gossip: broadcast so peers see vote instantly
+      channelRef.current?.send({ type: "broadcast", event: "sync" })
       await loadState()
     }
 

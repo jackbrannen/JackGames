@@ -168,6 +168,7 @@ export default function PlayPage({ params }) {
         p_delta: delta,
       })
       if (error) throw error
+      syncChRef.current?.send({ type: "broadcast", event: "sync" })
       await loadState()
     } catch (e) {
       alert("Error adjusting score: " + (e?.message ?? "unknown"))
@@ -178,6 +179,7 @@ export default function PlayPage({ params }) {
     try {
       const { error } = await supabase.rpc("aj_reset_to_lobby", { p_code: code })
       if (error) throw error
+      syncChRef.current?.send({ type: "broadcast", event: "sync" })
     } catch (e) {
       alert("Error resetting to lobby: " + (e?.message ?? "unknown"))
     }
@@ -241,6 +243,7 @@ export default function PlayPage({ params }) {
       throw error
     }
 
+    syncChRef.current?.send({ type: "broadcast", event: "sync" })
     await loadState()
 
     // Throw error to reset FooterButton's internal loading state
@@ -253,6 +256,7 @@ export default function PlayPage({ params }) {
       const { error } = await supabase.rpc("aj_confirm_win", { p_code: code, p_confirmed: confirmed })
       if (error) throw error
 
+      syncChRef.current?.send({ type: "broadcast", event: "sync" })
       await loadState()
     } catch (e) {
       alert("Error: " + (e?.message ?? "unknown error"))
@@ -266,6 +270,7 @@ export default function PlayPage({ params }) {
       const { error } = await supabase.rpc("aj_request_new_letters", { p_code: code, p_player_id: myPlayerId })
       if (error) throw error
 
+      syncChRef.current?.send({ type: "broadcast", event: "sync" })
       // Load fresh state so component can detect when both players requested
       await loadState()
     } catch (e) {
@@ -281,6 +286,7 @@ export default function PlayPage({ params }) {
       const { error } = await supabase.rpc("aj_mark_ready", { p_code: code, p_player_id: myPlayerId })
       if (error) throw error
 
+      syncChRef.current?.send({ type: "broadcast", event: "sync" })
       // Load fresh state so component can detect when both players are ready
       await loadState()
     } catch (e) {
@@ -291,6 +297,7 @@ export default function PlayPage({ params }) {
 
   async function handleAdjustScore(playerId, delta) {
     await supabase.rpc("aj_adjust_score", { p_player_id: playerId, p_delta: delta })
+    syncChRef.current?.send({ type: "broadcast", event: "sync" })
   }
 
   async function dismissPoke(pokeId) {
@@ -495,6 +502,7 @@ export default function PlayPage({ params }) {
                 try {
                   const { error } = await supabase.rpc("aj_tiebreaker_ready", { p_code: code, p_player_id: myPlayerId })
                   if (error) throw error
+                  syncChRef.current?.send({ type: "broadcast", event: "sync" })
                   await loadState()
                 } catch (e) {
                   alert("Error: " + (e?.message ?? "unknown error"))

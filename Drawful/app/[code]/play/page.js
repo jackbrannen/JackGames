@@ -736,6 +736,8 @@ export default function Play({ params }) {
         p_code: code, p_player_id: me.id, p_drawing_url: urlData.publicUrl,
       })
       if (error) throw error
+      // Gossip: broadcast so peers see drawing submission instantly
+      syncChRef.current?.send({ type: "broadcast", event: "sync" })
       console.log("[SUBMIT] RPC succeeded, reloading state...")
       await loadState()
       console.log("[SUBMIT] Success!")
@@ -765,6 +767,8 @@ export default function Play({ params }) {
         p_text: capitalized,
       })
       if (error) { alert("Error: " + error.message); setSubmittingAnswer(false); return }
+      // Gossip: broadcast so peers see answer instantly
+      syncChRef.current?.send({ type: "broadcast", event: "sync" })
       const { data: freshAnswers } = await supabase
         .from("drawful_answers").select("author_id,text")
         .eq("game_code", code).eq("drawing_player_id", currentArtist.id).eq("is_real", false)
@@ -794,6 +798,8 @@ export default function Play({ params }) {
         p_answer_id: selectedAnswerId,
       })
       if (error) { alert("Error: " + error.message); setSubmittingVote(false); return }
+      // Gossip: broadcast so peers see vote instantly
+      syncChRef.current?.send({ type: "broadcast", event: "sync" })
       await loadState()
       setSubmittingVote(false)
     } catch (e) {

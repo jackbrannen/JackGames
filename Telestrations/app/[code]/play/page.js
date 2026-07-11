@@ -478,6 +478,8 @@ export default function Play({ params }) {
   async function rpc(fn, args = {}) {
     const { error } = await supabase.rpc(fn, args)
     if (error) throw error
+    // Gossip: broadcast so peers see action instantly
+    syncChRef.current?.send({ type: "broadcast", event: "sync" })
   }
 
   async function loadState() {

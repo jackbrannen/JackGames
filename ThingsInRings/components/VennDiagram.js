@@ -102,7 +102,39 @@ function digitColorFor(zone) {
   return contrastRatio(DIGIT_DARK, bg) >= contrastRatio(DIGIT_LIGHT, bg) ? DIGIT_DARK : DIGIT_LIGHT
 }
 
-export default function VennDiagram({ onZoneTap, selectedZone = null, disabled = false, zoneCounts = {} }) {
+// Per-zone text budget: an approximate rectangle (in the diagram's own user
+// units) that fits inside each irregular region, with the anchor point the
+// stacked words are centered on. Hand-tuned to the zone geometry — single-ring
+// crescents are tall, overlap lenses are narrower, the triple center is small.
+const ZONE_TEXT_BUDGET = {
+  A:       { w: 150, h: 52, cx: 160,   cy: 50 },
+  B:       { w: 80,  h: 96, cx: 250.7, cy: 206 },
+  C:       { w: 80,  h: 96, cx: 69.3,  cy: 206 },
+  AB:      { w: 66,  h: 80, cx: 218.5, cy: 128 },
+  AC:      { w: 66,  h: 80, cx: 101.5, cy: 128 },
+  BC:      { w: 92,  h: 58, cx: 160,   cy: 224 },
+  ABC:     { w: 60,  h: 66, cx: 160,   cy: 156 },
+  OUTSIDE: { w: 205, h: 46, cx: 160,   cy: 326 },
+}
+
+// Best-fit sizing: pick the largest font (capped) at which every word fits the
+// budget's width (sized off the longest word) and the whole stack fits its
+// height. More/longer words -> smaller text, so all placed words stay visible.
+const CHAR_W = 0.58   // mean glyph advance as a fraction of font size (bold sans)
+const LINE_H = 1.16   // line height as a fraction of font size
+const MAX_FONT = 17
+const MIN_FONT = 4.5
+function fitWords(words, b) {
+  const n = words.length
+  if (!n) return null
+  const longest = words.reduce((m, w) => Math.max(m, w.length), 1)
+  const byWidth = b.w / (longest * CHAR_W)
+  const byHeight = b.h / (n * LINE_H)
+  const fontSize = Math.max(MIN_FONT, Math.min(MAX_FONT, byWidth, byHeight))
+  return { fontSize, lineH: fontSize * LINE_H }
+}
+
+export default function VennDiagram({ onZoneTap, selectedZone = null, disabled = false, zoneWords = {} }) {
   function tap(zone) {
     if (disabled) return
     onZoneTap?.(zone)
@@ -146,23 +178,30 @@ export default function VennDiagram({ onZoneTap, selectedZone = null, disabled =
           style={{ pointerEvents: "none" }}
         />
       )}
-      {Object.entries(ZONE_CENTERS).map(([zone, [x, y]]) => (
-        (zoneCounts[zone] ?? 0) > 0 && (
-          <text
-            key={zone}
-            x={x}
-            y={y}
-            textAnchor="middle"
-            dominantBaseline="central"
-            fill={digitColorFor(zone)}
-            fontSize={20}
-            fontWeight={900}
-            style={{ pointerEvents: "none" }}
-          >
-            {zoneCounts[zone]}
-          </text>
+      {Object.entries(ZONE_TEXT_BUDGET).map(([zone, b]) => {
+        const words = zoneWords[zone] ?? []
+        const fit = fitWords(words, b)
+        if (!fit) return null
+        const top = b.cy - (words.length * fit.lineH) / 2 + fit.lineH / 2
+        return (
+          <g key={zone} style={{ pointerEvents: "none" }}>
+            {words.map((word, i) => (
+              <text
+                key={i}
+                x={b.cx}
+                y={top + i * fit.lineH}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill={digitColorFor(zone)}
+                fontSize={fit.fontSize}
+                fontWeight={800}
+              >
+                {word}
+              </text>
+            ))}
+          </g>
         )
-      ))}
+      })}
     </svg>
   )
 }

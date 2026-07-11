@@ -213,8 +213,15 @@ export default function PlayPage({ params }) {
     ? knowerZoneChoice
     : (inspectZone ?? (!isMyTurn ? game?.active_selected_zone ?? null : null))
   const zoneCards = diagramSelectedZone ? cards.filter(c => c.zone === diagramSelectedZone) : []
-  const zoneCounts = Object.fromEntries(
-    ["A", "B", "C", "AB", "AC", "BC", "ABC", "OUTSIDE"].map(z => [z, cards.filter(c => c.zone === z).length])
+  // The actual words placed in each zone (in placement order), rendered inside
+  // the zone itself — best-fit shrunk to the available space — instead of a count.
+  const zoneWords = Object.fromEntries(
+    ["A", "B", "C", "AB", "AC", "BC", "ABC", "OUTSIDE"].map(z => [
+      z,
+      cards.filter(c => c.zone === z)
+        .sort((a, b) => String(a.created_at ?? "").localeCompare(String(b.created_at ?? "")))
+        .map(c => c.text),
+    ])
   )
 
   function nameOf(id) { return players.find(p => p.id === id)?.name ?? "?" }
@@ -595,7 +602,7 @@ export default function PlayPage({ params }) {
 
         <div style={{ margin: "0 -16px" }}>
           <div style={{ padding: "0 16px" }}>
-            <VennDiagram onZoneTap={onZoneTap} selectedZone={diagramSelectedZone} zoneCounts={zoneCounts} />
+            <VennDiagram onZoneTap={onZoneTap} selectedZone={diagramSelectedZone} zoneWords={zoneWords} />
           </div>
           {zoneDescriptionNode()}
         </div>
@@ -700,7 +707,7 @@ export default function PlayPage({ params }) {
         <VennDiagram
           onZoneTap={onZoneTap}
           selectedZone={diagramSelectedZone}
-          zoneCounts={zoneCounts}
+          zoneWords={zoneWords}
           disabled={resolving || submittingGuess}
         />
       </div>

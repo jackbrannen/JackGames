@@ -541,7 +541,7 @@ export default function Play({ params }) {
     setPlayers(playerData ?? [])
     setAllWords(wordData ?? [])
     // Gossip: re-broadcast on a state change so a peer that missed the realtime push catches up fast.
-    const syncKey = `${gameData.phase}:${gameData.round_phase ?? ""}:${gameData.current_round ?? ""}`
+    const syncKey = `${gameData.phase}:${gameData.round_phase ?? ""}:${gameData.current_round ?? ""}:${gameData.last_move ?? ""}`
     if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) syncChRef.current?.send({ type: "broadcast", event: "sync" })
     syncKeyRef.current = syncKey
   }
@@ -1202,6 +1202,8 @@ export default function Play({ params }) {
         })
         // Write move to DB so other players see the highlight via Realtime postgres_changes
         await supabase.from("ftw_games").update({ last_move: move }).eq("code", code)
+        // Gossip: broadcast to peers so they see drag instantly
+        syncChRef.current?.send({ type: "broadcast", event: "sync" })
         pendingMovesRef.current--
       }
 

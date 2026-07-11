@@ -516,7 +516,7 @@ export default function PlayPage({ params }) {
       setBoards(boardData ?? [])
       setLoading(false)
       // Gossip: re-broadcast on a state change so peers that missed the realtime push catch up fast.
-      const key = `${gameData.phase}:${(boardData ?? []).map(b => `${b.id}${b.status}${b.attempt ?? ""}`).sort().join("|")}`
+      const key = `${gameData.phase}:${gameData.current_board_index}:${(boardData ?? []).map(b => `${b.id}${b.status}${b.attempt ?? ""}`).sort().join("|")}`
       if (syncKeyRef.current !== null && syncKeyRef.current !== key) nudgeSync()
       syncKeyRef.current = key
     } catch (err) {

@@ -662,7 +662,7 @@ export default function PlayPage({ params }) {
     // Poll as a fallback in case a realtime event is missed. Kept short so
     // players recover from any dropped event within a few seconds rather than
     // sitting out of sync for half a minute.
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 1500)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const ch = supabase.channel(`soclover-play-${code}`)

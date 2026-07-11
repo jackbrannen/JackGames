@@ -763,6 +763,8 @@ export default function Play({ params }) {
         p_author_id: me.id,
       })
       if (error) throw error
+      // Gossip: broadcast so peers see drawing submission instantly
+      syncChRef.current?.send({ type: "broadcast", event: "sync" })
       await loadState()
     } catch (e) {
       alert("Error submitting: " + e.message)

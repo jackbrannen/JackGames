@@ -299,6 +299,7 @@ export default function LobbyPage({ params }) {
           <FooterButton
             onClick={() => setConfirmingStart(true)}
             disabled={starting || confirmingStart}
+            loading={starting}
           >
             Start Game
           </FooterButton>

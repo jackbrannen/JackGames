@@ -89,9 +89,12 @@ A series of multiplayer web games built with Next.js 14 and Supabase. Players co
 
 ## Git Workflow & Deployment
 
-**Git:**
-- Commit freely; push once at end: `git push`
-- Deploy: `vercel --prod --cwd Fishbowl` (from Games/ root)
+**Git & deploy — ASK FIRST (do not auto-ship):**
+- Do NOT run `git commit`, `git push`, or `vercel --prod` unless I explicitly tell you to **in that same message**. Finishing a change is not permission to ship it.
+- Verify every change yourself by running it locally (dev server / headless browser / render harness) — NEVER ask me to spin up `npm run dev` or do the local test. The spin-up and verification are your job.
+- When a change is verified, stop and report what's done, then wait. I batch several edits and playtest before anything ships.
+- Do not chain a deploy onto a commit (e.g. `git commit && vercel --prod`) — even a "rejected" chained Bash command can still execute here.
+- These Vercel projects have NO git integration, so `git push` never auto-deploys. Deploy is always an explicit `vercel --prod --cwd <Game>` (from Games/ root), which uploads the working dir directly.
 
 **Vercel limits:**
 - 100 deployments/day across all projects

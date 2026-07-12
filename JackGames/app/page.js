@@ -249,6 +249,21 @@ If they're right, Mr. White loses — unless they can guess what the real word w
 
 If the group is wrong, Mr. White survives to another round. Last player standing wins.`,
   },
+  {
+    name: "Sound Board",
+    description: "Make the sounds. Your team has to guess what you meant",
+    players: "4+ players", minPlayers: 4, tags: ["Energetic"], types: ["Teams", "Word games"],
+    url: "https://soundboard.jackbrannen.com", bg: "#88192B", color: "white",
+    instructions: `Two teams — Boys and Girls. Everyone submits words at the start; those become the pool for the whole game.
+
+On your turn, pick 1–3 words from the board. When the countdown ends, make sound effects for the words you picked — no talking, no miming, just noises. Your teammates each pick up to 3 words they think you meant.
+
+Score +1 per correct guess, -1 per word you picked that they missed, -1 per word they guessed that you didn't pick.
+
+Correctly guessed words leave the board; new ones take their place. Words that stick around get more valuable — up to 9 points — the longer they survive.
+
+First team to 16 points wins.`,
+  },
 ]
 
 const EXTERNAL_GAMES = [
@@ -436,7 +451,7 @@ export default function Home() {
   async function openLogs() {
     setLogsOpen(true); setLogsLoading(true)
     try {
-      const [fishbowl, gow, codenames, avalon, ftw, tel, ec, rc, soclover, copycats, drawful, mrwhite, alphajam, woe, decrypto, samepage, typecast] = await Promise.all([
+      const [fishbowl, gow, codenames, avalon, ftw, tel, ec, rc, soclover, copycats, drawful, mrwhite, alphajam, woe, decrypto, samepage, typecast, soundboard] = await Promise.all([
         supabase.from("players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("gow_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("codenames_players").select("first_name,last_name,game_code,created_at").limit(2000),
@@ -454,6 +469,7 @@ export default function Home() {
         supabase.from("dc_players").select("first_name,last_name,game_code,created_at").eq("is_bot", false).limit(2000),
         supabase.from("sp_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("tc_players").select("first_name,last_name,game_code,created_at").limit(2000),
+        supabase.from("sb_players").select("first_name,last_name,game_code,created_at").limit(2000),
       ])
       const people = {}, displayNames = {}
       function addRows(rows, gameName) {
@@ -473,7 +489,7 @@ export default function Home() {
       addRows(ec.data, "Exquisite Corpse"); addRows(rc.data, "Reverse Charades"); addRows(soclover.data, "So Clover")
       addRows(copycats.data, "Copycats"); addRows(drawful.data, "Drawful"); addRows(mrwhite.data, "Mr. White")
       addRows(alphajam.data, "Alpha Jam"); addRows(woe.data, "What On Earth"); addRows(decrypto.data, "Decrypto")
-      addRows(samepage.data, "Same Page"); addRows(typecast.data, "Typecast")
+      addRows(samepage.data, "Same Page"); addRows(typecast.data, "Typecast"); addRows(soundboard.data, "Sound Board")
       const toRows = entries => entries
         .map(([key, games]) => ({ name: displayNames[key], games: Object.entries(games).map(([game, s]) => ({ game, ...s })).sort((a, b) => a.game.localeCompare(b.game)), total: Object.values(games).reduce((s, g) => s + g.count, 0) }))
         .sort((a, b) => b.total - a.total)

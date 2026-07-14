@@ -12,6 +12,137 @@ const TYPES = ["Word games", "Cooperative", "Drawing", "Voting/Judging", "Teams"
 
 const GAMES = [
   {
+    name: "Typecast",
+    description: "Assign a word for each player, then guess how everyone else did",
+    players: "3+ players", minPlayers: 3, tags: ["Chill", "Short"], types: ["Word games", "Cooperative"],
+    url: "https://typecast.jackbrannen.com", bg: "#E8553A", color: "white",
+    instructions: `Everyone gets a handful of random words and, at the same time, drags one word onto each other player — whoever it fits best. There are a couple of spare words to leave out.
+
+Then, one board at a time, the whole group works together to reconstruct someone's picks, dragging the same words onto the same people.
+
+You score a point for every word placed on the same person the caster chose. It's cooperative — add up your matches across everyone's boards and see how well you read the room.`,
+  },
+  {
+    name: "Alpha Jam",
+    description: "Word race tournament",
+    players: "2+ players", minPlayers: 2, tags: ["Short"], types: ["Word games"],
+    url: "https://alphajam.jackbrannen.com", bg: "#FA955C", color: "white",
+    instructions: `A head-to-head word-finding tournament. Each matchup shows two letters — a starting letter and an ending letter. The first player to think of a word that starts with the first letter and ends with the second letter wins the round.
+
+The game runs as a round-robin tournament where every player faces every other player. At the end, the player with the most wins is the champion.
+
+If players get stuck on impossible letters, both can agree to request new letters and keep playing.`,
+  },
+  {
+    name: "Codenames",
+    description: "Two teams race to find their secret agents using one-word clues",
+    players: "4+ players", minPlayers: 4, tags: ["Longer"], types: ["Teams", "Word games"],
+    url: "https://codenames.jackbrannen.com", bg: "#C0B298", color: "#2C1A0A",
+    instructions: `Two teams — Red and Blue. Each team has a Cluegiver who can see which words belong to their team, the other team, neutral bystanders, or the instant-lose Assassin.
+
+Cluegivers take turns giving a one-word clue plus a number ("Vehicles, 3"). Their team guesses which words match that clue, one at a time. A correct guess continues the turn. A wrong guess ends the turn — and touching the Assassin loses the game immediately.
+
+The first team to correctly identify all their words wins.`,
+  },
+  {
+    name: "Avalon",
+    description: "Find the traitors before they sabotage the quests",
+    players: "5–10 players", minPlayers: 5, tags: ["Longer"], types: ["Hidden roles", "Teams"],
+    url: "https://avalon.jackbrannen.com", bg: "#C9A84C", color: "#2A1800",
+    instructions: `A social deduction game of good vs. evil. Each player is secretly assigned a role — either a Loyal Servant (good) or a Minion of Mordred (evil). Evil players know each other. Merlin knows who is evil but must stay hidden.
+
+The game is a series of 5 quests. A rotating leader proposes a team to go on each quest. Everyone votes to approve or reject it.
+
+If approved, players on the quest secretly vote Success or Fail. One Fail card is enough to fail most quests.
+
+Good wins if 3 quests succeed — but evil gets one last chance: the Assassin can name who they think Merlin is. If correct, evil wins.
+
+Evil wins if 3 quests fail, 5 consecutive proposals are rejected, or the Assassin identifies Merlin.`,
+  },
+  {
+    name: "Word Birds",
+    description: "Shout a word using every card on the table",
+    players: "2+ players", minPlayers: 2, tags: ["Energetic"], types: ["Word games"],
+    url: "https://wordbirds.jackbrannen.com", bg: "#FEE471", color: "#221A12",
+    instructions: `Everyone plays at once. Each round shows 3-5 cards on the table: letters you must work into a single word, red letters that are forbidden, and sometimes a reverse-arrow (only red letters count, everything else is forbidden) or a voice/accent card (say your word in that voice).
+
+Race to be the first to shout a valid word using the required letters while avoiding the forbidden ones — the group judges validity, there's no typing or app-side checking.
+
+Whoever says an invalid word (or is the last player left when everyone else has gone) loses a point. Hit zero and you're eliminated, though you can keep watching. Last player with points left wins.`,
+  },
+  {
+    name: "So Clover",
+    description: "Arrange keyword cards, write clues, guess each other's boards",
+    players: "2+ players", minPlayers: 2, tags: [], types: ["Word games", "Cooperative"],
+    url: "https://soclover.jackbrannen.com", bg: "#6B8C2A", color: "white",
+    instructions: `A cooperative word game. Each player gets a board with 4 keyword cards. Where two words from a card touch an edge, you write a single clue word that connects both keywords.
+
+Once everyone has written their clues, the boards are passed. The next player sees only the clue words (not which keywords they connect) and must figure out the correct arrangement of the 4 cards.
+
+Points are earned for correct placements. Perfect guesses earn a bonus point. Everyone's scores are summed — it's a cooperative total at the end.`,
+  },
+  {
+    name: "Things in Rings",
+    description: "Deduce the Knower's secret rules for a 3-ring Venn diagram",
+    players: "3+ players", minPlayers: 3, tags: [], types: ["Word games"],
+    url: "https://thingsinrings.jackbrannen.com", bg: "#C0C9BC", color: "#2A303C",
+    instructions: `One player is the Knower and secretly writes a rule for each of three rings on a Venn diagram. Everyone else is a Finder, trying to figure out those rules by testing where words belong.
+
+Finders submit words into a shared pool, then take turns picking a word from their hand and guessing which zone of the diagram it belongs in — a single ring, an overlap, or entirely outside.
+
+The Knower taps where the word actually goes. Guess right and the word is set aside for good; guess wrong and you draw a replacement — either way, the turn passes to the next Finder.
+
+Tap any zone at any time to see what's already been placed there and gather clues. First Finder to empty their hand wins — though anyone who hasn't gone yet this round with exactly one word left gets a final chance to also finish and tie.`,
+  },
+  {
+    name: "First to Worst",
+    description: "Rank 5 things, then the group guesses your order",
+    players: "4+ players", minPlayers: 4, tags: ["Chill", "Short"], types: ["Word games", "Voting/Judging", "Cooperative"],
+    url: "https://firsttoworst.jackbrannen.com", bg: "#004F45", color: "white",
+    instructions: `A ranking game. Each player picks a theme (or it's random) and submits 5 words that fit the theme. Your words go to another player, who ranks them from first to worst.
+
+Once everyone has ranked their words, the whole group tries to guess the exact ranking together — dragging words into what they think is the right order. The ranker watches and can't say anything.
+
+After the group locks in their guess, the real ranking is revealed. Everyone scores points for every word in the correct position.`,
+  },
+  {
+    name: "Drawful",
+    description: "Guess prompts based on the drawing",
+    players: "4+ players", minPlayers: 4, tags: [], types: ["Drawing", "Voting/Judging"],
+    url: "https://drawful.jackbrannen.com", bg: "#307977", color: "white",
+    instructions: `Each player gets a secret prompt and draws it on their phone. No labels allowed.
+
+Everyone's drawings are shown one at a time. All other players type a fake title that sounds plausible. The real prompt is mixed in with the fakes, and everyone votes for which title they think is real.
+
+You score points by voting for the real prompt, or by writing a fake that fools other players into voting for it. Identical fakes earn bonus points too.`,
+  },
+  {
+    name: "Decrypto",
+    description: "Clue your team to keywords without the other team cracking it",
+    players: "4+ players", minPlayers: 4, tags: ["Longer"], types: ["Teams", "Word games"],
+    url: "https://decrypto.jackbrannen.com", bg: "#B7DAEE", color: "#15314A",
+    instructions: `Two teams, each with four secret keywords numbered 1–4 that only your team can see.
+
+Each round, one teammate is the Encryptor. They get a secret 3-digit code (three different digits from 1–4) and give one clue for each digit, hinting at the keyword in that position.
+
+Both teams then guess the code. Your team has to decode it correctly — guess wrong and you take a Miscommunication. The other team tries to intercept it using every clue you've given so far — if they crack it, they take an Interception.
+
+(Round 1 can't be intercepted — there's no clue history yet.)
+
+Win by landing 2 Interceptions. Lose if you rack up 2 Miscommunications. If no one's decided after 8 rounds, the most Interceptions wins.`,
+  },
+  {
+    name: "Exquisite Corpse",
+    description: "Cooperative blind drawing game",
+    players: "4+ players", minPlayers: 4, tags: ["Chill"], types: ["Drawing", "Cooperative"],
+    url: "https://exquisitecorpse.jackbrannen.com", bg: "#1A3A5C", color: "white",
+    instructions: `A collaborative drawing chain. Each player starts a drawing, then folds their paper (digitally) to hide most of it — leaving only a small strip visible at the fold line as a hint for the next person.
+
+The next player draws a continuation below the hint, not knowing what came before. This repeats until every player has added a section to every chain.
+
+At the end, the full exquisite corpse — assembled from everyone's individual drawings — is revealed one layer at a time.`,
+  },
+  {
     name: "Fishbowl",
     description: "Teams guess clues from a bowl",
     players: "4+ players", minPlayers: 4, tags: ["Energetic"], types: ["Teams"],
@@ -42,175 +173,28 @@ A correct guess scores 3 points on attempt 1, 2 on attempt 2, and 1 on attempt 3
 With exactly 3 players the game is fully cooperative — chase one shared team score, aiming for a perfect 9.`,
   },
   {
-    name: "Decrypto",
-    description: "Clue your team to keywords without the other team cracking it",
-    players: "4+ players", minPlayers: 4, tags: ["Longer"], types: ["Teams", "Word games"],
-    url: "https://decrypto.jackbrannen.com", bg: "#B7DAEE", color: "#15314A",
-    instructions: `Two teams, each with four secret keywords numbered 1–4 that only your team can see.
+    name: "Mr. White",
+    description: "One player has a slightly different word—find the impostor",
+    players: "4+ players", minPlayers: 4, tags: [], types: ["Hidden roles"],
+    url: "https://mrwhite.jackbrannen.com", bg: "#2C2540", color: "white",
+    instructions: `One player secretly gets a different word from everyone else — they're Mr. White.
 
-Each round, one teammate is the Encryptor. They get a secret 3-digit code (three different digits from 1–4) and give one clue for each digit, hinting at the keyword in that position.
+Each player says one statement about their word without saying it directly. After everyone has spoken, the group votes to eliminate the player they think is Mr. White.
 
-Both teams then guess the code. Your team has to decode it correctly — guess wrong and you take a Miscommunication. The other team tries to intercept it using every clue you've given so far — if they crack it, they take an Interception.
+If they're right, Mr. White loses — unless they can guess what the real word was.
 
-(Round 1 can't be intercepted — there's no clue history yet.)
-
-Win by landing 2 Interceptions. Lose if you rack up 2 Miscommunications. If no one's decided after 8 rounds, the most Interceptions wins.`,
+If the group is wrong, Mr. White survives to another round. Last player standing wins.`,
   },
   {
-    name: "Exquisite Corpse",
-    description: "Cooperative blind drawing game",
-    players: "4+ players", minPlayers: 4, tags: ["Chill"], types: ["Drawing", "Cooperative"],
-    url: "https://exquisitecorpse.jackbrannen.com", bg: "#1A3A5C", color: "white",
-    instructions: `A collaborative drawing chain. Each player starts a drawing, then folds their paper (digitally) to hide most of it — leaving only a small strip visible at the fold line as a hint for the next person.
+    name: "Telestrations",
+    description: "Write a sentence, draw it, then write a sentence, then a drawing…",
+    players: "5+ players", minPlayers: 5, tags: ["Chill"], types: ["Drawing"],
+    url: "https://telestrations.jackbrannen.com", bg: "#2B0F6B", color: "white",
+    instructions: `A telephone-style game alternating between drawing and guessing.
 
-The next player draws a continuation below the hint, not knowing what came before. This repeats until every player has added a section to every chain.
+Each player starts by writing a phrase. They pass it to the next player, who draws it. That drawing passes to the next player, who guesses what it is. Their guess passes on to be drawn again, and so on down the chain.
 
-At the end, the full exquisite corpse — assembled from everyone's individual drawings — is revealed one layer at a time.`,
-  },
-  {
-    name: "Drawful",
-    description: "Guess prompts based on the drawing",
-    players: "4+ players", minPlayers: 4, tags: [], types: ["Drawing", "Voting/Judging"],
-    url: "https://drawful.jackbrannen.com", bg: "#307977", color: "white",
-    instructions: `Each player gets a secret prompt and draws it on their phone. No labels allowed.
-
-Everyone's drawings are shown one at a time. All other players type a fake title that sounds plausible. The real prompt is mixed in with the fakes, and everyone votes for which title they think is real.
-
-You score points by voting for the real prompt, or by writing a fake that fools other players into voting for it. Identical fakes earn bonus points too.`,
-  },
-  {
-    name: "First to Worst",
-    description: "Rank 5 things, then the group guesses your order",
-    players: "4+ players", minPlayers: 4, tags: ["Chill", "Short"], types: ["Word games", "Voting/Judging", "Cooperative"],
-    url: "https://firsttoworst.jackbrannen.com", bg: "#004F45", color: "white",
-    instructions: `A ranking game. Each player picks a theme (or it's random) and submits 5 words that fit the theme. Your words go to another player, who ranks them from first to worst.
-
-Once everyone has ranked their words, the whole group tries to guess the exact ranking together — dragging words into what they think is the right order. The ranker watches and can't say anything.
-
-After the group locks in their guess, the real ranking is revealed. Everyone scores points for every word in the correct position.`,
-  },
-  {
-    name: "So Clover",
-    description: "Arrange keyword cards, write clues, guess each other's boards",
-    players: "2+ players", minPlayers: 2, tags: [], types: ["Word games", "Cooperative"],
-    url: "https://soclover.jackbrannen.com", bg: "#6B8C2A", color: "white",
-    instructions: `A cooperative word game. Each player gets a board with 4 keyword cards. Where two words from a card touch an edge, you write a single clue word that connects both keywords.
-
-Once everyone has written their clues, the boards are passed. The next player sees only the clue words (not which keywords they connect) and must figure out the correct arrangement of the 4 cards.
-
-Points are earned for correct placements. Perfect guesses earn a bonus point. Everyone's scores are summed — it's a cooperative total at the end.`,
-  },
-  {
-    name: "Avalon",
-    description: "Find the traitors before they sabotage the quests",
-    players: "5–10 players", minPlayers: 5, tags: ["Longer"], types: ["Hidden roles", "Teams"],
-    url: "https://avalon.jackbrannen.com", bg: "#C9A84C", color: "#2A1800",
-    instructions: `A social deduction game of good vs. evil. Each player is secretly assigned a role — either a Loyal Servant (good) or a Minion of Mordred (evil). Evil players know each other. Merlin knows who is evil but must stay hidden.
-
-The game is a series of 5 quests. A rotating leader proposes a team to go on each quest. Everyone votes to approve or reject it.
-
-If approved, players on the quest secretly vote Success or Fail. One Fail card is enough to fail most quests.
-
-Good wins if 3 quests succeed — but evil gets one last chance: the Assassin can name who they think Merlin is. If correct, evil wins.
-
-Evil wins if 3 quests fail, 5 consecutive proposals are rejected, or the Assassin identifies Merlin.`,
-  },
-  {
-    name: "Word Birds",
-    description: "Shout a word using every card on the table",
-    players: "2+ players", minPlayers: 2, tags: ["Energetic"], types: ["Word games"],
-    url: "https://wordbirds.jackbrannen.com", bg: "#FEE471", color: "#221A12",
-    instructions: `Everyone plays at once. Each round shows 3-5 cards on the table: letters you must work into a single word, red letters that are forbidden, and sometimes a reverse-arrow (only red letters count, everything else is forbidden) or a voice/accent card (say your word in that voice).
-
-Race to be the first to shout a valid word using the required letters while avoiding the forbidden ones — the group judges validity, there's no typing or app-side checking.
-
-Whoever says an invalid word (or is the last player left when everyone else has gone) loses a point. Hit zero and you're eliminated, though you can keep watching. Last player with points left wins.`,
-  },
-  {
-    name: "Things in Rings",
-    description: "Deduce the Knower's secret rules for a 3-ring Venn diagram",
-    players: "3+ players", minPlayers: 3, tags: [], types: ["Word games"],
-    url: "https://thingsinrings.jackbrannen.com", bg: "#C0C9BC", color: "#2A303C",
-    instructions: `One player is the Knower and secretly writes a rule for each of three rings on a Venn diagram. Everyone else is a Finder, trying to figure out those rules by testing where words belong.
-
-Finders submit words into a shared pool, then take turns picking a word from their hand and guessing which zone of the diagram it belongs in — a single ring, an overlap, or entirely outside.
-
-The Knower taps where the word actually goes. Guess right and the word is set aside for good; guess wrong and you draw a replacement — either way, the turn passes to the next Finder.
-
-Tap any zone at any time to see what's already been placed there and gather clues. First Finder to empty their hand wins — though anyone who hasn't gone yet this round with exactly one word left gets a final chance to also finish and tie.`,
-  },
-  {
-    name: "Codenames",
-    description: "Two teams race to find their secret agents using one-word clues",
-    players: "4+ players", minPlayers: 4, tags: ["Longer"], types: ["Teams", "Word games"],
-    url: "https://codenames.jackbrannen.com", bg: "#C0B298", color: "#2C1A0A",
-    instructions: `Two teams — Red and Blue. Each team has a Cluegiver who can see which words belong to their team, the other team, neutral bystanders, or the instant-lose Assassin.
-
-Cluegivers take turns giving a one-word clue plus a number ("Vehicles, 3"). Their team guesses which words match that clue, one at a time. A correct guess continues the turn. A wrong guess ends the turn — and touching the Assassin loses the game immediately.
-
-The first team to correctly identify all their words wins.`,
-  },
-  {
-    name: "Alpha Jam",
-    description: "Word race tournament",
-    players: "2+ players", minPlayers: 2, tags: ["Short"], types: ["Word games"],
-    url: "https://alphajam.jackbrannen.com", bg: "#FA955C", color: "white",
-    instructions: `A head-to-head word-finding tournament. Each matchup shows two letters — a starting letter and an ending letter. The first player to think of a word that starts with the first letter and ends with the second letter wins the round.
-
-The game runs as a round-robin tournament where every player faces every other player. At the end, the player with the most wins is the champion.
-
-If players get stuck on impossible letters, both can agree to request new letters and keep playing.`,
-  },
-  {
-    name: "Typecast",
-    description: "Assign a word for each player, then guess how everyone else did",
-    players: "3+ players", minPlayers: 3, tags: ["Chill", "Short"], types: ["Word games", "Cooperative"],
-    url: "https://typecast.jackbrannen.com", bg: "#E8553A", color: "white",
-    instructions: `Everyone gets a handful of random words and, at the same time, drags one word onto each other player — whoever it fits best. There are a couple of spare words to leave out.
-
-Then, one board at a time, the whole group works together to reconstruct someone's picks, dragging the same words onto the same people.
-
-You score a point for every word placed on the same person the caster chose. It's cooperative — add up your matches across everyone's boards and see how well you read the room.`,
-  },
-  {
-    name: "Reverse Charades",
-    description: "The team gives clues, one person guesses",
-    players: "4+ players", minPlayers: 4, tags: ["Energetic"], types: ["Teams", "Word games"],
-    url: "https://reversecharades.jackbrannen.com", bg: "#974344", color: "white",
-    instructions: `Normal Charades in reverse: instead of one person acting for the group, the whole team acts while the guesser calls out guesses until they get it.
-
-Three modes:
-1. Catchphrase — teammates can say anything but the clue word.
-2. Body cues — teammates tell the guesser what to do with their body until they figure it out.
-3. Chain reaction — teammates alternate saying one word at a time to build sentences.
-
-Teams alternate turns. The team with the most points wins.`,
-  },
-  {
-    name: "The Game of What",
-    description: "Like Quiplash but with DIY questions",
-    players: "4+ players", minPlayers: 4, tags: ["Chill"], types: ["Word games", "Voting/Judging"],
-    url: "https://gameofwhat.jackbrannen.com", bg: "#A02866", color: "white",
-    instructions: `A voting game about creativity and knowing your crowd.
-
-Every player writes an open-ended question that invites creative, funny answers. The game then presents each question to all players, and everyone submits an answer.
-
-Answers are revealed anonymously, and the group votes for their favorite. The author of the winning answer earns points. Identical answers also earn bonus points.
-
-Highest score after all rounds wins.`,
-  },
-  {
-    name: "Same Page",
-    description: "Try to come up with the same answer as everyone else",
-    players: "2+ players", minPlayers: 2, tags: [], types: ["Word games", "Cooperative"],
-    url: "https://samepage.jackbrannen.com", bg: "#FF85FD", color: "#3C3022",
-    instructions: `Everyone sees the same three prompts each round, each with a letter. Privately write an answer for each one.
-
-When all answers are revealed, the group checks every prompt where enough of you landed on the same answer — you verify the matches yourselves.
-
-You need at least one match each round. Extra matches get banked, and a banked match covers a future round where you come up empty.
-
-Survive every round to win; run out of matches and it's game over.`,
+At the end, the original phrase and the final result are revealed side by side. The further it drifts from the original, the funnier it gets.`,
   },
   {
     name: "Copycats",
@@ -226,28 +210,30 @@ All answers are shuffled and shown anonymously. Everyone votes for which answer 
 Points: guess the real answer → earn points. Your fake fools someone → earn a point per person fooled. Write the same answer as someone else → you both earn a bonus point.`,
   },
   {
-    name: "Telestrations",
-    description: "Write a sentence, draw it, then write a sentence, then a drawing…",
-    players: "5+ players", minPlayers: 5, tags: ["Chill"], types: ["Drawing"],
-    url: "https://telestrations.jackbrannen.com", bg: "#2B0F6B", color: "white",
-    instructions: `A telephone-style game alternating between drawing and guessing.
+    name: "Same Page",
+    description: "Try to come up with the same answer as everyone else",
+    players: "2+ players", minPlayers: 2, tags: [], types: ["Word games", "Cooperative"],
+    url: "https://samepage.jackbrannen.com", bg: "#FF85FD", color: "#3C3022",
+    instructions: `Everyone sees the same three prompts each round, each with a letter. Privately write an answer for each one.
 
-Each player starts by writing a phrase. They pass it to the next player, who draws it. That drawing passes to the next player, who guesses what it is. Their guess passes on to be drawn again, and so on down the chain.
+When all answers are revealed, the group checks every prompt where enough of you landed on the same answer — you verify the matches yourselves.
 
-At the end, the original phrase and the final result are revealed side by side. The further it drifts from the original, the funnier it gets.`,
+You need at least one match each round. Extra matches get banked, and a banked match covers a future round where you come up empty.
+
+Survive every round to win; run out of matches and it's game over.`,
   },
   {
-    name: "Mr. White",
-    description: "One player has a slightly different word—find the impostor",
-    players: "4+ players", minPlayers: 4, tags: [], types: ["Hidden roles"],
-    url: "https://mrwhite.jackbrannen.com", bg: "#2C2540", color: "white",
-    instructions: `One player secretly gets a different word from everyone else — they're Mr. White.
+    name: "The Game of What",
+    description: "Like Quiplash but with DIY questions",
+    players: "4+ players", minPlayers: 4, tags: ["Chill"], types: ["Word games", "Voting/Judging"],
+    url: "https://gameofwhat.jackbrannen.com", bg: "#A02866", color: "white",
+    instructions: `A voting game about creativity and knowing your crowd.
 
-Each player says one statement about their word without saying it directly. After everyone has spoken, the group votes to eliminate the player they think is Mr. White.
+Every player writes an open-ended question that invites creative, funny answers. The game then presents each question to all players, and everyone submits an answer.
 
-If they're right, Mr. White loses — unless they can guess what the real word was.
+Answers are revealed anonymously, and the group votes for their favorite. The author of the winning answer earns points. Identical answers also earn bonus points.
 
-If the group is wrong, Mr. White survives to another round. Last player standing wins.`,
+Highest score after all rounds wins.`,
   },
   {
     name: "Sound Board",
@@ -263,6 +249,20 @@ Score +1 per correct guess, -1 per word you picked that they missed, -1 per word
 Correctly guessed words leave the board; new ones take their place. Words that stick around get more valuable — up to 9 points — the longer they survive.
 
 First team to 16 points wins.`,
+  },
+  {
+    name: "Reverse Charades",
+    description: "The team gives clues, one person guesses",
+    players: "4+ players", minPlayers: 4, tags: ["Energetic"], types: ["Teams", "Word games"],
+    url: "https://reversecharades.jackbrannen.com", bg: "#974344", color: "white",
+    instructions: `Normal Charades in reverse: instead of one person acting for the group, the whole team acts while the guesser calls out guesses until they get it.
+
+Three modes:
+1. Catchphrase — teammates can say anything but the clue word.
+2. Body cues — teammates tell the guesser what to do with their body until they figure it out.
+3. Chain reaction — teammates alternate saying one word at a time to build sentences.
+
+Teams alternate turns. The team with the most points wins.`,
   },
 ]
 
@@ -579,7 +579,7 @@ export default function Home() {
         </div>
       )}
 
-      <h1 style={{ fontSize: "clamp(48px, 14vw, 88px)", fontWeight: 900, color: "white", letterSpacing: "-2px", lineHeight: 0.9, textAlign: "center", marginBottom: 40 }}>
+      <h1 style={{ width: "100%", maxWidth: 480, fontSize: "clamp(48px, 14vw, 88px)", fontWeight: 900, color: "white", letterSpacing: "-2px", lineHeight: 0.9, textAlign: "left", marginBottom: 40 }}>
         Jack's<br />Games
       </h1>
 

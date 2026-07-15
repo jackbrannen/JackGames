@@ -71,34 +71,6 @@ export const CARD = {
   wellPadding:  "16px 20px",
 }
 
-// ─── Word value → color interpolation (Sound Board) ────────────────────────
-// Interpolates a card's background from white (value 1) toward gold (value 9)
-// in HSB space, and its text color from CARD_TEXT toward white past the
-// midpoint where gold gets dark enough to need it.
-
-const WORD_CARD_WHITE = { h: 0, s: 0, b: 100 }     // #FFFFFF
-const WORD_CARD_GOLD  = { h: 38, s: 62, b: 65 }    // ≈ #A57C31
-
-function hsbToHex(h, s, b) {
-  s /= 100; b /= 100
-  const k = n => (n + h / 60) % 6
-  const f = n => b - b * s * Math.max(0, Math.min(k(n), 4 - k(n), 1))
-  const toHex = v => Math.round(v * 255).toString(16).padStart(2, "0")
-  return `#${toHex(f(5))}${toHex(f(3))}${toHex(f(1))}`
-}
-
-export function wordCardBg(value) {
-  const t = Math.max(0, Math.min(1, (value - 1) / 8))
-  const h = WORD_CARD_WHITE.h + (WORD_CARD_GOLD.h - WORD_CARD_WHITE.h) * t
-  const s = WORD_CARD_WHITE.s + (WORD_CARD_GOLD.s - WORD_CARD_WHITE.s) * t
-  const b = WORD_CARD_WHITE.b + (WORD_CARD_GOLD.b - WORD_CARD_WHITE.b) * t
-  return hsbToHex(h, s, b)
-}
-
-export function wordCardText(value) {
-  return value >= 7 ? "#FFFFFF" : "#2A303C"
-}
-
 // ─── Reusable style objects ───────────────────────────────────────────────────
 
 export const STYLE = {

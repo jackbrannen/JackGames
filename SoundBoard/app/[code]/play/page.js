@@ -13,16 +13,16 @@ import TextEntry from "../../../components/TextEntry"
 import GameModal from "../../../components/GameModal"
 import { playCountdownTick, playCountdownGo, playSoundsEnd } from "../../../lib/sounds"
 
-const RED = "#88192B"
-const DARK = "#711515"
-const MID = "#7B171F"
-const GOLD = "#A57C31"
-const WARM_LIGHT = "#9F1D48"
-const BOYS = "#21273D"
-const GIRLS = "#D85571"
+const RED = "#25AB61"
+const DARK = "#209467"
+const MID = "#229E64"
+const YELLOW = "#FBDF54"
+const WARM_LIGHT = "#2AC255"
+const BOYS = "#174867"
+const GIRLS = "#D4377C"
 const INK = "#2A303C"
 
-const POKE_COLORS = { dark: DARK, mid: MID, wl: WARM_LIGHT, yellow: GOLD, notifBg: "#2A0E0B" }
+const POKE_COLORS = { dark: DARK, mid: MID, wl: WARM_LIGHT, yellow: YELLOW, notifBg: "#2A0E0B" }
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
 const INSTRUCTIONS = [
@@ -34,21 +34,39 @@ On your turn, pick 1-3 words from the board. When the countdown ends, make sound
 Correctly guessed words leave the board; new ones take their place. Words that stick around get more valuable - up to 9 points - the longer they survive.`],
 ]
 
+const VALUE_COLORS = ["#FFFFFF", "#FFE819", "#FFB920", "#FF8C37", "#F6604B", "#DA395A", "#B41A64", "#860B67", "#550D61"]
 function valueColor(value) {
-  const t = Math.max(0, Math.min(1, (value - 1) / 8))
-  const from = [255, 255, 255]
-  const to = [165, 124, 49]
-  const rgb = from.map((c, i) => Math.round(c + (to[i] - c) * t))
-  return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`
+  return VALUE_COLORS[Math.max(1, Math.min(9, value)) - 1]
 }
 function valueTextColor(value) {
-  return value >= 6 ? "#fff" : INK
+  return value >= 5 ? "#fff" : INK
 }
 
 const CELL_ANIM_CSS = `
 @keyframes sbCellLeave { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.85); } }
 @keyframes sbCellEnter { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
 `
+
+// Shared between the countdown and sounds screens (it-player view) so the
+// word list never moves or resizes across that transition — only the
+// countdown numeral (rendered in a fixed-height slot) appears/disappears.
+function ItSoundsBlock({ words, secs, caption }) {
+  return (
+    <>
+      <div style={{ height: 140, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {secs != null && (
+          <div style={{ fontSize: "clamp(70px, 26vw, 150px)", fontWeight: 900, lineHeight: 1 }}>{secs}</div>
+        )}
+      </div>
+      <div style={{ fontSize: 16, fontWeight: 800, opacity: 0.85, marginBottom: 16 }}>{caption}</div>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+        {words.map((t, i) => (
+          <div key={i} style={{ fontSize: "clamp(36px, 11vw, 72px)", fontWeight: 900, letterSpacing: "-1px", textAlign: "center", lineHeight: 1.05 }}>{t}</div>
+        ))}
+      </div>
+    </>
+  )
+}
 
 function WordGrid({ slots, selected, onToggle, disabled, liveByWord, leaving = {}, entering = new Set() }) {
   return (
@@ -85,7 +103,6 @@ function WordGrid({ slots, selected, onToggle, disabled, liveByWord, leaving = {
               position: "relative",
               border: isSelected ? "4.8px solid #29303C" : "4.8px solid transparent",
               boxSizing: "border-box",
-              opacity: disabled && !isLeaving ? 0.85 : 1,
               transition: "border 0.05s ease",
               animation: cellAnimation,
               cursor: disabled || isLeaving ? "default" : "pointer",
@@ -382,6 +399,14 @@ export default function Play({ params }) {
   // ── Countdown screen ──────────────────────────────────────────────
   if (game.phase === "countdown") {
     const secs = Math.max(1, Math.ceil(msLeft / 1000))
+    if (isIt) {
+      const mySoundWords = (game.it_selection ?? []).map(id => wordsById[id]?.text).filter(Boolean)
+      return (
+        <div style={{ minHeight: "100dvh", background: RED, color: "white", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
+          <ItSoundsBlock words={mySoundWords} secs={secs} caption="Get ready to make sounds" />
+        </div>
+      )
+    }
     return (
       <div style={{ minHeight: "100dvh", background: RED, color: "white", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
         <div style={{ fontSize: 18, fontWeight: 800, opacity: 0.85, marginBottom: 24 }}>
@@ -395,21 +420,23 @@ export default function Play({ params }) {
   // ── Sounds! screen ────────────────────────────────────────────────
   if (game.phase === "sounds") {
     const pct = Math.max(0, Math.min(100, (msLeft / 4000) * 100))
-    const mySoundWords = isIt ? (game.it_selection ?? []).map(id => wordsById[id]?.text).filter(Boolean) : []
+    if (isIt) {
+      const mySoundWords = (game.it_selection ?? []).map(id => wordsById[id]?.text).filter(Boolean)
+      return (
+        <div style={{ minHeight: "100dvh", background: "#fff", color: RED, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
+          <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 10, background: "rgba(37,171,97,0.15)" }}>
+            <div style={{ height: "100%", width: `${pct}%`, background: RED, transition: "width 0.1s linear" }} />
+          </div>
+          <ItSoundsBlock words={mySoundWords} secs={null} caption="Make sounds!" />
+        </div>
+      )
+    }
     return (
       <div style={{ minHeight: "100dvh", background: "#fff", color: RED, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 10, background: "rgba(115,37,50,0.15)" }}>
           <div style={{ height: "100%", width: `${pct}%`, background: RED, transition: "width 0.1s linear" }} />
         </div>
-        {isIt ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-            {mySoundWords.map((t, i) => (
-              <div key={i} style={{ fontSize: "clamp(36px, 11vw, 72px)", fontWeight: 900, letterSpacing: "-1px", textAlign: "center", lineHeight: 1.05 }}>{t}</div>
-            ))}
-          </div>
-        ) : (
-          <div style={{ fontSize: "clamp(60px, 20vw, 140px)", fontWeight: 900, letterSpacing: "-2px" }}>Sounds!</div>
-        )}
+        <div style={{ fontSize: "clamp(60px, 20vw, 140px)", fontWeight: 900, letterSpacing: "-2px" }}>Sounds!</div>
       </div>
     )
   }
@@ -428,7 +455,7 @@ export default function Play({ params }) {
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 40 }}>
-            <button onClick={playAgain} disabled={creatingReplay} style={{ background: GOLD, color: "#fff", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
+            <button onClick={playAgain} disabled={creatingReplay} style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
               {creatingReplay ? "Creating…" : "Play Again"}
             </button>
             <button onClick={() => setShowGameModal(true)} style={{ background: "rgba(255,255,255,0.18)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%" }}>
@@ -480,14 +507,14 @@ export default function Play({ params }) {
               </div>
               <RandomIdeas
                 bg={WARM_LIGHT}
-                yellow={GOLD}
+                yellow={YELLOW}
                 fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
                 playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
               />
             </div>
           </div>
           <Footer colors={POKE_COLORS}>
-            <FooterButton onClick={submitWords} disabled={!allFilled} bg={GOLD} textColor="#fff">Submit</FooterButton>
+            <FooterButton onClick={submitWords} disabled={!allFilled} bg={YELLOW} textColor="#000">Submit</FooterButton>
           </Footer>
         </>
       )
@@ -546,7 +573,7 @@ export default function Play({ params }) {
                 <div>
                   <div style={sectionHeader}>Correct</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                    {correct.map(w => <Row key={w.id} w={w} sign="+" icon="✓" bg="#407F56" />)}
+                    {correct.map(w => <Row key={w.id} w={w} sign="+" icon="✓" bg="#1F806C" />)}
                   </div>
                 </div>
               )}
@@ -554,7 +581,7 @@ export default function Play({ params }) {
                 <div>
                   <div style={sectionHeader}>Guessed wrong</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                    {wrong.map(w => <Row key={w.id} w={w} sign="-" icon="✗" bg="#C42D40" />)}
+                    {wrong.map(w => <Row key={w.id} w={w} sign="-" icon="✗" bg="#C44555" />)}
                   </div>
                 </div>
               )}
@@ -562,7 +589,7 @@ export default function Play({ params }) {
                 <div>
                   <div style={sectionHeader}>Should have guessed</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-                    {missed.map(w => <Row key={w.id} w={w} sign="-" icon="✗" bg="#C42D40" />)}
+                    {missed.map(w => <Row key={w.id} w={w} sign="-" icon="✗" bg="#C44555" />)}
                   </div>
                 </div>
               )}
@@ -571,7 +598,7 @@ export default function Play({ params }) {
                 {total >= 0 ? `+${total}` : total} Total
               </div>
 
-              <button onClick={dismissResults} style={{ background: GOLD, color: "#fff", fontSize: 16, fontWeight: 900, padding: "14px", width: "100%" }}>Got It</button>
+              <button onClick={dismissResults} style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px", width: "100%" }}>Got It</button>
             </div>
           </div>
         </div>
@@ -594,13 +621,13 @@ export default function Play({ params }) {
             </div>
             <RandomIdeas
               bg={WARM_LIGHT}
-              yellow={GOLD}
+              yellow={YELLOW}
               fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
               playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
             />
           </div>
           <Footer colors={POKE_COLORS}>
-            <FooterButton onClick={submitTopup} disabled={!allFilled} bg={GOLD} textColor="#fff">Submit</FooterButton>
+            <FooterButton onClick={submitTopup} disabled={!allFilled} bg={YELLOW} textColor="#000">Submit</FooterButton>
           </Footer>
         </div>
       )
@@ -648,7 +675,7 @@ export default function Play({ params }) {
           </div>
         </div>
         {showSelectUI ? (
-          <div style={{ padding: "14px 20px", textAlign: "center", background: GOLD, color: "#fff" }}>
+          <div style={{ padding: "14px 20px", textAlign: "center", background: YELLOW, color: "#000" }}>
             <div style={{ fontSize: 14, fontWeight: 800 }}>{actionText}</div>
           </div>
         ) : onActiveTeam ? (
@@ -676,9 +703,9 @@ export default function Play({ params }) {
       {showSelectUI ? (
         <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
           {isGuessing ? (
-            <FooterButton onClick={submitGuess} disabled={guessIds.size < 1} bg={GOLD} textColor="#fff">Submit Guess</FooterButton>
+            <FooterButton onClick={submitGuess} disabled={guessIds.size < 1} bg={YELLOW} textColor="#000">Submit Guess</FooterButton>
           ) : (
-            <FooterButton onClick={lockSelection} disabled={pickedIds.size < 1} bg={GOLD} textColor="#fff">Lock In</FooterButton>
+            <FooterButton onClick={lockSelection} disabled={pickedIds.size < 1} bg={YELLOW} textColor="#000">Lock In</FooterButton>
           )}
         </Footer>
       ) : (
@@ -704,7 +731,7 @@ export default function Play({ params }) {
             <div style={{ fontSize: 13, fontWeight: 800, opacity: 0.7, marginBottom: 6 }}>Girls</div>
             <input type="number" defaultValue={game.girls_score} onChange={e => setScoreForm(f => ({ ...f, girls: e.target.value }))}
               style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 18, padding: "12px 14px", width: "100%", border: "none", marginBottom: 14 }} />
-            <button onClick={saveScores} style={{ background: GOLD, color: "#fff", fontSize: 15, fontWeight: 900, padding: "12px", width: "100%" }}>Save</button>
+            <button onClick={saveScores} style={{ background: YELLOW, color: "#000", fontSize: 15, fontWeight: 900, padding: "12px", width: "100%" }}>Save</button>
           </div>
         }
       />

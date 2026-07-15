@@ -238,7 +238,14 @@ export default function Lobby({
           })
           return teamOrder.map(label => (
             <div key={label} style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: FONT_SIZE.min, fontWeight: FONT_WEIGHT.heavy, textTransform: "uppercase", letterSpacing: "0.12em", color: teamMap[label].color || `rgba(255,255,255,${OPACITY.muted})`, marginBottom: 6 }}>
+              <div style={{
+                display: "inline-block",
+                fontSize: FONT_SIZE.min, fontWeight: FONT_WEIGHT.heavy, textTransform: "uppercase", letterSpacing: "0.12em",
+                color: teamMap[label].color ? "white" : `rgba(255,255,255,${OPACITY.muted})`,
+                background: teamMap[label].color || "transparent",
+                padding: teamMap[label].color ? "4px 10px" : 0,
+                marginBottom: 6,
+              }}>
                 {label}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: GAP.card }}>

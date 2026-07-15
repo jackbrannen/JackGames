@@ -95,6 +95,21 @@ The Knower taps where the word actually goes. Guess right and the word is set as
 Tap any zone at any time to see what's already been placed there and gather clues. First Finder to empty their hand wins — though anyone who hasn't gone yet this round with exactly one word left gets a final chance to also finish and tie.`,
   },
   {
+    name: "Sound Board",
+    description: "Make the sounds. Your team has to guess what you meant",
+    players: "4+ players", minPlayers: 4, tags: ["Energetic"], types: ["Teams", "Word games"],
+    url: "https://soundboard.jackbrannen.com", bg: "#25AB61", color: "white",
+    instructions: `Two teams — Boys and Girls. Everyone submits words at the start; those become the pool for the whole game.
+
+On your turn, pick 1–3 words from the board. When the countdown ends, make sound effects for the words you picked — no talking, no miming, just noises. Your teammates each pick up to 3 words they think you meant.
+
+Score +1 per correct guess, -1 per word you picked that they missed, -1 per word they guessed that you didn't pick.
+
+Correctly guessed words leave the board; new ones take their place. Words that stick around get more valuable — up to 9 points — the longer they survive.
+
+First team to 16 points wins.`,
+  },
+  {
     name: "First to Worst",
     description: "Rank 5 things, then the group guesses your order",
     players: "4+ players", minPlayers: 4, tags: ["Chill", "Short"], types: ["Word games", "Voting/Judging", "Cooperative"],
@@ -234,21 +249,6 @@ Every player writes an open-ended question that invites creative, funny answers.
 Answers are revealed anonymously, and the group votes for their favorite. The author of the winning answer earns points. Identical answers also earn bonus points.
 
 Highest score after all rounds wins.`,
-  },
-  {
-    name: "Sound Board",
-    description: "Make the sounds. Your team has to guess what you meant",
-    players: "4+ players", minPlayers: 4, tags: ["Energetic"], types: ["Teams", "Word games"],
-    url: "https://soundboard.jackbrannen.com", bg: "#88192B", color: "white",
-    instructions: `Two teams — Boys and Girls. Everyone submits words at the start; those become the pool for the whole game.
-
-On your turn, pick 1–3 words from the board. When the countdown ends, make sound effects for the words you picked — no talking, no miming, just noises. Your teammates each pick up to 3 words they think you meant.
-
-Score +1 per correct guess, -1 per word you picked that they missed, -1 per word they guessed that you didn't pick.
-
-Correctly guessed words leave the board; new ones take their place. Words that stick around get more valuable — up to 9 points — the longer they survive.
-
-First team to 16 points wins.`,
   },
   {
     name: "Reverse Charades",

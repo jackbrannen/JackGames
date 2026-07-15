@@ -7,14 +7,14 @@ import Lobby from "../../components/Lobby"
 import Footer, { FOOTER_H } from "../../components/Footer"
 import FooterButton from "../../components/FooterButton"
 
-const BG         = "#88192B"
-const DARK       = "#711515"
-const MID        = "#7B171F"
-const GOLD       = "#A57C31"
+const BG         = "#25AB61"
+const DARK       = "#209467"
+const MID        = "#229E64"
+const YELLOW     = "#FBDF54"
 const TEXT       = "white"
-const WARM_LIGHT = "#9F1D48"
-const BOYS       = "#21273D"
-const GIRLS      = "#D85571"
+const WARM_LIGHT = "#2AC255"
+const BOYS       = "#174867"
+const GIRLS      = "#D4377C"
 
 const MIN_TEAM = 2
 
@@ -64,7 +64,7 @@ Here's the catch: words that stick around get more valuable — up to 9 points �
 
 First team to [16] points wins.`
 
-const POKE_COLORS = { dark: DARK, mid: MID, wl: WARM_LIGHT, yellow: GOLD, notifBg: "#2A0E0B" }
+const POKE_COLORS = { dark: DARK, mid: MID, wl: WARM_LIGHT, yellow: YELLOW, notifBg: "#2A0E0B" }
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
 export default function LobbyPage({ params }) {
@@ -184,6 +184,7 @@ export default function LobbyPage({ params }) {
   }
 
   async function startGame() {
+    if (!window.confirm("Start the game for everyone?")) throw new Error("cancelled")
     const { error } = await supabase.rpc("sb_start_game", { p_code: code })
     if (error) {
       alert(error.message ?? "Failed to start game")
@@ -227,7 +228,7 @@ export default function LobbyPage({ params }) {
           howToPlayContent={INSTRUCTIONS}
           codeDisplay={
             <>
-              <span style={{ color: GOLD }}>{w1}</span>
+              <span style={{ color: YELLOW }}>{w1}</span>
               <span style={{ color: TEXT }}>{w2}</span>
             </>
           }
@@ -266,7 +267,7 @@ export default function LobbyPage({ params }) {
                     {joining ? "Joining…" : "Join Girls"}
                   </button>
                 </div>
-                {joinError && <p style={{ marginTop: 10, fontSize: 14, fontWeight: 700, color: GOLD }}>{joinError}</p>}
+                {joinError && <p style={{ marginTop: 10, fontSize: 14, fontWeight: 700, color: YELLOW }}>{joinError}</p>}
               </div>
             ) : (
               <div>
@@ -292,7 +293,7 @@ export default function LobbyPage({ params }) {
                     onClick={() => setFirstTeam(val)}
                     style={{
                       flex: 1,
-                      background: firstTeam === val ? GOLD : WARM_LIGHT,
+                      background: firstTeam === val ? YELLOW : WARM_LIGHT,
                       color: firstTeam === val ? "#000" : "white",
                       fontSize: 16,
                       fontWeight: 900,
@@ -315,13 +316,13 @@ export default function LobbyPage({ params }) {
 
               <button
                 onClick={() => { saveSettings(); closeModal() }}
-                style={{ background: GOLD, color: "#000", fontSize: 18, fontWeight: 900, padding: "16px", width: "100%" }}
+                style={{ background: YELLOW, color: "#000", fontSize: 18, fontWeight: 900, padding: "16px", width: "100%" }}
               >
                 Save
               </button>
             </div>
           )}
-          colors={{ bg: BG, dark: DARK, mid: MID, wl: WARM_LIGHT, yellow: GOLD }}
+          colors={{ bg: BG, dark: DARK, mid: MID, wl: WARM_LIGHT, yellow: YELLOW }}
           minPlayers={MIN_TEAM * 2}
           notFound={gameExists === false}
           loading={gameExists === null}
@@ -334,7 +335,7 @@ export default function LobbyPage({ params }) {
 
       {canStart && (
         <Footer colors={POKE_COLORS}>
-          <FooterButton onClick={startGame} bg={GOLD} textColor="#fff">
+          <FooterButton onClick={startGame} bg={YELLOW} textColor="#000">
             Start Game
           </FooterButton>
         </Footer>

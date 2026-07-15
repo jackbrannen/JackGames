@@ -15,7 +15,7 @@ export const GAMES = [
   { name: "Copycats",         sub: "copycats",          players: "3+ players",   description: "Write a question for another player. Everyone else tries to fake their answer.",     bg: "#5C2D8C", color: "white"    },
   { name: "Mr. White",        sub: "mrwhite",           players: "4+ players",   description: "One player has a slightly different word. Find the impostor.",                       bg: "#2C2540", color: "white"    },
   { name: "Reverse Charades", sub: "reversecharades",   players: "4+ players",   description: "Everyone acts it out — one person guesses.",                                        bg: "#974344", color: "white"    },
-  { name: "Sound Board",      sub: "soundboard",        players: "4+ players",   description: "Make sound effects. Your team has to guess what you meant.",                        bg: "#88192B", color: "white"    },
+  { name: "Sound Board",      sub: "soundboard",        players: "4+ players",   description: "Make sound effects. Your team has to guess what you meant.",                        bg: "#25AB61", color: "white"    },
 ]
 
 // Returns the GAMES list excluding the current game
@@ -69,13 +69,13 @@ export default function GameModal({
             <div style={{ fontSize: 24, fontWeight: 900, color: "white", marginBottom: 12 }}>
               {nextGamePickerName} wants to play
             </div>
-            <div style={{ fontSize: 28, fontWeight: 900, color: "#A57C31", marginBottom: 24 }}>
+            <div style={{ fontSize: 28, fontWeight: 900, color: "#FBDF54", marginBottom: 24 }}>
               {inviteGameName}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <button
                 onClick={() => window.location.href = `https://${nextGame}.jackbrannen.com/${nextGameCode}`}
-                style={{ background: "#A57C31", color: "#fff", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}
+                style={{ background: "#FBDF54", color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}
               >
                 Join
               </button>

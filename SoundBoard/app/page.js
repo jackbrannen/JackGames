@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation"
 import { useSubmitNudge } from "../lib/useSubmitNudge"
 import HomeScreen from "../components/HomeScreen"
 
-const BG = "#88192B"
-const GOLD = "#A57C31"
-const WARM_LIGHT = "#9F1D48"
+const BG = "#25AB61"
+const YELLOW = "#FBDF54"
+const WARM_LIGHT = "#2AC255"
 
 const WORDS_A = [
   "MAPLE","RIVER","OCEAN","SUNRISE","VELVET","COPPER","SILVER","EMBER","FOREST","CLOUD",
@@ -126,7 +126,7 @@ export default function Home() {
       error={error}
       onDummyGame={onDummy}
       isDummy={creating}
-      colors={{ bg: BG, wl: WARM_LIGHT, yellow: GOLD }}
+      colors={{ bg: BG, wl: WARM_LIGHT, yellow: YELLOW }}
     />
   )
 }

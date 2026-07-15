@@ -4,17 +4,17 @@ Edit this file and return it before coding begins.
 
 ---
 
-## Colors (red/gold theme; HSB-derived)
-- **Main theme (accent, buttons, active states):** #88192B (red)
-- **Cool-dark (headers, status bars):** #711515 (hue +10° toward blue, brightness -9%)
-- **Mid-dark (wells, cards, panels):** #7B171F (hue +5°, brightness -5%)
-- **Warm-light (inputs, buttons):** #9F1D48 (hue -10° toward orange, brightness +9%)
-- **Gold (high-value word cards, primary action buttons):** #A57C31
-- **Card base background:** #FFFFFF (white), darkening toward gold as value rises
+## Colors (green/yellow theme; HSB-derived)
+- **Main theme (accent, buttons, active states):** #25AB61 (green)
+- **Cool-dark (headers, status bars):** #209467 (hue +10° toward blue, brightness -9%)
+- **Mid-dark (wells, cards, panels):** #229E64 (hue +5°, brightness -5%)
+- **Warm-light (inputs, buttons):** #2AC255 (hue -10° toward orange, brightness +9%)
+- **Yellow (high-value word cards, primary action buttons):** #FBDF54 — standard accent shared across other games
+- **Card base background:** #FFFFFF (white), warming toward yellow as value rises
 - **Card base text:** #2A303C
-- **Boys team:** #21273D
-- **Girls team:** #D85571
-- **Results modal — correct rows:** #407F56 · **wrong/missed rows:** #C42D40
+- **Boys team:** #174867
+- **Girls team:** #D4377C
+- **Results modal — correct rows:** #1F806C · **wrong/missed rows:** #C44555
 
 ---
 

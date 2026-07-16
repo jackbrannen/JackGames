@@ -497,16 +497,30 @@ export default function PlayPage({ params }) {
   async function rpc(fn, args = {}) {
     const { error } = await supabase.rpc(fn, args)
     if (error) throw error
-    // Don't call loadState() - let polling pick up phase changes naturally.
+    // Refresh immediately so the acting client's own button resolves right
+    // away instead of waiting on its own realtime round-trip or another
+    // peer's gossip nudge (both of which can take a few seconds).
+    await loadState()
   }
 
+  const loadSeqRef = useRef(0)
   const loadState = useCallback(async () => {
+    // Guard against out-of-order responses: loadState can be triggered
+    // concurrently from multiple sources (the poll, several realtime
+    // callbacks firing close together, visibilitychange). Network requests
+    // don't necessarily resolve in the order they were sent -- e.g. a poll
+    // request sent just before a card move can resolve *after* the realtime-
+    // triggered fetch for that same move, and its now-stale response would
+    // otherwise overwrite fresher state with older data. Only the response
+    // from the most recently *initiated* call is ever allowed to apply.
+    const seq = ++loadSeqRef.current
     try {
       const [{ data: gameData }, { data: playerData }, { data: boardData }] = await Promise.all([
         supabase.from("soclover_games").select("*").eq("code", code).single(),
         supabase.from("soclover_players").select("*").eq("game_code", code).order("created_at"),
         supabase.from("soclover_boards").select("*").eq("game_code", code),
       ])
+      if (seq !== loadSeqRef.current) return
       if (!gameData) { router.push(`/${code}`); return }
       if (gameData.replay_code) { router.push(`/${gameData.replay_code}`); return }
       if (gameData.phase === "lobby") { router.push(`/${code}`); return }
@@ -659,27 +673,66 @@ export default function PlayPage({ params }) {
     const pid = localStorage.getItem(`soclover:${code}:playerId`)
     if (pid) setMyPlayerId(pid)
     loadState()
-    // Poll as a fallback in case a realtime event is missed. Kept short so
-    // players recover from any dropped event within a few seconds rather than
-    // sitting out of sync for half a minute.
-    const poll = setInterval(loadState, 1500)
+    // Poll as a rare-case fallback in case a Realtime connection genuinely
+    // drops (not a normal occurrence -- Realtime subscribes to all three
+    // tables below and picks up RPC-driven changes the same way it picks up
+    // direct writes). Previously this was an aggressive 1.5s poll working
+    // around a stale-response race in loadState() itself: a slow poll
+    // request sent before a move could resolve after the realtime-triggered
+    // fetch for that same move and overwrite fresher state with older data.
+    // That race is now fixed with the loadSeqRef guard above, so this can be
+    // the same 60s interval every other game uses.
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
-    const ch = supabase.channel(`soclover-play-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "soclover_games", filter: `code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "soclover_players", filter: `game_code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "soclover_boards", filter: `game_code=eq.${code}` }, loadState)
-      // Fast path: peers reload instantly on a broadcast nudge (skips the
-      // slower DB-replication path that postgres_changes rides on).
-      .on("broadcast", { event: "sync" }, () => loadState())
-      .on("presence", { event: "sync" }, () => setPresenceState({ ...ch.presenceState() }))
-      .subscribe(async status => {
-        if (status === "SUBSCRIBED" && myPlayerId) {
-          await ch.track({ playerId: myPlayerId, typing: false })
-        }
-      })
-    channelRef.current = ch
-    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(ch) }
+
+    let cancelled = false
+    let ch = null
+    let reconnectTimer = null
+    let reconnectAttempt = 0
+
+    function connect() {
+      ch = supabase.channel(`soclover-play-${code}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "soclover_games", filter: `code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "soclover_players", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "soclover_boards", filter: `game_code=eq.${code}` }, loadState)
+        // Fast path: peers reload instantly on a broadcast nudge (skips the
+        // slower DB-replication path that postgres_changes rides on).
+        .on("broadcast", { event: "sync" }, () => loadState())
+        .on("presence", { event: "sync" }, () => setPresenceState({ ...ch.presenceState() }))
+        .subscribe(async status => {
+          if (cancelled) return
+          if (status === "SUBSCRIBED") {
+            reconnectAttempt = 0
+            // Catch up immediately on (re)connect in case events were missed while disconnected.
+            loadState()
+            if (myPlayerId) await ch.track({ playerId: myPlayerId, typing: false })
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            // A dropped websocket otherwise leaves this client stuck until the 60s poll fires.
+            // Recreate the channel instead of waiting on it, backing off if it keeps failing
+            // so a persistent outage doesn't turn into a reconnect storm across many clients.
+            if (reconnectTimer) return
+            const delay = Math.min(2000 * 2 ** reconnectAttempt, 30000)
+            reconnectAttempt++
+            reconnectTimer = setTimeout(() => {
+              reconnectTimer = null
+              if (cancelled) return
+              supabase.removeChannel(ch)
+              connect()
+            }, delay)
+          }
+        })
+      channelRef.current = ch
+    }
+    connect()
+
+    return () => {
+      cancelled = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      clearInterval(poll)
+      document.removeEventListener("visibilitychange", handleVisibility)
+      supabase.removeChannel(ch)
+    }
   }, [code, loadState, myPlayerId])
 
   useEffect(() => {
@@ -725,12 +778,19 @@ export default function PlayPage({ params }) {
   }
 
   // Persist a board patch from the client (the guesser's live placements /
-  // rotation). Fire-and-forget, but on failure we log and resync so a dropped
-  // write doesn't silently diverge from what other players see.
+  // rotation). Queued onto persistQueueRef so rapid successive drags can't
+  // have their writes land out of order (an older write resolving after a
+  // newer one would otherwise silently revert the newer placement). On
+  // failure we log and resync so a dropped write doesn't silently diverge
+  // from what other players see.
+  const persistQueueRef = useRef(Promise.resolve())
   function persistBoard(patch) {
     if (!currentBoard) return
-    supabase.from("soclover_boards").update(patch).eq("id", currentBoard.id)
-      .then(({ error }) => { if (error) { console.error("[soclover] board write failed", error); loadState() } else nudgeSync() })
+    const boardId = currentBoard.id
+    persistQueueRef.current = persistQueueRef.current.then(() =>
+      supabase.from("soclover_boards").update(patch).eq("id", boardId)
+        .then(({ error }) => { if (error) { console.error("[soclover] board write failed", error); loadState() } else nudgeSync() })
+    )
   }
 
   function handleDrop(x, y) {

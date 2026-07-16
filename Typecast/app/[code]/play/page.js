@@ -101,12 +101,15 @@ export default function PlayPage({ params }) {
   const interactive = canEditAssign || canEditGuess
   const synced = canEditGuess
 
+  const loadSeqRef = useRef(0)
   async function loadState() {
+    const seq = ++loadSeqRef.current
     const [{ data: gm }, { data: ps }, { data: ms }] = await Promise.all([
       supabase.from("tc_games").select("*").eq("code", code).single(),
       supabase.from("tc_players").select("*").eq("game_code", code).order("created_at"),
       supabase.from("tc_matchups").select("*").eq("game_code", code),
     ])
+    if (seq !== loadSeqRef.current) return
     if (!gm) { router.replace(`/${code}`); return }
     if (gm.replay_code) { router.replace(`/${gm.replay_code}`); return }
     if (gm.phase === "lobby") { router.replace(`/${code}`); return }
@@ -130,18 +133,53 @@ export default function PlayPage({ params }) {
 
   useEffect(() => {
     loadState(); loadPokes()
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
-    const ch = supabase.channel(`typecast-play-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "tc_games", filter: `code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "tc_players", filter: `game_code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "tc_matchups", filter: `game_code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "pokes", filter: `room_code=eq.${code}` }, loadPokes)
-      .on("broadcast", { event: "sync" }, loadState)
-      .subscribe()
-    channelRef.current = ch
-    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(ch) }
+    let cancelled = false
+    let ch = null
+    let reconnectTimer = null
+    let reconnectAttempt = 0
+
+    function connect() {
+      ch = supabase.channel(`typecast-play-${code}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "tc_games", filter: `code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "tc_players", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "tc_matchups", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "pokes", filter: `room_code=eq.${code}` }, loadPokes)
+        .on("broadcast", { event: "sync" }, loadState)
+        .subscribe(status => {
+          if (cancelled) return
+          if (status === "SUBSCRIBED") {
+            reconnectAttempt = 0
+            // Catch up immediately on (re)connect in case events were missed while disconnected.
+            loadState(); loadPokes()
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            // A dropped websocket otherwise leaves this client stuck until the 60s poll fires.
+            // Recreate the channel instead of waiting on it, backing off if it keeps failing
+            // so a persistent outage doesn't turn into a reconnect storm across many clients.
+            if (reconnectTimer) return
+            const delay = Math.min(2000 * 2 ** reconnectAttempt, 30000)
+            reconnectAttempt++
+            reconnectTimer = setTimeout(() => {
+              reconnectTimer = null
+              if (cancelled) return
+              supabase.removeChannel(ch)
+              connect()
+            }, delay)
+          }
+        })
+      channelRef.current = ch
+    }
+    connect()
+
+    return () => {
+      cancelled = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      clearInterval(poll)
+      document.removeEventListener("visibilitychange", handleVisibility)
+      supabase.removeChannel(ch)
+    }
   }, [code])
 
   // Reset the local board whenever the active board changes (phase / which matcher / size).
@@ -180,9 +218,17 @@ export default function PlayPage({ params }) {
     return () => { document.removeEventListener("pointermove", onMove); document.removeEventListener("pointerup", onUp) }
   }, [])
 
+  // Queued onto persistQueueRef so rapid successive drags can't have their
+  // writes land out of order (an older write resolving after a newer one
+  // would otherwise silently revert the newer arrangement).
+  const persistQueueRef = useRef(Promise.resolve())
   function persist(next) {
     setSlots(next)
-    if (synced) supabase.rpc("tc_set_pending", { p_code: code, p_pending: next.map(x => x ?? "") }).then(nudge)
+    if (synced) {
+      persistQueueRef.current = persistQueueRef.current.then(() =>
+        supabase.rpc("tc_set_pending", { p_code: code, p_pending: next.map(x => x ?? "") }).then(nudge)
+      )
+    }
   }
   function startDrag(e, value, source, slotIndex) {
     if (!interactive) return

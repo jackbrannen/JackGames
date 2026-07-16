@@ -84,13 +84,16 @@ export default function PlayPage({ params }) {
 
   const me = players.find(p => p.id === myPlayerId)
 
+  const loadSeqRef = useRef(0)
   async function loadState() {
+    const seq = ++loadSeqRef.current
     const [{ data: g }, { data: ps }, { data: rs }, { data: gs }] = await Promise.all([
       supabase.from("dc_games").select("*").eq("code", code).single(),
       supabase.from("dc_players").select("*").eq("game_code", code).order("created_at"),
       supabase.from("dc_rounds").select("*").eq("game_code", code).order("turn_number"),
       supabase.from("dc_guesses").select("*").eq("game_code", code),
     ])
+    if (seq !== loadSeqRef.current) return
     if (!g) { router.replace(`/${code}`); return }
     if (g.replay_code) { router.replace(`/${g.replay_code}`); return }
     if (g.phase === "lobby") { router.replace(`/${code}`); return }
@@ -116,16 +119,51 @@ export default function PlayPage({ params }) {
     const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
-    const ch = supabase.channel(`decrypto-play-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "dc_games", filter: `code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "dc_players", filter: `game_code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "dc_rounds", filter: `game_code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "dc_guesses", filter: `game_code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "pokes", filter: `room_code=eq.${code}` }, loadPokes)
-      .on("broadcast", { event: "sync" }, () => loadState())
-      .subscribe()
-    channelRef.current = ch
-    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(ch) }
+    let cancelled = false
+    let ch = null
+    let reconnectTimer = null
+    let reconnectAttempt = 0
+
+    function connect() {
+      ch = supabase.channel(`decrypto-play-${code}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "dc_games", filter: `code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "dc_players", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "dc_rounds", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "dc_guesses", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "pokes", filter: `room_code=eq.${code}` }, loadPokes)
+        .on("broadcast", { event: "sync" }, () => loadState())
+        .subscribe(status => {
+          if (cancelled) return
+          if (status === "SUBSCRIBED") {
+            reconnectAttempt = 0
+            // Catch up immediately on (re)connect in case events were missed while disconnected.
+            loadState(); loadPokes()
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            // A dropped websocket otherwise leaves this client stuck until the 60s poll fires.
+            // Recreate the channel instead of waiting on it, backing off if it keeps failing
+            // so a persistent outage doesn't turn into a reconnect storm across many clients.
+            if (reconnectTimer) return
+            const delay = Math.min(2000 * 2 ** reconnectAttempt, 30000)
+            reconnectAttempt++
+            reconnectTimer = setTimeout(() => {
+              reconnectTimer = null
+              if (cancelled) return
+              supabase.removeChannel(ch)
+              connect()
+            }, delay)
+          }
+        })
+      channelRef.current = ch
+    }
+    connect()
+
+    return () => {
+      cancelled = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      clearInterval(poll)
+      document.removeEventListener("visibilitychange", handleVisibility)
+      supabase.removeChannel(ch)
+    }
   }, [code])
 
   useEffect(() => {
@@ -315,9 +353,15 @@ export default function PlayPage({ params }) {
     )
   }
 
+  // Queued onto persistQueueRef so rapid successive drags can't have their
+  // writes land out of order (an older write resolving after a newer one
+  // would otherwise silently revert the newer arrangement).
+  const persistQueueRef = useRef(Promise.resolve())
   function writePending(next) {
     setSlots(next)
-    supabase.rpc("dc_set_pending_guess", { p_code: code, p_team: myTeam, p_guess: next.map(x => x ?? 0) }).then(nudge)
+    persistQueueRef.current = persistQueueRef.current.then(() =>
+      supabase.rpc("dc_set_pending_guess", { p_code: code, p_team: myTeam, p_guess: next.map(x => x ?? 0) }).then(nudge)
+    )
   }
   function startDrag(e, value, source, slotIndex) {
     if (!canGuess || myGuessRow) return

@@ -1,6 +1,6 @@
 import "./globals.css"
 
-export const metadata = { title: "Codenames" }
+export const metadata = { title: "Decrypto" }
 
 export const viewport = {
   width: "device-width",

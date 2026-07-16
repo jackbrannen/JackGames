@@ -98,12 +98,15 @@ export default function Play({ params }) {
     botIdsRef.current = []
   }, [code])
 
+  const loadSeqRef = useRef(0)
   async function loadState() {
+    const seq = ++loadSeqRef.current
     const { data: gameData } = await supabase
       .from("gow_games")
       .select("code,phase,round_index,rounds_total,current_question_id,question_phase,used_prompts,next_game,next_game_picker_name,next_game_code,last_completed_question_id,replay_code")
       .eq("code", code)
       .single()
+    if (seq !== loadSeqRef.current) return
     if (!gameData) return
 
     if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
@@ -115,6 +118,7 @@ export default function Play({ params }) {
       .eq("game_code", code)
       .order("created_at", { ascending: true })
 
+    if (seq !== loadSeqRef.current) return
     setGame(gameData)
     setPlayers(playerData ?? [])
     if (gameData.phase === "finished") setGameOverPlayers(p => p ?? playerData ?? [])
@@ -129,6 +133,7 @@ export default function Play({ params }) {
         .select("id,text,author_id")
         .eq("id", gameData.current_question_id)
         .single()
+      if (seq !== loadSeqRef.current) return
       setCurrentQuestion(qData ?? null)
 
       const { data: answerData } = await supabase
@@ -136,6 +141,7 @@ export default function Play({ params }) {
         .select("id,text,player_id,vote_count,skipped")
         .eq("question_id", gameData.current_question_id)
         .order("random_order", { ascending: true })
+      if (seq !== loadSeqRef.current) return
       setAnswers(answerData ?? [])
 
       const pid = myPlayerId || localStorage.getItem(`gow:${code}:playerId`)
@@ -144,6 +150,7 @@ export default function Play({ params }) {
           .from("gow_votes")
           .select("answer_id,voter_id")
           .eq("question_id", gameData.current_question_id)
+        if (seq !== loadSeqRef.current) return
         setVotes(voteData ?? [])
         if (!changingVoteRef.current) {
           const myVote = (voteData ?? []).find(v => v.voter_id === pid)
@@ -167,6 +174,7 @@ export default function Play({ params }) {
             supabase.from("gow_answers").select("id,text,player_id,vote_count,skipped").eq("question_id", gameData.last_completed_question_id).order("random_order", { ascending: true }),
             supabase.from("gow_votes").select("answer_id,voter_id").eq("question_id", gameData.last_completed_question_id),
           ])
+          if (seq !== loadSeqRef.current) return
           setResultSnapshot({ questionId: gameData.last_completed_question_id, question: lqData, answers: laData ?? [], votes: lvData ?? [] })
         }
       }
@@ -182,15 +190,50 @@ export default function Play({ params }) {
     const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
-    const channel = supabase.channel(`gow-play-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "gow_games", filter: `code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "gow_players", filter: `game_code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "gow_answers" }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "gow_votes" }, loadState)
-      .on("broadcast", { event: "sync" }, loadState)
-      .subscribe()
-    syncChRef.current = channel
-    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
+    let cancelled = false
+    let channel = null
+    let reconnectTimer = null
+    let reconnectAttempt = 0
+
+    function connect() {
+      channel = supabase.channel(`gow-play-${code}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "gow_games", filter: `code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "gow_players", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "gow_answers" }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "gow_votes" }, loadState)
+        .on("broadcast", { event: "sync" }, loadState)
+        .subscribe(status => {
+          if (cancelled) return
+          if (status === "SUBSCRIBED") {
+            reconnectAttempt = 0
+            // Catch up immediately on (re)connect in case events were missed while disconnected.
+            loadState()
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            // A dropped websocket otherwise leaves this client stuck until the 60s poll fires.
+            // Recreate the channel instead of waiting on it, backing off if it keeps failing
+            // so a persistent outage doesn't turn into a reconnect storm across many clients.
+            if (reconnectTimer) return
+            const delay = Math.min(2000 * 2 ** reconnectAttempt, 30000)
+            reconnectAttempt++
+            reconnectTimer = setTimeout(() => {
+              reconnectTimer = null
+              if (cancelled) return
+              supabase.removeChannel(channel)
+              connect()
+            }, delay)
+          }
+        })
+      syncChRef.current = channel
+    }
+    connect()
+
+    return () => {
+      cancelled = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      clearInterval(poll)
+      document.removeEventListener("visibilitychange", handleVisibility)
+      supabase.removeChannel(channel)
+    }
   }, [code])
 
   const currentQuestionId = currentQuestion?.id
@@ -282,7 +325,9 @@ export default function Play({ params }) {
     if (error) throw error
     // Gossip: broadcast so peers see submission instantly
     syncChRef.current?.send({ type: "broadcast", event: "sync" })
-    // Don't call loadState() - let polling pick up phase changes naturally.
+    // Refresh immediately so the acting client's own button resolves right
+    // away instead of waiting on its own realtime round-trip.
+    await loadState()
   }
 
   async function submitAnswer() {

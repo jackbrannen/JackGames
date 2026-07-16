@@ -140,7 +140,7 @@ export default function PlayPage({ params }) {
     loadState()
     // Poll as a fallback in case a realtime event is missed. Kept short so a
     // player never sits on a stale waiting screen for long after others advance.
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
 

@@ -89,7 +89,7 @@ export default function LobbyPage({ params }) {
   async function loadState() {
     const { data: gameData } = await supabase
       .from("cc_games")
-      .select("code,phase,current_round,replay_code")
+      .select("code,phase,current_round,replay_code,is_dummy")
       .eq("code", code)
       .single()
 
@@ -121,7 +121,7 @@ export default function LobbyPage({ params }) {
   }, [])
 
   useEffect(() => {
-    if (!game || game.phase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    if (!game || game.phase !== "lobby" || myPlayerId || hasAutoJoinedRef.current || !game.is_dummy) return
     const saved = loadProfile()
     if (!saved?.username) return
     hasAutoJoinedRef.current = true
@@ -135,7 +135,7 @@ export default function LobbyPage({ params }) {
       localStorage.setItem(`cc:${code}:playerId`, data.id)
       setMyPlayerId(data.id)
     })()
-  }, [game?.phase, myPlayerId, code])
+  }, [game?.phase, game?.is_dummy, myPlayerId, code])
 
   useEffect(() => {
     supabase.from("game_instructions").select("body").eq("game_key", "copycats").single()
@@ -146,7 +146,7 @@ export default function LobbyPage({ params }) {
     loadState()
     // Short poll as a fallback; realtime handles the lobby->game redirect and
     // live player list so no one is stranded in the lobby after the host starts.
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`cc-lobby-${code}`)

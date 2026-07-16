@@ -455,16 +455,22 @@ export default function Play({ params }) {
   async function rpc(fn, args = {}) {
     const { error } = await supabase.rpc(fn, args)
     if (error) throw error
-    // Don't call loadState() - let polling pick up phase changes naturally.
+    // Refresh immediately so the acting client's own button resolves right
+    // away instead of waiting on its own realtime round-trip or another
+    // peer's gossip nudge (both of which can take a few seconds).
+    await loadState()
   }
 
+  const loadSeqRef = useRef(0)
   async function loadState() {
+    const seq = ++loadSeqRef.current
     try {
       console.log("loadState called for code:", code)
       console.log("About to query supabase, supabase is:", typeof supabase)
       const { data: gameData, error: gameError } = await supabase
         .from("drawful_games").select("phase,drawing_started_at,current_drawing_index,is_dummy,ready_player_ids,next_game,next_game_picker_name,replay_code").eq("code", code).single()
       console.log("loadState game:", { gameData, gameError })
+      if (seq !== loadSeqRef.current) return
       if (!gameData) { router.replace(`/${code}`); return }
       if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
       if (gameData.phase === "lobby") { router.replace(`/${code}`); return }
@@ -483,6 +489,7 @@ export default function Play({ params }) {
         .from("drawful_votes").select("id,drawing_player_id,voter_id,answer_id")
         .eq("game_code", code)
 
+      if (seq !== loadSeqRef.current) return
       setGame(gameData)
       setPlayers(playerData ?? [])
       setAnswers(answerData ?? [])
@@ -520,18 +527,47 @@ export default function Play({ params }) {
   // Realtime subscriptions — only when game is active
   useEffect(() => {
     if (!game || game.phase === "finished") return
-    let cleanup
-    ;(async () => {
-        const channel = supabase.channel(`drawful-play-${code}`)
+    let cancelled = false
+    let channel = null
+    let reconnectTimer = null
+    let reconnectAttempt = 0
+
+    function connect() {
+      channel = supabase.channel(`drawful-play-${code}`)
         .on("postgres_changes", { event: "*", schema: "public", table: "drawful_games", filter: `code=eq.${code}` }, loadState)
         .on("postgres_changes", { event: "*", schema: "public", table: "drawful_answers", filter: `game_code=eq.${code}` }, loadState)
         .on("postgres_changes", { event: "*", schema: "public", table: "drawful_votes", filter: `game_code=eq.${code}` }, loadState)
         .on("broadcast", { event: "sync" }, loadState)
-        .subscribe()
+        .subscribe(status => {
+          if (cancelled) return
+          if (status === "SUBSCRIBED") {
+            reconnectAttempt = 0
+            // Catch up immediately on (re)connect in case events were missed while disconnected.
+            loadState()
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            // A dropped websocket otherwise leaves this client stuck until the 60s poll fires.
+            // Recreate the channel instead of waiting on it, backing off if it keeps failing
+            // so a persistent outage doesn't turn into a reconnect storm across many clients.
+            if (reconnectTimer) return
+            const delay = Math.min(2000 * 2 ** reconnectAttempt, 30000)
+            reconnectAttempt++
+            reconnectTimer = setTimeout(() => {
+              reconnectTimer = null
+              if (cancelled) return
+              supabase.removeChannel(channel)
+              connect()
+            }, delay)
+          }
+        })
       syncChRef.current = channel
-      cleanup = () => supabase.removeChannel(channel)
-    })()
-    return () => cleanup?.()
+    }
+    connect()
+
+    return () => {
+      cancelled = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      supabase.removeChannel(channel)
+    }
   }, [code, game?.phase])
 
   // Reset per-round state when drawing index changes

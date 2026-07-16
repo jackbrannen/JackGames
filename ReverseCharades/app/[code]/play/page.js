@@ -198,6 +198,8 @@ export default function Play({ params }) {
   const [nowMs, setNowMs] = useState(Date.now())
   const [acting, setActing] = useState(false)
   const [instructions, setInstructions] = useState("")
+  const [manualScoreA, setManualScoreA] = useState("0")
+  const [manualScoreB, setManualScoreB] = useState("0")
   const endingRef = useRef(false)
   const soundTriggerRef = useRef(null)
   const syncChRef = useRef(null)
@@ -211,14 +213,21 @@ export default function Play({ params }) {
   async function rpc(fn, args = {}) {
     const { error } = await supabase.rpc(fn, args)
     if (error) throw error
+    // Refresh immediately so the acting client's own button resolves right
+    // away instead of waiting on its own realtime round-trip or another
+    // peer's gossip nudge (both of which can take a few seconds).
+    await loadState()
   }
 
+  const loadSeqRef = useRef(0)
   async function loadState() {
+    const seq = ++loadSeqRef.current
     const { data: gameData } = await supabase
       .from("reversecharades_games")
       .select("code,phase,host_id,current_team,current_guesser_id,current_controller_id,current_clue_id,turn_started_at,turn_duration_seconds,skip_limit,skip_penalty,skips_this_turn,correct_this_turn,last_turn_correct,last_turn_skips,last_turn_team,team_a_score,team_b_score,team_a_turns,team_b_turns,next_game,next_game_picker_name,is_paused,paused_at,pause_elapsed_seconds,replay_code")
       .eq("code", code)
       .single()
+    if (seq !== loadSeqRef.current) return
     if (!gameData) return
     if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
 
@@ -248,10 +257,13 @@ export default function Play({ params }) {
       count = c ?? 0
     }
 
+    if (seq !== loadSeqRef.current) return
     setGame(gameData)
     setPlayers(playerData ?? [])
     setCurrentClue(clueData)
     setPendingCount(count)
+    setManualScoreA(String(gameData.team_a_score ?? 0))
+    setManualScoreB(String(gameData.team_b_score ?? 0))
     // Gossip: re-broadcast on a state change so a peer that missed the realtime push catches up fast.
     const syncKey = `${gameData.phase}:${gameData.current_team ?? ""}:${gameData.current_clue_id ?? ""}:${gameData.correct_this_turn ?? ""}`
     if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) syncChRef.current?.send({ type: "broadcast", event: "sync" })
@@ -273,17 +285,54 @@ export default function Play({ params }) {
     supabase.from("game_instructions").select("body").eq("game_key", "reversecharades").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     loadState()
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const ticker = setInterval(() => setNowMs(Date.now()), 100)
-    const channel = supabase.channel(`rc-play-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_games", filter: `code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_players" }, loadState)
-      .on("broadcast", { event: "sync" }, loadState)
-      .subscribe()
-    syncChRef.current = channel
-    return () => { clearInterval(poll); clearInterval(ticker); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
+
+    let cancelled = false
+    let channel = null
+    let reconnectTimer = null
+    let reconnectAttempt = 0
+
+    function connect() {
+      channel = supabase.channel(`rc-play-${code}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_games", filter: `code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_players" }, loadState)
+        .on("broadcast", { event: "sync" }, loadState)
+        .subscribe(status => {
+          if (cancelled) return
+          if (status === "SUBSCRIBED") {
+            reconnectAttempt = 0
+            // Catch up immediately on (re)connect in case events were missed while disconnected.
+            loadState()
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            // A dropped websocket otherwise leaves this client stuck until the 60s poll fires.
+            // Recreate the channel instead of waiting on it, backing off if it keeps failing
+            // so a persistent outage doesn't turn into a reconnect storm across many clients.
+            if (reconnectTimer) return
+            const delay = Math.min(2000 * 2 ** reconnectAttempt, 30000)
+            reconnectAttempt++
+            reconnectTimer = setTimeout(() => {
+              reconnectTimer = null
+              if (cancelled) return
+              supabase.removeChannel(channel)
+              connect()
+            }, delay)
+          }
+        })
+      syncChRef.current = channel
+    }
+    connect()
+
+    return () => {
+      cancelled = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      clearInterval(poll)
+      clearInterval(ticker)
+      document.removeEventListener("visibilitychange", handleVisibility)
+      supabase.removeChannel(channel)
+    }
   }, [code])
 
   useEffect(() => {
@@ -306,7 +355,64 @@ export default function Play({ params }) {
   }, [game, nowMs])
 
   const [menuOpen, setMenuOpen] = useState(false)
-  const timerRunning = !!game?.turn_started_at && secondsRemaining > 0
+  // Shared height for any "playing" footer that stacks two rows of buttons
+  // (a full-width row plus a row of smaller ones, or two full-width rows).
+  // Menu's drawer-position math only knows about the default single-row
+  // FOOTER_H, so any screen using this height must also pass a matching
+  // peekBarHeight to its <Menu> to keep the drawer from landing underneath
+  // the taller footer.
+  const stackedFooterH = 132
+  // Only actively counting down (unpaused) should hide the footer menu — a
+  // frozen "time remaining" while paused still satisfied the old check
+  // (turn_started_at set, secondsRemaining > 0), so the menu stayed hidden
+  // even while paused. The menu should be reachable whenever the game isn't
+  // actively mid-turn: while paused, or between rounds.
+  const timerRunning = !!game?.turn_started_at && secondsRemaining > 0 && !game?.is_paused
+  const [confirmingEndEarly, setConfirmingEndEarly] = useState(false)
+  const endEarlyConfirmModal = confirmingEndEarly ? (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, zIndex: 100 }}>
+      <div style={{ background: DARK, padding: 24, maxWidth: 400, width: "100%" }}>
+        <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 16, color: "white" }}>
+          End the turn early?
+        </div>
+        <div style={{ fontSize: 15, marginBottom: 24, opacity: 0.85, color: "white" }}>
+          This ends the current turn immediately and moves to the next team.
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={() => setConfirmingEndEarly(false)}
+            style={{ flex: 1, background: MID, color: "white", fontSize: 17, fontWeight: 800, padding: "14px" }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={async () => { setConfirmingEndEarly(false); await doEndEarly() }}
+            style={{ flex: 1, background: WARM, color: "white", fontSize: 17, fontWeight: 900, padding: "14px" }}
+          >
+            End Turn
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null
+  const scoreSettingsContent = (
+    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+      <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+        {teamLabel("A")}
+        <input value={manualScoreA} onChange={e => setManualScoreA(e.target.value)}
+          style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }} />
+      </label>
+      <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+        {teamLabel("B")}
+        <input value={manualScoreB} onChange={e => setManualScoreB(e.target.value)}
+          style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }} />
+      </label>
+      <button onClick={saveTeamScores}
+        style={{ background: YELLOW, color: "#000", fontSize: 14, fontWeight: 900, padding: "8px 16px" }}>
+        Save
+      </button>
+    </div>
+  )
   const pokeSystemNode = me ? (
     <>
       <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />
@@ -321,6 +427,7 @@ export default function Play({ params }) {
         gamePhase={game?.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
         onResetToLobby={async () => { await rpc("rc_reset_game", { p_code: code }) }}
+        settingsContent={scoreSettingsContent}
       />
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} timerRunning={timerRunning} />
     </>
@@ -421,6 +528,30 @@ export default function Play({ params }) {
       setActing(false)
       throw e
     }
+  }
+
+  async function doEndEarly() {
+    if (!myPlayerId || acting) return
+    setActing(true)
+    try {
+      await rpc("rc_end_turn", { p_code: code })
+      setActing(false)
+    } catch (e) {
+      setActing(false)
+      throw e
+    }
+  }
+
+  async function saveTeamScores() {
+    await supabase
+      .from("reversecharades_games")
+      .update({
+        team_a_score: Number(manualScoreA) || 0,
+        team_b_score: Number(manualScoreB) || 0,
+      })
+      .eq("code", code)
+    syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    await loadState()
   }
 
   async function doResetGame() {
@@ -589,6 +720,7 @@ export default function Play({ params }) {
         gamePhase={game?.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
         onResetToLobby={async () => { await rpc("rc_reset_game", { p_code: code }) }}
+        settingsContent={scoreSettingsContent}
       />
       </>
     )
@@ -608,7 +740,8 @@ export default function Play({ params }) {
     // GUESSER — can't see clue
     if (amGuesser) {
       return (
-        <div style={{ minHeight: "100dvh", background: DARK, color: "white", display: "flex", flexDirection: "column" }}>
+        <>
+        <div style={{ minHeight: "100dvh", background: DARK, color: "white", display: "flex", flexDirection: "column", paddingBottom: `calc(${stackedFooterH}px + env(safe-area-inset-bottom))` }}>
           {topBar}
 
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center", gap: 32 }}>
@@ -617,30 +750,53 @@ export default function Play({ params }) {
             </div>
             <StatChips correct={game.correct_this_turn ?? 0} left={null} />
           </div>
+        </div>
 
-          <div style={{ padding: "16px 20px", paddingBottom: "max(20px, env(safe-area-inset-bottom, 20px))", background: DARK, flexShrink: 0 }}>
+        <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: YELLOW, notifBg: DARK }} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} height={stackedFooterH} timerRunning={timerRunning}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
             <FooterButton
               onClick={game.is_paused ? doResume : doPause}
               loading={acting}
               bg={YELLOW}
               textColor="#000"
-              style={{
-                padding: "16px",
-                fontSize: 16,
-                fontWeight: 800,
-              }}
             >
               {game.is_paused ? "Resume" : "Pause"}
             </FooterButton>
+            <FooterButton
+              onClick={() => setConfirmingEndEarly(true)}
+              bg={WARM}
+              textColor="white"
+            >
+              End Early
+            </FooterButton>
           </div>
-        </div>
+        </Footer>
+
+        <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />
+        <Menu
+          supabase={supabase}
+          colors={POKE_COLORS}
+          isOpen={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          roomCode={code}
+          currentPlayer={me.name}
+          playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, teamColor: p.team ? teamColor(p.team) : undefined, teamLabel: p.team ? teamLabel(p.team) : undefined, teamTextColor: p.team ? teamTextColor(p.team) : undefined }))}
+          gamePhase={game?.phase}
+          rules={instructions ? [["How to Play", instructions]] : null}
+          onResetToLobby={async () => { await rpc("rc_reset_game", { p_code: code }) }}
+          settingsContent={scoreSettingsContent}
+          peekBarHeight={`${stackedFooterH - FOOTER_H}px`}
+        />
+        {endEarlyConfirmModal}
+        </>
       )
     }
 
     // CONTROLLER — sees clue with buttons
     if (amController) {
       return (
-        <div style={{ minHeight: "100dvh", background: PRIMARY, color: "white", display: "flex", flexDirection: "column" }}>
+        <>
+        <div style={{ minHeight: "100dvh", background: PRIMARY, color: "white", display: "flex", flexDirection: "column", paddingBottom: `calc(${stackedFooterH}px + env(safe-area-inset-bottom))` }}>
           {topBar}
 
           <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "28px 24px" }}>
@@ -659,19 +815,21 @@ export default function Play({ params }) {
             </div>
             <StatChips correct={game.correct_this_turn ?? 0} left={pendingCount} />
           </div>
+        </div>
 
-          <div style={{ padding: "16px 20px", paddingBottom: "max(20px, env(safe-area-inset-bottom, 20px))", display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
+        <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: YELLOW, notifBg: DARK }} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} height={stackedFooterH} timerRunning={timerRunning}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
             <FooterButton
               onClick={doCorrect}
               disabled={!currentClue || game.is_paused}
               loading={acting}
               bg={game.is_paused ? MID : YELLOW}
               textColor={game.is_paused ? "rgba(255,255,255,0.5)" : "#000"}
-              style={{ padding: "28px 16px", fontSize: 28 }}
+              style={{ fontSize: 28 }}
             >
               ✓ Correct
             </FooterButton>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ flex: 1, display: "flex" }}>
               <FooterButton
                 onClick={doSkip}
                 disabled={skipDisabled || game.is_paused}
@@ -679,8 +837,6 @@ export default function Play({ params }) {
                 bg={(skipDisabled || game.is_paused) ? MID : WARM}
                 textColor={(skipDisabled || game.is_paused) ? "rgba(255,255,255,0.5)" : "white"}
                 style={{
-                  flex: 1,
-                  padding: "18px 16px",
                   fontSize: 18,
                   fontWeight: 800,
                   textDecoration: (game.skip_limit > 0 && game.skips_this_turn >= game.skip_limit) ? "line-through" : "none",
@@ -695,24 +851,52 @@ export default function Play({ params }) {
                 bg={DARK}
                 textColor="white"
                 style={{
-                  flex: 1,
-                  padding: "18px 16px",
                   fontSize: 18,
                   fontWeight: 800,
                 }}
               >
                 {game.is_paused ? "Resume" : "Pause"}
               </FooterButton>
+              <FooterButton
+                onClick={() => setConfirmingEndEarly(true)}
+                bg={WARM}
+                textColor="white"
+                style={{
+                  fontSize: 18,
+                  fontWeight: 800,
+                }}
+              >
+                End Early
+              </FooterButton>
             </div>
           </div>
-        </div>
+        </Footer>
+
+        <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />
+        <Menu
+          supabase={supabase}
+          colors={POKE_COLORS}
+          isOpen={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          roomCode={code}
+          currentPlayer={me.name}
+          playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, teamColor: p.team ? teamColor(p.team) : undefined, teamLabel: p.team ? teamLabel(p.team) : undefined, teamTextColor: p.team ? teamTextColor(p.team) : undefined }))}
+          gamePhase={game?.phase}
+          rules={instructions ? [["How to Play", instructions]] : null}
+          onResetToLobby={async () => { await rpc("rc_reset_game", { p_code: code }) }}
+          settingsContent={scoreSettingsContent}
+          peekBarHeight={`${stackedFooterH - FOOTER_H}px`}
+        />
+        {endEarlyConfirmModal}
+        </>
       )
     }
 
     // SAME TEAM — sees clue, no buttons
     if (amPlayingTeam) {
       return (
-        <div style={{ minHeight: "100dvh", background: PRIMARY, color: "white", display: "flex", flexDirection: "column" }}>
+        <>
+        <div style={{ minHeight: "100dvh", background: PRIMARY, color: "white", display: "flex", flexDirection: "column", paddingBottom: `calc(${stackedFooterH}px + env(safe-area-inset-bottom))` }}>
           {topBar}
 
           <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "28px 24px" }}>
@@ -730,27 +914,49 @@ export default function Play({ params }) {
               {currentClue?.text ?? "—"}
             </div>
             <StatChips correct={game.correct_this_turn ?? 0} left={null} />
-          </div>
-
-          <div style={{ padding: "16px 20px", paddingBottom: "max(20px, env(safe-area-inset-bottom, 20px))", background: DARK, flexShrink: 0, display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.65 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.65, marginTop: 20 }}>
               {controller?.name ?? "Someone"} has the controls
             </div>
+          </div>
+        </div>
+
+        <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: YELLOW, notifBg: DARK }} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} height={stackedFooterH} timerRunning={timerRunning}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
             <FooterButton
               onClick={game.is_paused ? doResume : doPause}
               loading={acting}
               bg={MID}
               textColor="white"
-              style={{
-                padding: "16px",
-                fontSize: 16,
-                fontWeight: 800,
-              }}
             >
               {game.is_paused ? "Resume" : "Pause"}
             </FooterButton>
+            <FooterButton
+              onClick={() => setConfirmingEndEarly(true)}
+              bg={WARM}
+              textColor="white"
+            >
+              End Early
+            </FooterButton>
           </div>
-        </div>
+        </Footer>
+
+        <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />
+        <Menu
+          supabase={supabase}
+          colors={POKE_COLORS}
+          isOpen={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          roomCode={code}
+          currentPlayer={me.name}
+          playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, teamColor: p.team ? teamColor(p.team) : undefined, teamLabel: p.team ? teamLabel(p.team) : undefined, teamTextColor: p.team ? teamTextColor(p.team) : undefined }))}
+          gamePhase={game?.phase}
+          rules={instructions ? [["How to Play", instructions]] : null}
+          onResetToLobby={async () => { await rpc("rc_reset_game", { p_code: code }) }}
+          settingsContent={scoreSettingsContent}
+          peekBarHeight={`${stackedFooterH - FOOTER_H}px`}
+        />
+        {endEarlyConfirmModal}
+        </>
       )
     }
 

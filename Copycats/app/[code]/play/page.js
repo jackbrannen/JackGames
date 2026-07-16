@@ -147,20 +147,52 @@ export default function PlayPage({ params }) {
     // Realtime so phase/round changes propagate to every client immediately.
     // Deps are [code] only, so the channel is created once per game (no remount
     // loop). Uses the localStorage id directly to avoid a stale myId closure.
-    const channel = supabase.channel(`cc-play-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "cc_games", filter: `code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "cc_players", filter: `game_code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "cc_answers", filter: `game_code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "cc_votes", filter: `game_code=eq.${code}` }, loadState)
-      .on("broadcast", { event: "sync" }, loadState)
-      .on("presence", { event: "sync" }, () => setPresenceState({ ...channel.presenceState() }))
-      .subscribe(async status => {
-        if (status === "SUBSCRIBED" && id) {
-          await channel.track({ playerId: id, typing: false })
-        }
-      })
-    channelRef.current = channel
-    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
+    let cancelled = false
+    let channel = null
+    let reconnectTimer = null
+    let reconnectAttempt = 0
+
+    function connect() {
+      channel = supabase.channel(`cc-play-${code}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "cc_games", filter: `code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "cc_players", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "cc_answers", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "cc_votes", filter: `game_code=eq.${code}` }, loadState)
+        .on("broadcast", { event: "sync" }, loadState)
+        .on("presence", { event: "sync" }, () => setPresenceState({ ...channel.presenceState() }))
+        .subscribe(async status => {
+          if (cancelled) return
+          if (status === "SUBSCRIBED") {
+            reconnectAttempt = 0
+            // Catch up immediately on (re)connect in case events were missed while disconnected.
+            loadState()
+            if (id) await channel.track({ playerId: id, typing: false })
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            // A dropped websocket otherwise leaves this client stuck until the 60s poll fires.
+            // Recreate the channel instead of waiting on it, backing off if it keeps failing
+            // so a persistent outage doesn't turn into a reconnect storm across many clients.
+            if (reconnectTimer) return
+            const delay = Math.min(2000 * 2 ** reconnectAttempt, 30000)
+            reconnectAttempt++
+            reconnectTimer = setTimeout(() => {
+              reconnectTimer = null
+              if (cancelled) return
+              supabase.removeChannel(channel)
+              connect()
+            }, delay)
+          }
+        })
+      channelRef.current = channel
+    }
+    connect()
+
+    return () => {
+      cancelled = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      clearInterval(poll)
+      document.removeEventListener("visibilitychange", handleVisibility)
+      supabase.removeChannel(channel)
+    }
   }, [code])
 
 
@@ -179,8 +211,13 @@ export default function PlayPage({ params }) {
   async function rpc(fn, args = {}) {
     const { error } = await supabase.rpc(fn, args)
     if (error) throw error
+    // Refresh immediately so the acting client's own button resolves right
+    // away instead of waiting on its own realtime round-trip or another
+    // peer's gossip nudge (both of which can take a few seconds).
+    await loadState()
   }
 
+  const loadSeqRef = useRef(0)
   async function loadState() {
     // If no player ID in localStorage, redirect to lobby to join
     const storedId = localStorage.getItem(`cc:${code}:playerId`)
@@ -189,12 +226,14 @@ export default function PlayPage({ params }) {
       return
     }
 
+    const seq = ++loadSeqRef.current
     const [{ data: g }, { data: ps }, { data: an }, { data: vs }] = await Promise.all([
       supabase.from("cc_games").select("*").eq("code", code).single(),
       supabase.from("cc_players").select("*").eq("game_code", code).order("created_at"),
       supabase.from("cc_answers").select("*").eq("game_code", code).order("created_at"),
       supabase.from("cc_votes").select("*").eq("game_code", code).order("created_at"),
     ])
+    if (seq !== loadSeqRef.current) return
     if (!g) { router.push(`/${code}`); return }
     if (g.replay_code) { router.replace(`/${g.replay_code}`); return }
     if (g.phase === "lobby") { router.replace(`/${code}`); return }

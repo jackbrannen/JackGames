@@ -190,7 +190,7 @@ export default function Play({ params }) {
     supabase.from("game_instructions").select("body").eq("game_key", "avalon").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     refresh()
-    const t = setInterval(refresh, 5000)
+    const t = setInterval(refresh, 60000)
     function handleVisibility() { if (!document.hidden) refresh() }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`avalon-play-${code}`)
@@ -263,6 +263,12 @@ export default function Play({ params }) {
     footerButtons = (
       <FooterButton variant="primary" onClick={() => rpc("advance_avalon_quest", { p_code: code })}>
         {nextLabel}
+      </FooterButton>
+    )
+  } else if (me && phase === "servants_won" && me.role === "assassin") {
+    footerButtons = (
+      <FooterButton variant="primary" onClick={() => rpc("advance_avalon_to_assassination", { p_code: code })}>
+        Proceed
       </FooterButton>
     )
   } else if (me && phase === "assassination" && me.role === "assassin" && target) {
@@ -343,7 +349,7 @@ export default function Play({ params }) {
   const teamLabel   = me?.team === "good" ? "Good" : "Evil — Minions of Mordred"
 
 // Score menu bar: show during active quest phases
-  const showMenuBar = ["propose", "vote", "mission", "result", "assassination"].includes(phase)
+  const showMenuBar = ["propose", "vote", "mission", "result", "servants_won", "assassination"].includes(phase)
 
   async function rpc(fn, args = {}) {
     const { error } = await supabase.rpc(fn, args)
@@ -834,15 +840,47 @@ export default function Play({ params }) {
 
           {/* Score */}
           <div style={{ textAlign: "center", marginTop: 28 }}>
-            <div style={{ fontSize: 28, fontWeight: 900 }}>
+            <div style={{ fontSize: 28, fontWeight: 900, display: "flex", flexDirection: "column", gap: 4 }}>
               <span style={{ color: GOOD }}>Loyal Servants: {goodWins}</span>
-              <span style={{ color: "rgba(232,220,200,0.25)", margin: "0 12px" }}>·</span>
               <span style={{ color: EVIL }}>Evil Minions: {evilWins}</span>
             </div>
             <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(232,220,200,0.4)", marginTop: 6, textTransform: "uppercase", letterSpacing: "0.1em" }}>
               First to three wins
             </div>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── servants_won ─────────────────────────────────────────────
+  // Intervening screen after the Loyal Servants clinch their 3rd quest.
+  // The game isn't decided yet: the Assassin gets one shot at Merlin before
+  // the win is final. Only the Assassin can proceed to the target picker.
+  else if (phase === "servants_won") {
+    const amAssassin = me.role === "assassin"
+
+    phaseContent = (
+      <div style={{ paddingBottom: BOTTOM_PAD }}>
+        <Header sub="The Servants Have Won…" showTrack={false} />
+        <div style={{ padding: "20px 24px" }}>
+          <div style={{
+            fontSize: 22, fontWeight: 900, color: GOOD, lineHeight: 1.3,
+            textAlign: "center", marginBottom: 16,
+          }}>
+            The Loyal Servants have completed 3 quests!
+          </div>
+          <div style={{ background: "rgba(170,34,34,0.1)", border: `1px solid rgba(170,34,34,0.35)`, padding: "20px 18px" }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "rgba(232,220,200,0.85)", lineHeight: 1.6 }}>
+              But the game isn't over yet — the Assassin now gets one chance to identify Merlin.
+              If correct, the evil Minions of Mordred win instead.
+            </div>
+          </div>
+          {!amAssassin && (
+            <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(232,220,200,0.4)", marginTop: 20, textAlign: "center", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+              Waiting for the Assassin…
+            </div>
+          )}
         </div>
       </div>
     )

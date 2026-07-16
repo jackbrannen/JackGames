@@ -12,6 +12,7 @@ import RandomIdeas from "../../../components/RandomIdeas"
 import TextEntry from "../../../components/TextEntry"
 import GameModal from "../../../components/GameModal"
 import { playCountdownTick, playCountdownGo, playSoundsEnd } from "../../../lib/sounds"
+import { useDuplicates } from "../../../lib/useDuplicates"
 
 const RED = "#25AB61"
 const DARK = "#209467"
@@ -140,6 +141,10 @@ export default function Play({ params }) {
 
   const [wordFields, setWordFields] = useState(["", "", "", "", ""])
   const [topupFields, setTopupFields] = useState(["", "", ""])
+  const [takenWordIndex, setTakenWordIndex] = useState(null)
+  const [takenTopupIndex, setTakenTopupIndex] = useState(null)
+  const { dupeIndices: wordDupeIndices, hasDuplicates: wordHasDuplicates } = useDuplicates(wordFields)
+  const { dupeIndices: topupDupeIndices, hasDuplicates: topupHasDuplicates } = useDuplicates(topupFields)
   const [pickedIds, setPickedIds] = useState(new Set())
   const [guessIds, setGuessIds] = useState(new Set())
   const [resultsDismissedLocal, setResultsDismissedLocal] = useState(false)
@@ -157,12 +162,15 @@ export default function Play({ params }) {
   const channelRef = useRef(null)
   const prevSlotsRef = useRef(null)
 
+  const loadSeqRef = useRef(0)
   async function loadState() {
+    const seq = ++loadSeqRef.current
     const [{ data: g }, { data: p }, { data: w }] = await Promise.all([
       supabase.from("sb_games").select("*").eq("code", code).single(),
       supabase.from("sb_players").select("*").eq("game_code", code).order("created_at", { ascending: true }),
       supabase.from("sb_words").select("*").eq("game_code", code),
     ])
+    if (seq !== loadSeqRef.current) return
     if (g) setGame(g)
     if (p) setPlayers(p)
     if (w) setWords(w)
@@ -181,17 +189,52 @@ export default function Play({ params }) {
     const existing = localStorage.getItem(`sb:${code}:playerId`)
     if (existing) setMyPlayerId(existing)
     loadState()
-    const poll = setInterval(loadState, 4000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
-    const channel = supabase.channel(`soundboard-play-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "sb_games", filter: `code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "sb_players", filter: `game_code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "sb_words", filter: `game_code=eq.${code}` }, loadState)
-      .on("broadcast", { event: "sync" }, loadState)
-      .subscribe()
-    channelRef.current = channel
-    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
+    let cancelled = false
+    let channel = null
+    let reconnectTimer = null
+    let reconnectAttempt = 0
+
+    function connect() {
+      channel = supabase.channel(`soundboard-play-${code}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "sb_games", filter: `code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "sb_players", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "sb_words", filter: `game_code=eq.${code}` }, loadState)
+        .on("broadcast", { event: "sync" }, loadState)
+        .subscribe(status => {
+          if (cancelled) return
+          if (status === "SUBSCRIBED") {
+            reconnectAttempt = 0
+            // Catch up immediately on (re)connect in case events were missed while disconnected.
+            loadState()
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            // A dropped websocket otherwise leaves this client stuck until the 60s poll fires.
+            // Recreate the channel instead of waiting on it, backing off if it keeps failing
+            // so a persistent outage doesn't turn into a reconnect storm across many clients.
+            if (reconnectTimer) return
+            const delay = Math.min(2000 * 2 ** reconnectAttempt, 30000)
+            reconnectAttempt++
+            reconnectTimer = setTimeout(() => {
+              reconnectTimer = null
+              if (cancelled) return
+              supabase.removeChannel(channel)
+              connect()
+            }, delay)
+          }
+        })
+      channelRef.current = channel
+    }
+    connect()
+
+    return () => {
+      cancelled = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      clearInterval(poll)
+      document.removeEventListener("visibilitychange", handleVisibility)
+      supabase.removeChannel(channel)
+    }
   }, [code])
 
   useEffect(() => {
@@ -347,9 +390,21 @@ export default function Play({ params }) {
   }
 
   async function submitWords() {
-    const trimmed = wordFields.map(w => w.trim()).filter(Boolean)
-    if (trimmed.length !== 5) throw new Error("Fill in all 5")
-    await rpc("sb_submit_words", { p_code: code, p_player_id: myPlayerId, p_words: trimmed })
+    const trimmed = wordFields.map(w => w.trim())
+    if (trimmed.some(w => !w)) throw new Error("Fill in all 5")
+    if (wordHasDuplicates) throw new Error("No duplicates allowed.")
+    const takenIdx = trimmed.findIndex(w => words.some(aw => aw.text.trim().toLowerCase() === w.toLowerCase()))
+    if (takenIdx !== -1) { setTakenWordIndex(takenIdx); throw new Error("validation") }
+    setTakenWordIndex(null)
+    try {
+      await rpc("sb_submit_words", { p_code: code, p_player_id: myPlayerId, p_words: trimmed })
+    } catch (error) {
+      if (error?.code === "23505" || /duplicate/i.test(error?.message ?? "")) {
+        await loadState()
+        throw new Error("Someone already submitted one of those words. Try something else.")
+      }
+      throw error
+    }
   }
 
   async function lockSelection() {
@@ -368,10 +423,23 @@ export default function Play({ params }) {
   }
 
   async function submitTopup() {
-    const trimmed = topupFields.map(w => w.trim()).filter(Boolean)
-    if (trimmed.length !== 3) throw new Error("Fill in all 3")
+    const trimmed = topupFields.map(w => w.trim())
+    if (trimmed.some(w => !w)) throw new Error("Fill in all 3")
+    if (topupHasDuplicates) throw new Error("No duplicates allowed.")
+    const takenIdx = trimmed.findIndex(w => words.some(aw => aw.text.trim().toLowerCase() === w.toLowerCase()))
+    if (takenIdx !== -1) { setTakenTopupIndex(takenIdx); throw new Error("validation") }
+    setTakenTopupIndex(null)
     setTopupSubmittedLocal(true)
-    await rpc("sb_submit_topup_words", { p_code: code, p_player_id: myPlayerId, p_words: trimmed })
+    try {
+      await rpc("sb_submit_topup_words", { p_code: code, p_player_id: myPlayerId, p_words: trimmed })
+    } catch (error) {
+      setTopupSubmittedLocal(false)
+      if (error?.code === "23505" || /duplicate/i.test(error?.message ?? "")) {
+        await loadState()
+        throw new Error("Someone already submitted one of those words. Try something else.")
+      }
+      throw error
+    }
   }
 
   async function saveScores() {
@@ -500,10 +568,30 @@ export default function Play({ params }) {
               <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.75, marginBottom: 6 }}>Your 5 sounds</div>
               <p style={{ fontSize: 14, opacity: 0.85, marginBottom: 16, lineHeight: 1.5 }}>Write 5 words or phrases other players could make sound effects for. Anything goes.</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-                {wordFields.map((val, i) => (
-                  <TextEntry key={i} value={val} onChange={v => setWordFields(f => f.map((x, j) => j === i ? v : x))}
-                    multiline={false} placeholder={`Word ${i + 1}`} bg={WARM_LIGHT} fontSize={17} maxLength={40} />
-                ))}
+                {wordFields.map((val, i) => {
+                  const isTaken = takenWordIndex === i
+                  const isDupe = wordDupeIndices.has(i)
+                  return (
+                    <div key={i}>
+                      <TextEntry
+                        value={val}
+                        onChange={v => {
+                          setWordFields(f => f.map((x, j) => j === i ? v : x))
+                          if (takenWordIndex === i) setTakenWordIndex(null)
+                        }}
+                        multiline={false} placeholder={`Word ${i + 1}`}
+                        bg={isTaken ? "rgba(240,79,82,0.18)" : isDupe ? "#5C1010" : WARM_LIGHT}
+                        fontSize={17} maxLength={40}
+                        style={{ marginBottom: isTaken ? 4 : 0 }}
+                      />
+                      {isTaken && (
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#F04F52", marginTop: 4 }}>
+                          "{val}" was already submitted. Try something else.
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
               <RandomIdeas
                 bg={WARM_LIGHT}
@@ -514,7 +602,7 @@ export default function Play({ params }) {
             </div>
           </div>
           <Footer colors={POKE_COLORS}>
-            <FooterButton onClick={submitWords} disabled={!allFilled} bg={YELLOW} textColor="#000">Submit</FooterButton>
+            <FooterButton onClick={submitWords} disabled={!allFilled || wordHasDuplicates} bg={YELLOW} textColor="#000">Submit</FooterButton>
           </Footer>
         </>
       )
@@ -614,10 +702,30 @@ export default function Play({ params }) {
             <p style={{ fontSize: 14, opacity: 0.85, marginBottom: 20 }}>The word bank is empty. Let's add some more!</p>
             <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.75, marginBottom: 10 }}>3 more sounds</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-              {topupFields.map((val, i) => (
-                <TextEntry key={i} value={val} onChange={v => setTopupFields(f => f.map((x, j) => j === i ? v : x))}
-                  multiline={false} placeholder={`Word ${i + 1}`} bg={WARM_LIGHT} fontSize={17} maxLength={40} />
-              ))}
+              {topupFields.map((val, i) => {
+                const isTaken = takenTopupIndex === i
+                const isDupe = topupDupeIndices.has(i)
+                return (
+                  <div key={i}>
+                    <TextEntry
+                      value={val}
+                      onChange={v => {
+                        setTopupFields(f => f.map((x, j) => j === i ? v : x))
+                        if (takenTopupIndex === i) setTakenTopupIndex(null)
+                      }}
+                      multiline={false} placeholder={`Word ${i + 1}`}
+                      bg={isTaken ? "rgba(240,79,82,0.18)" : isDupe ? "#5C1010" : WARM_LIGHT}
+                      fontSize={17} maxLength={40}
+                      style={{ marginBottom: isTaken ? 4 : 0 }}
+                    />
+                    {isTaken && (
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "#F04F52", marginTop: 4 }}>
+                        "{val}" was already submitted. Try something else.
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
             <RandomIdeas
               bg={WARM_LIGHT}
@@ -627,7 +735,7 @@ export default function Play({ params }) {
             />
           </div>
           <Footer colors={POKE_COLORS}>
-            <FooterButton onClick={submitTopup} disabled={!allFilled} bg={YELLOW} textColor="#000">Submit</FooterButton>
+            <FooterButton onClick={submitTopup} disabled={!allFilled || topupHasDuplicates} bg={YELLOW} textColor="#000">Submit</FooterButton>
           </Footer>
         </div>
       )

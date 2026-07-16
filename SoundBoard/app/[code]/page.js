@@ -125,7 +125,7 @@ export default function LobbyPage({ params }) {
     const existing = localStorage.getItem(`sb:${code}:playerId`)
     if (existing) setMyPlayerId(existing)
     loadState()
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`soundboard-lobby-${code}`)

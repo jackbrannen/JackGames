@@ -170,11 +170,14 @@ export default function Play({ params }) {
     setMyId(id)
   }, [code])
 
+  const loadSeqRef = useRef(0)
   async function refresh() {
+    const seq = ++loadSeqRef.current
     const [{ data: g }, { data: p }] = await Promise.all([
       supabase.from("avalon_games").select("*").eq("code", code).single(),
       supabase.from("avalon_players").select("*").eq("game_code", code).order("seat"),
     ])
+    if (seq !== loadSeqRef.current) return
     if (g?.replay_code) { router.replace(`/${g.replay_code}`); return }
     if (g) setGame(g)
     if (p) setPlayers(p)
@@ -193,13 +196,49 @@ export default function Play({ params }) {
     const t = setInterval(refresh, 60000)
     function handleVisibility() { if (!document.hidden) refresh() }
     document.addEventListener("visibilitychange", handleVisibility)
-    const channel = supabase.channel(`avalon-play-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "avalon_games", filter: `code=eq.${code}` }, refresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "avalon_players", filter: `game_code=eq.${code}` }, refresh)
-      .on("broadcast", { event: "sync" }, refresh)
-      .subscribe()
-    syncChRef.current = channel
-    return () => { clearInterval(t); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
+
+    let cancelled = false
+    let channel = null
+    let reconnectTimer = null
+    let reconnectAttempt = 0
+
+    function connect() {
+      channel = supabase.channel(`avalon-play-${code}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "avalon_games", filter: `code=eq.${code}` }, refresh)
+        .on("postgres_changes", { event: "*", schema: "public", table: "avalon_players", filter: `game_code=eq.${code}` }, refresh)
+        .on("broadcast", { event: "sync" }, refresh)
+        .subscribe(status => {
+          if (cancelled) return
+          if (status === "SUBSCRIBED") {
+            reconnectAttempt = 0
+            // Catch up immediately on (re)connect in case events were missed while disconnected.
+            refresh()
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            // A dropped websocket otherwise leaves this client stuck until the 60s poll fires.
+            // Recreate the channel instead of waiting on it, backing off if it keeps failing
+            // so a persistent outage doesn't turn into a reconnect storm across many clients.
+            if (reconnectTimer) return
+            const delay = Math.min(2000 * 2 ** reconnectAttempt, 30000)
+            reconnectAttempt++
+            reconnectTimer = setTimeout(() => {
+              reconnectTimer = null
+              if (cancelled) return
+              supabase.removeChannel(channel)
+              connect()
+            }, delay)
+          }
+        })
+      syncChRef.current = channel
+    }
+    connect()
+
+    return () => {
+      cancelled = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      clearInterval(t)
+      document.removeEventListener("visibilitychange", handleVisibility)
+      supabase.removeChannel(channel)
+    }
   }, [code])
 
   // Redirect to lobby if game resets (Play Again)
@@ -311,7 +350,7 @@ export default function Play({ params }) {
         gamePhase={game?.phase}
         roleContent={hasSeenRole ? <RoleCardBody /> : null}
         rules={instructions ? [["How to Play", instructions]] : null}
-        onResetToLobby={async () => { await supabase.rpc("avalon_reset_to_lobby", { p_code: code }); await loadState() }}
+        onResetToLobby={async () => { await supabase.rpc("avalon_reset_to_lobby", { p_code: code }); await refresh() }}
       />
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
         {footerButtons}
@@ -354,8 +393,10 @@ export default function Play({ params }) {
   async function rpc(fn, args = {}) {
     const { error } = await supabase.rpc(fn, args)
     if (error) throw error
-    // Don't refresh - let polling pick up phase changes naturally.
-    // Prevents button from staying in loading state if phase hasn't updated yet.
+    // Refresh immediately so the acting client's own button resolves right
+    // away instead of waiting on its own realtime round-trip or another
+    // peer's gossip nudge (both of which can take a few seconds).
+    await refresh()
   }
 
 

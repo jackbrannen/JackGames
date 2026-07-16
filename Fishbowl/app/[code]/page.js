@@ -303,6 +303,27 @@ export default function Lobby({ params }) {
     setMyClues(data ?? [])
   }
 
+  async function loadState() {
+    await refreshPlayers()
+
+    const { data } = await supabase
+      .from("games")
+      .select(
+        "locked,phase,is_demo,rounds_total,turn_duration_seconds,skip_limit,skip_penalty,min_clues_per_player,max_clues_per_player,settings_editor_player_id,settings_lock_expires_at"
+      )
+      .eq("code", code)
+      .single()
+
+    if (data) {
+      setGameLocked(!!data.locked)
+      setIsDemo(!!data.is_demo)
+      setGamePhase(data.phase || "lobby")
+      setGameSettings(normalizeSettings(data))
+      setSettingsEditorPlayerId(data.settings_editor_player_id ?? null)
+      setSettingsLockExpiresAt(data.settings_lock_expires_at ?? null)
+    }
+  }
+
   useEffect(() => {
     const saved = loadProfile()
     if (saved) {
@@ -314,8 +335,8 @@ export default function Lobby({ params }) {
   }, [])
 
   useEffect(() => {
-    console.log('[AUTO-JOIN CHECK]', { gameExists, gamePhase, myPlayerId, hasAutoJoined: hasAutoJoinedRef.current })
-    if (gameExists !== true || gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
+    console.log('[AUTO-JOIN CHECK]', { gameExists, gamePhase, myPlayerId, isDemo, hasAutoJoined: hasAutoJoinedRef.current })
+    if (gameExists !== true || gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current || !isDemo) return
     const saved = loadProfile()
     console.log('[AUTO-JOIN] Saved profile:', saved)
     if (!saved?.username) return
@@ -350,7 +371,7 @@ export default function Lobby({ params }) {
       await refreshPlayers()
       await refreshMyClues(data.id)
     })()
-  }, [gameExists, gamePhase, myPlayerId, code, gameSettings.min_clues_per_player])
+  }, [gameExists, gamePhase, myPlayerId, isDemo, code, gameSettings.min_clues_per_player])
 
   useEffect(() => {
     const existing = localStorage.getItem(`fishbowl:${code}:playerId`)
@@ -401,29 +422,8 @@ export default function Lobby({ params }) {
   }, [])
 
   useEffect(() => {
-    async function loadState() {
-      await refreshPlayers()
-
-      const { data } = await supabase
-        .from("games")
-        .select(
-          "locked,phase,is_demo,rounds_total,turn_duration_seconds,skip_limit,skip_penalty,min_clues_per_player,max_clues_per_player,settings_editor_player_id,settings_lock_expires_at"
-        )
-        .eq("code", code)
-        .single()
-
-      if (data) {
-        setGameLocked(!!data.locked)
-        setIsDemo(!!data.is_demo)
-        setGamePhase(data.phase || "lobby")
-        setGameSettings(normalizeSettings(data))
-        setSettingsEditorPlayerId(data.settings_editor_player_id ?? null)
-        setSettingsLockExpiresAt(data.settings_lock_expires_at ?? null)
-      }
-    }
-
     loadState()
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
 

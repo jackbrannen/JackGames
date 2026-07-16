@@ -243,7 +243,7 @@ export default function Play({ params }) {
   useEffect(() => {
     loadState()
     // Short poll as a fallback in case a realtime event is missed.
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const ticker = setInterval(() => setNowMs(Date.now()), 300)

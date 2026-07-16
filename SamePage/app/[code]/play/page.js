@@ -44,7 +44,6 @@ export default function PlayPage({ params }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [timerRemaining, setTimerRemaining] = useState(null)
-  const prevTimerRef = useRef(null)
   const [pokeCooldown, setPokeCooldown] = useState(false)
   const [pokeJustSent, setPokeJustSent] = useState(null)
   const channelRef = useRef(null)
@@ -61,19 +60,23 @@ export default function PlayPage({ params }) {
   }, [answeringStartedAt])
   const prompts = game?.prompts ?? []
   const round = (game?.round_index ?? 0) + 1
-  const matchFlags = game?.match_flags ?? [false, false, false]
+  const matchCounts = game?.match_counts ?? [0, 0, 0]
   const threshold = game?.match_threshold ?? 2
-  const everyone = threshold >= players.length
+  const bank = game?.bank ?? 0
 
+  const loadSeqRef = useRef(0)
   async function loadState() {
+    const seq = ++loadSeqRef.current
     const [{ data: g }, { data: ps }] = await Promise.all([
       supabase.from("sp_games").select("*").eq("code", code).single(),
       supabase.from("sp_players").select("*").eq("game_code", code).order("created_at"),
     ])
+    if (seq !== loadSeqRef.current) return
     if (!g) { router.replace(`/${code}`); return }
     if (g.replay_code) { router.replace(`/${g.replay_code}`); return }
     if (g.phase === "lobby") { router.replace(`/${code}`); return }
     const { data: as } = await supabase.from("sp_answers").select("*").eq("game_code", code).eq("round_index", g.round_index)
+    if (seq !== loadSeqRef.current) return
     setGame(g); setPlayers(ps ?? []); setAnswers(as ?? []); setLoading(false)
     // Gossip: whoever notices a phase/round change re-broadcasts a sync so any
     // peer that missed the realtime push catches up in a round-trip, not on the poll.
@@ -94,18 +97,53 @@ export default function PlayPage({ params }) {
 
   useEffect(() => {
     loadState(); loadPokes()
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
-    const ch = supabase.channel(`samepage-play-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "sp_games", filter: `code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "sp_players", filter: `game_code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "sp_answers", filter: `game_code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "pokes", filter: `room_code=eq.${code}` }, loadPokes)
-      .on("broadcast", { event: "sync" }, loadState)
-      .subscribe()
-    channelRef.current = ch
-    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(ch) }
+    let cancelled = false
+    let ch = null
+    let reconnectTimer = null
+    let reconnectAttempt = 0
+
+    function connect() {
+      ch = supabase.channel(`samepage-play-${code}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "sp_games", filter: `code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "sp_players", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "sp_answers", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "pokes", filter: `room_code=eq.${code}` }, loadPokes)
+        .on("broadcast", { event: "sync" }, loadState)
+        .subscribe(status => {
+          if (cancelled) return
+          if (status === "SUBSCRIBED") {
+            reconnectAttempt = 0
+            // Catch up immediately on (re)connect in case events were missed while disconnected.
+            loadState(); loadPokes()
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            // A dropped websocket otherwise leaves this client stuck until the 60s poll fires.
+            // Recreate the channel instead of waiting on it, backing off if it keeps failing
+            // so a persistent outage doesn't turn into a reconnect storm across many clients.
+            if (reconnectTimer) return
+            const delay = Math.min(2000 * 2 ** reconnectAttempt, 30000)
+            reconnectAttempt++
+            reconnectTimer = setTimeout(() => {
+              reconnectTimer = null
+              if (cancelled) return
+              supabase.removeChannel(ch)
+              connect()
+            }, delay)
+          }
+        })
+      channelRef.current = ch
+    }
+    connect()
+
+    return () => {
+      cancelled = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      clearInterval(poll)
+      document.removeEventListener("visibilitychange", handleVisibility)
+      supabase.removeChannel(ch)
+    }
   }, [code])
 
   // Reset drafts each round; dummy games prefill with the letters so a solo
@@ -134,28 +172,35 @@ export default function PlayPage({ params }) {
   useEffect(() => {
     if (game?.phase !== "answering" || timerDuration === 0 || !answeringStartedAt) {
       setTimerRemaining(null)
-      prevTimerRef.current = null
       return
     }
     function tick() {
       const e = (Date.now() - new Date(answeringStartedAt).getTime()) / 1000
       const rem = Math.max(0, timerDuration - e)
       setTimerRemaining(rem)
-      prevTimerRef.current = rem
     }
     tick()
     const id = setInterval(tick, 100)
     return () => clearInterval(id)
   }, [game?.phase, timerDuration, answeringStartedAt])
 
-  // Auto-submit when timer expires
+  // Auto-submit when timer expires. Two things happen here:
+  // 1. My own browser force-submits MY drafts (preserving anything I'd
+  //    already typed, shrugging only what's still blank) — same as before.
+  // 2. Every connected client also calls sp_force_shrug_missing, which is
+  //    server-authoritative: it independently re-verifies the real deadline
+  //    has passed, then shrugs in anyone (not just me) still missing an
+  //    answer and advances the round. Without this, a player who's offline
+  //    or backgrounded when time runs out never gets auto-submitted by
+  //    their own tab, and the round stalls forever waiting on them.
   useEffect(() => {
-    if (timerRemaining !== 0 || prevTimerRef.current === 0) return
-    if (hasSubmitted) return
-    // Fill any empty/non-shrug answers with SHRUG before force-submitting
-    const forced = drafts.map((d, i) => shrugs[i] ? SHRUG : (d.trim() || SHRUG))
-    supabase.rpc("sp_submit_answers", { p_code: code, p_player_id: myPlayerId, p_texts: forced })
-      .then(() => { playSubmit(); nudge() })
+    if (timerRemaining !== 0) return
+    if (!hasSubmitted) {
+      const forced = drafts.map((d, i) => shrugs[i] ? SHRUG : (d.trim() || SHRUG))
+      supabase.rpc("sp_submit_answers", { p_code: code, p_player_id: myPlayerId, p_texts: forced })
+        .then(() => { playSubmit(); nudge() })
+    }
+    supabase.rpc("sp_force_shrug_missing", { p_code: code })
   }, [timerRemaining])
 
   const myAnswers = answers.filter(a => a.player_id === myPlayerId)
@@ -171,16 +216,34 @@ export default function PlayPage({ params }) {
     if (error) { alert(error.message); setSubmitting(false); throw error }
     playSubmit()
     nudge()
+    await loadState()
   }
-  async function toggleMatch(i) {
-    await supabase.rpc("sp_toggle_match", { p_code: code, p_index: i, p_value: !matchFlags[i] })
+  function maxMatchForPrompt(i) {
+    return answersByPrompt(i).filter(a => a.text !== SHRUG).length
+  }
+  async function incrementMatch(i) {
+    const cur = matchCounts[i] ?? 0
+    const max = maxMatchForPrompt(i)
+    const next = cur === 0 ? 2 : cur + 1
+    if (next > max) return
+    await supabase.rpc("sp_set_match_count", { p_code: code, p_index: i, p_value: next })
     nudge()
+    await loadState()
+  }
+  async function decrementMatch(i) {
+    const cur = matchCounts[i] ?? 0
+    if (cur === 0) return
+    const next = cur <= 2 ? 0 : cur - 1
+    await supabase.rpc("sp_set_match_count", { p_code: code, p_index: i, p_value: next })
+    nudge()
+    await loadState()
   }
   async function resolveRound() {
     setConfirming(false)
     const { error } = await supabase.rpc("sp_resolve_round", { p_code: code })
     if (error) { alert(error.message); return }
     nudge()
+    await loadState()
   }
   async function playAgain() {
     if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
@@ -206,7 +269,8 @@ export default function PlayPage({ params }) {
     </div>
   }
 
-  const matchCount = matchFlags.filter(Boolean).length
+  const matchCount = matchCounts.reduce((sum, n) => sum + (n ?? 0), 0)
+  const shortfall = Math.max(0, threshold - matchCount)
   const answersByPrompt = i => answers.filter(a => a.prompt_index === i)
   const submittedIds = new Set(
     players.map(p => p.id).filter(pid => answers.filter(a => a.player_id === pid).length >= 3)
@@ -250,8 +314,8 @@ export default function PlayPage({ params }) {
   function bankBanner() {
     return (
       <div style={{ display: "flex", gap: 8, padding: "12px 16px" }}>
-        {bankBox(game.bank, <>Banked matches<br /><span style={{ color: INK_MUTED }}>cover empty rounds</span></>)}
-        {bankBox(1, "Matches needed this round")}
+        {bankBox(bank, <>Banked matches<br /><span style={{ color: INK_MUTED }}>cover empty rounds</span></>)}
+        {bankBox(threshold, "matching answers needed this round")}
       </div>
     )
   }
@@ -370,12 +434,13 @@ export default function PlayPage({ params }) {
           </div>
         )}
 
-        {/* REVEAL + MATCH CHECK */}
+        {/* REVEAL + MATCH COUNT */}
         {isReveal && (
           <div style={{ padding: "4px 16px 16px" }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: INK, marginBottom: 14 }}>Check every prompt where <b>{everyone ? "you all" : `at least ${threshold} of you`}</b> gave the same answer, then submit.</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: INK, marginBottom: 14 }}>For each prompt, count how many answers matched each other, then submit.</div>
             {prompts.map((p, i) => {
-              const checked = !!matchFlags[i]
+              const count = matchCounts[i] ?? 0
+              const max = maxMatchForPrompt(i)
               return (
                 <div key={i} style={{ background: PANEL, marginBottom: 14 }}>
                   <div style={{ display: "flex", gap: 0, alignItems: "stretch" }}>
@@ -393,11 +458,15 @@ export default function PlayPage({ params }) {
                       )
                     })}
                   </div>
-                  <button onClick={() => toggleMatch(i)} disabled={game.phase !== "reveal"}
-                    style={{ width: "100%", border: "none", background: checked ? BTN : "rgba(60,48,34,0.1)", color: checked ? "white" : INK, fontSize: 15, fontWeight: 900, padding: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                    <span style={{ width: 20, height: 20, borderRadius: 4, border: `2px solid ${checked ? "white" : INK_MUTED}`, background: checked ? "white" : "transparent", color: BTN, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>{checked ? "✓" : ""}</span>
-                    {everyone ? "Everyone matched" : `${threshold}+ matched`}
-                  </button>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, padding: "10px 14px", background: count > 0 ? BTN : "rgba(60,48,34,0.1)" }}>
+                    <button onClick={() => decrementMatch(i)} disabled={game.phase !== "reveal" || count === 0}
+                      style={{ width: 40, height: 40, border: "none", background: "rgba(255,255,255,0.3)", color: count > 0 ? "white" : INK, fontSize: 22, fontWeight: 900, opacity: (game.phase !== "reveal" || count === 0) ? 0.35 : 1, cursor: (game.phase !== "reveal" || count === 0) ? "default" : "pointer" }}>−</button>
+                    <div style={{ fontSize: 15, fontWeight: 900, color: count > 0 ? "white" : INK, minWidth: 100, textAlign: "center" }}>
+                      {count === 0 ? (max === 0 ? "No answers to match" : "None") : `${count} matched`}
+                    </div>
+                    <button onClick={() => incrementMatch(i)} disabled={game.phase !== "reveal" || count >= max}
+                      style={{ width: 40, height: 40, border: "none", background: "rgba(255,255,255,0.3)", color: count > 0 ? "white" : INK, fontSize: 22, fontWeight: 900, opacity: (game.phase !== "reveal" || count >= max) ? 0.35 : 1, cursor: (game.phase !== "reveal" || count >= max) ? "default" : "pointer" }}>+</button>
+                  </div>
                 </div>
               )
             })}
@@ -424,9 +493,9 @@ export default function PlayPage({ params }) {
             <div style={{ fontSize: 22, fontWeight: 900, color: INK, marginBottom: matchCount > 0 ? 20 : 8 }}>
               {matchCount > 0 ? `Confirm ${matchCount} match${matchCount === 1 ? "" : "es"}?` : "No matches this round?"}
             </div>
-            {matchCount === 0 && (
+            {shortfall > 0 && (
               <p style={{ fontSize: 15, color: INK_MUTED, fontWeight: 600, marginBottom: 20 }}>
-                You'll spend a banked match to continue — and if the bank is empty, the game ends.
+                You'll spend {shortfall} banked match{shortfall === 1 ? "" : "es"} to continue — and if the bank runs out, the game ends.
               </p>
             )}
             <div style={{ display: "flex", gap: 8 }}>

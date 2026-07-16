@@ -148,7 +148,7 @@ export default function LobbyPage({ params }) {
   useEffect(() => {
     function loadState() { loadGame(); refreshPlayers() }
     loadState()
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`samepage-lobby-${code}`)
@@ -196,11 +196,21 @@ export default function LobbyPage({ params }) {
   }
 
   async function changeThreshold(next) {
-    const clamped = Math.max(2, Math.min(Math.max(2, players.length), next))
+    const clamped = Math.max(2, Math.min(Math.max(2, players.length * 3), next))
     setMatchThreshold(clamped)
     await supabase.from("sp_games").update({ match_threshold: clamped }).eq("code", code)
     channelRef.current?.send({ type: "broadcast", event: "sync" })
   }
+
+  // The upper bound (players * 3) shrinks as players leave. If the current
+  // threshold now exceeds what's possible, pull it back down automatically
+  // — never auto-raises it back up if players rejoin, only ever corrects
+  // an out-of-range value downward.
+  useEffect(() => {
+    if (phase !== "lobby" || !players.length) return
+    const max = Math.max(2, players.length * 3)
+    if (matchThreshold > max) changeThreshold(max)
+  }, [players.length, phase])
 
   async function startGame() {
     if (starting) return
@@ -328,12 +338,12 @@ export default function LobbyPage({ params }) {
                 style={{ width: 52, height: 52, background: WARM, color: INK, fontSize: 28, fontWeight: 900 }}>+</button>
             </div>
 
-            <div style={{ fontSize: 13, fontWeight: 700, color: INK_MUTED, margin: "22px 0 10px" }}>How many must match per prompt (2–{Math.max(2, players.length)})</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: INK_MUTED, margin: "22px 0 10px" }}>Matching answers needed per round</div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 18 }}>
               <button onClick={() => changeThreshold(matchThreshold - 1)} disabled={matchThreshold <= 2}
                 style={{ width: 52, height: 52, background: WARM, color: INK, fontSize: 28, fontWeight: 900 }}>−</button>
               <div style={{ fontSize: 40, fontWeight: 900, color: INK, minWidth: 56, textAlign: "center" }}>{matchThreshold}</div>
-              <button onClick={() => changeThreshold(matchThreshold + 1)} disabled={matchThreshold >= Math.max(2, players.length)}
+              <button onClick={() => changeThreshold(matchThreshold + 1)} disabled={matchThreshold >= Math.max(2, players.length * 3)}
                 style={{ width: 52, height: 52, background: WARM, color: INK, fontSize: 28, fontWeight: 900 }}>+</button>
             </div>
 

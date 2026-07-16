@@ -480,12 +480,24 @@ export default function Play({ params }) {
     if (error) throw error
     // Gossip: broadcast so peers see action instantly
     syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    // Refresh immediately so the acting client's own button resolves right
+    // away instead of waiting on its own realtime round-trip.
+    await loadState()
   }
 
+  const loadSeqRef = useRef(0)
   async function loadState() {
+    // Guard against out-of-order responses: loadState can be triggered
+    // concurrently from multiple sources (the poll, several realtime
+    // callbacks firing close together, visibilitychange). Network requests
+    // don't necessarily resolve in the order they were sent, so a slower
+    // older call could otherwise overwrite fresher state with stale data.
+    // Only the response from the most recently initiated call is applied.
+    const seq = ++loadSeqRef.current
     const { data: gameData } = await supabase
       .from("tel_games").select("phase,is_dummy,current_step,total_steps,reveal_order,current_reveal_chain,current_reveal_step,timer_seconds,step_started_at,next_game,next_game_picker_name,replay_code").eq("code", code).single()
 
+    if (seq !== loadSeqRef.current) return
     if (!gameData) { router.replace(`/${code}`); return }
     if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
     // Reset to lobby ("Play Again") returns everyone to the lobby together.
@@ -500,6 +512,7 @@ export default function Play({ params }) {
       .from("tel_steps").select("id,chain_owner_id,step_number,step_type,content,author_id")
       .eq("game_code", code).order("step_number", { ascending: true })
 
+    if (seq !== loadSeqRef.current) return
     setGame(gameData)
     setPlayers(playerData ?? [])
     setSteps(stepData ?? [])
@@ -515,24 +528,56 @@ export default function Play({ params }) {
   }, [code])
 
   useEffect(() => {
+    let cancelled = false
+    let channel = null
+    let reconnectTimer = null
+    let reconnectAttempt = 0
+
+    function connect() {
+      channel = supabase.channel(`tel-play-${code}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "tel_games", filter: `code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "tel_steps", filter: `game_code=eq.${code}` }, loadState)
+        .on("broadcast", { event: "sync" }, loadState)
+        .on("presence", { event: "sync" }, () => setPresenceState({ ...channel.presenceState() }))
+        .subscribe(async status => {
+          if (cancelled) return
+          if (status === "SUBSCRIBED") {
+            reconnectAttempt = 0
+            // Catch up immediately on (re)connect in case events were missed while disconnected.
+            loadState()
+            if (myPlayerId) await channel.track({ playerId: myPlayerId, typing: false })
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            // A dropped websocket otherwise leaves this client stuck until the 60s poll fires.
+            // Recreate the channel instead of waiting on it, backing off if it keeps failing
+            // so a persistent outage doesn't turn into a reconnect storm across many clients.
+            if (reconnectTimer) return
+            const delay = Math.min(2000 * 2 ** reconnectAttempt, 30000)
+            reconnectAttempt++
+            reconnectTimer = setTimeout(() => {
+              reconnectTimer = null
+              if (cancelled) return
+              supabase.removeChannel(channel)
+              connect()
+            }, delay)
+          }
+        })
+      channelRef.current = channel
+    }
+
     loadState()
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
 
-    const channel = supabase.channel(`tel-play-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "tel_games", filter: `code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "tel_steps", filter: `game_code=eq.${code}` }, loadState)
-      .on("broadcast", { event: "sync" }, loadState)
-      .on("presence", { event: "sync" }, () => setPresenceState({ ...channel.presenceState() }))
-      .subscribe(async status => {
-        if (status === "SUBSCRIBED" && myPlayerId) {
-          await channel.track({ playerId: myPlayerId, typing: false })
-        }
-      })
-    channelRef.current = channel
+    connect()
 
-    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
+    return () => {
+      cancelled = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      clearInterval(poll)
+      document.removeEventListener("visibilitychange", handleVisibility)
+      supabase.removeChannel(channel)
+    }
   }, [code, myPlayerId])
 
   // ── Derived state (must come before any useEffect that references these) ──

@@ -37,13 +37,22 @@ export default function PlayPage({ params }) {
   const syncKeyRef = useRef(null)
   const serverNow = () => Date.now() + clockOffsetRef.current
 
+  const loadSeqRef = useRef(0)
   async function loadState() {
+    // Guard against out-of-order responses: loadState can be triggered
+    // concurrently from multiple sources (the poll, several realtime
+    // callbacks firing close together, visibilitychange). Network requests
+    // don't necessarily resolve in the order they were sent, so a slower
+    // older call could otherwise overwrite fresher state with stale data.
+    // Only the response from the most recently initiated call is applied.
+    const seq = ++loadSeqRef.current
     const { data: game } = await supabase
       .from("alphajam_games")
       .select("*")
       .eq("code", code)
       .single()
 
+    if (seq !== loadSeqRef.current) return
     if (game?.replay_code) { router.replace(`/${game.replay_code}`); return }
     if (game) setGameState(game)
 
@@ -53,6 +62,7 @@ export default function PlayPage({ params }) {
       .eq("game_code", code)
       .order("created_at", { ascending: true})
 
+    if (seq !== loadSeqRef.current) return
     if (playerData) setPlayers(playerData)
     // Gossip: re-broadcast on a state change so a peer that missed the realtime push catches up fast.
     // (Synchronized reveals still flip off reveal_at locally; this only speeds up how fast peers learn it.)

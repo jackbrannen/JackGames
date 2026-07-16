@@ -62,17 +62,20 @@ function ReverseCard() {
 // each was shot/framed differently — most are portrait crops where the
 // face sits somewhere in the top third rather than dead center.
 const ACCENT_META = {
-  african_king: { label: "African King", position: "50% 15%" },
-  arab: { label: "Arab man", position: "50% 25%" },
-  australian: { label: "Australian", position: "50% 30%" },
+  african_king: { label: "African King", position: "50% 20%" },
+  arab: { label: "Arab man", position: "50% 24%" },
+  australian: { label: "Australian", position: "50% 16%" },
   british: { label: "British", position: "50% 18%" },
   german: { label: "German", position: "50% 20%" },
-  italian: { label: "Italian Chef", position: "50% 15%" },
+  goblin: { label: "Goblin", position: "50% 13%" },
+  italian: { label: "Italian Chef", position: "50% 24%" },
   leprechaun: { label: "Leprechaun", position: "50% 30%" },
-  nerd: { label: "Nerd", position: "50% 28%" },
-  old_man: { label: "Old Man", position: "50% 30%" },
-  raging: { label: "Raging", position: "50% 15%" },
-  robot: { label: "Robot", position: "50% 18%" },
+  nerd: { label: "Nerd", position: "50% 13%" },
+  old_man: { label: "Old Man", position: "50% 20%" },
+  prospector: { label: "Prospector", position: "50% 11%" },
+  raging: { label: "Raging", position: "50% 11%" },
+  robot: { label: "Robot", position: "50% 11%" },
+  scottish: { label: "Scottish", position: "50% 16%" },
   southern_lady: { label: "Southern Lady", position: "50% 18%" },
 }
 

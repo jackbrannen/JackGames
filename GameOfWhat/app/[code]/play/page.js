@@ -179,7 +179,7 @@ export default function Play({ params }) {
 
   useEffect(() => {
     loadState()
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`gow-play-${code}`)
@@ -218,20 +218,12 @@ export default function Play({ params }) {
   }, [allNextQuestionsIn, code])
 
   // ── DUMMY GAME AUTOMATION ─────────────────────────────────
-
-  // Pre-fill answer field
-  useEffect(() => {
-    if (game?.question_phase !== "answering" || !currentQuestion) return
-    const pid = myPlayerId || localStorage.getItem(`gow:${code}:playerId`)
-    if (!pid || pid === currentQuestion.author_id) return
-    setMyAnswer(prev => prev || pickRandWord())
-  }, [currentQuestion?.id, game?.question_phase, myPlayerId])
-
-  // Pre-fill round question field
-  useEffect(() => {
-    if (game?.phase !== "between_rounds") return
-    setRoundQuestion(prev => prev || pickRandQuestion())
-  }, [roundIndex, game?.phase])
+  // Disabled: gow_games has no is_dummy signal (see the auto-join effect in
+  // app/[code]/page.js for the same underlying gap — the "Dummy Game" button
+  // currently just calls the same create flow as a real "Create Game"), so
+  // these two effects were pre-filling every real player's answer/question
+  // fields unconditionally, in every game. Re-enable, gated on dummy
+  // detection, if that's added.
 
   // Auto-submit bot answers
   useEffect(() => {

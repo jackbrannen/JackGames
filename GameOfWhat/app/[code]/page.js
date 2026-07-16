@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../lib/supabase"
 import Lobby from "../../components/Lobby"
@@ -84,7 +84,6 @@ export default function LobbyPage({ params }) {
   const [instructions, setInstructions] = useState("")
 
   const me = players.find(p => p.id === myPlayerId)
-  const hasAutoJoinedRef = useRef(false)
 
   async function loadState() {
     const { data: gameData } = await supabase
@@ -120,22 +119,12 @@ export default function LobbyPage({ params }) {
     }
   }, [])
 
-  useEffect(() => {
-    if (!game || game.phase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
-    const saved = loadProfile()
-    if (!saved?.username) return
-    hasAutoJoinedRef.current = true
-    ;(async () => {
-      const { data: taken } = await supabase.from("gow_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
-      if (taken?.length > 0) return
-      const { data, error } = await supabase.from("gow_players")
-        .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName.trim(), last_name: saved.lastName.trim(), score: 0 })
-        .select("id").single()
-      if (error || !data) return
-      localStorage.setItem(`gow:${code}:playerId`, data.id)
-      setMyPlayerId(data.id)
-    })()
-  }, [game?.phase, myPlayerId, code])
+  // Auto-join disabled: gow_games has no is_dummy signal, and its "Dummy
+  // Game" button (see app/page.js) currently just calls the same
+  // onCreateClick as a real "Create Game" — there is no dummy-game concept
+  // implemented here yet, so there is no legitimate case where a real saved
+  // profile should silently auto-join a lobby. Re-enable, gated on dummy
+  // detection, if that's added.
 
   useEffect(() => {
     supabase.from("game_instructions").select("body").eq("game_key", "gameofwhat").single()
@@ -145,7 +134,7 @@ export default function LobbyPage({ params }) {
   useEffect(() => {
     loadState()
     // Short poll as a fallback in case a realtime event is missed.
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     // Realtime so the live player list and the lobby->game redirect happen

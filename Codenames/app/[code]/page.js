@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../lib/supabase"
 import { pick25Words } from "../../lib/words"
@@ -103,7 +103,6 @@ export default function Lobby({ params }) {
   const [confirmingStart, setConfirmingStart] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [draftFirstTurn, setDraftFirstTurn] = useState("red")
-  const hasAutoJoinedRef = useRef(false)
 
   async function refreshPlayers() {
     const { data } = await supabase
@@ -146,45 +145,29 @@ export default function Lobby({ params }) {
     loadGame().then(() => refreshPlayers())
   }, [code])
 
-  useEffect(() => {
-    if (gameExists !== true || gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
-    const saved = loadProfile()
-    if (!saved?.username) return
-    hasAutoJoinedRef.current = true
-    ;(async () => {
-      const { data: taken } = await supabase.from("codenames_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
-      if (taken?.length > 0) return
-      const reds = players.filter(p => p.team === "red").length
-      const blues = players.filter(p => p.team === "blue").length
-      const team = blues <= reds ? "blue" : "red"
-      const { data, error } = await supabase.from("codenames_players")
-        .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName?.trim() ?? "", last_name: saved.lastName?.trim() ?? "", team })
-        .select("id").single()
-      if (error || !data) { hasAutoJoinedRef.current = false; return }
-      localStorage.setItem(`codenames:${code}:playerId`, data.id)
-      setMyPlayerId(data.id)
-      await refreshPlayers()
-    })()
-  }, [gameExists, gamePhase, myPlayerId, players.length, code])
+  // Auto-join disabled: codenames_games has no is_dummy signal (its "Dummy
+  // Game" button inserts 4 bot players directly at creation instead), so
+  // there is no legitimate case where a real saved profile should silently
+  // auto-join a lobby. Re-enable, gated on dummy detection, if that's added.
 
-  useEffect(() => {
-    async function loadState() {
-      await refreshPlayers()
-      const { data } = await supabase
-        .from("codenames_games")
-        .select("phase,first_turn_team,last_used_words,replay_code")
-        .eq("code", code)
-        .single()
-      if (data?.replay_code) { router.replace(`/${data.replay_code}`); return }
-      if (data) {
-        setGamePhase(data.phase || "lobby")
-        setFirstTurnTeam(data.first_turn_team || "red")
-        setLastUsedWords(data.last_used_words || [])
-      }
+  async function loadState() {
+    await refreshPlayers()
+    const { data } = await supabase
+      .from("codenames_games")
+      .select("phase,first_turn_team,last_used_words,replay_code")
+      .eq("code", code)
+      .single()
+    if (data?.replay_code) { router.replace(`/${data.replay_code}`); return }
+    if (data) {
+      setGamePhase(data.phase || "lobby")
+      setFirstTurnTeam(data.first_turn_team || "red")
+      setLastUsedWords(data.last_used_words || [])
     }
+  }
 
+  useEffect(() => {
     loadState()
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`codenames-lobby-${code}`)

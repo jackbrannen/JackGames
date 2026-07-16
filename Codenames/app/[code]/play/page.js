@@ -153,7 +153,7 @@ export default function Play({ params }) {
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     loadState()
     // Short poll as a fallback in case a realtime event is missed.
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     // Realtime so clues, card reveals, and turn changes reach every player

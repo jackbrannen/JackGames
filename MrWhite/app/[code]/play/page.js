@@ -79,9 +79,14 @@ export default function Play({ params }) {
     if (error) throw error
     // Gossip: broadcast so peers see action instantly
     syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    // Refresh immediately so the acting client's own button resolves right
+    // away instead of waiting on its own realtime round-trip.
+    await loadState()
   }
 
+  const loadSeqRef = useRef(0)
   async function loadState() {
+    const seq = ++loadSeqRef.current
     const { data: gameData } = await supabase
       .from("mrwhite_games")
       .select("code,phase,eliminated_player_id,reveal_at,ready_player_ids,mr_white_wins,round_number,next_game,next_game_picker_name,replay_code")
@@ -94,6 +99,7 @@ export default function Play({ params }) {
       .eq("game_code", code)
       .order("created_at", { ascending: true })
 
+    if (seq !== loadSeqRef.current) return
     if (gameData) {
       if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
       if (gameData.phase === "lobby") { router.replace(`/${code}`); return }
@@ -110,16 +116,51 @@ export default function Play({ params }) {
     supabase.from("game_instructions").select("body").eq("game_key", "mrwhite").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     loadState()
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
-    const channel = supabase.channel(`mw-play-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "mrwhite_games", filter: `code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "mrwhite_players", filter: `game_code=eq.${code}` }, loadState)
-      .on("broadcast", { event: "sync" }, loadState)
-      .subscribe()
-    syncChRef.current = channel
-    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
+    let cancelled = false
+    let channel = null
+    let reconnectTimer = null
+    let reconnectAttempt = 0
+
+    function connect() {
+      channel = supabase.channel(`mw-play-${code}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "mrwhite_games", filter: `code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "mrwhite_players", filter: `game_code=eq.${code}` }, loadState)
+        .on("broadcast", { event: "sync" }, loadState)
+        .subscribe(status => {
+          if (cancelled) return
+          if (status === "SUBSCRIBED") {
+            reconnectAttempt = 0
+            // Catch up immediately on (re)connect in case events were missed while disconnected.
+            loadState()
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            // A dropped websocket otherwise leaves this client stuck until the 60s poll fires.
+            // Recreate the channel instead of waiting on it, backing off if it keeps failing
+            // so a persistent outage doesn't turn into a reconnect storm across many clients.
+            if (reconnectTimer) return
+            const delay = Math.min(2000 * 2 ** reconnectAttempt, 30000)
+            reconnectAttempt++
+            reconnectTimer = setTimeout(() => {
+              reconnectTimer = null
+              if (cancelled) return
+              supabase.removeChannel(channel)
+              connect()
+            }, delay)
+          }
+        })
+      syncChRef.current = channel
+    }
+    connect()
+
+    return () => {
+      cancelled = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      clearInterval(poll)
+      document.removeEventListener("visibilitychange", handleVisibility)
+      supabase.removeChannel(channel)
+    }
   }, [code])
 
 

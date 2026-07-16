@@ -137,7 +137,7 @@ export default function PlayPage({ params }) {
 
   useEffect(() => {
     loadState()
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`wb-play-${code}`)

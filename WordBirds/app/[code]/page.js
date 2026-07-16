@@ -102,7 +102,7 @@ export default function LobbyPage({ params }) {
   useEffect(() => {
     function loadState() { loadGame(); refreshPlayers() }
     loadState()
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`wb-lobby-${code}`)

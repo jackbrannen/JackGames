@@ -501,16 +501,22 @@ export default function Play({ params }) {
   async function rpc(fn, args = {}) {
     const { error } = await supabase.rpc(fn, args)
     if (error) throw error
-    // Don't call loadState() - let polling pick up phase changes naturally.
+    // Refresh immediately so the acting client's own button resolves right
+    // away instead of waiting on its own realtime round-trip or another
+    // peer's gossip nudge (both of which can take a few seconds).
+    await loadState()
   }
 
+  const loadSeqRef = useRef(0)
   async function loadState() {
+    const seq = ++loadSeqRef.current
     const { data: gameData } = await supabase
       .from("ftw_games")
       .select("*")
       .eq("code", code)
       .single()
 
+    if (seq !== loadSeqRef.current) return
     if (!gameData) return
     if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
     if (gameData.phase === "lobby") { router.replace(`/${code}`); return }
@@ -537,6 +543,7 @@ export default function Play({ params }) {
       .select("id,text,player_id")
       .eq("game_code", code)
 
+    if (seq !== loadSeqRef.current) return
     setGame(gameData)
     setPlayers(playerData ?? [])
     setAllWords(wordData ?? [])
@@ -551,13 +558,48 @@ export default function Play({ params }) {
     const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
-    const channel = supabase.channel(`ftw-play-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "ftw_games", filter: `code=eq.${code}` }, loadState)
-      .on("postgres_changes", { event: "*", schema: "public", table: "ftw_players", filter: `game_code=eq.${code}` }, loadState)
-      .on("broadcast", { event: "sync" }, loadState)
-      .subscribe()
-    syncChRef.current = channel
-    return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
+    let cancelled = false
+    let channel = null
+    let reconnectTimer = null
+    let reconnectAttempt = 0
+
+    function connect() {
+      channel = supabase.channel(`ftw-play-${code}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "ftw_games", filter: `code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "ftw_players", filter: `game_code=eq.${code}` }, loadState)
+        .on("broadcast", { event: "sync" }, loadState)
+        .subscribe(status => {
+          if (cancelled) return
+          if (status === "SUBSCRIBED") {
+            reconnectAttempt = 0
+            // Catch up immediately on (re)connect in case events were missed while disconnected.
+            loadState()
+          } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+            // A dropped websocket otherwise leaves this client stuck until the 60s poll fires.
+            // Recreate the channel instead of waiting on it, backing off if it keeps failing
+            // so a persistent outage doesn't turn into a reconnect storm across many clients.
+            if (reconnectTimer) return
+            const delay = Math.min(2000 * 2 ** reconnectAttempt, 30000)
+            reconnectAttempt++
+            reconnectTimer = setTimeout(() => {
+              reconnectTimer = null
+              if (cancelled) return
+              supabase.removeChannel(channel)
+              connect()
+            }, delay)
+          }
+        })
+      syncChRef.current = channel
+    }
+    connect()
+
+    return () => {
+      cancelled = true
+      if (reconnectTimer) clearTimeout(reconnectTimer)
+      clearInterval(poll)
+      document.removeEventListener("visibilitychange", handleVisibility)
+      supabase.removeChannel(channel)
+    }
   }, [code])
 
 

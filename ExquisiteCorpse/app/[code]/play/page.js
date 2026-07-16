@@ -529,7 +529,6 @@ export default function Play({ params }) {
   const [drawings, setDrawings] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
 
-  const [submitting, setSubmitting] = useState(false)
   const [canvasDirty, setCanvasDirty] = useState(false)
   const [shownIdeas, setShownIdeas] = useState([])
   const [loadingIdeas, setLoadingIdeas] = useState(false)
@@ -635,7 +634,7 @@ export default function Play({ params }) {
     supabase.from("game_instructions").select("body").eq("game_key", "exquisitecorpse").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     loadState()
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
 
@@ -706,7 +705,6 @@ export default function Play({ params }) {
   // Reset per-round UI state when round changes
   useEffect(() => {
     setCanvasDirty(false)
-    setSubmitting(false)
     setShownIdeas([])
   }, [currentRound])
 
@@ -727,22 +725,41 @@ export default function Play({ params }) {
   }, [game?.phase, game?.is_dummy, currentPresenterPlayer?.id, currentRevealStep, currentRevealChain])
 
   // Auto-scroll to newly revealed drawings during reveal phase
+  // scrollIntoView's block:"end" aligns to the true viewport edge, but the
+  // fixed-position Footer visually covers that edge, hiding the last bit of
+  // content. Scroll manually so the target sits just above the footer.
+  function scrollRevealIntoView() {
+    const el = revealEndRef.current
+    if (!el) return
+    const footerHeight = amPresenter ? FOOTER_H + 80 : FOOTER_H
+    const rect = el.getBoundingClientRect()
+    const targetY = window.scrollY + rect.bottom - (window.innerHeight - footerHeight)
+    window.scrollTo({ top: targetY, behavior: "smooth" })
+  }
+
+  // Primary trigger is the newly revealed image's own onLoad (see StitchedChain
+  // below) — that's the only reliable signal the layout has actually grown to
+  // its final height. A fixed timeout here can't know if the image (loaded
+  // fresh from Storage, size/network dependent) has finished loading yet, so
+  // it was scrolling to a stale, too-short measurement inconsistently. This
+  // effect is just a slower fallback in case onLoad doesn't fire (e.g. no
+  // image on this step).
   useEffect(() => {
     if (game?.phase !== "reveal" || currentRevealStep < 0) return
-    setTimeout(() => revealEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 80)
-  }, [game?.phase, currentRevealStep, currentRevealChain])
+    const t = setTimeout(scrollRevealIntoView, 400)
+    return () => clearTimeout(t)
+  }, [game?.phase, currentRevealStep, currentRevealChain, amPresenter])
 
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
   async function uploadAndSubmitDrawing() {
-    if (!myChainOwner || submitting || myDrawingSubmitted || !canvasDirty) return
+    if (!myChainOwner || myDrawingSubmitted || !canvasDirty) return
     const getExport = getExportRef.current
     if (!getExport) { alert("Canvas not ready"); return }
     const { dataUrl, foldPct } = getExport()
     if (!dataUrl) { alert("Canvas not ready"); return }
 
-    setSubmitting(true)
     try {
       const res = await fetch(dataUrl)
       const blob = await res.blob()
@@ -768,7 +785,7 @@ export default function Play({ params }) {
       await loadState()
     } catch (e) {
       alert("Error submitting: " + e.message)
-      setSubmitting(false)
+      throw e
     }
   }
 
@@ -916,7 +933,7 @@ export default function Play({ params }) {
             </p>
           ) : (
             <>
-              <StitchedChain drawings={visibleDrawings} players={players} />
+              <StitchedChain drawings={visibleDrawings} players={players} onLastImageLoad={scrollRevealIntoView} />
               {allStepsRevealed && (
                 <p style={{ fontSize: 15, opacity: 0.6, fontWeight: 600, textAlign: "center", marginTop: 20 }}>
                   That's the full exquisite corpse!
@@ -1005,14 +1022,7 @@ export default function Play({ params }) {
           onFirstMark={() => setCanvasDirty(true)}
         />
 
-        <button
-          onClick={uploadAndSubmitDrawing}
-          disabled={(!canvasDirty && !game?.is_dummy) || submitting}
-          style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, padding: "20px", width: "100%", display: "block", marginTop: 16 }}
-        >
-          {submitting ? "Submitting…" : "Done Drawing"}
-        </button>
-        {!canvasDirty && !submitting && !game?.is_dummy && (
+        {!canvasDirty && !game?.is_dummy && (
           <p style={{ fontSize: 13, opacity: 0.4, fontWeight: 600, textAlign: "center", marginTop: 8 }}>Draw something first!</p>
         )}
 
@@ -1043,7 +1053,17 @@ export default function Play({ params }) {
         </div>
       </div>
     </div>
-      {pokeSystemNode()}
+      {pokeSystemNode(
+        <FooterButton
+          key={`${currentRound}-${myChainOwner.id}`}
+          onClick={uploadAndSubmitDrawing}
+          disabled={!canvasDirty && !game?.is_dummy}
+          bg={YELLOW}
+          textColor="#000"
+        >
+          Done Drawing
+        </FooterButton>
+      )}
     </>
   )
 }
@@ -1055,7 +1075,7 @@ export default function Play({ params }) {
 // that peek fraction correctly aligns the images. margin-top as % is relative to
 // container width; since images are square (or near-square), this works out.
 
-function StitchedChain({ drawings, players }) {
+function StitchedChain({ drawings, players, onLastImageLoad }) {
   if (!drawings.length) return null
 
   return (
@@ -1064,6 +1084,7 @@ function StitchedChain({ drawings, players }) {
       {drawings.map((d, i) => {
         const author = players.find(p => p.id === d.author_id)
         const overlapPct = i > 0 ? (1 - drawings[i - 1].fold_pct) * 100 : 0
+        const isLast = i === drawings.length - 1
         return (
           <div key={d.id} style={{ position: "relative", marginTop: i > 0 ? `-${overlapPct.toFixed(2)}%` : 0 }}>
             <img
@@ -1071,6 +1092,7 @@ function StitchedChain({ drawings, players }) {
               alt={`Layer ${i + 1}`}
               crossOrigin="anonymous"
               style={{ width: "100%", display: "block" }}
+              onLoad={isLast ? onLastImageLoad : undefined}
             />
             {/* Author label — overlaid on the image so it's not pushed out of place by the next layer's overlap */}
             <div style={{

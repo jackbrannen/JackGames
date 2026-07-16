@@ -90,7 +90,7 @@ export default function LobbyPage({ params }) {
   async function loadGame() {
     const { data, error } = await supabase
       .from("ftw_games")
-      .select("code,phase,is_demo,replay_of,replay_code")
+      .select("code,phase,is_demo,replay_of,replay_code,theme,word_distribution")
       .eq("code", code)
       .single()
     if (error || !data) { setGameExists(false); return }
@@ -99,6 +99,8 @@ export default function LobbyPage({ params }) {
     setGamePhase(data.phase)
     setIsDemo(!!data.is_demo)
     setReplayOf(data.replay_of ?? null)
+    setTheme(data.theme)
+    setIsPersonal(data.word_distribution === "personal")
   }
 
   async function loadState() {
@@ -117,7 +119,7 @@ export default function LobbyPage({ params }) {
     supabase.from("game_instructions").select("body").eq("game_key", "firsttoworst").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     loadState()
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`firsttoworst-lobby-${code}`)
@@ -220,17 +222,14 @@ export default function LobbyPage({ params }) {
   async function startGame() {
     if (starting) return
     setStarting(true)
-    const { error } = await supabase
-      .from("ftw_games")
-      .update({ phase: "submitting" })
-      .eq("code", code)
+    const { error } = await supabase.rpc("ftw_start_game", { p_code: code, p_host_id: myPlayerId })
     if (error) { alert("Failed to start: " + error.message); setStarting(false) }
   }
 
   async function saveSettings() {
     const { error } = await supabase
       .from("ftw_games")
-      .update({ theme, is_personal: isPersonal })
+      .update({ theme, word_distribution: isPersonal ? "personal" : "random" })
       .eq("code", code)
     if (error) console.error("Failed to save settings:", error)
   }

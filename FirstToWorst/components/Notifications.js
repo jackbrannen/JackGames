@@ -5,7 +5,7 @@
 // Each strip auto-dismisses after 4 seconds. Tap or swipe in any direction to dismiss early.
 // For direct pokes (to_player === currentPlayer): plays a ping sound, vibrates the device,
 // and flashes the notification strip between notifBg and yellow twice on entry.
-// Subscribes to the shared `pokes` table via Supabase Realtime + 5s polling fallback.
+// Subscribes to the shared `pokes` table via Supabase Realtime + 60s polling fallback.
 // Skips pokes that already existed when the component mounts (no replaying old history).
 //
 // Usage:
@@ -83,10 +83,10 @@ export default function Notifications({ supabase, colors = {}, roomCode, current
   useEffect(() => {
     if (!roomCode || !supabase) return
     loadPokes()
-    let poll = setInterval(loadPokes, 5000)
+    let poll = setInterval(loadPokes, 60000)
     function handleVisibility() {
       clearInterval(poll)
-      if (!document.hidden) { loadPokes(); poll = setInterval(loadPokes, 5000) }
+      if (!document.hidden) { loadPokes(); poll = setInterval(loadPokes, 60000) }
     }
     document.addEventListener("visibilitychange", handleVisibility)
     const ch = supabase.channel(`pokes-${roomCode}-${Math.random()}`)

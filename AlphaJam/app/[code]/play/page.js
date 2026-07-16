@@ -107,7 +107,7 @@ export default function PlayPage({ params }) {
   useEffect(() => {
     loadState()
     loadPokes()
-    const poll = setInterval(loadState, 5000)
+    const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
     document.addEventListener("visibilitychange", handleVisibility)
     const channel = supabase.channel(`alphajam-play-${code}`)
@@ -149,11 +149,19 @@ export default function PlayPage({ params }) {
       return
     }
 
+    const revealTime = new Date(gameState.reveal_at).getTime()
+
     function updateCountdown() {
-      const revealTime = new Date(gameState.reveal_at).getTime()
-      const now = serverNow()
-      const remaining = Math.max(0, Math.round((revealTime - now) / 1000))
-      setCountdownRemaining(remaining)
+      const remainingMs = revealTime - serverNow()
+      // Store the raw (unclamped, unrounded) ms remaining rather than a
+      // clamped whole-second value. Once the clamped value settles at 0,
+      // repeated identical setState(0) calls are no-ops in React and stop
+      // triggering re-renders — freezing the screen on the countdown view
+      // forever, since countdownActive/showLetters are only recomputed on
+      // render. Raw ms keeps changing every tick, guaranteeing a render
+      // lands on (or just after) the actual reveal moment.
+      setCountdownRemaining(remainingMs)
+      if (remainingMs <= 0) clearInterval(interval)
     }
 
     updateCountdown()
@@ -350,6 +358,9 @@ export default function PlayPage({ params }) {
   const countdownActive = phase === "countdown" && revealMs !== null && serverNow() < revealMs
   const showCountdown = countdownActive
   const showLetters = !countdownActive && (phase === "playing" || phase === "countdown")
+  // countdownRemaining is stored as raw ms (see effect above); convert to a
+  // clamped whole-second value here for display.
+  const countdownSeconds = countdownRemaining !== null ? Math.max(0, Math.round(countdownRemaining / 1000)) : null
 
   // Notifications
   const myPokes = pokes.filter(p => !p.to_player || p.to_player === me?.name)
@@ -674,9 +685,9 @@ export default function PlayPage({ params }) {
             </div>
           )}
 
-          {countdownRemaining !== null && countdownRemaining > 0 && (
+          {countdownSeconds !== null && countdownSeconds > 0 && (
             <div style={{ fontSize: 120, fontWeight: FONT_WEIGHT.black, lineHeight: 1 }}>
-              {countdownRemaining}
+              {countdownSeconds}
             </div>
           )}
 
@@ -706,9 +717,9 @@ export default function PlayPage({ params }) {
 
           {/* Countdown */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
-            {countdownRemaining !== null && countdownRemaining > 0 && (
+            {countdownSeconds !== null && countdownSeconds > 0 && (
               <div style={{ fontSize: 120, fontWeight: FONT_WEIGHT.black, lineHeight: 1 }}>
-                {countdownRemaining}
+                {countdownSeconds}
               </div>
             )}
           </div>

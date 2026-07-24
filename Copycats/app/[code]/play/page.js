@@ -803,6 +803,7 @@ export default function PlayPage({ params }) {
       const { error } = await supabase.rpc("cc_mark_ready", {
         p_code: code,
         p_player_id: myId,
+        p_round: current_round,
       })
       if (error) throw error
       await loadState()
@@ -833,14 +834,21 @@ export default function PlayPage({ params }) {
                 <div style={{ ...STYLE.sectionHeader, marginBottom: 16 }}>
                   {roundTarget?.name}'s real answer
                 </div>
-                <div style={{ background: GREEN, padding: "16px 20px" }}>
-                  <p style={{ fontSize: 18, fontWeight: 700, color: "white", lineHeight: 1.4 }}>{targetAnswer.answer}</p>
+                <div style={{ background: GREEN, padding: "16px 20px", display: "flex", alignItems: "flex-start", gap: 14 }}>
                   {correctVoters.length > 0 && (
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 8 }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, flexShrink: 0 }}>Chosen by</span>
-                      <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.85 }}>{correctVoters.join(", ")}</span>
+                    <div style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, minWidth: 44, textAlign: "center", padding: "6px 0", flexShrink: 0 }}>
+                      +2
                     </div>
                   )}
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontSize: 18, fontWeight: 700, color: "white", lineHeight: 1.4 }}>{targetAnswer.answer}</p>
+                    {correctVoters.length > 0 && (
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 8 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, flexShrink: 0 }}>Chosen by</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.85 }}>{correctVoters.join(", ")}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )

@@ -22,7 +22,7 @@ const INPUT_BG = "#FFFFFF"
 const BOYS = "#3B6FA0"
 const GIRLS = "#B5548A"
 
-const MIN_PER_TEAM = 2
+const MIN_PER_TEAM = 1
 
 function loadProfile() {
   try {
@@ -83,8 +83,11 @@ export default function LobbyPage({ params }) {
   const [prefillText, setPrefillText] = useState("")
   const [submittingPrefill, setSubmittingPrefill] = useState(false)
   const [readyBusy, setReadyBusy] = useState(false)
+  const [showKnowerTakeoverConfirm, setShowKnowerTakeoverConfirm] = useState(false)
+  const [pendingKnowerPick, setPendingKnowerPick] = useState(null)
 
   const me = players.find(p => p.id === myPlayerId)
+  const currentKnower = players.find(p => p.is_knower)
   const boysCount = players.filter(p => p.team === "boys").length
   const girlsCount = players.filter(p => p.team === "girls").length
   const hasKnower = players.some(p => p.is_knower)
@@ -314,6 +317,19 @@ export default function LobbyPage({ params }) {
 
   function roleSelector(onPick) {
     const myRole = me ? (me.is_knower ? "knower" : me.team) : null
+    // Taking the Knower role away from someone who already holds it wipes
+    // whatever they've entered (rules/hints/prefills) — confirm first rather
+    // than silently clobbering their work. No confirmation needed if nobody
+    // holds it yet, or if it's already me (re-picking is a no-op).
+    function pickKnower() {
+      if (myRole === "knower") return
+      if (currentKnower && currentKnower.id !== me?.id) {
+        setPendingKnowerPick(() => () => onPick("knower"))
+        setShowKnowerTakeoverConfirm(true)
+        return
+      }
+      onPick("knower")
+    }
     return (
       <div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
@@ -333,7 +349,7 @@ export default function LobbyPage({ params }) {
           </button>
         </div>
         <button
-          onClick={() => onPick("knower")}
+          onClick={pickKnower}
           disabled={joining}
           style={{ background: myRole === "knower" ? BTN : "rgba(42,48,60,0.12)", color: myRole === "knower" ? BTN_TEXT : INK, fontSize: 16, fontWeight: 900, padding: 16, width: "100%", display: "block" }}
         >
@@ -366,6 +382,27 @@ export default function LobbyPage({ params }) {
 
   return (
     <div style={{ height: "100dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: BG, color: INK, paddingBottom: BOTTOM_PAD }}>
+      {showKnowerTakeoverConfirm && (
+        <div onClick={() => setShowKnowerTakeoverConfirm(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: PANEL, color: INK, padding: "28px 24px", maxWidth: 360, width: "100%", textAlign: "center" }}>
+            <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 12 }}>Take over as Knower?</div>
+            <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.5, marginBottom: 20 }}>
+              {currentKnower ? `${currentKnower.name} is` : "Someone else is"} currently the Knower. Switching yourself to Knower will erase anything they've already entered — rules, hints, and any prefilled words.
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => setShowKnowerTakeoverConfirm(false)} style={{ flex: 1, background: "rgba(42,48,60,0.15)", color: INK, fontWeight: 900, padding: "12px 16px" }}>
+                Cancel
+              </button>
+              <button
+                onClick={() => { pendingKnowerPick?.(); setShowKnowerTakeoverConfirm(false) }}
+                style={{ flex: 1, background: BTN, color: BTN_TEXT, fontWeight: 900, padding: "12px 16px" }}
+              >
+                Yes, take over
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div style={{ background: DARK, padding: "24px 20px 20px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>Things in Rings</div>

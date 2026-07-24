@@ -12,7 +12,7 @@ import { BG, DARK, MID, WL, YELLOW, FOOTER_H } from "../../components/styles"
 
 const TEXT = "white"
 
-const MIN_PLAYERS = 3
+const MIN_PLAYERS = 4
 
 const WORDS_A = ["COSMIC","EARTH","GALACTIC","LUNAR","MARTIAN","NEBULA","ORBIT","PLANET","QUASAR","ROCKET"]
 

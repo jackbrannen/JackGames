@@ -6,11 +6,11 @@ import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import FooterButton from "../../../components/FooterButton"
 import Menu from "../../../components/Menu"
+import Notifications from "../../../components/Notifications"
 import StatusBar from "../../../components/StatusBar"
 import WaitingList from "../../../components/WaitingList"
 import RandomIdeas from "../../../components/RandomIdeas"
 import TextEntry from "../../../components/TextEntry"
-import GameModal from "../../../components/GameModal"
 import { playCountdownTick, playCountdownGo, playSoundsEnd } from "../../../lib/sounds"
 import { useDuplicates } from "../../../lib/useDuplicates"
 
@@ -138,6 +138,8 @@ export default function Play({ params }) {
   const [myPlayerId, setMyPlayerId] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [msLeft, setMsLeft] = useState(0)
+  const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
+  const [pokeJustSent, setPokeJustSent] = useState(null)
 
   const [wordFields, setWordFields] = useState(["", "", "", "", ""])
   const [topupFields, setTopupFields] = useState(["", "", ""])
@@ -146,10 +148,9 @@ export default function Play({ params }) {
   const { dupeIndices: wordDupeIndices, hasDuplicates: wordHasDuplicates } = useDuplicates(wordFields)
   const { dupeIndices: topupDupeIndices, hasDuplicates: topupHasDuplicates } = useDuplicates(topupFields)
   const [pickedIds, setPickedIds] = useState(new Set())
-  const [guessIds, setGuessIds] = useState(new Set())
+  const guessPersistQueueRef = useRef(Promise.resolve())
   const [resultsDismissedLocal, setResultsDismissedLocal] = useState(false)
   const [topupSubmittedLocal, setTopupSubmittedLocal] = useState(false)
-  const [showGameModal, setShowGameModal] = useState(false)
   const [scoreForm, setScoreForm] = useState({ boys: 0, girls: 0 })
   const [creatingReplay, setCreatingReplay] = useState(false)
 
@@ -199,7 +200,16 @@ export default function Play({ params }) {
 
     function connect() {
       channel = supabase.channel(`soundboard-play-${code}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "sb_games", filter: `code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "sb_games", filter: `code=eq.${code}` }, payload => {
+          // sb_games changes on every tap while the guessing team builds their
+          // shared selection, far more often than real state changes. Apply
+          // the row straight from the realtime payload — which always carries
+          // the complete new row — instead of triggering a full loadState(),
+          // avoiding a 3-table refetch fanned out to every connected client
+          // on every single tap.
+          if (payload.eventType === "DELETE") { loadState(); return }
+          if (payload.new) setGame(payload.new)
+        })
         .on("postgres_changes", { event: "*", schema: "public", table: "sb_players", filter: `game_code=eq.${code}` }, loadState)
         .on("postgres_changes", { event: "*", schema: "public", table: "sb_words", filter: `game_code=eq.${code}` }, loadState)
         .on("broadcast", { event: "sync" }, loadState)
@@ -351,6 +361,16 @@ export default function Play({ params }) {
   }
 
   const me = players.find(p => p.id === myPlayerId)
+
+  async function sendInlinePoke(targetName) {
+    if (!me || pokeCooldownActive) return
+    setPokeCooldownActive(true)
+    setPokeJustSent(targetName)
+    await supabase.from("pokes").insert({ room_code: code, from_player: me.name, to_player: targetName, message: "👉" })
+    setTimeout(() => setPokeJustSent(null), 2000)
+    setTimeout(() => setPokeCooldownActive(false), 10000)
+  }
+
   const slots = boardSlots
   const wordsById = Object.fromEntries(words.map(w => [w.id, w]))
   const currentPlayer = players.find(p => p.id === game.current_player_id)
@@ -359,16 +379,11 @@ export default function Play({ params }) {
   const amEligibleGuesser = eligibleGuessers.some(p => p.id === myPlayerId)
   const teamColor = t => t === "boys" ? BOYS : GIRLS
 
+  // The whole guessing team shares one selection now, so there's no more
+  // per-teammate "here's what they're picking" hint to show.
   const liveByWord = {}
-  if (game.phase === "guessing") {
-    for (const p of eligibleGuessers) {
-      if (p.id === myPlayerId) continue
-      for (const wid of (p.guess_selection ?? [])) {
-        if (!liveByWord[wid]) liveByWord[wid] = []
-        liveByWord[wid].push(p.first_name || p.name)
-      }
-    }
-  }
+
+  const guessIds = new Set(game.team_guess_selection ?? [])
 
   function togglePicked(id) {
     setPickedIds(prev => {
@@ -379,14 +394,17 @@ export default function Play({ params }) {
     })
   }
   function toggleGuess(id) {
-    setGuessIds(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else { if (next.size >= 3) return prev; next.add(id) }
-      const arr = [...next]
-      supabase.rpc("sb_update_guess_selection", { p_code: code, p_player_id: myPlayerId, p_word_ids: arr })
-      return next
-    })
+    const next = new Set(game.team_guess_selection ?? [])
+    if (next.has(id)) next.delete(id)
+    else { if (next.size >= 3) return; next.add(id) }
+    const arr = [...next]
+    // Optimistic local update so the tap feels instant for the tapper.
+    setGame(g => ({ ...g, team_guess_selection: arr }))
+    // Queued so rapid taps from the same or different teammates can't have
+    // their writes land out of order and silently revert a newer pick.
+    guessPersistQueueRef.current = guessPersistQueueRef.current.then(() =>
+      supabase.rpc("sb_update_team_guess_selection", { p_code: code, p_player_id: myPlayerId, p_word_ids: arr })
+    )
   }
 
   async function submitWords() {
@@ -414,7 +432,7 @@ export default function Play({ params }) {
 
   async function submitGuess() {
     if (guessIds.size < 1) throw new Error("Pick at least 1 word")
-    await rpc("sb_submit_guess", { p_code: code, p_player_id: myPlayerId, p_word_ids: [...guessIds] })
+    await rpc("sb_submit_team_guess", { p_code: code, p_player_id: myPlayerId })
   }
 
   async function dismissResults() {
@@ -526,9 +544,9 @@ export default function Play({ params }) {
             <button onClick={playAgain} disabled={creatingReplay} style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
               {creatingReplay ? "Creating…" : "Play Again"}
             </button>
-            <button onClick={() => setShowGameModal(true)} style={{ background: "rgba(255,255,255,0.18)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%" }}>
+            <a href="https://games.jackbrannen.com" style={{ display: "block", background: "rgba(255,255,255,0.18)", color: "white", fontSize: 16, fontWeight: 700, padding: "14px 24px", width: "100%", textAlign: "center", textDecoration: "none", boxSizing: "border-box" }}>
               Play Another Game
-            </button>
+            </a>
           </div>
 
           <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 12 }}>Every word this game</div>
@@ -550,8 +568,6 @@ export default function Play({ params }) {
             })}
           </div>
         </div>
-        <GameModal open={showGameModal} onClose={() => setShowGameModal(false)} currentSub="soundboard" myName={me?.name}
-          onSelect={sub => window.location.href = `https://${sub}.jackbrannen.com`} />
       </div>
     )
   }
@@ -608,13 +624,19 @@ export default function Play({ params }) {
       )
     }
     return (
+      <>
       <div style={{ minHeight: "100dvh", background: RED, color: "white", paddingBottom: BOTTOM_PAD }}>
         <StatusBar dark={DARK} label="Sound Board" />
         <div style={{ padding: "24px 20px" }}>
           <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.75, marginBottom: 16 }}>Waiting for everyone…</div>
-          <WaitingList players={players.map(p => ({ name: p.name, done: p.words_submitted }))} myName={me?.name} colors={{ mid: MID }} />
+          <WaitingList
+            players={players.map(p => ({ name: p.name, done: p.words_submitted }))} myName={me?.name} colors={{ mid: MID }}
+            onPoke={sendInlinePoke} cooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent}
+          />
         </div>
       </div>
+      {me && <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />}
+      </>
     )
   }
 
@@ -623,21 +645,9 @@ export default function Play({ params }) {
     const iDismissed = resultsDismissedLocal || me?.results_dismissed
     if (!iDismissed) {
       const lr = game.last_results ?? {}
-      const mine = lr.per_player?.[myPlayerId]
-
-      let correct, wrong, missed, total
-      if (mine) {
-        correct = mine.correct; wrong = mine.wrong; missed = mine.missed; total = mine.total
-      } else {
-        const allCorrectIds = new Set()
-        Object.values(lr.per_player ?? {}).forEach(pp => pp.correct.forEach(w => allCorrectIds.add(w.id)))
-        const anyEntry = Object.values(lr.per_player ?? {})[0]
-        const allItWords = [...(anyEntry?.correct ?? []), ...(anyEntry?.missed ?? [])]
-        correct = allItWords.filter(w => allCorrectIds.has(w.id))
-        wrong = []
-        missed = allItWords.filter(w => !allCorrectIds.has(w.id))
-        total = lr.team_delta
-      }
+      // Everyone sees the same result now — the guessing team submits one
+      // shared guess, so there's no more per-player breakdown to pick from.
+      const correct = lr.correct ?? [], missed = lr.missed ?? [], wrong = lr.wrong ?? [], total = lr.total
       const teamLabel = lr.active_team === "boys" ? "Boys" : "Girls"
       const teamColor = lr.active_team === "boys" ? BOYS : GIRLS
 
@@ -741,6 +751,7 @@ export default function Play({ params }) {
       )
     }
     return (
+      <>
       <div style={{ minHeight: "100dvh", background: RED, color: "white", paddingBottom: BOTTOM_PAD }}>
         <StatusBar dark={DARK} label="Sound Board" />
         <div style={{ padding: "24px 20px" }}>
@@ -748,9 +759,12 @@ export default function Play({ params }) {
           <WaitingList
             players={players.map(p => ({ name: p.name, done: game.pool_needs_topup ? !!p.topup_submitted : !!p.results_dismissed }))}
             myName={me?.name} colors={{ mid: MID }}
+            onPoke={sendInlinePoke} cooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent}
           />
         </div>
       </div>
+      {me && <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />}
+      </>
     )
   }
 
@@ -819,6 +833,8 @@ export default function Play({ params }) {
       ) : (
         <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} />
       )}
+
+      {me && <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me.name} />}
 
       <Menu
         supabase={supabase}

@@ -43,7 +43,7 @@ Points are earned for correct placements. Perfect guesses earn a bonus point. Ev
   {
     name: "First to Worst",
     description: "Rank 5 things, then the group guesses your order",
-    players: "4+ players", minPlayers: 4, group: "Easy Peasy", types: ["Word games", "Voting/Judging", "Cooperative"],
+    players: "3+ players", minPlayers: 3, group: "Easy Peasy", types: ["Word games", "Voting/Judging", "Cooperative"],
     url: "https://firsttoworst.jackbrannen.com", bg: "#004F45", color: "white",
     instructions: `A ranking game. Each player picks a theme (or it's random) and submits 5 words that fit the theme. Your words go to another player, who ranks them from first to worst.
 
@@ -144,9 +144,9 @@ Tap any zone at any time to see what's already been placed there and gather clue
     url: "https://soundboard.jackbrannen.com", bg: "#25AB61", color: "white",
     instructions: `Two teams — Boys and Girls. Everyone submits words at the start; those become the pool for the whole game.
 
-On your turn, pick 1–3 words from the board. When the countdown ends, make sound effects for the words you picked — no talking, no miming, just noises. Your teammates each pick up to 3 words they think you meant.
+On your turn, pick 1–3 words from the board. When the countdown ends, make sound effects for the words you picked — no talking, no miming, just noises. Your team works together on one shared guess — anyone can tap a word to add it, and anyone can submit once you're ready.
 
-Score +1 per correct guess, -1 per word you picked that they missed, -1 per word they guessed that you didn't pick.
+Score +1 for each of your words your team guessed, -1 for each of your words they missed, -1 for each wrong word they guessed.
 
 Correctly guessed words leave the board; new ones take their place. Words that stick around get more valuable — up to 9 points — the longer they survive.
 
@@ -679,8 +679,8 @@ export default function Home() {
               return (
                 <div key={group.name} style={{ display: "contents" }}>
                   <div style={{ marginTop: i === 0 ? 8 : 28, marginBottom: 2 }}>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: "white" }}>{group.name}</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>{group.description}</div>
+                    <div style={{ fontSize: 44, fontWeight: 900, color: "white", lineHeight: 1.05 }}>{group.name}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>{group.description}</div>
                   </div>
                   {groupGames.map(game => (
                     <GameCard key={game.name} game={game} onInfo={setInstructionsGame} />

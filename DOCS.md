@@ -13,7 +13,7 @@ Each game is deployed to its own Vercel subdomain under `jackbrannen.com`.
 | Fishbowl | `fishbowl` | Blue `#3378FF` | 4+ | Teams guess clues in timed turns across rounds |
 | Game of What | `gameofwhat` | Maroon `#6B1A44` | 4+ | Write answers to prompts, vote on funniest |
 | Avalon | `avalon` | Dark navy `#0F1923` | 5–10 | Hidden roles, team voting, social deduction |
-| First to Worst | `firsttoworst` | Forest green `#004F45` | 4+ | Rank 5 words, group guesses your order |
+| First to Worst | `firsttoworst` | Forest green `#004F45` | 3+ | Rank 5 words, group guesses your order |
 | Drawful | `drawful` | Teal `#307977` | 4+ | Draw prompts, write fake answers, vote on the real one |
 | So Clover | `soclover` | Yellow-green `#6B8C2A` | 2–6 | Arrange keyword cards, write clues, guess each other's boards |
 | Telestrations | `telestrations` | Purple `#3D1060` | 4+ | Draw-guess telephone chain |

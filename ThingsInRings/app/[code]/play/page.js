@@ -10,7 +10,9 @@ import Notifications from "../../../components/Notifications"
 import TextEntry from "../../../components/TextEntry"
 import RandomIdeas from "../../../components/RandomIdeas"
 import WaitingList from "../../../components/WaitingList"
-import VennDiagram, { ZONE_COLORS, ZONE_NAMES, FORCE_LIGHT_TEXT_ZONES } from "../../../components/VennDiagram"
+import { useDuplicates } from "../../../lib/useDuplicates"
+import VennDiagram, { ZONE_COLORS, ZONE_NAMES } from "../../../components/VennDiagram"
+import { ZoneChip, textColorFor, wordChipStyle, zoneTitle, ZONE_RINGS, fetchIdeas } from "../../../components/RingHelpers"
 import { TIR_RULES } from "../../../components/rulesText"
 
 const BG = "#C0C9BC"
@@ -18,76 +20,20 @@ const INK = "#2A303C"
 const INK_MUTED = "rgba(42,48,60,0.6)"
 const DARK = "#2C3827"
 const PANEL = "#94A68D"
-const WARM = "#C1E0B4"
 const BTN = "#2A303C"
 const BTN_TEXT = "#FFF4F0"
 const INPUT_BG = "#FFFFFF"
-// Every ring rule the Knower writes is stored with this lead-in baked into
-// the full text, so every downstream display (zone panels, finished screen,
-// etc.) shows the complete sentence without any special-casing.
-const RULE_PREFIX = "Things that "
-const WORD_CHIP_BG = "#BFC8BC"
-const WORD_CHIP_ON_LIGHT_BG = "#2D3A52"
-const WORD_CHIP_ON_LIGHT_TEXT = "#BFC8BC"
 const RESOLUTION_MODAL_BG = "#95A68D"
-const POKE_COLORS = { dark: DARK, mid: "#3E4F37", wl: WARM, yellow: "#FBDF54", notifBg: "#1F2A1B" }
+const POKE_COLORS = { dark: DARK, mid: "#3E4F37", wl: "#C1E0B4", yellow: "#FBDF54", notifBg: "#1F2A1B" }
+const BOYS = "#3B6FA0"
+const GIRLS = "#B5548A"
 
-// Picks whichever of INK / a light text color has better contrast against
-// a given zone color, so dark zone backgrounds get light text and light
-// zone backgrounds get dark text automatically — except teal/green, which
-// are forced to light text regardless (they read better that way).
-function relLuminance(hex) {
-  const n = parseInt(hex.replace("#", ""), 16)
-  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255]
-  const f = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4) }
-  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
-}
-function contrastRatio(hexA, hexB) {
-  const l1 = relLuminance(hexA), l2 = relLuminance(hexB)
-  const [hi, lo] = l1 > l2 ? [l1, l2] : [l2, l1]
-  return (hi + 0.05) / (lo + 0.05)
-}
-function textColorFor(bgHex, zone) {
-  if (zone && FORCE_LIGHT_TEXT_ZONES.has(zone)) return BTN_TEXT
-  return contrastRatio(INK, bgHex) >= contrastRatio(BTN_TEXT, bgHex) ? INK : BTN_TEXT
-}
+function teamColor(t) { return t === "boys" ? BOYS : GIRLS }
+function teamLabel(t) { return t === "boys" ? "Boys" : "Girls" }
 
-// A word chip's colors flip when it's sitting on a very light background
-// (the White zone panel) so it doesn't disappear into it.
-function wordChipStyle(onLightBg) {
-  return onLightBg
-    ? { background: WORD_CHIP_ON_LIGHT_BG, color: WORD_CHIP_ON_LIGHT_TEXT }
-    : { background: WORD_CHIP_BG, color: INK }
-}
-
-// Inline highlighted label for a ring/zone color reference in game text —
-// e.g. "Red Ring" or "Gold Zone" — background = the zone's actual color,
-// text color auto-picked for contrast.
-function ZoneChip({ zone, label }) {
-  const bg = ZONE_COLORS[zone]
-  return (
-    <span style={{ background: bg, color: textColorFor(bg, zone), padding: "2px 8px", borderRadius: 6, fontWeight: 900, whiteSpace: "nowrap" }}>
-      {label ?? `${ZONE_NAMES[zone]} Zone`}
-    </span>
-  )
-}
-
-function zoneTitle(zone) { return `${ZONE_NAMES[zone]} Zone` }
-
-// Which base rings compose a given zone — used to look up the Knower's own
-// rule text for whichever ring(s) intersect at the selected zone.
-const ZONE_RINGS = {
-  A: ["A"], B: ["B"], C: ["C"],
-  AB: ["A", "B"], AC: ["A", "C"], BC: ["B", "C"],
-  ABC: ["A", "B", "C"], OUTSIDE: [], NA: [],
-}
-
-function fetchIdeas(n, ex) {
-  return supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])
-}
-
-function WordListForm({ words, setWords, onSubmit, submitting, submitLabel, maxLength, maxDraws }) {
+function WordListForm({ words, setWords, onSubmit, submitting, submitLabel, maxLength, maxDraws, takenIndex, onEdit }) {
   const allFilled = words.every(w => w.trim())
+  const { dupeIndices, hasDuplicates } = useDuplicates(words)
   function fillNextSlot(idea) {
     setWords(prev => {
       const idx = prev.findIndex(w => !w.trim())
@@ -97,11 +43,26 @@ function WordListForm({ words, setWords, onSubmit, submitting, submitLabel, maxL
   }
   return (
     <>
-      {words.map((w, i) => (
-        <div key={i} style={{ marginBottom: 8 }}>
-          <TextEntry value={w} onChange={v => setWords(prev => prev.map((x, j) => j === i ? v : x))} placeholder={`Word ${i + 1}`} maxLength={maxLength} multiline={false} bg={INPUT_BG} style={{ color: INK }} />
-        </div>
-      ))}
+      {words.map((w, i) => {
+        const isTaken = takenIndex === i
+        const isDupe = dupeIndices.has(i)
+        return (
+          <div key={i} style={{ marginBottom: isTaken ? 4 : 8 }}>
+            <TextEntry
+              value={w}
+              onChange={v => { setWords(prev => prev.map((x, j) => j === i ? v : x)); onEdit?.(i) }}
+              placeholder={`Word ${i + 1}`} maxLength={maxLength} multiline={false}
+              bg={isTaken ? "rgba(240,79,82,0.18)" : isDupe ? "#5C1010" : INPUT_BG}
+              style={{ color: INK }}
+            />
+            {isTaken && (
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#F04F52", marginTop: 4 }}>
+                "{w}" was already submitted. Try something else.
+              </div>
+            )}
+          </div>
+        )
+      })}
       <div style={{ marginTop: 16, marginBottom: 20 }}>
         {allFilled ? (
           <div style={{ fontSize: 14, fontWeight: 700, color: INK_MUTED, padding: "12px 0" }}>All filled in — ready to submit.</div>
@@ -109,7 +70,7 @@ function WordListForm({ words, setWords, onSubmit, submitting, submitLabel, maxL
           <RandomIdeas bg={DARK} yellow="#FBDF54" fetchIdeas={fetchIdeas} maxDraws={maxDraws} onIdeaClick={fillNextSlot} />
         )}
       </div>
-      <button onClick={onSubmit} disabled={submitting || !allFilled}
+      <button onClick={onSubmit} disabled={submitting || !allFilled || hasDuplicates}
         style={{ background: BTN, color: BTN_TEXT, fontSize: 18, fontWeight: 900, padding: "16px", width: "100%", display: "block" }}>
         {submitting ? "Submitting…" : submitLabel}
       </button>
@@ -131,16 +92,9 @@ export default function PlayPage({ params }) {
   const [inspectZone, setInspectZone] = useState(null)
   const [submittingGuess, setSubmittingGuess] = useState(false)
 
-  const [ruleA, setRuleA] = useState("")
-  const [ruleB, setRuleB] = useState("")
-  const [ruleC, setRuleC] = useState("")
-  const [submittingRules, setSubmittingRules] = useState(false)
-
-  const [initialWords, setInitialWords] = useState(Array(7).fill(""))
+  const [initialWords, setInitialWords] = useState(Array(5).fill(""))
   const [submittingWords, setSubmittingWords] = useState(false)
-
-  const [replenishWords, setReplenishWords] = useState(["", "", ""])
-  const [submittingReplenish, setSubmittingReplenish] = useState(false)
+  const [takenWordIndex, setTakenWordIndex] = useState(null)
 
   const [resolving, setResolving] = useState(false)
   const [flashResolution, setFlashResolution] = useState(null)
@@ -148,7 +102,7 @@ export default function PlayPage({ params }) {
   const [knowerZoneChoice, setKnowerZoneChoice] = useState(null)
   const [selectedMoveCardId, setSelectedMoveCardId] = useState(null)
   const [showMoveZonePicker, setShowMoveZonePicker] = useState(false)
-  const [showKnowerTips, setShowKnowerTips] = useState(true)
+  const [turnDecisionBusy, setTurnDecisionBusy] = useState(false)
 
   const channelRef = useRef(null)
   const syncKeyRef = useRef(null)
@@ -175,11 +129,36 @@ export default function PlayPage({ params }) {
       setResolutionDismissed(false)
     }
 
-    const key = `${g.phase}:${g.rules_submitted}:${g.turn_index}:${g.round_number}:${g.pending_card_id ?? ""}:${g.final_chance_index}:${(g.winner_ids || []).join(",")}:${(ps ?? []).map(p => p.words_submitted).join("")}:${(ps ?? []).map(p => p.replenish_submitted).join("")}`
+    const key = `${g.phase}:${g.active_team}:${g.round_number}:${g.pending_card_id ?? ""}:${g.turn_decision_pending}:${(g.winning_teams || []).join(",")}:${(ps ?? []).map(p => p.words_submitted).join("")}`
     if (syncKeyRef.current !== null && syncKeyRef.current !== key) nudge()
     syncKeyRef.current = key
   }
   function nudge() { channelRef.current?.send({ type: "broadcast", event: "sync" }) }
+
+  // tir_games changes on every tap while someone's picking a word/zone (the
+  // live-cursor broadcast via active_selected_card_id/zone), far more often
+  // than real state changes. Applying the row straight from the realtime
+  // payload — which always carries the complete new row — instead of
+  // triggering a full loadState() avoids a 3-table refetch fanned out to
+  // every connected client on every single tap.
+  const gamesSyncKeyRef = useRef(null)
+  function applyGameRow(newRow) {
+    if (!newRow) return
+    if (newRow.replay_code) { router.replace(`/${newRow.replay_code}`); return }
+    if (newRow.phase === "lobby") { router.replace(`/${code}`); return }
+    setGame(newRow)
+    setLoading(false)
+
+    if (newRow.last_resolution?.card_id && newRow.last_resolution.card_id !== lastResolutionCardRef.current) {
+      lastResolutionCardRef.current = newRow.last_resolution.card_id
+      setFlashResolution(newRow.last_resolution)
+      setResolutionDismissed(false)
+    }
+
+    const key = `${newRow.phase}:${newRow.active_team}:${newRow.round_number}:${newRow.pending_card_id ?? ""}:${newRow.turn_decision_pending}:${(newRow.winning_teams || []).join(",")}`
+    if (gamesSyncKeyRef.current !== null && gamesSyncKeyRef.current !== key) nudge()
+    gamesSyncKeyRef.current = key
+  }
 
   useEffect(() => {
     const stored = localStorage.getItem(`thingsinrings:${code}:playerId`)
@@ -198,7 +177,10 @@ export default function PlayPage({ params }) {
 
     function connect() {
       channel = supabase.channel(`tir-play-${code}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "tir_games", filter: `code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "tir_games", filter: `code=eq.${code}` }, payload => {
+          if (payload.eventType === "DELETE") { loadState(); return }
+          applyGameRow(payload.new)
+        })
         .on("postgres_changes", { event: "*", schema: "public", table: "tir_players", filter: `game_code=eq.${code}` }, loadState)
         .on("postgres_changes", { event: "*", schema: "public", table: "tir_cards", filter: `game_code=eq.${code}` }, loadState)
         .on("broadcast", { event: "sync" }, loadState)
@@ -206,12 +188,8 @@ export default function PlayPage({ params }) {
           if (cancelled) return
           if (status === "SUBSCRIBED") {
             reconnectAttempt = 0
-            // Catch up immediately on (re)connect in case events were missed while disconnected.
             loadState()
           } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-            // A dropped websocket otherwise leaves this client stuck until the 60s poll fires.
-            // Recreate the channel instead of waiting on it, backing off if it keeps failing
-            // so a persistent outage doesn't turn into a reconnect storm across many clients.
             if (reconnectTimer) return
             const delay = Math.min(2000 * 2 ** reconnectAttempt, 30000)
             reconnectAttempt++
@@ -238,33 +216,23 @@ export default function PlayPage({ params }) {
 
   const me = players.find(p => p.id === myPlayerId)
   const isKnower = !!me?.is_knower
-  const finders = players.filter(p => !p.is_knower)
-  const handCounts = Object.fromEntries(finders.map(p => [p.id, cards.filter(c => c.owner_player_id === p.id && !c.zone).length]))
-  const activePlayerId = game?.turn_order?.[(game?.turn_index ?? 1) - 1] ?? null
-  const activePlayer = players.find(p => p.id === activePlayerId)
-  // turn_index/turn_order hold stale values (left over from 'setup') during
-  // 'knower_placing' — nobody's turn has actually started yet — so isMyTurn
-  // must only ever be true in the phases where turns are real.
-  const isMyTurn = (game?.phase === "playing" || game?.phase === "final_chance") && activePlayerId === myPlayerId
+  const myTeam = me?.team ?? null
+  const teamPlayers = players.filter(p => !!p.team)
+  const activeTeam = game?.active_team ?? null
+  const isMyTurn = game?.phase === "playing" && !!myTeam && myTeam === activeTeam
   const pendingCard = game?.pending_card_id ? cards.find(c => c.id === game.pending_card_id) : null
   const knower = players.find(p => p.is_knower)
   const knowerName = knower?.name ?? "The Knower"
-  // The Knower's initial 4-word placement is the one other time (besides a
-  // Finder's turn) someone is actively picking a word+zone — so the live
-  // selection broadcast/pill logic below treats it the same as "my turn."
-  const amKnowerPlacing = isKnower && game?.phase === "knower_placing"
-  const setupWaitingList = players.map(p => ({ name: p.name, done: p.is_knower ? !!game?.rules_submitted : !!p.words_submitted }))
+  const teamWritingWaitingList = teamPlayers.map(p => ({ name: p.name, done: !!p.words_submitted }))
+  const handCounts = {
+    boys: cards.filter(c => c.owner_team === "boys" && !c.zone).length,
+    girls: cards.filter(c => c.owner_team === "girls" && !c.zone).length,
+  }
 
-  // While the Knower is resolving a pending guess, the diagram's selected
-  // zone is their in-progress (unconfirmed) choice. Otherwise it's whatever
-  // zone I've personally tapped to inspect — falling back, for onlookers
-  // who haven't tapped anything themselves, to the active player's live pick.
   const diagramSelectedZone = (isKnower && game?.pending_card_id)
     ? knowerZoneChoice
     : (inspectZone ?? (!isMyTurn ? game?.active_selected_zone ?? null : null))
   const zoneCards = diagramSelectedZone ? cards.filter(c => c.zone === diagramSelectedZone) : []
-  // The actual words placed in each zone (in placement order), rendered inside
-  // the zone itself — best-fit shrunk to the available space — instead of a count.
   const zoneWords = Object.fromEntries(
     ["A", "B", "C", "AB", "AC", "BC", "ABC", "OUTSIDE"].map(z => [
       z,
@@ -276,57 +244,26 @@ export default function PlayPage({ params }) {
 
   function nameOf(id) { return players.find(p => p.id === id)?.name ?? "?" }
 
-  // A fresh pending card means the Knower hasn't chosen a zone for it yet —
-  // clear any leftover selection so their next tap is a genuinely fresh choice.
   useEffect(() => {
     if (game?.pending_card_id !== prevPendingCardRef.current) setKnowerZoneChoice(null)
     prevPendingCardRef.current = game?.pending_card_id ?? null
   }, [game?.pending_card_id])
 
-  // Clear card/zone selection on every phase change so a stale pick from one
-  // phase (e.g. the Knower's initial placement) never leaks into the next.
   useEffect(() => {
     setSelectedCardId(null)
     setInspectZone(null)
   }, [game?.phase])
 
-  // When the word pool runs dry, the server holds off flipping to the
-  // replenishing phase for a few seconds (tir_resolve_placement sets
-  // replenish_ready_at) so the "Incorrect!" result modal has time to show
-  // on every screen before everyone gets pulled into "write 3 more words."
-  // Each client independently times off that same timestamp and nudges the
-  // actual transition — harmless if more than one client's timer fires,
-  // since tir_begin_replenish is a no-op once the phase has already flipped.
-  const replenishTriggeredRef = useRef(false)
+  // Broadcast my in-progress word/zone picks so everyone else's screen can
+  // show them live, not just after the guess is submitted.
   useEffect(() => {
-    if (!game?.replenish_ready_at) { replenishTriggeredRef.current = false; return }
-    if (replenishTriggeredRef.current) return
-    const delay = Math.max(0, new Date(game.replenish_ready_at).getTime() - Date.now())
-    const t = setTimeout(async () => {
-      replenishTriggeredRef.current = true
-      await supabase.rpc("tir_begin_replenish", { p_code: code })
-      nudge()
-    }, delay)
-    return () => clearTimeout(t)
-  }, [game?.replenish_ready_at, code])
-
-  // Broadcast the active player's in-progress word/zone picks so everyone
-  // else's screen can show them live, not just after the guess is submitted.
-  // Same idea applies to the Knower's initial 4-word placement.
-  useEffect(() => {
-    if ((!isMyTurn && !amKnowerPlacing) || !myPlayerId || game?.pending_card_id) return
+    if (!isMyTurn || !myPlayerId || game?.pending_card_id) return
     supabase.rpc("tir_set_active_selection", { p_code: code, p_player_id: myPlayerId, p_card_id: selectedCardId, p_zone: inspectZone }).then(() => nudge())
-  }, [selectedCardId, inspectZone, isMyTurn, amKnowerPlacing, myPlayerId, game?.pending_card_id])
+  }, [selectedCardId, inspectZone, isMyTurn, myPlayerId, game?.pending_card_id])
 
-  // The "live" selection shown above the diagram: my own in-progress pick
-  // (on my turn, or while I'm the Knower placing the starting words), or
-  // whatever the active player has broadcast on everyone else's screen.
-  const amActivelySelecting = isMyTurn || amKnowerPlacing
-  const liveCardId = amActivelySelecting ? selectedCardId : (game?.active_selected_card_id ?? null)
-  const liveZone = amActivelySelecting ? inspectZone : (game?.active_selected_zone ?? null)
+  const liveCardId = isMyTurn ? selectedCardId : (game?.active_selected_card_id ?? null)
+  const liveZone = isMyTurn ? inspectZone : (game?.active_selected_zone ?? null)
   const liveWord = liveCardId ? cards.find(c => c.id === liveCardId)?.text : null
-  // Guessers can tap the N/A marker to inspect it (see what's been placed
-  // there) but can never guess into it — only the Knower places words there.
   const canConfirmPlacement = isMyTurn && !game?.pending_card_id && !!selectedCardId && !!inspectZone && inspectZone !== "NA"
 
   function clearSelection() {
@@ -334,12 +271,6 @@ export default function PlayPage({ params }) {
     setInspectZone(null)
   }
 
-  // The "word + zone" pill shown above the diagram while someone's actively
-  // picking — a Finder on their turn, or the Knower placing the starting
-  // words. Shared between both screens so they look and behave identically.
-  // Always reserves the same space (two slots + gap) whether or not a word/
-  // zone has been picked yet, so the layout never jumps as selections are
-  // made — an empty slot shows a dashed placeholder instead of collapsing.
   function liveSelectionPill(showClear) {
     if (game.pending_card_id) return null
     const placeholderStyle = { background: "transparent", border: "2px dashed rgba(42,48,60,0.35)", color: INK_MUTED, padding: "4px 9px", fontSize: 14, fontWeight: 700, borderRadius: 8 }
@@ -359,14 +290,16 @@ export default function PlayPage({ params }) {
     )
   }
 
-  // A player's hand shown in a PANEL-colored container with word chips —
-  // the same look Finders' hands use during normal turns. Reused for the
-  // Knower's temporary starting-word bank so it matches exactly.
-  function handRow(name, handCards, interactive) {
+  // A team's hand shown in a colored container with word chips. The active
+  // team's hand is interactive for any of its members; the other team's is
+  // shown muted/read-only (everyone can already see everyone's words — you
+  // just don't know where they go).
+  function teamHandRow(team, handCards, interactive) {
     return (
-      <div style={{ background: PANEL, padding: "10px 14px" }}>
+      <div style={{ background: team === activeTeam ? PANEL : "#26314A", color: team === activeTeam ? INK : "white", padding: "10px 14px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ flex: 1, fontSize: 15, fontWeight: 700 }}>{name}</span>
+          <span style={{ background: teamColor(team), color: "white", fontSize: 11, fontWeight: 900, padding: "3px 9px", textTransform: "uppercase", letterSpacing: "0.06em" }}>{teamLabel(team)}</span>
+          <span style={{ flex: 1 }} />
           <span style={{
             display: "flex", alignItems: "center", justifyContent: "center",
             width: 26, height: 26, borderRadius: "50%",
@@ -375,32 +308,33 @@ export default function PlayPage({ params }) {
         </div>
         {handCards.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-            {handCards.map(c => (
-              <button
-                key={c.id}
-                onClick={() => interactive && setSelectedCardId(prev => prev === c.id ? null : c.id)}
-                style={{
-                  ...(interactive && liveCardId === c.id ? { background: BTN, color: BTN_TEXT } : wordChipStyle(false)),
-                  padding: "7px 12px", fontSize: 15, fontWeight: 800,
-                  border: "none", borderRadius: 10,
-                  cursor: interactive ? "pointer" : "default",
-                }}
-              >
-                {c.text}
-              </button>
-            ))}
+            {handCards.map(c => {
+              const isSelected = interactive && liveCardId === c.id
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => interactive && setSelectedCardId(prev => prev === c.id ? null : c.id)}
+                  style={{
+                    ...(isSelected ? { background: BTN, color: BTN_TEXT } : team === activeTeam ? wordChipStyle(false) : { background: "#34435D", color: "white" }),
+                    padding: "7px 12px", fontSize: 15, fontWeight: 800,
+                    border: "none", borderRadius: 10,
+                    opacity: team === activeTeam ? 1 : 0.7,
+                    cursor: interactive ? "pointer" : "default",
+                  }}
+                >
+                  {c.text}
+                </button>
+              )
+            })}
           </div>
         )}
       </div>
     )
   }
 
-  // Shared between the playing screen and the finished screen: the colored
-  // panel showing what's in the selected zone, plus — Knower only — the
-  // rule text for whichever ring(s) compose that zone.
-  // Always renders a box of the same size/style — a neutral "No zone
-  // selected" placeholder when nothing's picked, so the layout doesn't jump
-  // when a zone gets selected or deselected.
+  // Shared across the writing, playing, and finished screens. Knower-only
+  // players (and the Knower reviewing after the fact) see the true rules;
+  // everyone else sees the Knower's player-facing hints instead.
   function zoneDescriptionNode() {
     if (!diagramSelectedZone) {
       return (
@@ -414,14 +348,16 @@ export default function PlayPage({ params }) {
     const isWhiteZone = diagramSelectedZone === "ABC"
     const zoneTextColor = textColorFor(zoneColor, diagramSelectedZone)
     const rings = ZONE_RINGS[diagramSelectedZone]
+    const textSource = isKnower ? game.ring_rules : game.ring_hints
+    const label = isKnower ? "Rules for this zone" : "Hints for this zone"
     return (
       <>
-        {isKnower && rings.length > 0 && (
+        {rings.length > 0 && (
           <div style={{ margin: "0 16px 8px", background: PANEL, padding: "10px 14px" }}>
-            <div style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, marginBottom: 6 }}>Rules for this zone</div>
+            <div style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, marginBottom: 6 }}>{label}</div>
             {rings.map(ring => (
               <div key={ring} style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>
-                <ZoneChip zone={ring} label={`${ZONE_NAMES[ring]} Ring`} />: {game.ring_rules?.[ring]}
+                <ZoneChip zone={ring} label={`${ZONE_NAMES[ring]} Ring`} />: {textSource?.[ring]}
               </div>
             ))}
           </div>
@@ -440,56 +376,25 @@ export default function PlayPage({ params }) {
     )
   }
 
-  // Dummy games auto-fill the Knower's rules and everyone's word submissions
-  // from the random-ideas pool, so solo testing doesn't require manually
-  // typing or tapping through every field.
-  const autoFilledRulesRef = useRef(false)
-  useEffect(() => {
-    if (!game?.is_dummy || game.phase !== "setup" || !isKnower || game.rules_submitted || autoFilledRulesRef.current) return
-    autoFilledRulesRef.current = true
-    fetchIdeas(3, []).then(ideas => {
-      if (ideas[0]) setRuleA(ideas[0])
-      if (ideas[1]) setRuleB(ideas[1])
-      if (ideas[2]) setRuleC(ideas[2])
-    })
-  }, [game?.is_dummy, game?.phase, isKnower, game?.rules_submitted])
-
+  // Dummy games auto-fill everyone's word submissions from the random-ideas
+  // pool so solo testing doesn't require manually typing through every field.
   const autoFilledWordsRef = useRef(false)
   useEffect(() => {
-    if (!game?.is_dummy || game.phase !== "setup" || isKnower || me?.words_submitted || autoFilledWordsRef.current) return
+    if (!game?.is_dummy || game.phase !== "team_writing" || !myTeam || me?.words_submitted || autoFilledWordsRef.current) return
     autoFilledWordsRef.current = true
-    fetchIdeas(7, []).then(ideas => {
+    fetchIdeas(5, []).then(ideas => {
       if (ideas.length) setInitialWords(prev => prev.map((w, i) => ideas[i] ?? w))
     })
-  }, [game?.is_dummy, game?.phase, isKnower, me?.words_submitted])
-
-  const autoFilledReplenishRef = useRef(false)
-  useEffect(() => {
-    if (game?.phase !== "replenishing") {
-      autoFilledReplenishRef.current = false
-      setReplenishWords(["", "", ""])
-      return
-    }
-    if (!game?.is_dummy || me?.replenish_submitted || autoFilledReplenishRef.current) return
-    autoFilledReplenishRef.current = true
-    fetchIdeas(3, []).then(ideas => {
-      if (ideas.length) setReplenishWords(prev => prev.map((w, i) => ideas[i] ?? w))
-    })
-  }, [game?.is_dummy, game?.phase, me?.replenish_submitted])
+  }, [game?.is_dummy, game?.phase, myTeam, me?.words_submitted])
 
   function onZoneTap(zone) {
-    if (game?.phase === "replenishing") return
-
     if (isKnower && game?.pending_card_id) {
       setKnowerZoneChoice(prev => prev === zone ? null : zone)
       return
     }
-
     setInspectZone(prev => prev === zone ? null : zone)
   }
 
-  // The RPC only fires when the player taps Confirm in the footer, so a
-  // stray word/zone tap can't silently place the wrong word.
   async function confirmPlacement() {
     if (submittingGuess || !canConfirmPlacement) return
     setSubmittingGuess(true)
@@ -511,31 +416,17 @@ export default function PlayPage({ params }) {
     nudge()
   }
 
-  // Knower's initial 4-word placement (before the first Finder guesses) —
-  // same interaction as a Finder's turn: select a word, select a zone, then
-  // press Confirm to place it (rather than placing immediately on zone tap).
-  const canConfirmInitialWord = amKnowerPlacing && !!selectedCardId && !!inspectZone
-  async function confirmInitialWordPlacement() {
-    if (!canConfirmInitialWord || submittingGuess) return
-    setSubmittingGuess(true)
-    await supabase.rpc("tir_knower_place_initial_word", { p_code: code, p_knower_id: myPlayerId, p_card_id: selectedCardId, p_zone: inspectZone })
-    setSubmittingGuess(false)
-    setSelectedCardId(null)
-    setInspectZone(null)
+  async function teamTurnDecision(cont) {
+    if (turnDecisionBusy) return
+    setTurnDecisionBusy(true)
+    await supabase.rpc("tir_team_turn_decision", { p_code: code, p_player_id: myPlayerId, p_continue: cont })
+    setTurnDecisionBusy(false)
     nudge()
   }
 
-  async function confirmStartGame() {
-    if (resolving) return
-    setResolving(true)
-    await supabase.rpc("tir_knower_confirm_initial", { p_code: code, p_knower_id: myPlayerId })
-    setResolving(false)
-    nudge()
-  }
-
-  async function setPlayerHandSize(playerId, newSize) {
+  async function setTeamHandSize(team, newSize) {
     if (newSize < 0 || newSize > 15) return
-    await supabase.rpc("tir_set_player_hand_size", { p_code: code, p_knower_id: myPlayerId, p_player_id: playerId, p_hand_size: newSize })
+    await supabase.rpc("tir_set_team_hand_size", { p_code: code, p_knower_id: myPlayerId, p_team: team, p_hand_size: newSize })
     nudge()
   }
 
@@ -550,32 +441,24 @@ export default function PlayPage({ params }) {
     setResolutionDismissed(true)
   }
 
-  async function submitRules() {
-    if (submittingRules || !ruleA.trim() || !ruleB.trim() || !ruleC.trim()) return
-    setSubmittingRules(true)
-    const { error } = await supabase.rpc("tir_submit_rules", {
-      p_code: code, p_knower_id: myPlayerId,
-      p_rule_a: RULE_PREFIX + ruleA.trim(), p_rule_b: RULE_PREFIX + ruleB.trim(), p_rule_c: RULE_PREFIX + ruleC.trim(),
-    })
-    if (error) { alert(error.message); setSubmittingRules(false); return }
-    nudge()
-  }
-
   async function submitWords() {
     const trimmed = initialWords.map(w => w.trim())
     if (submittingWords || trimmed.some(w => !w)) return
+    setTakenWordIndex(null)
     setSubmittingWords(true)
     const { error } = await supabase.rpc("tir_submit_words", { p_code: code, p_player_id: myPlayerId, p_words: trimmed })
-    if (error) { alert(error.message); setSubmittingWords(false); return }
-    nudge()
-  }
-
-  async function submitReplenish() {
-    const trimmed = replenishWords.map(w => w.trim())
-    if (submittingReplenish || trimmed.some(w => !w)) return
-    setSubmittingReplenish(true)
-    const { error } = await supabase.rpc("tir_submit_replenish_words", { p_code: code, p_player_id: myPlayerId, p_words: trimmed })
-    if (error) { alert(error.message); setSubmittingReplenish(false); return }
+    if (error) {
+      setSubmittingWords(false)
+      if (error.code === "23505" || /already submitted/i.test(error.message ?? "")) {
+        await loadState()
+        const existing = new Set(cards.map(c => c.text.trim().toLowerCase()))
+        const idx = trimmed.findIndex(w => existing.has(w.toLowerCase()))
+        setTakenWordIndex(idx === -1 ? 0 : idx)
+        return
+      }
+      alert(error.message)
+      return
+    }
     nudge()
   }
 
@@ -585,13 +468,13 @@ export default function PlayPage({ params }) {
     const zoneOrder = ["A", "B", "C", "AB", "AC", "BC", "ABC", "OUTSIDE", "NA"]
     return (
       <div>
-        <div style={{ fontSize: 13, fontWeight: 800, color: "white", marginBottom: 8 }}>Words per player</div>
-        {finders.map(p => (
-          <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-            <span style={{ flex: 1, color: "white", fontWeight: 700, fontSize: 14 }}>{p.name}</span>
-            <button onClick={() => setPlayerHandSize(p.id, (handCounts[p.id] ?? 0) - 1)} style={{ width: 32, height: 32, background: "rgba(255,255,255,0.15)", color: "white", fontSize: 18, fontWeight: 900 }}>−</button>
-            <div style={{ fontSize: 18, fontWeight: 900, color: "white", minWidth: 24, textAlign: "center" }}>{handCounts[p.id] ?? 0}</div>
-            <button onClick={() => setPlayerHandSize(p.id, (handCounts[p.id] ?? 0) + 1)} style={{ width: 32, height: 32, background: "rgba(255,255,255,0.15)", color: "white", fontSize: 18, fontWeight: 900 }}>+</button>
+        <div style={{ fontSize: 13, fontWeight: 800, color: "white", marginBottom: 8 }}>Words per team</div>
+        {["boys", "girls"].map(team => (
+          <div key={team} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+            <span style={{ flex: 1, color: "white", fontWeight: 700, fontSize: 14 }}>{teamLabel(team)}</span>
+            <button onClick={() => setTeamHandSize(team, (handCounts[team] ?? 0) - 1)} style={{ width: 32, height: 32, background: "rgba(255,255,255,0.15)", color: "white", fontSize: 18, fontWeight: 900 }}>−</button>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "white", minWidth: 24, textAlign: "center" }}>{handCounts[team] ?? 0}</div>
+            <button onClick={() => setTeamHandSize(team, (handCounts[team] ?? 0) + 1)} style={{ width: 32, height: 32, background: "rgba(255,255,255,0.15)", color: "white", fontSize: 18, fontWeight: 900 }}>+</button>
           </div>
         ))}
         <div style={{ fontSize: 13, fontWeight: 800, color: "white", marginTop: 16, marginBottom: 8 }}>Move a placed word</div>
@@ -600,13 +483,13 @@ export default function PlayPage({ params }) {
           : <>
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {zoneOrder.map(z => {
-                  const zoneCards = placedCards.filter(c => c.zone === z)
-                  if (zoneCards.length === 0) return null
+                  const zc = placedCards.filter(c => c.zone === z)
+                  if (zc.length === 0) return null
                   const zoneColor = ZONE_COLORS[z]
                   const zoneTextColor = textColorFor(zoneColor, z)
                   return (
                     <div key={z} style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                      {zoneCards.map(c => {
+                      {zc.map(c => {
                         const selected = selectedMoveCardId === c.id
                         return (
                           <button
@@ -682,198 +565,41 @@ export default function PlayPage({ params }) {
     )
   }
 
-  // ── SETUP ────────────────────────────────────────────────
-  if (game.phase === "setup") {
-    if (isKnower) {
-      if (game.rules_submitted) {
-        return (
-          <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center" }}>
-            <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.5, marginBottom: 12 }}>Rules locked in</div>
-            <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 16 }}>Waiting for players to submit their words…</div>
-            <div style={{ background: PANEL, color: INK, padding: "12px 20px", width: "100%", maxWidth: 360 }}>
-              <WaitingList players={setupWaitingList} myName={me.name} colors={{ mid: PANEL }} showCount />
-            </div>
-          </div>
-        )
-      }
-      return (
-        <div style={{ height: `calc(100dvh - ${FOOTER_H}px - env(safe-area-inset-bottom, 0px))`, overflowY: "auto", WebkitOverflowScrolling: "touch", background: BG, color: INK, padding: "36px 24px" }}>
-          <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.55, marginBottom: 8 }}>You're the Knower</div>
-          <h1 style={{ fontSize: 28, fontWeight: 900, marginBottom: 12, lineHeight: 1.15 }}>Write a secret rule for each ring.</h1>
-          {/* Both the box and the collapsed "Tips" button stay mounted at all
-              times; only their grid row (0fr <-> 1fr) animates. That's a
-              smoother, more robust roll-up/unroll than animating a pixel
-              max-height, since it doesn't need to know the content's height
-              up front and adapts automatically if the copy ever changes. */}
-          <div style={{ display: "grid", gridTemplateRows: showKnowerTips ? "1fr" : "0fr", transition: "grid-template-rows 320ms ease, margin-bottom 320ms ease", marginBottom: showKnowerTips ? 20 : 0 }}>
-            <div style={{ overflow: "hidden" }}>
-              <div style={{ background: PANEL, color: INK, padding: "18px 18px 16px" }}>
-                <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.6, marginBottom: 10 }}>For example:</div>
-                <ul style={{ margin: "0 0 18px", paddingLeft: 22, listStyleType: "disc", fontSize: 15, fontWeight: 600, lineHeight: 1.7 }}>
-                  <li>Things that are found in…</li>
-                  <li>Things that start with the letter…</li>
-                  <li>Things that are associated with…</li>
-                  <li>Things that are smaller than…</li>
-                  <li>Things that are attributes of…</li>
-                </ul>
-                <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.6, marginBottom: 10 }}>You may want to guide your guessers to tell them what kinds of words to write. For example:</div>
-                <ul style={{ margin: "0 0 18px", paddingLeft: 22, listStyleType: "disc", fontSize: 15, fontWeight: 600, lineHeight: 1.7 }}>
-                  <li>Physical objects</li>
-                  <li>Activities</li>
-                  <li>People</li>
-                  <li>Human attributes</li>
-                  <li>Adjectives</li>
-                  <li>Nouns</li>
-                </ul>
-                <button onClick={() => setShowKnowerTips(false)} style={{ background: BTN, color: BTN_TEXT, fontWeight: 900, padding: "10px 20px", width: "100%" }}>
-                  Got It
-                </button>
-              </div>
-            </div>
-          </div>
-          <div style={{ display: "grid", gridTemplateRows: showKnowerTips ? "0fr" : "1fr", transition: "grid-template-rows 320ms ease, margin-bottom 320ms ease", marginBottom: showKnowerTips ? 0 : 20 }}>
-            <div style={{ overflow: "hidden" }}>
-              <button onClick={() => setShowKnowerTips(true)} style={{ background: PANEL, color: INK, fontSize: 14, fontWeight: 800, padding: "8px 16px" }}>
-                Tips
-              </button>
-            </div>
-          </div>
-          <div style={{ maxWidth: 320, margin: "0 auto 24px" }}>
-            <VennDiagram onZoneTap={() => {}} selectedZone={null} full />
-          </div>
-          {[["A", ruleA, setRuleA], ["B", ruleB, setRuleB], ["C", ruleC, setRuleC]].map(([zone, val, setter]) => (
-            <div key={zone} style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 6 }}><ZoneChip zone={zone} label={`${ZONE_NAMES[zone]} Ring`} /></div>
-              {/* The "Things that " lead-in is a static label, not part of the
-                  editable text — the only way to guarantee it can't be
-                  deleted, rather than trying to defend an editable prefix
-                  against every backspace/select-all/paste edge case. */}
-              <div style={{ display: "flex", alignItems: "stretch", background: INPUT_BG }}>
-                <div style={{ display: "flex", alignItems: "center", color: INK, fontSize: 20, fontWeight: 600, paddingLeft: 18, whiteSpace: "pre", flexShrink: 0 }}>
-                  {RULE_PREFIX}
-                </div>
-                <TextEntry value={val} onChange={setter} placeholder={`are found in a kitchen`} maxLength={65} multiline={false} bg={INPUT_BG} style={{ color: INK, paddingLeft: 0 }} />
-              </div>
-            </div>
-          ))}
-          <button onClick={submitRules} disabled={submittingRules || !ruleA.trim() || !ruleB.trim() || !ruleC.trim()}
-            style={{ background: BTN, color: BTN_TEXT, fontSize: 18, fontWeight: 900, padding: "16px", width: "100%", display: "block", marginTop: 8 }}>
-            {submittingRules ? "Saving…" : "Lock in rules"}
-          </button>
-        </div>
-      )
-    }
-
-    if (me.words_submitted) {
+  // ── TEAM WRITING ─────────────────────────────────────────
+  if (game.phase === "team_writing") {
+    if (isKnower || me.words_submitted) {
       return (
         <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center" }}>
-          <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.5, marginBottom: 12 }}>Words submitted</div>
-          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 16 }}>Waiting for everyone else…</div>
+          <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.5, marginBottom: 12 }}>{isKnower ? "Setup complete" : "Words submitted"}</div>
+          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 16 }}>Waiting for both teams to submit their words…</div>
           <div style={{ background: PANEL, color: INK, padding: "12px 20px", width: "100%", maxWidth: 360 }}>
-            <WaitingList players={setupWaitingList} myName={me.name} colors={{ mid: PANEL }} showCount />
+            <WaitingList players={teamWritingWaitingList} myName={me.name} colors={{ mid: PANEL }} showCount />
           </div>
         </div>
       )
     }
     return (
       <div style={{ height: `calc(100dvh - ${FOOTER_H}px - env(safe-area-inset-bottom, 0px))`, overflowY: "auto", WebkitOverflowScrolling: "touch", background: BG, color: INK, padding: "36px 24px" }}>
-        <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.55, marginBottom: 8 }}>Setup</div>
-        <h1 style={{ fontSize: 26, fontWeight: 900, marginBottom: 20, lineHeight: 1.15 }}>Submit 7 words or phrases.</h1>
-        <WordListForm words={initialWords} setWords={setInitialWords} onSubmit={submitWords} submitting={submittingWords} submitLabel="Submit words" maxLength={40} maxDraws={3} />
-      </div>
-    )
-  }
-
-  // ── KNOWER'S INITIAL PLACEMENT ────────────────────────────
-  // Before anyone guesses, the Knower places 4 starting words (dealt the same
-  // way a Finder's hand is) so the board has some context on turn one. They
-  // never have a hand again after this. Everyone sees the same screen — the
-  // diagram, the Knower's live word+zone pick, and their remaining hand —
-  // just as Finders see each other's during normal turns; only the Knower
-  // can actually select a word/zone or confirm.
-  if (game.phase === "knower_placing") {
-    const knowerInitialHand = cards.filter(c => c.owner_player_id === knower?.id && !c.zone)
-    const allInitialPlaced = knowerInitialHand.length === 0
-    return (
-      <div style={{ height: `calc(100dvh - ${FOOTER_H}px - env(safe-area-inset-bottom, 0px))`, overflowY: "auto", WebkitOverflowScrolling: "touch", background: BG, color: INK }}>
-        <div style={{ padding: "36px 24px 0" }}>
-          <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.55, marginBottom: 8 }}>
-            {isKnower ? "You're the Knower" : "Getting started"}
-          </div>
-          <h1 style={{ fontSize: 24, fontWeight: 900, marginBottom: 8, lineHeight: 1.15 }}>
-            {isKnower ? "Place these 4 words to start the board." : `${knowerName} is placing the starting words.`}
-          </h1>
-          {isKnower && (
-            <div style={{ fontSize: 14, fontWeight: 600, color: INK_MUTED, marginBottom: 16 }}>
-              Select a word below, then tap a zone to place it.
-            </div>
-          )}
-        </div>
-        {liveSelectionPill(isKnower)}
-        <div style={{ padding: "16px 0" }}>
-          <VennDiagram
-            onZoneTap={zone => isKnower && setInspectZone(prev => prev === zone ? null : zone)}
-            selectedZone={diagramSelectedZone}
-            zoneWords={zoneWords}
-            showNA
-          />
+        <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.55, marginBottom: 8 }}>{teamLabel(myTeam)} team</div>
+        <h1 style={{ fontSize: 26, fontWeight: 900, marginBottom: 16, lineHeight: 1.15 }}>Submit 5 words or phrases.</h1>
+        <div style={{ maxWidth: 320, margin: "0 auto 4px" }}>
+          <VennDiagram onZoneTap={onZoneTap} selectedZone={diagramSelectedZone} zoneWords={zoneWords} showNA full />
         </div>
         {zoneDescriptionNode()}
-        <div style={{ padding: "0 16px 16px" }}>
-          {handRow(knowerName, knowerInitialHand, isKnower)}
-        </div>
-        {menuNode()}
-        <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
-          {isKnower && (allInitialPlaced ? (
-            <FooterButton onClick={confirmStartGame} disabled={resolving}>
-              {resolving ? "Starting…" : "Start the game"}
-            </FooterButton>
-          ) : (
-            // FooterButton never resets its internal loading state on success —
-            // it's designed for buttons that unmount right after (see its own
-            // doc comment). This Confirm button fires 4 times in a row on the
-            // same screen without unmounting, so it needs a key that changes
-            // after each placement to force a fresh instance each time —
-            // otherwise it gets stuck on "Loading…" after the first word.
-            <FooterButton key={knowerInitialHand.length} onClick={confirmInitialWordPlacement} disabled={!canConfirmInitialWord || submittingGuess}>
-              {submittingGuess ? "Placing…" : "Confirm"}
-            </FooterButton>
-          ))}
-        </Footer>
-      </div>
-    )
-  }
-
-  // ── REPLENISHING ─────────────────────────────────────────
-  if (game.phase === "replenishing") {
-    if (me.replenish_submitted) {
-      const waitingOn = players.filter(p => !p.replenish_submitted)
-      return (
-        <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center" }}>
-          <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.5, marginBottom: 12 }}>Word pool running low</div>
-          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 16 }}>Waiting on…</div>
-          {waitingOn.map(p => <div key={p.id} style={{ fontSize: 15, fontWeight: 700, color: INK_MUTED, marginBottom: 4 }}>{p.name}</div>)}
-        </div>
-      )
-    }
-    return (
-      <div style={{ height: `calc(100dvh - ${FOOTER_H}px - env(safe-area-inset-bottom, 0px))`, overflowY: "auto", WebkitOverflowScrolling: "touch", background: BG, color: INK, padding: "36px 24px" }}>
-        <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.55, marginBottom: 8 }}>Word pool is empty</div>
-        <h1 style={{ fontSize: 26, fontWeight: 900, marginBottom: 20, lineHeight: 1.15 }}>Everyone add 3 more words.</h1>
-        <WordListForm words={replenishWords} setWords={setReplenishWords} onSubmit={submitReplenish} submitting={submittingReplenish} submitLabel="Submit words" maxLength={40} maxDraws={2} />
+        <WordListForm words={initialWords} setWords={setInitialWords} onSubmit={submitWords} submitting={submittingWords} submitLabel="Submit words" maxLength={40} maxDraws={3} takenIndex={takenWordIndex} onEdit={i => { if (takenWordIndex === i) setTakenWordIndex(null) }} />
       </div>
     )
   }
 
   // ── FINISHED ─────────────────────────────────────────────
   if (game.phase === "finished") {
-    const winners = (game.winner_ids ?? []).map(id => nameOf(id))
+    const winners = game.winning_teams ?? []
     return (
       <div style={{ height: "100dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: BG, color: INK, padding: "36px 24px" }}>
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.5, marginBottom: 12 }}>Game over</div>
           <div style={{ fontSize: 40, fontWeight: 900, marginBottom: 20, lineHeight: 1.1 }}>
-            {winners.length > 1 ? `${winners.join(" & ")} tied!` : `${winners[0] ?? "?"} wins!`}
+            {winners.length > 1 ? `${winners.map(teamLabel).join(" & ")} tied!` : `${teamLabel(winners[0])} win!`}
           </div>
         </div>
 
@@ -905,21 +631,23 @@ export default function PlayPage({ params }) {
     )
   }
 
-  // ── PLAYING / FINAL_CHANCE ───────────────────────────────
-  const inFinalChance = game.phase === "final_chance"
+  // ── PLAYING ───────────────────────────────────────────────
   const showYourTurnBar = isMyTurn && !game.pending_card_id
   const showKnowerPickBar = isKnower && game.pending_card_id
   const showWhiteBar = !showYourTurnBar && !showKnowerPickBar
   const whiteBarText = game.pending_card_id
-    ? (isMyTurn ? "Waiting on the Knower to evaluate your guess." : `Waiting on the Knower to evaluate ${activePlayer?.name}'s guess.`)
-    : `${activePlayer?.name}'s turn`
+    ? (isMyTurn ? "Waiting on the Knower to evaluate your team's guess." : `Waiting on the Knower to evaluate ${teamLabel(activeTeam)}'s guess.`)
+    : `${teamLabel(activeTeam)}'s Turn`
+  const showKeepGoingModal = game.turn_decision_pending && isMyTurn && resolutionDismissed
+  const boysHand = cards.filter(c => c.owner_team === "boys" && !c.zone)
+  const girlsHand = cards.filter(c => c.owner_team === "girls" && !c.zone)
 
   return (
     <div style={{ height: `calc(100dvh - ${FOOTER_H}px - env(safe-area-inset-bottom, 0px))`, overflowY: "auto", WebkitOverflowScrolling: "touch", background: BG, color: INK, display: "flex", flexDirection: "column" }}>
       {!(flashResolution && !resolutionDismissed) && showYourTurnBar && (
         <div style={{ position: "sticky", top: 0, zIndex: 50, background: "#F4C542", color: "#000", padding: "14px 16px", fontSize: 15, fontWeight: 900, textAlign: "center" }}>
           <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, marginBottom: 2 }}>Round {game.round_number}</div>
-          Your Turn
+          Your Team's Turn
         </div>
       )}
 
@@ -937,15 +665,16 @@ export default function PlayPage({ params }) {
         </div>
       )}
 
-      {inFinalChance && (
+      {game.first_empty_team && (
         <div style={{ background: "#F4C542", color: "#000", padding: "10px 16px", fontSize: 14, fontWeight: 800 }}>
-          🎉 {nameOf(game.winner_ids?.[0])} used up their words! Waiting to see if {game.final_chance_ids.map(nameOf).join(", ")} can tie…
+          🎉 {teamLabel(game.first_empty_team)} emptied their hand! {teamLabel(game.first_empty_team === "boys" ? "girls" : "boys")} get one more turn to tie…
         </div>
       )}
 
       {flashResolution && !resolutionDismissed && (() => {
         const isNA = flashResolution.actual_zone === "NA"
         const guesserName = nameOf(flashResolution.guesser_id)
+        const guesserTeam = flashResolution.active_team
         const word = cards.find(c => c.id === flashResolution.card_id)?.text ?? ""
         const wordChipEl = <span style={{ background: "#D9E2D5", color: INK, padding: "2px 8px", fontSize: 16, fontWeight: 900, borderRadius: 6, display: "inline-block" }}>{word}</span>
         const title = flashResolution.correct ? "Correct!" : isNA ? "Stumped the Knower!" : "Incorrect"
@@ -956,14 +685,14 @@ export default function PlayPage({ params }) {
 
               {flashResolution.correct ? (
                 <>
-                  <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>{guesserName} got it:</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>{guesserName} ({teamLabel(guesserTeam)}) got it:</div>
                   <div style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.6, marginBottom: 20 }}>
                     {wordChipEl} belongs in the <ZoneChip zone={flashResolution.actual_zone} />
                   </div>
                 </>
               ) : (
                 <>
-                  <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>{guesserName} guessed:</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 8 }}>{guesserName} ({teamLabel(guesserTeam)}) guessed:</div>
                   <div style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.6, marginBottom: 16 }}>
                     {wordChipEl} <span style={{ opacity: 0.6, fontWeight: 900 }}>+</span> <ZoneChip zone={flashResolution.guessed_zone} />
                   </div>
@@ -974,18 +703,37 @@ export default function PlayPage({ params }) {
                     {wordChipEl} <span style={{ opacity: 0.6, fontWeight: 900 }}>→</span> <ZoneChip zone={isNA ? "NA" : flashResolution.actual_zone} />
                   </div>
                   <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.75, marginBottom: 20 }}>
-                    {isNA ? <>{guesserName} gets a new word, but goes again — no penalty.</> : <>{guesserName} gets a new word as a penalty.</>}
+                    {isNA ? <>{teamLabel(guesserTeam)} get a new word, but go again — no penalty.</> : <>{teamLabel(guesserTeam)} take new word(s) as a penalty.</>}
                   </div>
                 </>
               )}
 
               <button onClick={dismissResolutionModal} style={{ background: "rgba(42,48,60,0.15)", color: INK, fontWeight: 900, padding: "12px 24px", width: "100%" }}>
-                {isNA ? "Continue" : "Next turn"}
+                {isNA ? "Continue" : "Next"}
               </button>
             </div>
           </div>
         )
       })()}
+
+      {showKeepGoingModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: RESOLUTION_MODAL_BG, color: INK, padding: "28px 24px", maxWidth: 360, width: "100%", textAlign: "center" }}>
+            <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 12 }}>Nice! Keep going?</div>
+            <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.5, marginBottom: 22 }}>
+              A miss now costs you 2 words instead of 1.
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button onClick={() => teamTurnDecision(true)} disabled={turnDecisionBusy} style={{ background: BTN, color: BTN_TEXT, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
+                Try Another Word
+              </button>
+              <button onClick={() => teamTurnDecision(false)} disabled={turnDecisionBusy} style={{ background: "rgba(42,48,60,0.15)", color: INK, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
+                Stop Here
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {liveSelectionPill(isMyTurn)}
 
@@ -1004,97 +752,21 @@ export default function PlayPage({ params }) {
       {game.pending_card_id && !isKnower && (
         <div style={{ margin: "0 16px 16px", background: "rgba(42,48,60,0.12)", padding: "14px 16px" }}>
           <div style={{ fontSize: 14, fontWeight: 700 }}>
-            {nameOf(game.pending_player_id)} placed <b>"{pendingCard?.text}"</b> in the <ZoneChip zone={game.pending_zone} />.
+            {nameOf(game.pending_player_id)} ({teamLabel(activeTeam)}) placed <b>"{pendingCard?.text}"</b> in the <ZoneChip zone={game.pending_zone} />.
           </div>
         </div>
       )}
 
       <div style={{ background: "#2D3B51", color: "white", flex: 1, paddingTop: 16, paddingBottom: 16 }}>
-      {(() => {
-        const current = finders.filter(p => p.id === activePlayerId)
-        const others = finders.filter(p => p.id !== activePlayerId)
-        function playerRow(p) {
-          const isActive = p.id === activePlayerId
-          const interactive = isActive && isMyTurn && !game.pending_card_id
-          const handForPlayer = cards.filter(c => c.owner_player_id === p.id && !c.zone)
-          // The Current Player's row keeps its solid PANEL fill (still reads
-          // well with dark text). Other Players' rows are a flat, muted
-          // navy fill — close in tone to the dark section background, no
-          // border/roundrect — so they read as quiet/secondary while the
-          // Current Player's bright green box obviously stands out.
-          return (
-            <div key={p.id} style={{
-              background: isActive ? PANEL : "#26314A",
-              color: isActive ? INK : "white",
-              padding: "10px 14px",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ flex: 1, fontSize: 15, fontWeight: 700 }}>{p.name}</span>
-                <span style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 26, height: 26, borderRadius: "50%",
-                  background: "#2A303C", color: "#BFC8BC",
-                  fontSize: 13, fontWeight: 900, flexShrink: 0,
-                }}>{handCounts[p.id] ?? 0}</span>
-              </div>
-              {handForPlayer.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: isActive ? 6 : 4, marginTop: isActive ? 10 : 8 }}>
-                  {handForPlayer.map(c => {
-                    const isSelected = interactive && liveCardId === c.id
-                    // Other Players' word chips are also a flat, muted fill
-                    // (a touch lighter than the row so they're still visible
-                    // as distinct chips) instead of the Current Player's
-                    // bright filled/selected chips.
-                    const chipFill = isSelected
-                      ? { background: BTN, color: BTN_TEXT }
-                      : isActive
-                      ? wordChipStyle(false)
-                      : { background: "#34435D", color: "white" }
-                    return (
-                      <button
-                        key={c.id}
-                        onClick={() => interactive && setSelectedCardId(prev => prev === c.id ? null : c.id)}
-                        style={{
-                          ...chipFill,
-                          padding: isActive ? "7px 12px" : "3px 7px",
-                          fontSize: isActive ? 15 : 11,
-                          fontWeight: isActive ? 800 : 600,
-                          opacity: isActive ? 1 : 0.6,
-                          borderRadius: isActive ? 10 : 6,
-                          cursor: interactive ? "pointer" : "default",
-                        }}
-                      >
-                        {c.text}
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          )
-        }
-        return (
-          <>
-            {current.length > 0 && (
-              <div style={{ padding: "0 16px 16px" }}>
-                <div style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.55, marginBottom: 8 }}>Current Player</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>{current.map(playerRow)}</div>
-              </div>
-            )}
-            {others.length > 0 && (
-              <div style={{ padding: "0 16px 16px" }}>
-                <div style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.55, marginBottom: 8 }}>Other Players</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>{others.map(playerRow)}</div>
-              </div>
-            )}
-          </>
-        )
-      })()}
+        <div style={{ padding: "0 16px", display: "flex", flexDirection: "column", gap: 4 }}>
+          {teamHandRow(activeTeam, activeTeam === "boys" ? boysHand : girlsHand, isMyTurn && !game.pending_card_id)}
+          {teamHandRow(activeTeam === "boys" ? "girls" : "boys", activeTeam === "boys" ? girlsHand : boysHand, false)}
+        </div>
       </div>
 
       {menuNode()}
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
-        {isMyTurn && !game.pending_card_id && (
+        {isMyTurn && !game.pending_card_id && !game.turn_decision_pending && (
           <FooterButton onClick={confirmPlacement} disabled={!canConfirmPlacement || submittingGuess}>
             {submittingGuess ? "Placing…" : inspectZone === "NA" ? "You can't guess the N/A Zone" : "Confirm"}
           </FooterButton>

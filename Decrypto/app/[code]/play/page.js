@@ -80,6 +80,10 @@ export default function PlayPage({ params }) {
   const slotsRef = useRef(slots)
   const dragRef = useRef(null)
   const dropFnRef = useRef(null)
+  // Queued onto persistQueueRef so rapid successive drags can't have their
+  // writes land out of order (an older write resolving after a newer one
+  // would otherwise silently revert the newer arrangement).
+  const persistQueueRef = useRef(Promise.resolve())
   useEffect(() => { slotsRef.current = slots }, [slots])
 
   const me = players.find(p => p.id === myPlayerId)
@@ -353,10 +357,6 @@ export default function PlayPage({ params }) {
     )
   }
 
-  // Queued onto persistQueueRef so rapid successive drags can't have their
-  // writes land out of order (an older write resolving after a newer one
-  // would otherwise silently revert the newer arrangement).
-  const persistQueueRef = useRef(Promise.resolve())
   function writePending(next) {
     setSlots(next)
     persistQueueRef.current = persistQueueRef.current.then(() =>

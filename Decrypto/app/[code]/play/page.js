@@ -113,6 +113,45 @@ export default function PlayPage({ params }) {
   }
   function nudge() { channelRef.current?.send({ type: "broadcast", event: "sync" }) }
 
+  // dc_games changes on every drag while a team is arranging their pending
+  // guess (boys_pending_guess/girls_pending_guess), far more often than real
+  // state changes. Applying the row straight from the realtime payload —
+  // which always carries the complete new row — instead of triggering a
+  // full loadState() avoids a 4-table refetch fanned out to every connected
+  // client on every single drag.
+  const gamesSyncKeyRef = useRef(null)
+  function applyGameRow(newRow) {
+    if (!newRow) return
+    if (newRow.replay_code) { router.replace(`/${newRow.replay_code}`); return }
+    if (newRow.phase === "lobby") { router.replace(`/${code}`); return }
+    setGame(newRow)
+    setLoading(false)
+    const key = `${newRow.phase}:${newRow.round_phase}:${newRow.turn_number}`
+    if (gamesSyncKeyRef.current !== null && gamesSyncKeyRef.current !== key) nudge()
+    gamesSyncKeyRef.current = key
+  }
+
+  // Same idea for dc_players/dc_rounds/dc_guesses: apply the changed row
+  // directly from the realtime payload instead of a full loadState()
+  // refetch. Each change independently reaches every subscribed client
+  // already, so there's no need to also nudge — nudge() exists for cases
+  // where a client's own realtime might be lagging, which doesn't apply to
+  // the client that just received this exact event.
+  function applyRowChange(setList) {
+    return (payload) => {
+      const { eventType, new: newRow, old: oldRow } = payload
+      if (eventType === "DELETE") {
+        setList(prev => prev.filter(r => r.id !== oldRow?.id))
+        return
+      }
+      if (!newRow) return
+      setList(prev => {
+        const idx = prev.findIndex(r => r.id === newRow.id)
+        return idx === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r)
+      })
+    }
+  }
+
   useEffect(() => {
     const stored = localStorage.getItem(`decrypto:${code}:playerId`)
     if (stored) setMyPlayerId(stored); else router.replace(`/${code}`)
@@ -130,10 +169,13 @@ export default function PlayPage({ params }) {
 
     function connect() {
       ch = supabase.channel(`decrypto-play-${code}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "dc_games", filter: `code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "dc_players", filter: `game_code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "dc_rounds", filter: `game_code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "dc_guesses", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "dc_games", filter: `code=eq.${code}` }, payload => {
+          if (payload.eventType === "DELETE") { loadState(); return }
+          applyGameRow(payload.new)
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "dc_players", filter: `game_code=eq.${code}` }, applyRowChange(setPlayers))
+        .on("postgres_changes", { event: "*", schema: "public", table: "dc_rounds", filter: `game_code=eq.${code}` }, applyRowChange(setRounds))
+        .on("postgres_changes", { event: "*", schema: "public", table: "dc_guesses", filter: `game_code=eq.${code}` }, applyRowChange(setGuesses))
         .on("postgres_changes", { event: "*", schema: "public", table: "pokes", filter: `room_code=eq.${code}` }, loadPokes)
         .on("broadcast", { event: "sync" }, () => loadState())
         .subscribe(status => {

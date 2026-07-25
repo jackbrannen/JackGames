@@ -177,6 +177,26 @@ export default function Play({ params }) {
     if (w) setWords(w)
   }
 
+  // Apply a changed row directly from the realtime payload instead of a full
+  // loadState() refetch. Each change independently reaches every subscribed
+  // client already, so there's no need to also nudge — nudge() exists for
+  // cases where a client's own realtime might be lagging, which doesn't
+  // apply to the client that just received this exact event.
+  function applyRowChange(setList) {
+    return (payload) => {
+      const { eventType, new: newRow, old: oldRow } = payload
+      if (eventType === "DELETE") {
+        setList(prev => prev.filter(r => r.id !== oldRow?.id))
+        return
+      }
+      if (!newRow) return
+      setList(prev => {
+        const idx = prev.findIndex(r => r.id === newRow.id)
+        return idx === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r)
+      })
+    }
+  }
+
   // Gossip: call RPCs through here so peers refresh instantly via broadcast,
   // instead of waiting on postgres_changes replication or the poll fallback.
   async function rpc(fn, args = {}) {
@@ -210,8 +230,8 @@ export default function Play({ params }) {
           if (payload.eventType === "DELETE") { loadState(); return }
           if (payload.new) setGame(payload.new)
         })
-        .on("postgres_changes", { event: "*", schema: "public", table: "sb_players", filter: `game_code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "sb_words", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "sb_players", filter: `game_code=eq.${code}` }, applyRowChange(setPlayers))
+        .on("postgres_changes", { event: "*", schema: "public", table: "sb_words", filter: `game_code=eq.${code}` }, applyRowChange(setWords))
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {
           if (cancelled) return

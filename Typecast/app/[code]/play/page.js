@@ -126,6 +126,44 @@ export default function PlayPage({ params }) {
   }
   function nudge() { channelRef.current?.send({ type: "broadcast", event: "sync" }) }
 
+  // tc_games changes on every drag while the shared board is being built
+  // (the pending live-cursor column), far more often than real state
+  // changes. Applying the row straight from the realtime payload — which
+  // always carries the complete new row — instead of triggering a full
+  // loadState() avoids a 3-table refetch fanned out to every connected
+  // client on every single drag.
+  const gamesSyncKeyRef = useRef(null)
+  function applyGameRow(newRow) {
+    if (!newRow) return
+    if (newRow.replay_code) { router.replace(`/${newRow.replay_code}`); return }
+    if (newRow.phase === "lobby") { router.replace(`/${code}`); return }
+    setGame(newRow)
+    const key = `${newRow.phase}:${newRow.guess_index}`
+    if (gamesSyncKeyRef.current !== null && gamesSyncKeyRef.current !== key) nudge()
+    gamesSyncKeyRef.current = key
+  }
+
+  // Same idea for tc_players/tc_matchups: apply the changed row directly
+  // from the realtime payload instead of a full loadState() refetch. Each
+  // change independently reaches every subscribed client already, so
+  // there's no need to also nudge — nudge() exists for cases where a
+  // client's own realtime might be lagging, which doesn't apply to the
+  // client that just received this exact event.
+  function applyRowChange(setList) {
+    return (payload) => {
+      const { eventType, new: newRow, old: oldRow } = payload
+      if (eventType === "DELETE") {
+        setList(prev => prev.filter(r => r.id !== oldRow?.id))
+        return
+      }
+      if (!newRow) return
+      setList(prev => {
+        const idx = prev.findIndex(r => r.id === newRow.id)
+        return idx === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r)
+      })
+    }
+  }
+
   useEffect(() => {
     const stored = localStorage.getItem(`typecast:${code}:playerId`)
     if (stored) setMyPlayerId(stored); else router.replace(`/${code}`)
@@ -143,9 +181,12 @@ export default function PlayPage({ params }) {
 
     function connect() {
       ch = supabase.channel(`typecast-play-${code}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "tc_games", filter: `code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "tc_players", filter: `game_code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "tc_matchups", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "tc_games", filter: `code=eq.${code}` }, payload => {
+          if (payload.eventType === "DELETE") { loadState(); return }
+          applyGameRow(payload.new)
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "tc_players", filter: `game_code=eq.${code}` }, applyRowChange(setPlayers))
+        .on("postgres_changes", { event: "*", schema: "public", table: "tc_matchups", filter: `game_code=eq.${code}` }, applyRowChange(setMatchups))
         .on("postgres_changes", { event: "*", schema: "public", table: "pokes", filter: `room_code=eq.${code}` }, loadPokes)
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {

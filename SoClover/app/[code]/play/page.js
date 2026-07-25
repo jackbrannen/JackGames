@@ -539,6 +539,51 @@ export default function PlayPage({ params }) {
     }
   }, [code, router])
 
+  // soclover_games/soclover_players changes: apply the row directly from the
+  // realtime payload instead of a full loadState() refetch. Each change
+  // independently reaches every subscribed client already, so there's no
+  // need to also nudge — nudge() exists for cases where a client's own
+  // realtime might be lagging, which doesn't apply to the client that just
+  // received this exact event.
+  function applyGameRow(newRow, eventType) {
+    if (eventType === "DELETE" || !newRow) { loadState(); return }
+    if (newRow.replay_code) { router.push(`/${newRow.replay_code}`); return }
+    if (newRow.phase === "lobby") { router.push(`/${code}`); return }
+    setGame(newRow)
+    setLoading(false)
+  }
+  function applyRowChange(setList) {
+    return (payload) => {
+      const { eventType, new: newRow, old: oldRow } = payload
+      if (eventType === "DELETE") {
+        setList(prev => prev.filter(r => r.id !== oldRow?.id))
+        return
+      }
+      if (!newRow) return
+      setList(prev => {
+        const idx = prev.findIndex(r => r.id === newRow.id)
+        return idx === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r)
+      })
+    }
+  }
+
+  // soclover_boards changes on every drag/rotate while a guesser is building
+  // their board (guess_slots/board_rotation), far more often than real state
+  // changes. Applying the row straight from the realtime payload — which
+  // always carries the complete new row — instead of triggering a full
+  // loadState() avoids a 3-table refetch (games + players + every board)
+  // fanned out to every connected client on every single drag.
+  function applyBoardRow(newRow, eventType) {
+    if (eventType === "DELETE" || !newRow) { loadState(); return }
+    setBoards(prev => {
+      const idx = prev.findIndex(b => b.id === newRow.id)
+      const next = idx === -1 ? [...prev, newRow] : prev.map(b => b.id === newRow.id ? newRow : b)
+      const key = `${game?.phase}:${game?.current_board_index}:${next.map(b => `${b.id}${b.status}${b.attempt ?? ""}`).sort().join("|")}`
+      if (syncKeyRef.current !== null && syncKeyRef.current !== key) nudgeSync()
+      syncKeyRef.current = key
+      return next
+    })
+  }
 
   // Reset submitting state when board status or attempt changes
   useEffect(() => {
@@ -693,9 +738,9 @@ export default function PlayPage({ params }) {
 
     function connect() {
       ch = supabase.channel(`soclover-play-${code}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "soclover_games", filter: `code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "soclover_players", filter: `game_code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "soclover_boards", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "soclover_games", filter: `code=eq.${code}` }, payload => applyGameRow(payload.new, payload.eventType))
+        .on("postgres_changes", { event: "*", schema: "public", table: "soclover_players", filter: `game_code=eq.${code}` }, applyRowChange(setPlayers))
+        .on("postgres_changes", { event: "*", schema: "public", table: "soclover_boards", filter: `game_code=eq.${code}` }, payload => applyBoardRow(payload.new, payload.eventType))
         // Fast path: peers reload instantly on a broadcast nudge (skips the
         // slower DB-replication path that postgres_changes rides on).
         .on("broadcast", { event: "sync" }, () => loadState())

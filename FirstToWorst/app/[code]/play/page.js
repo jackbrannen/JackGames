@@ -553,6 +553,56 @@ export default function Play({ params }) {
     syncKeyRef.current = syncKey
   }
 
+  // ftw_games changes on every drag while the group is dragging words into
+  // ranking order (the last_move live-cursor column), far more often than
+  // real state changes. Applying the row straight from the realtime payload
+  // — which always carries the complete new row — instead of triggering a
+  // full loadState() avoids a 3-table refetch (including ftw_words, which
+  // almost never actually changes) fanned out to every connected client on
+  // every single drag.
+  const gamesSyncKeyRef = useRef(null)
+  function applyGameRow(newRow) {
+    if (!newRow) return
+    if (newRow.replay_code) { router.replace(`/${newRow.replay_code}`); return }
+    if (newRow.phase === "lobby") { router.replace(`/${code}`); return }
+
+    if (newRow.last_move && newRow.phase === "guessing" && newRow.round_phase === "dragging") {
+      const key = JSON.stringify(newRow.last_move)
+      if (key !== prevLastMoveRef.current) {
+        prevLastMoveRef.current = key
+        setHighlightMove(newRow.last_move)
+        clearTimeout(highlightTimerRef.current)
+        highlightTimerRef.current = setTimeout(() => setHighlightMove(null), 400)
+      }
+    }
+
+    setGame(newRow)
+    const syncKey = `${newRow.phase}:${newRow.round_phase ?? ""}:${newRow.current_round ?? ""}:${newRow.last_move ?? ""}`
+    if (gamesSyncKeyRef.current !== null && gamesSyncKeyRef.current !== syncKey) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    gamesSyncKeyRef.current = syncKey
+  }
+
+  // Same idea for ftw_players: apply the changed row directly from the
+  // realtime payload instead of a full loadState() refetch. Each change
+  // independently reaches every subscribed client already, so there's no
+  // need to also nudge — nudge() exists for cases where a client's own
+  // realtime might be lagging, which doesn't apply to the client that just
+  // received this exact event.
+  function applyRowChange(setList) {
+    return (payload) => {
+      const { eventType, new: newRow, old: oldRow } = payload
+      if (eventType === "DELETE") {
+        setList(prev => prev.filter(r => r.id !== oldRow?.id))
+        return
+      }
+      if (!newRow) return
+      setList(prev => {
+        const idx = prev.findIndex(r => r.id === newRow.id)
+        return idx === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r)
+      })
+    }
+  }
+
   useEffect(() => {
     loadState()
     const poll = setInterval(loadState, 60000)
@@ -565,8 +615,11 @@ export default function Play({ params }) {
 
     function connect() {
       channel = supabase.channel(`ftw-play-${code}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "ftw_games", filter: `code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "ftw_players", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "ftw_games", filter: `code=eq.${code}` }, payload => {
+          if (payload.eventType === "DELETE") { loadState(); return }
+          applyGameRow(payload.new)
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "ftw_players", filter: `game_code=eq.${code}` }, applyRowChange(setPlayers))
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {
           if (cancelled) return

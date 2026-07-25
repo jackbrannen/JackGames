@@ -9,11 +9,6 @@ import { ZONE_COLORS, ZONE_NAMES, FORCE_LIGHT_TEXT_ZONES } from "./VennDiagram"
 export const INK = "#2A303C"
 export const BTN_TEXT = "#FFF4F0"
 
-// Every ring rule/hint the Knower writes is stored with this lead-in baked
-// into the full text, so every downstream display shows the complete
-// sentence without any special-casing.
-export const RULE_PREFIX = "Things that "
-
 // Which base rings compose a given zone — used to look up the Knower's rule
 // (or the player-facing hint) text for whichever ring(s) intersect there.
 export const ZONE_RINGS = {

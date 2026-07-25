@@ -100,6 +100,7 @@ export default function PlayPage({ params }) {
   const [flashResolution, setFlashResolution] = useState(null)
   const [resolutionDismissed, setResolutionDismissed] = useState(true)
   const [knowerZoneChoice, setKnowerZoneChoice] = useState(null)
+  const [knowerActAlertDismissed, setKnowerActAlertDismissed] = useState(true)
   const [selectedMoveCardId, setSelectedMoveCardId] = useState(null)
   const [showMoveZonePicker, setShowMoveZonePicker] = useState(false)
   const [turnDecisionBusy, setTurnDecisionBusy] = useState(false)
@@ -245,9 +246,12 @@ export default function PlayPage({ params }) {
   function nameOf(id) { return players.find(p => p.id === id)?.name ?? "?" }
 
   useEffect(() => {
-    if (game?.pending_card_id !== prevPendingCardRef.current) setKnowerZoneChoice(null)
+    if (game?.pending_card_id !== prevPendingCardRef.current) {
+      setKnowerZoneChoice(null)
+      if (isKnower && game?.pending_card_id) setKnowerActAlertDismissed(false)
+    }
     prevPendingCardRef.current = game?.pending_card_id ?? null
-  }, [game?.pending_card_id])
+  }, [game?.pending_card_id, isKnower])
 
   useEffect(() => {
     setSelectedCardId(null)
@@ -465,7 +469,7 @@ export default function PlayPage({ params }) {
   function settingsNode() {
     if (!isKnower) return null
     const placedCards = cards.filter(c => c.zone)
-    const zoneOrder = ["A", "B", "C", "AB", "AC", "BC", "ABC", "OUTSIDE", "NA"]
+    const zoneOrder = ["A", "B", "C", "AB", "AC", "BC", "ABC", "OUTSIDE"]
     return (
       <div>
         <div style={{ fontSize: 13, fontWeight: 800, color: "white", marginBottom: 8 }}>Words per team</div>
@@ -583,7 +587,7 @@ export default function PlayPage({ params }) {
         <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.55, marginBottom: 8 }}>{teamLabel(myTeam)} team</div>
         <h1 style={{ fontSize: 26, fontWeight: 900, marginBottom: 16, lineHeight: 1.15 }}>Submit 5 words or phrases.</h1>
         <div style={{ maxWidth: 320, margin: "0 auto 4px" }}>
-          <VennDiagram onZoneTap={onZoneTap} selectedZone={diagramSelectedZone} zoneWords={zoneWords} showNA full />
+          <VennDiagram onZoneTap={onZoneTap} selectedZone={diagramSelectedZone} zoneWords={zoneWords} full />
         </div>
         {zoneDescriptionNode()}
         <WordListForm words={initialWords} setWords={setInitialWords} onSubmit={submitWords} submitting={submittingWords} submitLabel="Submit words" maxLength={40} maxDraws={3} takenIndex={takenWordIndex} onEdit={i => { if (takenWordIndex === i) setTakenWordIndex(null) }} />
@@ -605,7 +609,7 @@ export default function PlayPage({ params }) {
 
         <div style={{ margin: "0 -16px" }}>
           <div style={{ padding: "0 16px" }}>
-            <VennDiagram onZoneTap={onZoneTap} selectedZone={diagramSelectedZone} zoneWords={zoneWords} full showNA />
+            <VennDiagram onZoneTap={onZoneTap} selectedZone={diagramSelectedZone} zoneWords={zoneWords} full />
           </div>
           {zoneDescriptionNode()}
         </div>
@@ -617,7 +621,7 @@ export default function PlayPage({ params }) {
           </div>
         ))}
 
-        <div style={{ marginTop: 20, textAlign: "center" }}>
+        <div style={{ marginTop: 20, display: "flex", flexDirection: "column", alignItems: "center" }}>
           <button onClick={async () => {
             if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
             const { data, error } = await supabase.rpc("tir_create_replay", { p_code: code })
@@ -709,12 +713,34 @@ export default function PlayPage({ params }) {
               )}
 
               <button onClick={dismissResolutionModal} style={{ background: "rgba(42,48,60,0.15)", color: INK, fontWeight: 900, padding: "12px 24px", width: "100%" }}>
-                {isNA ? "Continue" : "Next"}
+                {(() => {
+                  if (isNA) return "Continue"
+                  if (game.phase === "finished") return "See who won →"
+                  if (game.turn_decision_pending) return isMyTurn ? "It's your call — keep going? →" : `Waiting on ${teamLabel(activeTeam)} →`
+                  if (isKnower) return "Continue"
+                  return isMyTurn ? "Your turn →" : `${teamLabel(activeTeam)}' turn →`
+                })()}
               </button>
             </div>
           </div>
         )
       })()}
+
+      {isKnower && game.pending_card_id && !knowerActAlertDismissed && !(flashResolution && !resolutionDismissed) && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: RESOLUTION_MODAL_BG, color: INK, padding: "28px 24px", maxWidth: 360, width: "100%", textAlign: "center" }}>
+            <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 12 }}>Your turn!</div>
+            <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.5, marginBottom: 20 }}>
+              {nameOf(game.pending_player_id)} ({teamLabel(activeTeam)}) guessed{" "}
+              <span style={{ background: "#D9E2D5", color: INK, padding: "2px 8px", fontSize: 16, fontWeight: 900, borderRadius: 6, display: "inline-block" }}>{pendingCard?.text}</span>
+              . Place it in the right zone.
+            </div>
+            <button onClick={() => setKnowerActAlertDismissed(true)} style={{ background: BTN, color: BTN_TEXT, fontWeight: 900, padding: "12px 24px", width: "100%" }}>
+              Place it →
+            </button>
+          </div>
+        </div>
+      )}
 
       {showKeepGoingModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
@@ -743,7 +769,6 @@ export default function PlayPage({ params }) {
           selectedZone={diagramSelectedZone}
           zoneWords={zoneWords}
           disabled={resolving || submittingGuess}
-          showNA
         />
       </div>
 

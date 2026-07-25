@@ -44,6 +44,14 @@ export default function Footer({
       alignItems: "stretch",
       borderTop: "1px solid rgba(255,255,255,0.09)",
       zIndex: 80,
+      // iOS Safari has a long-documented bug where fixed-position elements
+      // occasionally fail to repaint (going blank until the next paint
+      // trigger) after scroll/toolbar-resize events. Forcing this element
+      // onto its own GPU compositing layer is the standard mitigation.
+      transform: "translateZ(0)",
+      WebkitTransform: "translateZ(0)",
+      backfaceVisibility: "hidden",
+      WebkitBackfaceVisibility: "hidden",
     }}>
       {!timerRunning && (
         <button

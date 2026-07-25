@@ -7,7 +7,7 @@ import Footer, { FOOTER_H } from "../../components/Footer"
 import Menu from "../../components/Menu"
 import TextEntry from "../../components/TextEntry"
 import VennDiagram from "../../components/VennDiagram"
-import { ZoneChip, textColorFor, ZONE_RINGS, RULE_PREFIX, fetchIdeas } from "../../components/RingHelpers"
+import { ZoneChip, textColorFor, ZONE_RINGS, fetchIdeas } from "../../components/RingHelpers"
 import { TIR_RULES } from "../../components/rulesText"
 
 const BG = "#C0C9BC"
@@ -271,9 +271,9 @@ export default function LobbyPage({ params }) {
     setSubmittingRules(true)
     const { error } = await supabase.rpc("tir_submit_ring_definitions", {
       p_code: code, p_knower_id: me.id,
-      p_rule_a: RULE_PREFIX + ruleA.trim(), p_hint_a: RULE_PREFIX + hintA.trim(),
-      p_rule_b: RULE_PREFIX + ruleB.trim(), p_hint_b: RULE_PREFIX + hintB.trim(),
-      p_rule_c: RULE_PREFIX + ruleC.trim(), p_hint_c: RULE_PREFIX + hintC.trim(),
+      p_rule_a: ruleA.trim(), p_hint_a: hintA.trim(),
+      p_rule_b: ruleB.trim(), p_hint_b: hintB.trim(),
+      p_rule_c: ruleC.trim(), p_hint_c: hintC.trim(),
     })
     if (error) { alert(error.message); setSubmittingRules(false); return }
     channelRef.current?.send({ type: "broadcast", event: "sync" })
@@ -501,14 +501,12 @@ export default function LobbyPage({ params }) {
                 <div key={zone} style={{ marginBottom: 20 }}>
                   <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 6 }}><ZoneChip zone={zone} label={`${zone === "A" ? "Red" : zone === "B" ? "Green" : "Blue"} Ring`} /></div>
                   <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.55, marginBottom: 4 }}>Rule for the ring</div>
-                  <div style={{ display: "flex", alignItems: "stretch", background: INPUT_BG, marginBottom: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", color: INK, fontSize: 18, fontWeight: 600, paddingLeft: 16, whiteSpace: "pre", flexShrink: 0 }}>{RULE_PREFIX}</div>
-                    <TextEntry value={rVal} onChange={rSet} placeholder="are found in a kitchen" maxLength={65} multiline={false} bg={INPUT_BG} style={{ color: INK, paddingLeft: 0 }} />
+                  <div style={{ marginBottom: 10 }}>
+                    <TextEntry value={rVal} onChange={rSet} placeholder="Person/object/concept/word rule" maxLength={80} multiline={false} bg={INPUT_BG} style={{ color: INK }} />
                   </div>
                   <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.55, marginBottom: 4 }}>Hint for players</div>
-                  <div style={{ display: "flex", alignItems: "stretch", background: INPUT_BG }}>
-                    <div style={{ display: "flex", alignItems: "center", color: INK, fontSize: 18, fontWeight: 600, paddingLeft: 16, whiteSpace: "pre", flexShrink: 0 }}>{RULE_PREFIX}</div>
-                    <TextEntry value={hVal} onChange={hSet} placeholder="are in a room in your house" maxLength={65} multiline={false} bg={INPUT_BG} style={{ color: INK, paddingLeft: 0 }} />
+                  <div>
+                    <TextEntry value={hVal} onChange={hSet} placeholder="Person/object/concept/word rule" maxLength={80} multiline={false} bg={INPUT_BG} style={{ color: INK }} />
                   </div>
                 </div>
               ))}
@@ -524,8 +522,18 @@ export default function LobbyPage({ params }) {
               <p style={{ fontSize: 14, color: INK_MUTED, fontWeight: 600, marginBottom: 16 }}>
                 Tap a zone, then type a word that belongs there. These are just examples for players to see while they write their own words — not required, and not part of anyone's hand.
               </p>
+              <div style={{ background: PANEL, padding: "14px 16px", marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.55, marginBottom: 10 }}>Your rules & hints</div>
+                {["A", "B", "C"].map(zone => (
+                  <div key={zone} style={{ marginBottom: zone === "C" ? 0 : 10 }}>
+                    <div style={{ marginBottom: 3 }}><ZoneChip zone={zone} label={`${zone === "A" ? "Red" : zone === "B" ? "Green" : "Blue"} Ring`} /></div>
+                    <div style={{ fontSize: 13, color: INK, fontWeight: 600, lineHeight: 1.4 }}>Rule: {ringRules?.[zone]}</div>
+                    <div style={{ fontSize: 13, color: INK_MUTED, fontWeight: 600, lineHeight: 1.4 }}>Hint: {ringHints?.[zone]}</div>
+                  </div>
+                ))}
+              </div>
               <div style={{ maxWidth: 320, margin: "0 auto 16px" }}>
-                <VennDiagram onZoneTap={z => setPrefillZone(prev => prev === z ? null : z)} selectedZone={prefillZone} zoneWords={zoneWords} showNA full />
+                <VennDiagram onZoneTap={z => setPrefillZone(prev => prev === z ? null : z)} selectedZone={prefillZone} zoneWords={zoneWords} full />
               </div>
               {prefillZone && (
                 <div style={{ background: PANEL, padding: "14px 16px", marginBottom: 20 }}>

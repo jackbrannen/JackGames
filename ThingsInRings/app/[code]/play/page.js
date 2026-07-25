@@ -161,6 +161,27 @@ export default function PlayPage({ params }) {
     gamesSyncKeyRef.current = key
   }
 
+  // Same idea for tir_players/tir_cards: apply the changed row directly from
+  // the realtime payload instead of a full loadState() refetch. Each of
+  // these changes independently reaches every subscribed client already, so
+  // there's no need to also nudge — nudge() exists for cases where a
+  // client's own realtime might be lagging, which doesn't apply to the
+  // client that just received this exact event.
+  function applyRowChange(setList) {
+    return (payload) => {
+      const { eventType, new: newRow, old: oldRow } = payload
+      if (eventType === "DELETE") {
+        setList(prev => prev.filter(r => r.id !== oldRow?.id))
+        return
+      }
+      if (!newRow) return
+      setList(prev => {
+        const idx = prev.findIndex(r => r.id === newRow.id)
+        return idx === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r)
+      })
+    }
+  }
+
   useEffect(() => {
     const stored = localStorage.getItem(`thingsinrings:${code}:playerId`)
     if (stored) setMyPlayerId(stored); else router.replace(`/${code}`)
@@ -182,8 +203,8 @@ export default function PlayPage({ params }) {
           if (payload.eventType === "DELETE") { loadState(); return }
           applyGameRow(payload.new)
         })
-        .on("postgres_changes", { event: "*", schema: "public", table: "tir_players", filter: `game_code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "tir_cards", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "tir_players", filter: `game_code=eq.${code}` }, applyRowChange(setPlayers))
+        .on("postgres_changes", { event: "*", schema: "public", table: "tir_cards", filter: `game_code=eq.${code}` }, applyRowChange(setCards))
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {
           if (cancelled) return

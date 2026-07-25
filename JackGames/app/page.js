@@ -166,7 +166,7 @@ You score points by voting for the real prompt, or by writing a fake that fools 
   {
     name: "What On Earth",
     description: "Translate words for aliens",
-    players: "3+ players", minPlayers: 3, group: "Medium Schmedium", types: ["Word games", "Cooperative"],
+    players: "4+ players", minPlayers: 4, group: "Medium Schmedium", types: ["Word games", "Cooperative"],
     url: "https://whatonearth.jackbrannen.com", bg: "#1A1F2E", color: "white",
     instructions: `Each turn, two players team up as co-Earthlings trying to beam a secret word to everyone else. The rest are Aliens trying to guess it.
 

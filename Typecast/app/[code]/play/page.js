@@ -54,6 +54,10 @@ export default function PlayPage({ params }) {
   const [game, setGame] = useState(null)
   const [players, setPlayers] = useState([])
   const [matchups, setMatchups] = useState([])
+  const [customTargets, setCustomTargets] = useState([])
+  const [newTargetName, setNewTargetName] = useState("")
+  const [addingTarget, setAddingTarget] = useState(false)
+  const [showRosterConfirm, setShowRosterConfirm] = useState(false)
   const [myPlayerId, setMyPlayerId] = useState(null)
   const [pokes, setPokes] = useState([])
   const [loading, setLoading] = useState(true)
@@ -92,7 +96,8 @@ export default function PlayPage({ params }) {
   const activeMatchup = phase === "assign" ? myMatchup : currentMatchup
   const slotIds = activeMatchup?.slot_ids ?? []
   const N = slotIds.length
-  const slotPlayers = slotIds.map(id => players.find(p => p.id === id))
+  const targetById = id => players.find(p => p.id === id) ?? customTargets.find(c => c.id === id)
+  const slotPlayers = slotIds.map(id => targetById(id))
   const poolWords = phase === "assign" ? (myMatchup?.words ?? []) : (currentMatchup?.used_words ?? [])
   const matcherKey = currentMatchup?.key ?? []
 
@@ -104,16 +109,17 @@ export default function PlayPage({ params }) {
   const loadSeqRef = useRef(0)
   async function loadState() {
     const seq = ++loadSeqRef.current
-    const [{ data: gm }, { data: ps }, { data: ms }] = await Promise.all([
+    const [{ data: gm }, { data: ps }, { data: ms }, { data: cts }] = await Promise.all([
       supabase.from("tc_games").select("*").eq("code", code).single(),
       supabase.from("tc_players").select("*").eq("game_code", code).order("created_at"),
       supabase.from("tc_matchups").select("*").eq("game_code", code),
+      supabase.from("tc_custom_targets").select("*").eq("game_code", code).order("created_at"),
     ])
     if (seq !== loadSeqRef.current) return
     if (!gm) { router.replace(`/${code}`); return }
     if (gm.replay_code) { router.replace(`/${gm.replay_code}`); return }
     if (gm.phase === "lobby") { router.replace(`/${code}`); return }
-    setGame(gm); setPlayers(ps ?? []); setMatchups(ms ?? []); setLoading(false)
+    setGame(gm); setPlayers(ps ?? []); setMatchups(ms ?? []); setCustomTargets(cts ?? []); setLoading(false)
     // Gossip: re-broadcast on a state change so peers that missed the realtime
     // push catch up in a round-trip instead of on the poll.
     const key = `${gm.phase}:${gm.guess_index}`
@@ -187,6 +193,7 @@ export default function PlayPage({ params }) {
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "tc_players", filter: `game_code=eq.${code}` }, applyRowChange(setPlayers))
         .on("postgres_changes", { event: "*", schema: "public", table: "tc_matchups", filter: `game_code=eq.${code}` }, applyRowChange(setMatchups))
+        .on("postgres_changes", { event: "*", schema: "public", table: "tc_custom_targets", filter: `game_code=eq.${code}` }, applyRowChange(setCustomTargets))
         .on("postgres_changes", { event: "*", schema: "public", table: "pokes", filter: `room_code=eq.${code}` }, loadPokes)
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {
@@ -446,6 +453,94 @@ export default function PlayPage({ params }) {
           <a href="https://games.jackbrannen.com" style={{ display: "block", background: PANEL, color: INK, fontSize: 16, fontWeight: 700, padding: "14px 24px", textDecoration: "none", maxWidth: 320, width: "100%", marginTop: 10 }}>Play Another Game</a>
         </div>
         {pokeSystem()}
+      </>
+    )
+  }
+
+  // ── ROSTER ────────────────────────────────────────────────
+  if (phase === "roster") {
+    async function addCustomTarget() {
+      const trimmed = newTargetName.trim()
+      if (!trimmed || addingTarget) return
+      setAddingTarget(true)
+      const { error } = await supabase.from("tc_custom_targets").insert({ game_code: code, name: trimmed })
+      setAddingTarget(false)
+      if (error) { alert(error.message); return }
+      setNewTargetName("")
+      nudge()
+    }
+    async function removeCustomTarget(id) {
+      await supabase.from("tc_custom_targets").delete().eq("id", id)
+      nudge()
+    }
+    async function lockRoster() {
+      const { error } = await supabase.rpc("tc_lock_roster", { p_code: code })
+      if (error) { alert(error.message); throw error }
+      setShowRosterConfirm(false)
+      nudge()
+    }
+    const totalTargets = players.length + customTargets.length
+    return (
+      <>
+        <div style={{ minHeight: "100dvh", background: BG, color: INK, paddingBottom: BOTTOM_PAD }}>
+          <div style={{ background: DARK, padding: "24px 20px 20px" }}>
+            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>Typecast</div>
+            <h2 style={{ fontSize: 24, fontWeight: 900, color: "white", lineHeight: 1.2 }}>Who gets words this game?</h2>
+          </div>
+          <div style={{ padding: "16px 20px", fontSize: 14, fontWeight: 600, color: "rgba(255,241,234,0.9)" }}>
+            Everyone here gets words assigned to them. Add anyone else — an absent friend, a fictional character — to pad out a small group.
+          </div>
+          <div style={{ padding: "0 20px" }}>
+            <div style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", color: "#FFF1EA", marginBottom: 10 }}>Players</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 20 }}>
+              {players.map(p => (
+                <div key={p.id} style={{ background: PANEL, padding: "12px 14px" }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: INK }}>
+                    {p.name}{p.id === myPlayerId && <span style={{ fontSize: 12, opacity: 0.55, marginLeft: 6 }}>you</span>}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", color: "#FFF1EA", marginBottom: 10 }}>Other names</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
+              {customTargets.length === 0 && <div style={{ fontSize: 14, color: "rgba(255,241,234,0.8)", fontStyle: "italic" }}>None added</div>}
+              {customTargets.map(c => (
+                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, background: WARM, padding: "12px 14px" }}>
+                  <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: INK }}>{c.name}</span>
+                  <button onClick={() => removeCustomTarget(c.id)} aria-label={`Remove ${c.name}`}
+                    style={{ background: "transparent", border: "none", color: INK_MUTED, fontSize: 16, fontWeight: 800, cursor: "pointer", padding: "2px 4px", lineHeight: 1 }}>✕</button>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+              <input value={newTargetName} onChange={e => setNewTargetName(e.target.value)} onKeyDown={e => e.key === "Enter" && addCustomTarget()}
+                placeholder="Add a name" maxLength={40}
+                style={{ flex: 1, background: WARM, color: INK, fontSize: 16, padding: "14px 16px", border: "none", outline: "none", boxSizing: "border-box" }} />
+              <button onClick={addCustomTarget} disabled={!newTargetName.trim() || addingTarget} style={{ background: BTN, color: BTN_TEXT, fontWeight: 900, padding: "0 20px" }}>Add</button>
+            </div>
+          </div>
+        </div>
+
+        {pokeSystem(
+          <FooterButton onClick={async () => { setShowRosterConfirm(true); throw new Error("modal") }} bg={BTN} textColor={BTN_TEXT}>
+            {`Confirm & start (${totalTargets} ${totalTargets === 1 ? "target" : "targets"})`}
+          </FooterButton>
+        )}
+
+        {showRosterConfirm && (
+          <div onClick={() => setShowRosterConfirm(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: "#fff", width: "100%", maxWidth: 400, padding: "28px 24px" }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: INK, marginBottom: 8 }}>Lock in this list?</div>
+              <p style={{ fontSize: 15, color: INK_MUTED, fontWeight: 600, marginBottom: 20 }}>
+                {totalTargets} {totalTargets === 1 ? "name" : "names"} will get words assigned to them this game. No one can add or remove names after this.
+              </p>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => setShowRosterConfirm(false)} style={{ flex: 1, background: WARM, color: INK, fontSize: 16, fontWeight: 800, padding: "16px" }}>Back</button>
+                <FooterButton onClick={lockRoster} bg={BTN} textColor={BTN_TEXT} style={{ flex: 2, padding: "16px" }}>Start</FooterButton>
+              </div>
+            </div>
+          </div>
+        )}
       </>
     )
   }

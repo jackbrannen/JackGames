@@ -179,7 +179,7 @@ export default function LobbyPage({ params }) {
   async function startGame() {
     if (starting) return
     setStarting(true)
-    const { error } = await supabase.rpc("tc_start_game", { p_code: code })
+    const { error } = await supabase.rpc("tc_open_roster", { p_code: code })
     if (error) { alert("Start failed: " + error.message); setStarting(false); return }
     channelRef.current?.send({ type: "broadcast", event: "sync" })
     router.push(`/${code}/play`)
@@ -308,7 +308,7 @@ export default function LobbyPage({ params }) {
         <div onClick={() => setConfirmingStart(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: "#fff", width: "100%", maxWidth: 400, padding: "28px 24px" }}>
             <div style={{ fontSize: 22, fontWeight: 900, color: INK, marginBottom: 8 }}>Start the game?</div>
-            <p style={{ fontSize: 15, color: INK_MUTED, fontWeight: 600, marginBottom: 20 }}>{players.length} players, {players.length} rounds. Begin for everyone?</p>
+            <p style={{ fontSize: 15, color: INK_MUTED, fontWeight: 600, marginBottom: 20 }}>{players.length} players, {players.length} rounds. Next you'll pick who gets words assigned to them.</p>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => setConfirmingStart(false)} style={{ flex: 1, background: WARM, color: INK, fontSize: 16, fontWeight: 800, padding: "16px" }}>Cancel</button>
               <button onClick={() => { setConfirmingStart(false); startGame() }} disabled={starting} style={{ flex: 2, background: BTN, color: BTN_TEXT, fontSize: 16, fontWeight: 900, padding: "16px" }}>Start</button>

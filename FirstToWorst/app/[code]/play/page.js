@@ -1076,14 +1076,6 @@ export default function Play({ params }) {
               fetchIdeas={fetchRandomIdeas}
               playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
               maxDraws={3}
-              onIdeaClick={idea => {
-                const firstEmpty = wordFields.findIndex(w => !w.trim())
-                if (firstEmpty !== -1) {
-                  const next = [...wordFields]
-                  next[firstEmpty] = idea
-                  setWordFields(next)
-                }
-              }}
             />
           </div>
 

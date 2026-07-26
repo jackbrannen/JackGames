@@ -245,7 +245,6 @@ function AddClueForm({ code, playerId, onAdded, disabled, playerNames = [] }) {
           fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
           playerNames={playerNames}
           maxDraws={3}
-          onIdeaClick={idea => setText(idea)}
         />
       </div>
     </div>

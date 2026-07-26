@@ -16,7 +16,10 @@
     playerNames  string[] — other players' first names; one injected on first draw
     maxDraws     number   — how many times player can draw (default 3)
     onDraw       (ideas: string[]) => void — called after each draw so game can persist
-    onIdeaClick  (idea: string) => void    — optional; makes chips tappable (e.g. to fill a field)
+    onIdeaClick  (idea: string) => void    — optional; do not wire this to auto-fill a field.
+                                              Chips are inspiration only — the player must still
+                                              type their own answer. Reserved for non-autofill
+                                              uses only (e.g. a copy-to-clipboard affordance).
 
   Usage (GOW — display only, DB-tracked):
     <RandomIdeas
@@ -25,19 +28,18 @@
       fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
       excludeIdeas={game.used_prompts ?? []}
       playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
-      onDraw={ideas => supabase.from("cc_games")
+      onDraw={ideas => supabase.from("gow_games")
         .update({ used_prompts: [...(game.used_prompts ?? []), ...ideas] })
         .eq("code", code)}
     />
 
-  Usage (FTW — tappable, no DB tracking):
+  Usage (FTW — display only, no DB tracking):
     <RandomIdeas
       key={round}
       bg={WARM_LIGHT}
       fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
       playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
       maxDraws={Math.ceil(wordFields.length * 2 / 3)}
-      onIdeaClick={idea => fillCurrentField(idea)}
     />
 */
 

@@ -34,13 +34,6 @@ function teamLabel(t) { return t === "boys" ? "Boys" : "Girls" }
 function WordListForm({ words, setWords, onSubmit, submitting, submitLabel, maxLength, maxDraws, takenIndex, onEdit }) {
   const allFilled = words.every(w => w.trim())
   const { dupeIndices, hasDuplicates } = useDuplicates(words)
-  function fillNextSlot(idea) {
-    setWords(prev => {
-      const idx = prev.findIndex(w => !w.trim())
-      if (idx === -1) return prev
-      const next = [...prev]; next[idx] = idea; return next
-    })
-  }
   return (
     <>
       {words.map((w, i) => {
@@ -67,7 +60,7 @@ function WordListForm({ words, setWords, onSubmit, submitting, submitLabel, maxL
         {allFilled ? (
           <div style={{ fontSize: 14, fontWeight: 700, color: INK_MUTED, padding: "12px 0" }}>All filled in — ready to submit.</div>
         ) : (
-          <RandomIdeas bg={DARK} yellow="#FBDF54" fetchIdeas={fetchIdeas} maxDraws={maxDraws} onIdeaClick={fillNextSlot} />
+          <RandomIdeas bg={DARK} yellow="#FBDF54" fetchIdeas={fetchIdeas} maxDraws={maxDraws} />
         )}
       </div>
       <button onClick={onSubmit} disabled={submitting || !allFilled || hasDuplicates}

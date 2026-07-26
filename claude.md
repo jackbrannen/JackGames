@@ -1,6 +1,6 @@
 # Games
 
-> ⚠️ **DEPLOYMENT RULE — READ FIRST:** Vercel free tier allows **100 deployments/day across all projects**. Finish ALL edits to a game before deploying. Never deploy the same game twice in one session. Violating this floods the Vercel dashboard with deployment errors.
+> ⚠️ **DEPLOYMENT RULE — READ FIRST:** Vercel free tier allows **100 deployments/day across all projects**. Pushing to git is now the deploy signal (see Git Workflow & Deployment) — finish ALL edits to a game before pushing it, and avoid pushing/redeploying the same game repeatedly in one session. Violating this floods the Vercel dashboard with deployment errors and burns through the daily cap.
 
 A series of multiplayer web games built with Next.js 14 and Supabase. Players connect from their own devices and play together in real time.
 
@@ -89,17 +89,17 @@ A series of multiplayer web games built with Next.js 14 and Supabase. Players co
 
 ## Git Workflow & Deployment
 
-**Git & deploy — ASK FIRST (do not auto-ship):**
-- Do NOT run `git commit`, `git push`, or `vercel --prod` unless I explicitly tell you to **in that same message**. Finishing a change is not permission to ship it.
-- Verify every change yourself by running it locally (dev server / headless browser / render harness) — NEVER ask me to spin up `npm run dev` or do the local test. The spin-up and verification are your job.
-- When a change is verified, stop and report what's done, then wait. I batch several edits and playtest before anything ships.
-- Do not chain a deploy onto a commit (e.g. `git commit && vercel --prod`) — even a "rejected" chained Bash command can still execute here.
-- These Vercel projects have NO git integration, so `git push` never auto-deploys. Deploy is always an explicit `vercel --prod --cwd <Game>` (from Games/ root), which uploads the working dir directly.
+**Git & deploy — push IS the deploy signal:**
+- Do NOT run `git commit`, `git push`, or `vercel --prod` unless explicitly told to **in that same message**. Finishing a change is not permission to ship it — testing happens locally first (on this machine), and pushing only happens once that's done.
+- Verify every change yourself by running it locally (dev server / headless browser / render harness) — NEVER ask to spin up `npm run dev` or do the local test yourself. The spin-up and verification are your job.
+- When a change is verified, stop and report what's done, then wait for the go-ahead to push.
+- Once told to push: run `git push`, then immediately `vercel --prod --cwd <Game>` for every game whose files changed in that push — back to back, as one combined action. Do not wait for a separate "and deploy" instruction; there is no push-without-deploying anymore.
+- These Vercel projects still have no GitHub-integration auto-deploy hook wired up (one project, `jack-games`, has a broken leftover one — see below) — the `vercel --prod --cwd <Game>` call is what actually ships the deploy, immediately after the push.
 
 **Vercel limits:**
 - 100 deployments/day across all projects
 - Check `vercel ls --cwd [Game]` before debugging
-- One deploy per game per session
+- Finish all edits to a game before pushing it — since push now triggers an immediate deploy, avoid pushing/redeploying the same game repeatedly in one session
 
 **Shared components:**
 - Edit canonical in `packages/shared/components/`, then copy to all 12 games

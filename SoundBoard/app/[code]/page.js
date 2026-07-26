@@ -6,6 +6,8 @@ import { supabase } from "../../lib/supabase"
 import Lobby from "../../components/Lobby"
 import Footer, { FOOTER_H } from "../../components/Footer"
 import FooterButton from "../../components/FooterButton"
+import IdleGateModal from "../../components/IdleGateModal"
+import { useIdleGate } from "../../lib/useIdleGate"
 
 const BG         = "#25AB61"
 const DARK       = "#209467"
@@ -77,6 +79,7 @@ export default function LobbyPage({ params }) {
   const [winScore, setWinScore] = useState(16)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [savedProfile, setSavedProfile] = useState(null)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -122,6 +125,7 @@ export default function LobbyPage({ params }) {
   }, [])
 
   useEffect(() => {
+    if (isIdle) return
     const existing = localStorage.getItem(`sb:${code}:playerId`)
     if (existing) setMyPlayerId(existing)
     loadState()
@@ -135,7 +139,7 @@ export default function LobbyPage({ params }) {
       .subscribe()
     channelRef.current = channel
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
-  }, [code])
+  }, [code, isIdle])
 
   useEffect(() => {
     if (gamePhase !== "lobby" && myPlayerId) router.replace(`/${code}/play`)
@@ -211,6 +215,10 @@ export default function LobbyPage({ params }) {
 
   const canStart = boysTeam.length >= MIN_TEAM && girlsTeam.length >= MIN_TEAM
   const [w1, w2] = splitCode(code)
+
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
 
   return (
     <>

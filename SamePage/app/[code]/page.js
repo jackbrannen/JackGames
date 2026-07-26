@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation"
 import { supabase } from "../../lib/supabase"
 import { FOOTER_H } from "../../components/styles"
 import { RULES } from "../../lib/rules"
+import IdleGateModal from "../../components/IdleGateModal"
+import { useIdleGate } from "../../lib/useIdleGate"
 
 const BG = "#FF85FD"
 const INK = "#3C3022"
@@ -54,6 +56,7 @@ export default function LobbyPage({ params }) {
   const [parentCode, setParentCode] = useState(null)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [savedProfile, setSavedProfile] = useState(null)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -146,6 +149,7 @@ export default function LobbyPage({ params }) {
   }, [parentCode, gameExists, phase, myPlayerId, code])
 
   useEffect(() => {
+    if (isIdle) return
     function loadState() { loadGame(); refreshPlayers() }
     loadState()
     const poll = setInterval(loadState, 60000)
@@ -158,7 +162,7 @@ export default function LobbyPage({ params }) {
       .subscribe()
     channelRef.current = channel
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
-  }, [code])
+  }, [code, isIdle])
 
   useEffect(() => {
     if (phase && phase !== "lobby" && myPlayerId) router.replace(`/${code}/play`)
@@ -227,6 +231,9 @@ export default function LobbyPage({ params }) {
     else { await navigator.clipboard.writeText(url); alert("Link copied!") }
   }
 
+  if (isIdle) {
+    return <IdleGateModal colors={{ dark: DARK, wl: WARM }} />
+  }
   if (gameExists === null) {
     return <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: INK_MUTED, fontSize: 18, fontWeight: 700 }}>Loading…</p></div>
   }

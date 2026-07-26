@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation"
 import Footer, { FOOTER_H } from "../../components/Footer"
 import FooterButton from "../../components/FooterButton"
 import RandomIdeas from "../../components/RandomIdeas"
+import IdleGateModal from "../../components/IdleGateModal"
+import { useIdleGate } from "../../lib/useIdleGate"
 
 const T1         = "#3378FF"  // page background blue
 const WARM_LIGHT = "#3399FF"
@@ -272,6 +274,7 @@ export default function Lobby({ params }) {
   const [joinGender, setJoinGender] = useState(null) // 1 = Boy, 2 = Girl
   const [joinError, setJoinError] = useState("")
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [myClues, setMyClues] = useState([])
   const [showSettingsPanel, setShowSettingsPanel] = useState(false)
   const [joining, setJoining] = useState(false)
@@ -421,6 +424,7 @@ export default function Lobby({ params }) {
   }, [])
 
   useEffect(() => {
+    if (isIdle) return
     loadState()
     const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
@@ -451,7 +455,7 @@ export default function Lobby({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)
     }
-  }, [code])
+  }, [code, isIdle])
 
   async function join() {
     if (joining) return
@@ -708,6 +712,9 @@ export default function Lobby({ params }) {
     router.push(`/${code}/play`)
   }
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (gameExists === null) {
     return (
       <div style={{ minHeight: "100dvh", background: T1, display: "flex", alignItems: "center", justifyContent: "center" }}>

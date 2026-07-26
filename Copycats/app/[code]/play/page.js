@@ -16,6 +16,8 @@ import RandomIdeas from "../../../components/RandomIdeas"
 import StatusBar from "../../../components/StatusBar"
 import WaitingList from "../../../components/WaitingList"
 import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT } from "../../../components/styles"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const BG         = "#5C2D8C"
 const YELLOW     = "#FBDF54"
@@ -112,6 +114,7 @@ export default function PlayPage({ params }) {
   const [votes, setVotes] = useState([])
   const [likes, setLikes] = useState([])
   const [myId, setMyId] = useState(null)
+  const isIdle = useIdleGate()
 
   // question writing
   const [myQuestion, setMyQuestion] = useState("")
@@ -136,6 +139,7 @@ export default function PlayPage({ params }) {
   const [bonusMatchName, setBonusMatchName] = useState(null)
 
   useEffect(() => {
+    if (isIdle) return
     const id = localStorage.getItem(`cc:${code}:playerId`)
     if (id) setMyId(id)
     loadState()
@@ -195,7 +199,7 @@ export default function PlayPage({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)
     }
-  }, [code])
+  }, [code, isIdle])
 
 
   useEffect(() => {
@@ -301,6 +305,9 @@ export default function PlayPage({ params }) {
   const [pokeJustSent, setPokeJustSent] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (!game || !myId) {
     return (
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>

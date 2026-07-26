@@ -13,6 +13,8 @@ import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT
 import FooterButton from "../../../components/FooterButton"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
@@ -46,6 +48,7 @@ export default function Play({ params }) {
   const [game, setGame] = useState(null)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
 
   // Fetched from API — never stored in DB-accessible state
   const [myWord, setMyWord] = useState(null)
@@ -113,6 +116,7 @@ export default function Play({ params }) {
   }
 
   useEffect(() => {
+    if (isIdle) return
     supabase.from("game_instructions").select("body").eq("game_key", "mrwhite").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     loadState()
@@ -161,7 +165,7 @@ export default function Play({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)
     }
-  }, [code])
+  }, [code, isIdle])
 
 
   // Fetch player info from API on phase change
@@ -273,6 +277,9 @@ export default function Play({ params }) {
     await rpc("mw_next_round", { p_code: code, p_player_id: myPlayerId })
   }
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (!game || !myWord) {
     return (
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>

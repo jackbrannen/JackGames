@@ -18,6 +18,8 @@ import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import useTypingPresence from "../../../lib/useTypingPresence"
 import useOnlinePresence from "../../../lib/useOnlinePresence"
 import EndGame from "../../../components/EndGame"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const BG = "#307977"
 const ACCENT = "#F5E8D8"
@@ -392,6 +394,7 @@ export default function Play({ params }) {
   const [votes, setVotes] = useState([])
   const [likes, setLikes] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
 
   const [submittingDrawing, setSubmittingDrawing] = useState(false)
   const [drawingDirty, setDrawingDirty] = useState(false)
@@ -517,6 +520,7 @@ export default function Play({ params }) {
 
   // Initial load + polling — always runs
   useEffect(() => {
+    if (isIdle) return
     let cleanup
     ;(async () => {
         supabase.from("game_instructions").select("body").eq("game_key", "drawful").single()
@@ -528,11 +532,11 @@ export default function Play({ params }) {
       cleanup = () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility) }
     })()
     return () => cleanup?.()
-  }, [code])
+  }, [code, isIdle])
 
   // Realtime subscriptions — only when game is active
   useEffect(() => {
-    if (!game || game.phase === "finished") return
+    if (isIdle || !game || game.phase === "finished") return
     let cancelled = false
     let channel = null
     let reconnectTimer = null
@@ -575,7 +579,7 @@ export default function Play({ params }) {
       if (reconnectTimer) clearTimeout(reconnectTimer)
       supabase.removeChannel(channel)
     }
-  }, [code, game?.phase])
+  }, [code, game?.phase, isIdle])
 
   // Reset per-round state when drawing index changes
   useEffect(() => {
@@ -870,6 +874,9 @@ export default function Play({ params }) {
 
   // ── Loading ───────────────────────────────────────────────────────────────
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (!game || !me) {
     console.log("Loading screen:", { game: !!game, me: !!me, myPlayerId, playersLength: players.length })
     return (

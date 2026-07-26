@@ -18,6 +18,8 @@ import useTypingPresence from "../../../lib/useTypingPresence"
 import useOnlinePresence from "../../../lib/useOnlinePresence"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import { playYourTurn } from "../../../lib/sounds"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const BG          = "#004F45"
 const DARK        = "#003638"   // H=182° (+10°), B=22%
@@ -377,6 +379,7 @@ export default function Play({ params }) {
   const code = useMemo(() => params.code.toUpperCase(), [params.code])
 
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [game, setGame] = useState(null)
   const [players, setPlayers] = useState([])
   const [allWords, setAllWords] = useState([])
@@ -604,6 +607,7 @@ export default function Play({ params }) {
   }
 
   useEffect(() => {
+    if (isIdle) return
     loadState()
     const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
@@ -653,7 +657,7 @@ export default function Play({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)
     }
-  }, [code])
+  }, [code, isIdle])
 
 
   // Seed ranking items when assigned words arrive
@@ -771,6 +775,9 @@ export default function Play({ params }) {
     return () => clearTimeout(timer)
   }, [game?.phase, game?.round_phase, game?.guessing_index, code, myPlayerId])
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (!game) {
     return (
       <>
@@ -1287,10 +1294,12 @@ export default function Play({ params }) {
           p_code: code,
           p_order: next.map(item => item.id),
         })
-        // Write move to DB so other players see the highlight via Realtime postgres_changes
+        // Write move to DB so other players see the highlight via Realtime postgres_changes.
+        // No broadcast nudge here: this fires on every drag, and the write
+        // already propagates cheaply via the payload-patched postgres_changes
+        // handler. A broadcast nudge would still force every peer through
+        // the full loadState() reload the broadcast handler falls back to.
         await supabase.from("ftw_games").update({ last_move: move }).eq("code", code)
-        // Gossip: broadcast to peers so they see drag instantly
-        syncChRef.current?.send({ type: "broadcast", event: "sync" })
         pendingMovesRef.current--
       }
 

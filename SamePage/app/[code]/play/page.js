@@ -13,6 +13,8 @@ import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import useTypingPresence from "../../../lib/useTypingPresence"
 import { RULES } from "../../../lib/rules"
 import { playSubmit, playYourTurn } from "../../../lib/sounds"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const SHRUG = "🤷"
 
@@ -36,6 +38,7 @@ export default function PlayPage({ params }) {
   const [players, setPlayers] = useState([])
   const [answers, setAnswers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [pokes, setPokes] = useState([])
   const [loading, setLoading] = useState(true)
   const [drafts, setDrafts] = useState(["", "", ""])
@@ -96,6 +99,7 @@ export default function PlayPage({ params }) {
   }, [code, router])
 
   useEffect(() => {
+    if (isIdle) return
     loadState(); loadPokes()
     const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
@@ -144,7 +148,7 @@ export default function PlayPage({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(ch)
     }
-  }, [code])
+  }, [code, isIdle])
 
   // Reset drafts each round; dummy games prefill with the letters so a solo
   // tester gets guaranteed matches.
@@ -260,6 +264,9 @@ export default function PlayPage({ params }) {
     setTimeout(() => setPokeCooldown(false), 10000)
   }
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (loading || !game) {
     return <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: INK_MUTED, fontSize: 18, fontWeight: 700 }}>Loading…</p></div>
   }

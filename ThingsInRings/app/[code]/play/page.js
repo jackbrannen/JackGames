@@ -14,6 +14,8 @@ import { useDuplicates } from "../../../lib/useDuplicates"
 import VennDiagram, { ZONE_COLORS, ZONE_NAMES } from "../../../components/VennDiagram"
 import { ZoneChip, textColorFor, wordChipStyle, zoneTitle, ZONE_RINGS, fetchIdeas } from "../../../components/RingHelpers"
 import { TIR_RULES } from "../../../components/rulesText"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const BG = "#C0C9BC"
 const INK = "#2A303C"
@@ -79,6 +81,7 @@ export default function PlayPage({ params }) {
   const [players, setPlayers] = useState([])
   const [cards, setCards] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [selectedCardId, setSelectedCardId] = useState(null)
@@ -181,6 +184,7 @@ export default function PlayPage({ params }) {
   }, [code, router])
 
   useEffect(() => {
+    if (isIdle) return
     loadState()
     const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
@@ -227,7 +231,7 @@ export default function PlayPage({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)
     }
-  }, [code])
+  }, [code, isIdle])
 
   const me = players.find(p => p.id === myPlayerId)
   const isKnower = !!me?.is_knower
@@ -276,7 +280,11 @@ export default function PlayPage({ params }) {
   // show them live, not just after the guess is submitted.
   useEffect(() => {
     if (!isMyTurn || !myPlayerId || game?.pending_card_id) return
-    supabase.rpc("tir_set_active_selection", { p_code: code, p_player_id: myPlayerId, p_card_id: selectedCardId, p_zone: inspectZone }).then(() => nudge())
+    // No nudge() here: this fires on every tap, and the write already
+    // propagates cheaply via the payload-patched postgres_changes handler.
+    // A broadcast nudge would still force every peer through the full
+    // loadState() reload the broadcast handler falls back to.
+    supabase.rpc("tir_set_active_selection", { p_code: code, p_player_id: myPlayerId, p_card_id: selectedCardId, p_zone: inspectZone })
   }, [selectedCardId, inspectZone, isMyTurn, myPlayerId, game?.pending_card_id])
 
   const liveCardId = isMyTurn ? selectedCardId : (game?.active_selected_card_id ?? null)
@@ -572,6 +580,9 @@ export default function PlayPage({ params }) {
     )
   }
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (loading || !game) {
     return <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: INK_MUTED, fontSize: 18, fontWeight: 700 }}>Loading…</p></div>
   }

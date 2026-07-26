@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation"
 import { supabase } from "../../lib/supabase"
 import Footer, { FOOTER_H } from "../../components/Footer"
 import FooterButton from "../../components/FooterButton"
+import IdleGateModal from "../../components/IdleGateModal"
+import { useIdleGate } from "../../lib/useIdleGate"
 
 const BG = "#B7DAEE"
 const INK = "#15314A"
@@ -59,6 +61,7 @@ export default function Lobby({ params }) {
   const [isDummy, setIsDummy] = useState(false)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [savedProfile, setSavedProfile] = useState(null)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -152,6 +155,7 @@ export default function Lobby({ params }) {
   }, [replayOf, gameExists, gamePhase, myPlayerId, code])
 
   useEffect(() => {
+    if (isIdle) return
     function loadState() { loadGame(); refreshPlayers() }
     loadState()
     const poll = setInterval(loadState, 60000)
@@ -164,7 +168,7 @@ export default function Lobby({ params }) {
       .subscribe()
     channelRef.current = channel
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
-  }, [code])
+  }, [code, isIdle])
 
   useEffect(() => {
     if (gamePhase !== "lobby" && gamePhase) router.replace(`/${code}/play`)
@@ -204,6 +208,9 @@ export default function Lobby({ params }) {
     router.push(`/${code}/play`)
   }
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (gameExists === null) {
     return <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "rgba(21,49,74,0.4)", fontSize: 18, fontWeight: 700 }}>Loading…</p></div>
   }

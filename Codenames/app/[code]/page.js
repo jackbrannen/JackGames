@@ -6,6 +6,8 @@ import { supabase } from "../../lib/supabase"
 import { pick25Words } from "../../lib/words"
 import Footer, { FOOTER_H } from "../../components/Footer"
 import FooterButton from "../../components/FooterButton"
+import IdleGateModal from "../../components/IdleGateModal"
+import { useIdleGate } from "../../lib/useIdleGate"
 
 const BG = "#C0B298"
 const TAN = "#C4924A"
@@ -91,6 +93,7 @@ export default function Lobby({ params }) {
   const [lastUsedWords, setLastUsedWords] = useState([])
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [savedProfile, setSavedProfile] = useState(null)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -166,6 +169,7 @@ export default function Lobby({ params }) {
   }
 
   useEffect(() => {
+    if (isIdle) return
     loadState()
     const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
@@ -176,7 +180,7 @@ export default function Lobby({ params }) {
       .subscribe()
 
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
-  }, [code])
+  }, [code, isIdle])
 
   useEffect(() => {
     if (gamePhase === "play") router.replace(`/${code}/play`)
@@ -296,6 +300,9 @@ export default function Lobby({ params }) {
   const otherTeamSize = me?.team === "red" ? blueTeam.length : me?.team === "blue" ? redTeam.length : 0
   const canReady = !!me?.team && !!myTeamCluegiver && myTeamSize >= 2 && otherTeamSize >= 2
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (gameExists === null) {
     return (
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>

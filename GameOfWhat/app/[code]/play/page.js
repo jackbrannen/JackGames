@@ -20,6 +20,8 @@ import StatusBar from "../../../components/StatusBar"
 import Results from "../../../components/Results"
 import EndGame from "../../../components/EndGame"
 import { playYourTurn } from "../../../lib/sounds"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const BG = "#6B1A44"
 const DARK = "#4A123B"  // cool-dark: headers, top bars
@@ -54,6 +56,7 @@ export default function Play({ params }) {
   const code = useMemo(() => params.code.toUpperCase(), [params.code])
 
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [game, setGame] = useState(null)
   const [players, setPlayers] = useState([])
   const [currentQuestion, setCurrentQuestion] = useState(null)
@@ -219,6 +222,7 @@ export default function Play({ params }) {
   }
 
   useEffect(() => {
+    if (isIdle) return
     loadState()
     const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
@@ -268,7 +272,7 @@ export default function Play({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)
     }
-  }, [code])
+  }, [code, isIdle])
 
   const currentQuestionId = currentQuestion?.id
   useEffect(() => {
@@ -445,6 +449,9 @@ export default function Play({ params }) {
   const nudgeQuestion = useSubmitNudge(roundQuestion, false)
   const bonusMatchNames = useBonusMatch(myAnswerRecordEarly?.text, myPlayerId, answers, players)
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (!game) {
     return (
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>

@@ -6,6 +6,8 @@ import { supabase } from "../../lib/supabase"
 import Lobby from "../../components/Lobby"
 import Footer, { FOOTER_H } from "../../components/Footer"
 import FooterButton from "../../components/FooterButton"
+import IdleGateModal from "../../components/IdleGateModal"
+import { useIdleGate } from "../../lib/useIdleGate"
 
 const BG = "#307977"
 const ACCENT = "#F5E8D8"
@@ -65,6 +67,7 @@ export default function LobbyPage({ params }) {
   const [game, setGame] = useState(null)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [savedProfile, setSavedProfile] = useState(null)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -102,6 +105,7 @@ export default function LobbyPage({ params }) {
   }, [])
 
   useEffect(() => {
+    if (isIdle) return
     supabase.from("game_instructions").select("body").eq("game_key", "drawful").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     loadState()
@@ -113,7 +117,7 @@ export default function LobbyPage({ params }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "drawful_games", filter: `code=eq.${code}` }, loadState)
       .subscribe()
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
-  }, [code])
+  }, [code, isIdle])
 
   useEffect(() => {
     if (game?.phase === "drawing" && me) router.replace(`/${code}/play`)
@@ -222,6 +226,9 @@ export default function LobbyPage({ params }) {
   const canStart = humanPlayers.length >= MIN_PLAYERS
   const [w1, w2] = splitCode(code)
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (game && game.phase !== "lobby" && !me) {
     return (
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center" }}>

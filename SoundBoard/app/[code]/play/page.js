@@ -13,6 +13,8 @@ import RandomIdeas from "../../../components/RandomIdeas"
 import TextEntry from "../../../components/TextEntry"
 import { playCountdownTick, playCountdownGo, playSoundsEnd } from "../../../lib/sounds"
 import { useDuplicates } from "../../../lib/useDuplicates"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const RED = "#25AB61"
 const DARK = "#209467"
@@ -136,6 +138,7 @@ export default function Play({ params }) {
   const [players, setPlayers] = useState([])
   const [words, setWords] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [msLeft, setMsLeft] = useState(0)
   const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
@@ -207,6 +210,7 @@ export default function Play({ params }) {
   }
 
   useEffect(() => {
+    if (isIdle) return
     const existing = localStorage.getItem(`sb:${code}:playerId`)
     if (existing) setMyPlayerId(existing)
     loadState()
@@ -265,7 +269,7 @@ export default function Play({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)
     }
-  }, [code])
+  }, [code, isIdle])
 
   useEffect(() => {
     if (game && game.phase === "lobby") router.replace(`/${code}`)
@@ -376,6 +380,9 @@ export default function Play({ params }) {
     prevSlotsRef.current = boardSlots
   }, [slotsKey, game?.phase])
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (!game || !myPlayerId) {
     return <div style={{ minHeight: "100dvh", background: RED, display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "rgba(255,255,255,0.6)", fontSize: 18, fontWeight: 700 }}>Loading…</p></div>
   }

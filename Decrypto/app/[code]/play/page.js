@@ -7,6 +7,8 @@ import Footer, { FOOTER_H } from "../../../components/Footer"
 import FooterButton from "../../../components/FooterButton"
 import Notifications from "../../../components/Notifications"
 import Menu from "../../../components/Menu"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const RULES = [
   ["Goal", "Land 2 Interceptions to win. Rack up 2 Miscommunications and you lose. If nobody's decided after 8 rounds, most Interceptions wins."],
@@ -63,6 +65,7 @@ export default function PlayPage({ params }) {
   const [rounds, setRounds] = useState([])
   const [guesses, setGuesses] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [pokes, setPokes] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -158,6 +161,7 @@ export default function PlayPage({ params }) {
   }, [code, router])
 
   useEffect(() => {
+    if (isIdle) return
     loadState(); loadPokes()
     const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
@@ -210,7 +214,7 @@ export default function PlayPage({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(ch)
     }
-  }, [code])
+  }, [code, isIdle])
 
   useEffect(() => {
     if (game?.phase === "lobby") router.replace(`/${code}`)
@@ -273,6 +277,9 @@ export default function PlayPage({ params }) {
     return () => { document.removeEventListener("pointermove", onMove); document.removeEventListener("pointerup", onUp) }
   }, [])
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (loading || !game) {
     return <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "rgba(21,49,74,0.4)", fontSize: 18, fontWeight: 700 }}>Loading…</p></div>
   }
@@ -401,8 +408,12 @@ export default function PlayPage({ params }) {
 
   function writePending(next) {
     setSlots(next)
+    // No nudge() here: this fires on every drag, and the write already
+    // propagates cheaply via the payload-patched postgres_changes handler.
+    // A broadcast nudge would still force every peer through the full
+    // loadState() reload the broadcast handler falls back to.
     persistQueueRef.current = persistQueueRef.current.then(() =>
-      supabase.rpc("dc_set_pending_guess", { p_code: code, p_team: myTeam, p_guess: next.map(x => x ?? 0) }).then(nudge)
+      supabase.rpc("dc_set_pending_guess", { p_code: code, p_team: myTeam, p_guess: next.map(x => x ?? 0) })
     )
   }
   function startDrag(e, value, source, slotIndex) {

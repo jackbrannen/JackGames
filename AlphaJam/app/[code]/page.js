@@ -7,6 +7,8 @@ import { BG, DARK, MID, WL, YELLOW, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, STYL
 import Footer, { FOOTER_H } from "../../components/Footer"
 import FooterButton from "../../components/FooterButton"
 import Menu from "../../components/Menu"
+import IdleGateModal from "../../components/IdleGateModal"
+import { useIdleGate } from "../../lib/useIdleGate"
 
 const TEXT = "white"
 // 2 players → a single best-of-5 head-to-head (first to 3). 3+ → round-robin tournament.
@@ -58,6 +60,7 @@ export default function LobbyPage({ params }) {
   const [replayOf, setReplayOf] = useState(null)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [savedProfile, setSavedProfile] = useState(null)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -103,6 +106,7 @@ export default function LobbyPage({ params }) {
   }, [])
 
   useEffect(() => {
+    if (isIdle) return
     const existing = localStorage.getItem(`alphajam:${code}:playerId`)
     if (existing) setMyPlayerId(existing)
     loadState()
@@ -114,7 +118,7 @@ export default function LobbyPage({ params }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "alphajam_games", filter: `code=eq.${code}` }, loadState)
       .subscribe()
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
-  }, [code])
+  }, [code, isIdle])
 
   useEffect(() => {
     if (gamePhase !== "lobby" && myPlayerId) router.replace(`/${code}/play`)
@@ -233,6 +237,9 @@ export default function LobbyPage({ params }) {
   const canStart = !!me && count >= MIN_PLAYERS
   const [w1, w2] = splitCode(code)
 
+  if (isIdle) {
+    return <IdleGateModal colors={{ dark: DARK, wl: WL }} />
+  }
   if (gameExists === false) {
     return (
       <div style={{ background: BG, color: TEXT, minHeight: "100vh", padding: "32px 16px", fontFamily: "-apple-system" }}>

@@ -8,6 +8,8 @@ import FooterButton from "../../../components/FooterButton"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import WaitingList from "../../../components/WaitingList"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 import { RULES } from "../../../lib/rules"
 
 const BG = "#E8553A"
@@ -65,6 +67,7 @@ export default function PlayPage({ params }) {
   const [submitting, setSubmitting] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  const isIdle = useIdleGate()
   const [dragValue, setDragValue] = useState(null)
   const [dragPos, setDragPos] = useState(null)
   const [swapAnim, setSwapAnim] = useState(null)
@@ -176,6 +179,7 @@ export default function PlayPage({ params }) {
   }, [code, router])
 
   useEffect(() => {
+    if (isIdle) return
     loadState(); loadPokes()
     const poll = setInterval(loadState, 60000)
     function handleVisibility() { if (!document.hidden) loadState() }
@@ -228,7 +232,7 @@ export default function PlayPage({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(ch)
     }
-  }, [code])
+  }, [code, isIdle])
 
   // Reset the local board whenever the active board changes (phase / which matcher / size).
   const boardKey = `${phase}|${guessIndex}|${N}`
@@ -273,8 +277,12 @@ export default function PlayPage({ params }) {
   function persist(next) {
     setSlots(next)
     if (synced) {
+      // No nudge() here: this fires on every drag, and the write already
+      // propagates cheaply via the payload-patched postgres_changes handler.
+      // A broadcast nudge would still force every peer through the full
+      // loadState() reload the broadcast handler falls back to.
       persistQueueRef.current = persistQueueRef.current.then(() =>
-        supabase.rpc("tc_set_pending", { p_code: code, p_pending: next.map(x => x ?? "") }).then(nudge)
+        supabase.rpc("tc_set_pending", { p_code: code, p_pending: next.map(x => x ?? "") })
       )
     }
   }
@@ -352,6 +360,9 @@ export default function PlayPage({ params }) {
     setTimeout(() => setPokeCooldown(false), 10000)
   }
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (loading || !g) {
     return <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "rgba(255,241,234,0.85)", fontSize: 18, fontWeight: 700 }}>Loading…</p></div>
   }

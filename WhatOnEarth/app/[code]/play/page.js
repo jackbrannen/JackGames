@@ -11,6 +11,8 @@ import Notifications from "../../../components/Notifications"
 import StatusBar from "../../../components/StatusBar"
 import EndGame from "../../../components/EndGame"
 import { playYourTurn, playSubmit } from "../../../lib/sounds"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const TEXT = "white"
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
@@ -23,6 +25,7 @@ export default function PlayPage({ params }) {
   const [game, setGame] = useState(null)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [instructions, setInstructions] = useState("")
   const [menuOpen, setMenuOpen] = useState(false)
   const [pokes, setPokes] = useState([])
@@ -125,6 +128,7 @@ export default function PlayPage({ params }) {
   }, [code, router])
 
   useEffect(() => {
+    if (isIdle) return
     supabase.from("game_instructions").select("body").eq("game_key", "whatonearth").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     loadState()
@@ -174,7 +178,7 @@ export default function PlayPage({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)
     }
-  }, [code])
+  }, [code, isIdle])
 
   // Reset loading states on phase change
   useEffect(() => {
@@ -516,6 +520,9 @@ export default function PlayPage({ params }) {
     }
   }
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (!game || !me) {
     return (
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>

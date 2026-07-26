@@ -6,6 +6,8 @@ import { supabase } from "../../lib/supabase"
 import Lobby from "../../components/Lobby"
 import Footer, { FOOTER_H } from "../../components/Footer"
 import FooterButton from "../../components/FooterButton"
+import IdleGateModal from "../../components/IdleGateModal"
+import { useIdleGate } from "../../lib/useIdleGate"
 
 const BG         = "#004F45"
 const DARK       = "#003638"
@@ -65,6 +67,7 @@ export default function LobbyPage({ params }) {
   const [replayOf, setReplayOf] = useState(null)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [savedProfile, setSavedProfile] = useState(null)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -114,6 +117,7 @@ export default function LobbyPage({ params }) {
   }, [])
 
   useEffect(() => {
+    if (isIdle) return
     const existing = localStorage.getItem(`ftw:${code}:playerId`)
     if (existing) setMyPlayerId(existing)
     supabase.from("game_instructions").select("body").eq("game_key", "firsttoworst").single()
@@ -127,7 +131,7 @@ export default function LobbyPage({ params }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "ftw_games", filter: `code=eq.${code}` }, loadState)
       .subscribe()
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
-  }, [code])
+  }, [code, isIdle])
 
   useEffect(() => {
     if (gamePhase !== "lobby" && myPlayerId) router.replace(`/${code}/play`)
@@ -244,6 +248,9 @@ export default function LobbyPage({ params }) {
   const canStart = !!me && count >= MIN_PLAYERS && count <= MAX_PLAYERS
   const [w1, w2] = splitCode(code)
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (gamePhase !== "lobby" && !myPlayerId) {
     return (
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center" }}>

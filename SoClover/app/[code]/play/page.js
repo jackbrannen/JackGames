@@ -16,6 +16,8 @@ import Notifications from "../../../components/Notifications"
 import CARDS from "../../../lib/cards_data.json"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import { SLOT_NAMES, LEAF_NAMES, rotateCW } from "../../../lib/clover.js"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1)
 
@@ -404,6 +406,7 @@ export default function PlayPage({ params }) {
   const [players, setPlayers]       = useState([])
   const [boards, setBoards]         = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [loading, setLoading]       = useState(true)
 
   const [localSlots, setLocalSlots] = useState({ top: null, right: null, bottom: null, left: null })
@@ -715,6 +718,7 @@ export default function PlayPage({ params }) {
   }, [JSON.stringify(currentBoard?.guess_slots), currentBoard?.player_id, myPlayerId, game?.phase, game?.fifth_card_enabled])
 
   useEffect(() => {
+    if (isIdle) return
     const pid = localStorage.getItem(`soclover:${code}:playerId`)
     if (pid) setMyPlayerId(pid)
     loadState()
@@ -778,7 +782,7 @@ export default function PlayPage({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(ch)
     }
-  }, [code, loadState, myPlayerId])
+  }, [code, loadState, myPlayerId, isIdle])
 
   useEffect(() => {
     function onMove(e) {
@@ -832,9 +836,14 @@ export default function PlayPage({ params }) {
   function persistBoard(patch) {
     if (!currentBoard) return
     const boardId = currentBoard.id
+    // No nudgeSync() on success: this fires on every drag/rotate, and the
+    // write already propagates cheaply via the payload-patched
+    // postgres_changes handler. A broadcast nudge would still force every
+    // peer through the full loadState() reload the broadcast handler falls
+    // back to. Still resync on failure, since a dropped write needs it.
     persistQueueRef.current = persistQueueRef.current.then(() =>
       supabase.from("soclover_boards").update(patch).eq("id", boardId)
-        .then(({ error }) => { if (error) { console.error("[soclover] board write failed", error); loadState() } else nudgeSync() })
+        .then(({ error }) => { if (error) { console.error("[soclover] board write failed", error); loadState() } })
     )
   }
 
@@ -1137,6 +1146,9 @@ export default function PlayPage({ params }) {
   }
 
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (loading) {
     return (
       <>

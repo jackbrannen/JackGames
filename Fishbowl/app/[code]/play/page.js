@@ -15,6 +15,8 @@ import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import { playYourTurn } from "../../../lib/sounds"
 import EndGame from "../../../components/EndGame"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const T1         = "#3378FF"  // page background blue
 const WARM_LIGHT = "#3399FF"
@@ -95,6 +97,7 @@ export default function Play({ params }) {
   const router = useRouter()
   const code = useMemo(() => params.code.toUpperCase(), [params.code])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [game, setGame] = useState(null)
   const [playAgainError, setPlayAgainError] = useState(null)
   const [players, setPlayers] = useState([])
@@ -241,6 +244,7 @@ export default function Play({ params }) {
   }
 
   useEffect(() => {
+    if (isIdle) return
     loadState()
     // Short poll as a fallback in case a realtime event is missed.
     const poll = setInterval(loadState, 60000)
@@ -293,7 +297,7 @@ export default function Play({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)
     }
-  }, [code])
+  }, [code, isIdle])
 
   // Redirect everyone back to lobby when a Play Again reset happens (detected via poll)
   useEffect(() => {
@@ -448,6 +452,9 @@ export default function Play({ params }) {
     router.replace(`/${data}`)
   }
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (!game) {
     return (
       <>

@@ -7,6 +7,8 @@ import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import { WB_RULES } from "../../../components/rulesText"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const BG = "#FEE471"
 const INK = "#221A12"
@@ -106,6 +108,7 @@ export default function PlayPage({ params }) {
   const [game, setGame] = useState(null)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [loading, setLoading] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -142,6 +145,7 @@ export default function PlayPage({ params }) {
   }, [code, router])
 
   useEffect(() => {
+    if (isIdle) return
     let cancelled = false
     let channel = null
     let reconnectTimer = null
@@ -190,7 +194,7 @@ export default function PlayPage({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)
     }
-  }, [code])
+  }, [code, isIdle])
 
   // Countdown ticker for cards_visible_at
   useEffect(() => {
@@ -281,6 +285,9 @@ export default function PlayPage({ params }) {
     )
   }
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (loading || !game) {
     return <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: INK_MUTED, fontSize: 18, fontWeight: 700 }}>Loading…</p></div>
   }

@@ -14,6 +14,8 @@ import TextEntry from "../../../components/TextEntry"
 import RandomIdeas from "../../../components/RandomIdeas"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const BG = "#2B0F6B"
 const YELLOW = "#FBDF54"
@@ -425,6 +427,7 @@ export default function Play({ params }) {
   const [players, setPlayers] = useState([])
   const [steps, setSteps] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
 
   // Writing phase
   const [sentence, setSentence] = useState("")
@@ -528,6 +531,7 @@ export default function Play({ params }) {
   }, [code])
 
   useEffect(() => {
+    if (isIdle) return
     let cancelled = false
     let channel = null
     let reconnectTimer = null
@@ -578,7 +582,7 @@ export default function Play({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)
     }
-  }, [code, myPlayerId])
+  }, [code, myPlayerId, isIdle])
 
   // ── Derived state (must come before any useEffect that references these) ──
 
@@ -970,6 +974,9 @@ export default function Play({ params }) {
 
   // ── Loading ───────────────────────────────────────────────────────────────
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (!game || !me) {
     return (
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>

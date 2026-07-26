@@ -9,6 +9,8 @@ import TextEntry from "../../components/TextEntry"
 import VennDiagram from "../../components/VennDiagram"
 import { ZoneChip, textColorFor, ZONE_RINGS, fetchIdeas } from "../../components/RingHelpers"
 import { TIR_RULES } from "../../components/rulesText"
+import IdleGateModal from "../../components/IdleGateModal"
+import { useIdleGate } from "../../lib/useIdleGate"
 
 const BG = "#C0C9BC"
 const INK = "#2A303C"
@@ -63,6 +65,7 @@ export default function LobbyPage({ params }) {
   const [players, setPlayers] = useState([])
   const [cards, setCards] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [savedProfile, setSavedProfile] = useState(null)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -131,6 +134,7 @@ export default function LobbyPage({ params }) {
   }, [code])
 
   useEffect(() => {
+    if (isIdle) return
     function loadState() { loadGame(); refreshPlayers(); refreshCards() }
     loadState()
     const poll = setInterval(loadState, 60000)
@@ -175,7 +179,7 @@ export default function LobbyPage({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)
     }
-  }, [code])
+  }, [code, isIdle])
 
   useEffect(() => {
     if (phase && phase !== "lobby" && myPlayerId) router.replace(`/${code}/play`)
@@ -359,6 +363,9 @@ export default function LobbyPage({ params }) {
     )
   }
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (gameExists === null) {
     return <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: INK_MUTED, fontSize: 18, fontWeight: 700 }}>Loading…</p></div>
   }

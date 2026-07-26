@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation"
 import Footer, { FOOTER_H } from "../../components/Footer"
 import FooterButton from "../../components/FooterButton"
 import RandomIdeas from "../../components/RandomIdeas"
+import IdleGateModal from "../../components/IdleGateModal"
+import { useIdleGate } from "../../lib/useIdleGate"
 
 const PRIMARY = "#974344"
 const DARK    = "#803946"
@@ -185,6 +187,7 @@ export default function Lobby({ params }) {
   const [game, setGame] = useState(null)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [myClues, setMyClues] = useState([])
   const [savedProfile, setSavedProfile] = useState(null)
   const [firstName, setFirstName] = useState("")
@@ -331,6 +334,7 @@ export default function Lobby({ params }) {
   }, [game?.replay_of, game?.phase, myPlayerId, code])
 
   useEffect(() => {
+    if (isIdle) return
     async function loadState() {
       await loadGame()
       await refreshPlayers()
@@ -347,7 +351,7 @@ export default function Lobby({ params }) {
       .subscribe()
 
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
-  }, [code])
+  }, [code, isIdle])
 
   const me = players.find(p => p.id === myPlayerId)
   const settings = normalizeSettings(game)
@@ -427,6 +431,9 @@ export default function Lobby({ params }) {
     router.push(`/${code}/play`)
   }
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (gameExists === null) {
     return (
       <div style={{ minHeight: "100dvh", background: PRIMARY, display: "flex", alignItems: "center", justifyContent: "center" }}>

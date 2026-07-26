@@ -14,6 +14,8 @@ import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import EndGame from "../../../components/EndGame"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const BG = "#C0B298"
 const TAN = "#C4924A"
@@ -89,6 +91,7 @@ export default function Play({ params }) {
   const [players, setPlayers] = useState([])
   const [cards, setCards] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [clueWord, setClueWord] = useState("")
   const [clueNum, setClueNum] = useState(null)
   const [submittingClue, setSubmittingClue] = useState(false)
@@ -153,6 +156,7 @@ export default function Play({ params }) {
   }, [code])
 
   useEffect(() => {
+    if (isIdle) return
     supabase.from("game_instructions").select("body").eq("game_key", "codenames").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     loadState()
@@ -205,7 +209,7 @@ export default function Play({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)
     }
-  }, [code])
+  }, [code, isIdle])
 
   useEffect(() => {
     if (game?.phase === "lobby") router.replace(`/${code}`)
@@ -282,6 +286,9 @@ export default function Play({ params }) {
   }
 
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (!game) {
     return (
       <>

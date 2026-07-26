@@ -8,6 +8,8 @@ import Footer, { FOOTER_H } from "../../../components/Footer"
 import FooterButton from "../../../components/FooterButton"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const TEXT = "white"
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
@@ -19,6 +21,7 @@ export default function PlayPage({ params }) {
   const [gameState, setGameState] = useState(null)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [pokes, setPokes] = useState([])
   const [countdownRemaining, setCountdownRemaining] = useState(null)
@@ -115,6 +118,7 @@ export default function PlayPage({ params }) {
   }, [gameState?.phase, code, router])
 
   useEffect(() => {
+    if (isIdle) return
     loadState()
     loadPokes()
     const poll = setInterval(loadState, 60000)
@@ -128,7 +132,7 @@ export default function PlayPage({ params }) {
       .subscribe()
     syncChRef.current = channel
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
-  }, [code])
+  }, [code, isIdle])
 
   // Reset loading states when phase changes
   useEffect(() => {
@@ -322,6 +326,9 @@ export default function PlayPage({ params }) {
     await supabase.from("pokes").delete().eq("id", pokeId)
   }
 
+  if (isIdle) {
+    return <IdleGateModal colors={{ dark: DARK, wl: WL }} />
+  }
   if (!gameState) {
     return (
       <div style={{ background: BG, color: TEXT, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>

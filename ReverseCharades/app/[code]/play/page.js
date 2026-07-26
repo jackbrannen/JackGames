@@ -14,6 +14,8 @@ import FooterButton from "../../../components/FooterButton"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import EndGame from "../../../components/EndGame"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const PRIMARY = "#974344"
 const DARK    = "#803946"
@@ -191,6 +193,7 @@ export default function Play({ params }) {
   const router = useRouter()
   const code = useMemo(() => params.code.toUpperCase(), [params.code])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [game, setGame] = useState(null)
   const [players, setPlayers] = useState([])
   const [currentClue, setCurrentClue] = useState(null)
@@ -282,6 +285,7 @@ export default function Play({ params }) {
   }, [game?.phase])
 
   useEffect(() => {
+    if (isIdle) return
     supabase.from("game_instructions").select("body").eq("game_key", "reversecharades").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     loadState()
@@ -333,7 +337,7 @@ export default function Play({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)
     }
-  }, [code])
+  }, [code, isIdle])
 
   useEffect(() => {
     if (game?.phase === "lobby") router.replace(`/${code}`)
@@ -563,6 +567,9 @@ export default function Play({ params }) {
   }
 
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (!game) {
     return (
       <>

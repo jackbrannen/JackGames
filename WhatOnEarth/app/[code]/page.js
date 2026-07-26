@@ -8,6 +8,8 @@ import Lobby from "../../components/Lobby"
 import Footer from "../../components/Footer"
 import FooterButton from "../../components/FooterButton"
 import Menu from "../../components/Menu"
+import IdleGateModal from "../../components/IdleGateModal"
+import { useIdleGate } from "../../lib/useIdleGate"
 import { BG, DARK, MID, WL, YELLOW, FOOTER_H } from "../../components/styles"
 
 const TEXT = "white"
@@ -63,6 +65,7 @@ export default function LobbyPage({ params }) {
   const [timerDuration, setTimerDuration] = useState(30)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
   const [savedProfile, setSavedProfile] = useState(null)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -110,6 +113,7 @@ export default function LobbyPage({ params }) {
   }, [])
 
   useEffect(() => {
+    if (isIdle) return
     const existing = localStorage.getItem(`whatonearth:${code}:playerId`)
     if (existing) setMyPlayerId(existing)
     supabase.from("game_instructions").select("body").eq("game_key", "whatonearth").single()
@@ -123,7 +127,7 @@ export default function LobbyPage({ params }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "woe_games", filter: `code=eq.${code}` }, loadState)
       .subscribe()
     return () => { clearInterval(poll); document.removeEventListener("visibilitychange", handleVisibility); supabase.removeChannel(channel) }
-  }, [code])
+  }, [code, isIdle])
 
   useEffect(() => {
     if (gamePhase !== "lobby" && myPlayerId) router.replace(`/${code}/play`)
@@ -255,6 +259,9 @@ export default function LobbyPage({ params }) {
 
   const [codeLeft, codeRight] = splitCode(code)
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (gameExists === false) {
     return (
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>

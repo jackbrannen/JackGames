@@ -14,6 +14,8 @@ import TextEntry from "../../../components/TextEntry"
 import RandomIdeas from "../../../components/RandomIdeas"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const BG         = "#0F1923"
 const CARD       = "#1C2B3A"
@@ -146,6 +148,7 @@ export default function Play({ params }) {
   const [game, setGame]                 = useState(null)
   const [players, setPlayers]           = useState([])
   const [myId, setMyId]                 = useState(null)
+  const isIdle = useIdleGate()
   const [selected, setSelected]         = useState([])
   const [target, setTarget]             = useState(null)
   const [acting, setActing]             = useState(false)
@@ -190,6 +193,7 @@ export default function Play({ params }) {
   }
 
   useEffect(() => {
+    if (isIdle) return
     supabase.from("game_instructions").select("body").eq("game_key", "avalon").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     refresh()
@@ -239,7 +243,7 @@ export default function Play({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)
     }
-  }, [code])
+  }, [code, isIdle])
 
   // Redirect to lobby if game resets (Play Again)
   useEffect(() => {
@@ -555,6 +559,9 @@ export default function Play({ params }) {
 
   // ─── loading ──────────────────────────────────────────────────
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (!game || !me) {
     return (
       <>

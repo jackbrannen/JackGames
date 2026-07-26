@@ -13,6 +13,8 @@ import TextEntry from "../../../components/TextEntry"
 import RandomIdeas from "../../../components/RandomIdeas"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
+import IdleGateModal from "../../../components/IdleGateModal"
+import { useIdleGate } from "../../../lib/useIdleGate"
 
 const BG = "#1A3A5C"
 const YELLOW = "#FBDF54"
@@ -528,6 +530,7 @@ export default function Play({ params }) {
   const [players, setPlayers] = useState([])
   const [drawings, setDrawings] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const isIdle = useIdleGate()
 
   const [canvasDirty, setCanvasDirty] = useState(false)
   const [shownIdeas, setShownIdeas] = useState([])
@@ -639,6 +642,7 @@ export default function Play({ params }) {
   }, [code])
 
   useEffect(() => {
+    if (isIdle) return
     supabase.from("game_instructions").select("body").eq("game_key", "exquisitecorpse").single()
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
     loadState()
@@ -688,7 +692,7 @@ export default function Play({ params }) {
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)
     }
-  }, [code])
+  }, [code, isIdle])
 
   // ── Derived state ─────────────────────────────────────────────────────────
 
@@ -862,6 +866,9 @@ export default function Play({ params }) {
 
   // ── Loading ───────────────────────────────────────────────────────────────
 
+  if (isIdle) {
+    return <IdleGateModal colors={POKE_COLORS} />
+  }
   if (!game || !me) {
     return (
       <>

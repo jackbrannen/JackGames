@@ -331,6 +331,14 @@ When each answer has ≤1 voter (e.g. Drawful fake-answer voting):
 - Client: compute `takenAnswerIds`, disable taken options with "taken" label
 - Bot logic: filter out taken answers before picking
 
+### Likes (cosmetic, unlike votes)
+Separate from the scoring vote — a Jackbox-style "like" any voter can drop on submitted answers while voting is live (Copycats, Game of What, Drawful):
+- `{game}_likes` table: `(round/question_id scope, liker_id, liked/answer id)`, unique per (scope, liker, target) so a toggle call inserts or deletes the row
+- RPC `{game}_toggle_like` rejects liking your own answer; never touches score
+- Live tally: fetched/subscribed the same way as votes so counts update in real time for everyone during voting — no "reveal all at once" gating like real votes
+- UI: `Selections` component's `showLikes`/`likeCounts`/`likedIds`/`onToggleLike` props render a heart button per non-mine row, independent of vote selection state
+- End game: aggregate likes across the whole game (not just final round) and show a "Most Liked" superlative via `EndGame`'s `aboveScores` slot — ties share the callout
+
 ### Score Display
 - Running totals on lobby/between-rounds screens
 - Highlight leader; show delta from last round

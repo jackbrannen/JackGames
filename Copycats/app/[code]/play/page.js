@@ -110,6 +110,7 @@ export default function PlayPage({ params }) {
   const [players, setPlayers] = useState([])
   const [answers, setAnswers] = useState([])
   const [votes, setVotes] = useState([])
+  const [likes, setLikes] = useState([])
   const [myId, setMyId] = useState(null)
 
   // question writing
@@ -158,6 +159,7 @@ export default function PlayPage({ params }) {
         .on("postgres_changes", { event: "*", schema: "public", table: "cc_players", filter: `game_code=eq.${code}` }, loadState)
         .on("postgres_changes", { event: "*", schema: "public", table: "cc_answers", filter: `game_code=eq.${code}` }, loadState)
         .on("postgres_changes", { event: "*", schema: "public", table: "cc_votes", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "cc_likes", filter: `game_code=eq.${code}` }, loadState)
         .on("broadcast", { event: "sync" }, loadState)
         .on("presence", { event: "sync" }, () => setPresenceState({ ...channel.presenceState() }))
         .subscribe(async status => {
@@ -227,11 +229,12 @@ export default function PlayPage({ params }) {
     }
 
     const seq = ++loadSeqRef.current
-    const [{ data: g }, { data: ps }, { data: an }, { data: vs }] = await Promise.all([
+    const [{ data: g }, { data: ps }, { data: an }, { data: vs }, { data: lk }] = await Promise.all([
       supabase.from("cc_games").select("*").eq("code", code).single(),
       supabase.from("cc_players").select("*").eq("game_code", code).order("created_at"),
       supabase.from("cc_answers").select("*").eq("game_code", code).order("created_at"),
       supabase.from("cc_votes").select("*").eq("game_code", code).order("created_at"),
+      supabase.from("cc_likes").select("*").eq("game_code", code).order("created_at"),
     ])
     if (seq !== loadSeqRef.current) return
     if (!g) { router.push(`/${code}`); return }
@@ -245,6 +248,17 @@ export default function PlayPage({ params }) {
     if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) channelRef.current?.send({ type: "broadcast", event: "sync" })
     syncKeyRef.current = syncKey
     setVotes(vs ?? [])
+    setLikes(lk ?? [])
+  }
+
+  async function toggleLike(likedPlayerId) {
+    if (!myId || likedPlayerId === myId) return
+    const { error } = await supabase.rpc("cc_toggle_like", {
+      p_code: code, p_round: game?.current_round, p_liker_id: myId, p_liked_player_id: likedPlayerId,
+    })
+    if (error) throw error
+    channelRef.current?.send({ type: "broadcast", event: "sync" })
+    await loadState()
   }
 
   function trackTyping() {
@@ -355,6 +369,9 @@ export default function PlayPage({ params }) {
 
   const roundAnswers = answers.filter(a => a.round === current_round)
   const roundVotes = votes.filter(v => v.round === current_round)
+  const roundLikes = likes.filter(l => l.round === current_round)
+  const likeCount = playerId => roundLikes.filter(l => l.liked_player_id === playerId).length
+  const iLiked = playerId => roundLikes.some(l => l.liked_player_id === playerId && l.liker_id === myId)
 
   const myAnswerRow = roundAnswers.find(a => a.player_id === myId)
   const myVoteRow = roundVotes.find(v => v.voter_id === myId)
@@ -426,7 +443,6 @@ export default function PlayPage({ params }) {
               fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
               playerNames={players.filter(p => p.id !== myId).map(p => p.first_name || p.name)}
               maxDraws={3}
-              onIdeaClick={idea => { setMyQuestion(idea); trackTyping() }}
             />
           </div>
 
@@ -743,6 +759,10 @@ export default function PlayPage({ params }) {
             onDeselect={deselectVote}
             colors={{ bg: MID, selectedBg: YELLOW, selectedText: "#000", deselectBg: DARK, deselectText: YELLOW }}
             mineLabel="Your answer — can't vote for it"
+            showLikes
+            likeCounts={Object.fromEntries(players.map(p => [p.id, likeCount(p.id)]))}
+            likedIds={roundLikes.filter(l => l.liker_id === myId).map(l => l.liked_player_id)}
+            onToggleLike={toggleLike}
           />
           <Section label="Waiting for votes…">
             <WaitingList players={makeWaitingPlayers(players.filter(p => p.id !== roundTarget?.id), votedIds)} myName={me.name} colors={{ mid: MID }} onPoke={sendInlinePoke} cooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
@@ -911,12 +931,27 @@ export default function PlayPage({ params }) {
     const finalPlayers = [...players].sort((a, b) => b.score - a.score)
     const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
+    const likeTotals = {}
+    for (const l of likes) likeTotals[l.liked_player_id] = (likeTotals[l.liked_player_id] ?? 0) + 1
+    const topLikeCount = Math.max(0, ...Object.values(likeTotals))
+    const mostLiked = topLikeCount > 0 ? players.filter(p => likeTotals[p.id] === topLikeCount) : []
+
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
         <EndGame
           players={finalPlayers}
           myPlayerId={myId}
+          aboveScores={mostLiked.length > 0 && (
+            <div style={{ background: "rgba(240,79,82,0.15)", border: "1px solid rgba(240,79,82,0.4)", padding: "14px 16px", marginBottom: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#F04F52", marginBottom: 6 }}>
+                ♥ Most liked answer{mostLiked.length > 1 ? "s" : ""}
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: "white" }}>
+                {mostLiked.map(p => p.name).join(", ")} — {topLikeCount} like{topLikeCount === 1 ? "" : "s"}
+              </div>
+            </div>
+          )}
           onPlayAgain={async () => {
             if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
             const { data, error } = await supabase.rpc("cc_create_replay", { p_code: code })

@@ -59,6 +59,9 @@ export default function Play({ params }) {
   const [currentQuestion, setCurrentQuestion] = useState(null)
   const [answers, setAnswers] = useState([])
   const [votes, setVotes] = useState([])
+  const [likes, setLikes] = useState([])
+  const [gameOverLikes, setGameOverLikes] = useState(null)
+  const gameOverLikesFetchedRef = useRef(false)
   const [myAnswer, setMyAnswer] = useState("")
   const [myVoteId, setMyVoteId] = useState(null)
   const [submittingVote, setSubmittingVote] = useState(false)
@@ -152,6 +155,13 @@ export default function Play({ params }) {
           .eq("question_id", gameData.current_question_id)
         if (seq !== loadSeqRef.current) return
         setVotes(voteData ?? [])
+
+        const { data: likeData } = await supabase
+          .from("gow_likes")
+          .select("answer_id,liker_id")
+          .eq("question_id", gameData.current_question_id)
+        if (seq !== loadSeqRef.current) return
+        setLikes(likeData ?? [])
         if (!changingVoteRef.current) {
           const myVote = (voteData ?? []).find(v => v.voter_id === pid)
           setMyVoteId(myVote ? (myVote.answer_id ?? "nota") : null)
@@ -182,6 +192,29 @@ export default function Play({ params }) {
       setCurrentQuestion(null)
       setAnswers([])
       setVotes([])
+      setLikes([])
+    }
+
+    if (gameData.phase === "finished" && !gameOverLikesFetchedRef.current) {
+      gameOverLikesFetchedRef.current = true
+      const { data: qIds } = await supabase.from("gow_questions").select("id").eq("game_code", code)
+      const ids = (qIds ?? []).map(q => q.id)
+      if (ids.length) {
+        const { data: lk } = await supabase.from("gow_likes").select("answer_id").in("question_id", ids)
+        const answerIds = [...new Set((lk ?? []).map(l => l.answer_id))]
+        const { data: ans } = answerIds.length
+          ? await supabase.from("gow_answers").select("id,player_id").in("id", answerIds)
+          : { data: [] }
+        const authorById = Object.fromEntries((ans ?? []).map(a => [a.id, a.player_id]))
+        const totals = {}
+        for (const l of (lk ?? [])) {
+          const pid = authorById[l.answer_id]
+          if (pid) totals[pid] = (totals[pid] ?? 0) + 1
+        }
+        setGameOverLikes(totals)
+      } else {
+        setGameOverLikes({})
+      }
     }
   }
 
@@ -201,6 +234,7 @@ export default function Play({ params }) {
         .on("postgres_changes", { event: "*", schema: "public", table: "gow_players", filter: `game_code=eq.${code}` }, loadState)
         .on("postgres_changes", { event: "*", schema: "public", table: "gow_answers" }, loadState)
         .on("postgres_changes", { event: "*", schema: "public", table: "gow_votes" }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "gow_likes" }, loadState)
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {
           if (cancelled) return
@@ -339,6 +373,16 @@ export default function Play({ params }) {
       p_text: myAnswer.trim(),
       p_skipped: false,
     })
+  }
+
+  async function toggleLike(answerId) {
+    if (!currentQuestion || !myPlayerId) return
+    const { error } = await supabase.rpc("gow_toggle_like", {
+      p_code: code, p_question_id: currentQuestion.id, p_liker_id: myPlayerId, p_answer_id: answerId,
+    })
+    if (error) throw error
+    syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    await loadState()
   }
 
   async function handleDeselect() {
@@ -519,6 +563,9 @@ export default function Play({ params }) {
 
   if (game.phase === "finished") {
     const finalPlayers = [...(gameOverPlayers ?? players)].sort((a, b) => b.score - a.score)
+    const likeTotals = gameOverLikes ?? {}
+    const topLikeCount = Math.max(0, ...Object.values(likeTotals))
+    const mostLiked = topLikeCount > 0 ? finalPlayers.filter(p => likeTotals[p.id] === topLikeCount) : []
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
@@ -528,6 +575,16 @@ export default function Play({ params }) {
           onPlayAgain={resetGame}
           bottomPad={BOTTOM_PAD}
           colors={{ yellow: YELLOW, wl: WARM_LIGHT }}
+          aboveScores={mostLiked.length > 0 && (
+            <div style={{ background: "rgba(240,79,82,0.15)", border: "1px solid rgba(240,79,82,0.4)", padding: "14px 16px", marginBottom: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#F04F52", marginBottom: 6 }}>
+                ♥ Most liked answer{mostLiked.length > 1 ? "s" : ""}
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: "white" }}>
+                {mostLiked.map(p => p.name).join(", ")} — {topLikeCount} like{topLikeCount === 1 ? "" : "s"}
+              </div>
+            </div>
+          )}
         />
       </div>
         {pokeSystemNode()}
@@ -667,6 +724,9 @@ export default function Play({ params }) {
       return groups
     }, [])
 
+  const likeCountsById = Object.fromEntries(answerGroups.map(g => [g.primaryId, likes.filter(l => l.answer_id === g.primaryId).length]))
+  const myLikedAnswerIds = likes.filter(l => l.liker_id === myPlayerId).map(l => l.answer_id)
+
   const eligibleVoterIds = Array.from(new Set(
     [currentQuestion?.author_id, ...answers.filter(a => !a.skipped).map(a => a.player_id)].filter(Boolean)
   ))
@@ -778,6 +838,10 @@ export default function Play({ params }) {
                 onDeselect={handleDeselect}
                 disabled={submittingVote}
                 colors={{ bg: MID, selectedBg: YELLOW, selectedText: "#000", deselectBg: DARK, deselectText: YELLOW }}
+                showLikes
+                likeCounts={likeCountsById}
+                likedIds={myLikedAnswerIds}
+                onToggleLike={toggleLike}
               />
               {/* None of the above */}
               {(() => {

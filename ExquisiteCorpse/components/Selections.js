@@ -24,6 +24,23 @@
     mineLabel     string  — label shown below own item when tapped (default "Your answer — can't vote for yourself")
     gap           number  — gap between rows in px (default 6)
     fontSize      number  — text size in px (default 16)
+    showLikes     bool                     — show a like (heart) button on each non-mine row, separate from vote selection
+    likeCounts    { [id]: number }         — live like count per option id (omit or 0 = no badge)
+    likedIds      Set<string> | string[]   — ids the current viewer has already liked (filled heart)
+    onToggleLike  (id) => void             — called when the heart is tapped; never called for isMine rows
+
+  Usage (Copycats voting, with likes):
+    <Selections
+      options={dedupedVotable.map(a => ({ id: a.player_id, text: a.answer, isMine: ... }))}
+      selectedId={currentSelectedId}
+      onSelect={id => submitVote(id)}
+      onDeselect={deselectVote}
+      colors={{ bg: MID, selectedBg: YELLOW, selectedText: "#000", deselectBg: DARK, deselectText: YELLOW }}
+      showLikes
+      likeCounts={likeCountsById}
+      likedIds={myLikedIds}
+      onToggleLike={toggleLike}
+    />
 
   Usage (GameOfWhat voting):
     <Selections
@@ -58,7 +75,12 @@ export default function Selections({
   mineLabel = "Your answer — you can't vote for yourself",
   gap = 6,
   fontSize = 16,
+  showLikes = false,
+  likeCounts = {},
+  likedIds = [],
+  onToggleLike,
 }) {
+  const likedSet = likedIds instanceof Set ? likedIds : new Set(likedIds)
   const [flashId, setFlashId] = useState(null)
 
   const {
@@ -125,6 +147,26 @@ export default function Selections({
                   </span>
                 )}
               </button>
+              {showLikes && !opt.isMine && (
+                <button
+                  onClick={e => { e.stopPropagation(); onToggleLike?.(opt.id) }}
+                  style={{
+                    background: bg,
+                    color: likedSet.has(opt.id) ? "#F04F52" : "white",
+                    opacity: likedSet.has(opt.id) ? 1 : 0.55,
+                    fontSize: 16,
+                    fontWeight: 800,
+                    padding: "16px 14px",
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                  }}
+                >
+                  <span>{likedSet.has(opt.id) ? "♥" : "♡"}</span>
+                  {likeCounts[opt.id] > 0 && <span style={{ fontSize: 13 }}>{likeCounts[opt.id]}</span>}
+                </button>
+              )}
               {isSelected && (
                 <button
                   onClick={() => onDeselect?.()}

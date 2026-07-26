@@ -390,6 +390,7 @@ export default function Play({ params }) {
   const [players, setPlayers] = useState([])
   const [answers, setAnswers] = useState([])
   const [votes, setVotes] = useState([])
+  const [likes, setLikes] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
 
   const [submittingDrawing, setSubmittingDrawing] = useState(false)
@@ -489,11 +490,16 @@ export default function Play({ params }) {
         .from("drawful_votes").select("id,drawing_player_id,voter_id,answer_id")
         .eq("game_code", code)
 
+      const { data: likeData } = await supabase
+        .from("drawful_likes").select("id,drawing_player_id,liker_id,answer_id")
+        .eq("game_code", code)
+
       if (seq !== loadSeqRef.current) return
       setGame(gameData)
       setPlayers(playerData ?? [])
       setAnswers(answerData ?? [])
       setVotes(voteData ?? [])
+      setLikes(likeData ?? [])
       // Gossip: re-broadcast on a state change so a peer that missed the realtime push catches up fast.
       const syncKey = `${gameData.phase}:${gameData.current_drawing_index ?? ""}`
       if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) syncChRef.current?.send({ type: "broadcast", event: "sync" })
@@ -537,6 +543,7 @@ export default function Play({ params }) {
         .on("postgres_changes", { event: "*", schema: "public", table: "drawful_games", filter: `code=eq.${code}` }, loadState)
         .on("postgres_changes", { event: "*", schema: "public", table: "drawful_answers", filter: `game_code=eq.${code}` }, loadState)
         .on("postgres_changes", { event: "*", schema: "public", table: "drawful_votes", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "drawful_likes", filter: `game_code=eq.${code}` }, loadState)
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {
           if (cancelled) return
@@ -845,6 +852,16 @@ export default function Play({ params }) {
     }
   }
 
+  async function toggleLike(answerId) {
+    if (!currentArtist || !myPlayerId) return
+    const { error } = await supabase.rpc("drawful_toggle_like", {
+      p_code: code, p_drawing_player_id: currentArtist.id, p_liker_id: myPlayerId, p_answer_id: answerId,
+    })
+    if (error) throw error
+    syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    await loadState()
+  }
+
   async function markReady() {
     if (markingReady) return
     setMarkingReady(true)
@@ -880,6 +897,15 @@ export default function Play({ params }) {
 
     const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
+    const answerAuthorById = Object.fromEntries(answers.map(a => [a.id, a.author_id]))
+    const likeTotals = {}
+    for (const l of likes) {
+      const pid = answerAuthorById[l.answer_id]
+      if (pid) likeTotals[pid] = (likeTotals[pid] ?? 0) + 1
+    }
+    const topLikeCount = Math.max(0, ...Object.values(likeTotals))
+    const mostLiked = topLikeCount > 0 ? finalPlayers.filter(p => likeTotals[p.id] === topLikeCount) : []
+
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
@@ -889,6 +915,16 @@ export default function Play({ params }) {
           onPlayAgain={resetGame}
           bottomPad={BOTTOM_PAD}
           colors={{ yellow: ACCENT, wl: MID }}
+          aboveScores={mostLiked.length > 0 && (
+            <div style={{ background: "rgba(240,79,82,0.15)", border: "1px solid rgba(240,79,82,0.4)", padding: "14px 16px", marginBottom: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#F04F52", marginBottom: 6 }}>
+                ♥ Most liked answer{mostLiked.length > 1 ? "s" : ""}
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: "white" }}>
+                {mostLiked.map(p => p.name).join(", ")} — {topLikeCount} like{topLikeCount === 1 ? "" : "s"}
+              </div>
+            </div>
+          )}
         />
       </div>
         {pokeSystemNode()}
@@ -1056,7 +1092,6 @@ export default function Play({ params }) {
                     fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
                     playerNames={players.filter(p => p.id !== myPlayerId && !p.is_bot).map(p => p.first_name || p.name)}
                     maxDraws={3}
-                    onIdeaClick={idea => setAnswerText(idea)}
                   />
                 </div>
               )}
@@ -1089,6 +1124,10 @@ export default function Play({ params }) {
       seenAnswerTexts.add(key)
       return true
     })
+
+    const drawingLikes = likes.filter(l => l.drawing_player_id === currentArtist?.id)
+    const likeCountsById = Object.fromEntries(dedupedAnswers.map(a => [a.id, drawingLikes.filter(l => l.answer_id === a.id).length]))
+    const myLikedAnswerIds = drawingLikes.filter(l => l.liker_id === myPlayerId).map(l => l.answer_id)
 
     return (
       <>
@@ -1140,6 +1179,10 @@ export default function Play({ params }) {
                 disabled={hasVoted}
                 colors={{ bg: MID, selectedBg: ACCENT, selectedText: "#000", deselectBg: "#1C5250", deselectText: ACCENT }}
                 mineLabel="Your answer — can't vote for it"
+                showLikes
+                likeCounts={likeCountsById}
+                likedIds={myLikedAnswerIds}
+                onToggleLike={toggleLike}
               />
             </>
           )}

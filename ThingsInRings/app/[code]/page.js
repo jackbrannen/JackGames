@@ -88,6 +88,7 @@ export default function LobbyPage({ params }) {
   const [readyBusy, setReadyBusy] = useState(false)
   const [showKnowerTakeoverConfirm, setShowKnowerTakeoverConfirm] = useState(false)
   const [pendingKnowerPick, setPendingKnowerPick] = useState(null)
+  const [showPrefillIntro, setShowPrefillIntro] = useState(false)
 
   const me = players.find(p => p.id === myPlayerId)
   const currentKnower = players.find(p => p.is_knower)
@@ -132,6 +133,14 @@ export default function LobbyPage({ params }) {
     if (existing) setMyPlayerId(existing)
     loadGame().then(() => { refreshPlayers(); refreshCards() })
   }, [code])
+
+  const prefillIntroShownRef = useRef(false)
+  useEffect(() => {
+    if (me?.is_knower && rulesSubmitted && !knowerReady && !prefillIntroShownRef.current) {
+      prefillIntroShownRef.current = true
+      setShowPrefillIntro(true)
+    }
+  }, [rulesSubmitted, knowerReady, me?.is_knower])
 
   useEffect(() => {
     if (isIdle) return
@@ -410,6 +419,19 @@ export default function LobbyPage({ params }) {
           </div>
         </div>
       )}
+      {showPrefillIntro && me?.is_knower && (
+        <div onClick={() => setShowPrefillIntro(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: PANEL, color: INK, padding: "28px 24px", maxWidth: 360, width: "100%", textAlign: "center" }}>
+            <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 12 }}>Optionally pre-fill a few zones</div>
+            <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.5, marginBottom: 20 }}>
+              Tap a zone below, then add a word that belongs there. Ideally, put one word in each zone. These pre-filled examples will help players start the game with a little context.
+            </div>
+            <button onClick={() => setShowPrefillIntro(false)} style={{ background: BTN, color: BTN_TEXT, fontWeight: 900, padding: "12px 16px", width: "100%" }}>
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
       <div style={{ background: DARK, padding: "24px 20px 20px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "rgba(255,255,255,0.7)", marginBottom: 4 }}>Things in Rings</div>
@@ -525,10 +547,7 @@ export default function LobbyPage({ params }) {
           ) : (
             <div style={{ padding: "0 20px" }}>
               <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.55, marginBottom: 8 }}>Rules locked in</div>
-              <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 12, lineHeight: 1.15 }}>Optionally pre-fill a few zones for context.</h1>
-              <p style={{ fontSize: 14, color: INK_MUTED, fontWeight: 600, marginBottom: 16 }}>
-                Tap a zone, then type a word that belongs there. These are just examples for players to see while they write their own words — not required, and not part of anyone's hand.
-              </p>
+              <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 16, lineHeight: 1.15 }}>Optionally pre-fill a few zones for context.</h1>
               <div style={{ background: PANEL, padding: "14px 16px", marginBottom: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.55, marginBottom: 10 }}>Your rules & hints</div>
                 {["A", "B", "C"].map(zone => (

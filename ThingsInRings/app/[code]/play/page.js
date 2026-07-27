@@ -26,6 +26,7 @@ const BTN = "#2A303C"
 const BTN_TEXT = "#FFF4F0"
 const INPUT_BG = "#FFFFFF"
 const RESOLUTION_MODAL_BG = "#95A68D"
+const PENALTY_RED = "#C0392B"
 const POKE_COLORS = { dark: DARK, mid: "#3E4F37", wl: "#C1E0B4", yellow: "#FBDF54", notifBg: "#1F2A1B" }
 const BOYS = "#3B6FA0"
 const GIRLS = "#B5548A"
@@ -91,6 +92,10 @@ export default function PlayPage({ params }) {
   const [initialWords, setInitialWords] = useState(Array(5).fill(""))
   const [submittingWords, setSubmittingWords] = useState(false)
   const [takenWordIndex, setTakenWordIndex] = useState(null)
+
+  const [moreWords, setMoreWords] = useState(Array(3).fill(""))
+  const [submittingMoreWords, setSubmittingMoreWords] = useState(false)
+  const [takenMoreWordIndex, setTakenMoreWordIndex] = useState(null)
 
   const [resolving, setResolving] = useState(false)
   const [flashResolution, setFlashResolution] = useState(null)
@@ -243,6 +248,7 @@ export default function PlayPage({ params }) {
   const knower = players.find(p => p.is_knower)
   const knowerName = knower?.name ?? "The Knower"
   const teamWritingWaitingList = teamPlayers.map(p => ({ name: p.name, done: !!p.words_submitted }))
+  const replenishWaitingList = teamPlayers.map(p => ({ name: p.name, done: !!p.replenish_submitted }))
   const handCounts = {
     boys: cards.filter(c => c.owner_team === "boys" && !c.zone).length,
     girls: cards.filter(c => c.owner_team === "girls" && !c.zone).length,
@@ -450,6 +456,11 @@ export default function PlayPage({ params }) {
     nudge()
   }
 
+  async function keepGoingFromResolutionModal(cont) {
+    await teamTurnDecision(cont)
+    dismissResolutionModal()
+  }
+
   async function setTeamHandSize(team, newSize) {
     if (newSize < 0 || newSize > 15) return
     await supabase.rpc("tir_set_team_hand_size", { p_code: code, p_knower_id: myPlayerId, p_team: team, p_hand_size: newSize })
@@ -485,6 +496,28 @@ export default function PlayPage({ params }) {
       alert(error.message)
       return
     }
+    nudge()
+  }
+
+  async function submitMoreWords() {
+    const trimmed = moreWords.map(w => w.trim())
+    if (submittingMoreWords || trimmed.some(w => !w)) return
+    setTakenMoreWordIndex(null)
+    setSubmittingMoreWords(true)
+    const { error } = await supabase.rpc("tir_submit_more_words", { p_code: code, p_player_id: myPlayerId, p_words: trimmed })
+    if (error) {
+      setSubmittingMoreWords(false)
+      if (error.code === "23505" || /already submitted/i.test(error.message ?? "")) {
+        await loadState()
+        const existing = new Set(cards.map(c => c.text.trim().toLowerCase()))
+        const idx = trimmed.findIndex(w => existing.has(w.toLowerCase()))
+        setTakenMoreWordIndex(idx === -1 ? 0 : idx)
+        return
+      }
+      alert(error.message)
+      return
+    }
+    setMoreWords(Array(3).fill(""))
     nudge()
   }
 
@@ -620,6 +653,33 @@ export default function PlayPage({ params }) {
     )
   }
 
+  // ── REPLENISH ─────────────────────────────────────────────
+  // The shared word pool ran completely dry mid-game (a wrong guess or an
+  // N/A had nothing left to draw as a replacement). Pause for everyone to
+  // submit a few more words, then the pending penalty/replacement is
+  // granted automatically and play resumes exactly where it left off.
+  if (game.phase === "replenish") {
+    if (isKnower || me.replenish_submitted) {
+      return (
+        <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center" }}>
+          <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.5, marginBottom: 12 }}>Running low on words</div>
+          <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 16 }}>Waiting for both teams to submit a few more…</div>
+          <div style={{ background: PANEL, color: INK, padding: "12px 20px", width: "100%", maxWidth: 360 }}>
+            <WaitingList players={replenishWaitingList} myName={me.name} colors={{ mid: PANEL }} showCount />
+          </div>
+        </div>
+      )
+    }
+    return (
+      <div style={{ height: `calc(100dvh - ${FOOTER_H}px - env(safe-area-inset-bottom, 0px))`, overflowY: "auto", WebkitOverflowScrolling: "touch", background: BG, color: INK, padding: "36px 24px" }}>
+        <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.55, marginBottom: 8 }}>{teamLabel(myTeam)} team</div>
+        <h1 style={{ fontSize: 26, fontWeight: 900, marginBottom: 16, lineHeight: 1.15 }}>The word pool ran out — submit 3 more.</h1>
+        <p style={{ fontSize: 15, color: INK_MUTED, fontWeight: 600, marginBottom: 16 }}>Once everyone's in, play picks back up right where it left off.</p>
+        <WordListForm words={moreWords} setWords={setMoreWords} onSubmit={submitMoreWords} submitting={submittingMoreWords} submitLabel="Submit words" maxLength={40} maxDraws={3} takenIndex={takenMoreWordIndex} onEdit={i => { if (takenMoreWordIndex === i) setTakenMoreWordIndex(null) }} />
+      </div>
+    )
+  }
+
   // ── FINISHED ─────────────────────────────────────────────
   if (game.phase === "finished") {
     const winners = game.winning_teams ?? []
@@ -670,29 +730,36 @@ export default function PlayPage({ params }) {
   const showKeepGoingModal = game.turn_decision_pending && isMyTurn && resolutionDismissed
   const boysHand = cards.filter(c => c.owner_team === "boys" && !c.zone)
   const girlsHand = cards.filter(c => c.owner_team === "girls" && !c.zone)
+  const pillNode = liveSelectionPill(isMyTurn)
 
   return (
     <div style={{ height: `calc(100dvh - ${FOOTER_H}px - env(safe-area-inset-bottom, 0px))`, overflowY: "auto", WebkitOverflowScrolling: "touch", background: BG, color: INK, display: "flex", flexDirection: "column" }}>
-      {!(flashResolution && !resolutionDismissed) && showYourTurnBar && (
-        <div style={{ position: "sticky", top: 0, zIndex: 50, background: "#F4C542", color: "#000", padding: "14px 16px", fontSize: 15, fontWeight: 900, textAlign: "center" }}>
-          <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, marginBottom: 2 }}>Round {game.round_number}</div>
-          Your Team's Turn
-        </div>
-      )}
+      <div style={{ position: "sticky", top: 0, zIndex: 50 }}>
+        {!(flashResolution && !resolutionDismissed) && showYourTurnBar && (
+          <div style={{ background: "#F4C542", color: "#000", padding: "14px 16px", fontSize: 15, fontWeight: 900, textAlign: "center" }}>
+            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, marginBottom: 2 }}>Round {game.round_number}</div>
+            Your Team's Turn
+          </div>
+        )}
 
-      {!(flashResolution && !resolutionDismissed) && showKnowerPickBar && (
-        <div style={{ position: "sticky", top: 0, zIndex: 50, background: "#F4C542", color: "#000", padding: "14px 16px", fontSize: 15, fontWeight: 900, textAlign: "center" }}>
-          <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, marginBottom: 2 }}>Round {game.round_number}</div>
-          Pick the correct zone for <span style={{ background: "rgba(0,0,0,0.15)", color: "#000", padding: "3px 8px", borderRadius: 8, fontWeight: 900 }}>{pendingCard?.text}</span>
-        </div>
-      )}
+        {!(flashResolution && !resolutionDismissed) && showKnowerPickBar && (
+          <div style={{ background: "#F4C542", color: "#000", padding: "14px 16px", fontSize: 15, fontWeight: 900, textAlign: "center" }}>
+            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, marginBottom: 2 }}>Round {game.round_number}</div>
+            Pick the correct zone for <span style={{ background: "rgba(0,0,0,0.15)", color: "#000", padding: "3px 8px", borderRadius: 8, fontWeight: 900 }}>{pendingCard?.text}</span>
+          </div>
+        )}
 
-      {!(flashResolution && !resolutionDismissed) && showWhiteBar && (
-        <div style={{ position: "sticky", top: 0, zIndex: 50, background: "#FFFFFF", color: INK, padding: "14px 16px", fontSize: 15, fontWeight: 900, textAlign: "center", borderBottom: "1px solid rgba(42,48,60,0.15)" }}>
-          <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.5, marginBottom: 2 }}>Round {game.round_number}</div>
-          {whiteBarText}
-        </div>
-      )}
+        {!(flashResolution && !resolutionDismissed) && showWhiteBar && (
+          <div style={{ background: "#FFFFFF", color: INK, padding: "14px 16px", fontSize: 15, fontWeight: 900, textAlign: "center", borderBottom: "1px solid rgba(42,48,60,0.15)" }}>
+            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.5, marginBottom: 2 }}>Round {game.round_number}</div>
+            {whiteBarText}
+          </div>
+        )}
+
+        {!(flashResolution && !resolutionDismissed) && pillNode && (
+          <div style={{ background: BG, paddingBottom: 16 }}>{pillNode}</div>
+        )}
+      </div>
 
       {game.first_empty_team && (
         <div style={{ background: "#F4C542", color: "#000", padding: "10px 16px", fontSize: 14, fontWeight: 800 }}>
@@ -732,20 +799,38 @@ export default function PlayPage({ params }) {
                     {wordChipEl} <span style={{ opacity: 0.6, fontWeight: 900 }}>→</span> <ZoneChip zone={isNA ? "NA" : flashResolution.actual_zone} />
                   </div>
                   <div style={{ fontSize: 13, fontWeight: 600, opacity: 0.75, marginBottom: 20 }}>
-                    {isNA ? <>{teamLabel(guesserTeam)} get a new word, but go again — no penalty.</> : <>{teamLabel(guesserTeam)} take new word(s) as a penalty.</>}
+                    {isNA
+                      ? <>{teamLabel(guesserTeam)} get a new word, but go again — no penalty.</>
+                      : <>{teamLabel(guesserTeam)} take {flashResolution.penalty_count === 2 ? "2 new words" : "a new word"} as a penalty.</>}
                   </div>
                 </>
               )}
 
-              <button onClick={dismissResolutionModal} style={{ background: "rgba(42,48,60,0.15)", color: INK, fontWeight: 900, padding: "12px 24px", width: "100%" }}>
-                {(() => {
-                  if (isNA) return "Continue"
-                  if (game.phase === "finished") return "See who won →"
-                  if (game.turn_decision_pending) return isMyTurn ? "It's your call — keep going? →" : `Waiting on ${teamLabel(activeTeam)} →`
-                  if (isKnower) return "Continue"
-                  return isMyTurn ? "Your turn →" : `${teamLabel(activeTeam)}' turn →`
-                })()}
-              </button>
+              {flashResolution.correct && isMyTurn && game.turn_decision_pending ? (
+                <>
+                  <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.5, marginBottom: 16 }}>
+                    Keep going? A miss now costs you <b style={{ color: PENALTY_RED, fontWeight: 900 }}>2 words</b> instead of 1.
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <button onClick={() => keepGoingFromResolutionModal(true)} disabled={turnDecisionBusy} style={{ background: BTN, color: BTN_TEXT, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
+                      Try Another Word
+                    </button>
+                    <button onClick={() => keepGoingFromResolutionModal(false)} disabled={turnDecisionBusy} style={{ background: "rgba(42,48,60,0.15)", color: INK, fontWeight: 900, padding: "14px 24px", width: "100%" }}>
+                      Stop Here
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <button onClick={dismissResolutionModal} style={{ background: "rgba(42,48,60,0.15)", color: INK, fontWeight: 900, padding: "12px 24px", width: "100%" }}>
+                  {(() => {
+                    if (isNA) return "Continue"
+                    if (game.phase === "finished") return "See who won →"
+                    if (game.turn_decision_pending) return `Waiting on ${teamLabel(activeTeam)} →`
+                    if (isKnower) return "Continue"
+                    return isMyTurn ? "Your turn →" : `${teamLabel(activeTeam)}' turn →`
+                  })()}
+                </button>
+              )}
             </div>
           </div>
         )
@@ -785,8 +870,6 @@ export default function PlayPage({ params }) {
           </div>
         </div>
       )}
-
-      {liveSelectionPill(isMyTurn)}
 
       <div style={{ padding: "16px 0" }}>
         <VennDiagram

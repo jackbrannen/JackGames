@@ -146,13 +146,13 @@ function fitWords(words, b) {
   return { fontSize, lineH: fontSize * LINE_H }
 }
 
-// Edge-to-edge: crop the viewBox horizontally so the diagram spans the full
-// container width — the outer blob's widest points reach both edges (with a hair
-// of bleed). Centered on the blob's center (x≈165.5); the full 450 vertical
-// range is unchanged so top/bottom keep their margins. The blob spans x≈-40..371
-// (width ≈411); CROP_W a touch under that reaches the edges. Smaller = more bleed.
-const CROP_W = 386
-const VIEWBOX = `${(165.5 - CROP_W / 2).toFixed(1)} -65 ${CROP_W} 450`
+// Zoomed crop: trim the viewBox down close to the circles' own bounding box
+// (x≈17..303) rather than the wider blob, so the ring group fills most of the
+// width and only a sliver of the blob's outward bulge remains visible at the
+// edges. Centered on the circle group's center (x=160), not the blob's own
+// center, since it's the circles we're zooming to.
+const CROP_W = 300
+const VIEWBOX = `${(160 - CROP_W / 2).toFixed(1)} -65 ${CROP_W} 450`
 // Pass `full` to show the whole diagram with its normal margins (edges not
 // shaved) instead of the edge-to-edge crop — e.g. the secret-rules screen.
 const FULL_VIEWBOX = "-65 -65 450 450"

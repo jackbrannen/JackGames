@@ -20,7 +20,7 @@ const BTN = "#221A12"
 const BTN_TEXT = "#FFF8ED"
 const CARD_GOOD_BG = "#FFFFFF"
 const CARD_GOOD_TEXT = "#000000"
-const CARD_BAD_BG = "#000000"
+const CARD_BAD_BG = "#7D2B5B"
 const CARD_BAD_TEXT = "#FFFFFF"
 const POKE_COLORS = { dark: DARK, mid: "#3A2E1B", wl: "#5A4A32", yellow: "#FBDF54", notifBg: "#1C140B" }
 const FOOTER_ROWS_H = FOOTER_H * 2
@@ -28,9 +28,8 @@ const SCROLL_H = `calc(100dvh - ${FOOTER_ROWS_H}px - env(safe-area-inset-bottom,
 const CARD_W = 98
 const CARD_H = 124
 const cardBoxStyle = {
-  width: CARD_W, height: CARD_H, borderRadius: 15,
+  width: "100%", aspectRatio: `${CARD_W} / ${CARD_H}`,
   display: "flex", alignItems: "center", justifyContent: "center",
-  boxShadow: "0 2px 5px rgba(0,0,0,0.18)",
 }
 
 function LetterCard({ card }) {
@@ -41,7 +40,7 @@ function LetterCard({ card }) {
       background: isRed ? CARD_BAD_BG : CARD_GOOD_BG,
       color: isRed ? CARD_BAD_TEXT : CARD_GOOD_TEXT,
       border: isRed ? "none" : "1px solid rgba(34,26,18,0.15)",
-      fontSize: 68, fontWeight: 900,
+      fontSize: 77, fontWeight: 900,
     }}>
       {card.value}
     </div>
@@ -53,7 +52,7 @@ function ReverseCard() {
     <div style={{
       ...cardBoxStyle,
       background: CARD_BAD_BG, color: CARD_BAD_TEXT,
-      fontSize: 45, fontWeight: 900,
+      fontSize: 52, fontWeight: 900,
     }}>
       ⤾
     </div>
@@ -93,7 +92,7 @@ function AccentCard({ card }) {
       <div style={{
         position: "absolute", left: 0, right: 0, bottom: 0,
         background: "rgba(0,0,0,0.55)", color: "#FFF8ED",
-        fontSize: 11, fontWeight: 800, lineHeight: 1.2, padding: "3px 5px", textAlign: "center",
+        fontSize: 22, fontWeight: 800, lineHeight: 1.2, padding: "3px 5px", textAlign: "center",
       }}>
         {meta.label}
       </div>
@@ -115,7 +114,7 @@ export default function PlayPage({ params }) {
   const [roundDoneStep, setRoundDoneStep] = useState(null) // null | "pick" | { confirmId }
   const [newLettersConfirming, setNewLettersConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [msLeft, setMsLeft] = useState(0)
+  const [, forceCountdownTick] = useState(0)
 
   const channelRef = useRef(null)
   const syncKeyRef = useRef(null)
@@ -196,19 +195,20 @@ export default function PlayPage({ params }) {
     }
   }, [code, isIdle])
 
-  // Countdown ticker for cards_visible_at
+  // Countdown ticker for cards_visible_at. msLeft is derived synchronously from
+  // game state on every render (not just inside the effect) so the very first
+  // render of a new round already reflects the countdown — otherwise there's a
+  // one-frame flash of the cards before the effect's setState catches up.
   useEffect(() => {
-    if (!game?.cards_visible_at) { setMsLeft(0); return }
-    const target = new Date(game.cards_visible_at).getTime()
-    const tick = () => setMsLeft(Math.max(0, target - Date.now()))
-    tick()
-    const id = setInterval(tick, 200)
+    if (!game?.cards_visible_at) return
+    const id = setInterval(() => forceCountdownTick(n => n + 1), 200)
     return () => clearInterval(id)
   }, [game?.cards_visible_at])
 
   const me = players.find(p => p.id === myPlayerId)
   const isEliminated = !!me?.is_eliminated
   const activePlayers = players.filter(p => !p.is_eliminated)
+  const msLeft = game?.cards_visible_at ? Math.max(0, new Date(game.cards_visible_at).getTime() - Date.now()) : 0
   const countingDown = msLeft > 0
   const secondsLeft = Math.ceil(msLeft / 1000)
 
@@ -312,7 +312,7 @@ export default function PlayPage({ params }) {
           nudge()
           router.replace(`/${data}`)
         }} style={{ background: BTN, color: BTN_TEXT, fontSize: 16, fontWeight: 900, padding: "16px 24px", border: "none", marginTop: 8, maxWidth: 320, width: "100%" }}>Play Again</button>
-        <a href="https://games.jackbrannen.com" style={{ display: "block", background: PANEL, color: INK, fontSize: 16, fontWeight: 700, padding: "14px 24px", textDecoration: "none", maxWidth: 320, width: "100%", marginTop: 10, borderRadius: 14, boxShadow: "0 2px 6px rgba(0,0,0,0.12)" }}>Play Another Game</a>
+        <a href="https://games.jackbrannen.com" style={{ display: "block", background: PANEL, color: INK, fontSize: 16, fontWeight: 700, padding: "14px 24px", textDecoration: "none", maxWidth: 320, width: "100%", marginTop: 10 }}>Play Another Game</a>
       </div>
     )
   }
@@ -333,16 +333,16 @@ export default function PlayPage({ params }) {
 
       <div style={{ padding: "24px 16px" }}>
         {game.paused ? (
-          <div style={{ background: PANEL, color: INK, borderRadius: 16, padding: "40px 16px", textAlign: "center", fontSize: 20, fontWeight: 900, boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }}>
+          <div style={{ background: PANEL, color: INK, padding: "40px 16px", textAlign: "center", fontSize: 20, fontWeight: 900 }}>
             Paused
           </div>
         ) : countingDown ? (
-          <div style={{ background: PANEL, color: INK, borderRadius: 16, padding: "40px 16px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.12)" }}>
+          <div style={{ background: PANEL, color: INK, padding: "40px 16px", textAlign: "center" }}>
             <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.65, marginBottom: 8 }}>Get ready…</div>
             <div style={{ fontSize: 48, fontWeight: 900 }}>{secondsLeft}</div>
           </div>
         ) : (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, maxWidth: "84%", margin: "0 auto" }}>
             {(game.cards ?? []).map((card, i) => (
               card.type === "reverse" ? <ReverseCard key={i} /> :
               card.type === "accent" ? <AccentCard key={i} card={card} /> :
@@ -363,7 +363,7 @@ export default function PlayPage({ params }) {
               }}>
                 {p.points}
               </div>
-              <div style={{ background: PANEL, padding: "10px 16px", flex: 1, display: "flex", alignItems: "center", boxShadow: "0 2px 6px rgba(34,26,18,0.12)" }}>
+              <div style={{ background: PANEL, padding: "10px 16px", flex: 1, display: "flex", alignItems: "center" }}>
                 <span style={{
                   fontSize: 15, fontWeight: 700,
                   textDecoration: p.is_eliminated ? "line-through" : "none",
@@ -378,7 +378,7 @@ export default function PlayPage({ params }) {
 
       {roundDoneStep === "pick" && (
         <div onClick={() => setRoundDoneStep(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: PANEL, color: INK, padding: "24px 20px", maxWidth: 360, width: "100%", borderRadius: 18, boxShadow: "0 8px 24px rgba(0,0,0,0.25)" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: PANEL, color: INK, padding: "24px 20px", maxWidth: 360, width: "100%" }}>
             <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 16 }}>Who lost the round?</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
               {activePlayers.map(p => (
@@ -399,7 +399,7 @@ export default function PlayPage({ params }) {
 
       {roundDoneStep && typeof roundDoneStep === "object" && (
         <div onClick={() => setRoundDoneStep(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: PANEL, color: INK, padding: "24px 20px", maxWidth: 360, width: "100%", borderRadius: 18, boxShadow: "0 8px 24px rgba(0,0,0,0.25)" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: PANEL, color: INK, padding: "24px 20px", maxWidth: 360, width: "100%" }}>
             <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 20 }}>
               {roundDoneStep.confirmId ? <>Confirm <b>{nameOf(roundDoneStep.confirmId)}</b> lost a point?</> : "Confirm no one lost a point?"}
             </div>
@@ -416,7 +416,7 @@ export default function PlayPage({ params }) {
 
       {newLettersConfirming && (
         <div onClick={() => setNewLettersConfirming(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: PANEL, color: INK, padding: "24px 20px", maxWidth: 360, width: "100%", borderRadius: 18, boxShadow: "0 8px 24px rgba(0,0,0,0.25)" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: PANEL, color: INK, padding: "24px 20px", maxWidth: 360, width: "100%" }}>
             <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 20 }}>Deal a fresh set of cards for this round?</div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={confirmNewLetters} disabled={busy} style={{ flex: 1, background: BTN, color: BTN_TEXT, fontSize: 15, fontWeight: 900, padding: "14px" }}>

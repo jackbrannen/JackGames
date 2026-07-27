@@ -241,7 +241,7 @@ export default function LobbyPage({ params }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {players.length === 0 && <div style={{ fontSize: 14, color: INK_MUTED, fontStyle: "italic" }}>No players yet</div>}
           {players.map(p => (
-            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, background: PANEL, padding: "12px 14px", borderRadius: 14, boxShadow: "0 2px 6px rgba(0,0,0,0.12)" }}>
+            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, background: PANEL, padding: "12px 14px" }}>
               <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: INK }}>
                 {p.name}{p.id === myPlayerId && <span style={{ fontSize: 12, opacity: 0.55, marginLeft: 6 }}>you</span>}
               </span>
@@ -288,7 +288,7 @@ export default function LobbyPage({ params }) {
 
       {settingsOpen && (
         <div onClick={() => setSettingsOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 120, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: PANEL, color: INK, padding: "24px 20px", maxWidth: 360, width: "100%", borderRadius: 18, boxShadow: "0 8px 24px rgba(0,0,0,0.25)" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: PANEL, color: INK, padding: "24px 20px", maxWidth: 360, width: "100%" }}>
             <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 8 }}>Starting Points</div>
             <div style={{ fontSize: 14, fontWeight: 600, opacity: 0.7, marginBottom: 16 }}>How many points does each player start with?</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 20 }}>

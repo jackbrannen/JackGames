@@ -409,8 +409,9 @@ export default function Home() {
   const [lastName, setLastName] = useState("")
   const [username, setUsername] = useState("")
   const [saved, setSaved] = useState(false)
-  const [logs, setLogs] = useState({ real: [], test: [] })
+  const [logs, setLogs] = useState({ real: [], test: [], instancesReal: [], instancesTest: [] })
   const [logsLoading, setLogsLoading] = useState(false)
+  const [logsView, setLogsView] = useState("player")
 
   const [playerCount, setPlayerCount] = useState(null)
   const [typeFilter, setTypeFilter] = useState(new Set())
@@ -470,17 +471,24 @@ export default function Home() {
         supabase.from("tc_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("sb_players").select("first_name,last_name,game_code,created_at").limit(2000),
       ])
-      const people = {}, displayNames = {}
+      const people = {}, displayNames = {}, instances = {}
       function addRows(rows, gameName) {
         for (const row of (rows ?? [])) {
           if (!row.first_name || !row.last_name) continue
           const raw = `${row.first_name} ${row.last_name}`, key = raw.toLowerCase()
-          if (!displayNames[key]) displayNames[key] = raw.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ")
+          const displayName = raw.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ")
+          if (!displayNames[key]) displayNames[key] = displayName
           if (!people[key]) people[key] = {}
           if (!people[key][gameName]) people[key][gameName] = { count: 0, first: row.created_at, last: row.created_at }
           const g = people[key][gameName]; g.count++
           if (row.created_at < g.first) g.first = row.created_at
           if (row.created_at > g.last) g.last = row.created_at
+
+          const instKey = `${gameName}::${row.game_code}`
+          if (!instances[instKey]) instances[instKey] = { game: gameName, code: row.game_code, date: row.created_at, players: [] }
+          const inst = instances[instKey]
+          if (row.created_at < inst.date) inst.date = row.created_at
+          inst.players.push({ name: displayName, key })
         }
       }
       addRows(fishbowl.data, "Fishbowl"); addRows(gow.data, "Game of What"); addRows(codenames.data, "Codenames")
@@ -490,11 +498,25 @@ export default function Home() {
       addRows(alphajam.data, "Alpha Jam"); addRows(woe.data, "What On Earth"); addRows(decrypto.data, "Decrypto")
       addRows(samepage.data, "Same Page"); addRows(typecast.data, "Typecast"); addRows(soundboard.data, "Sound Board")
       const toRows = entries => entries
-        .map(([key, games]) => ({ name: displayNames[key], games: Object.entries(games).map(([game, s]) => ({ game, ...s })).sort((a, b) => a.game.localeCompare(b.game)), total: Object.values(games).reduce((s, g) => s + g.count, 0) }))
+        .map(([key, games]) => ({ name: displayNames[key], games: Object.entries(games).map(([game, s]) => ({ game, ...s })).sort((a, b) => b.last.localeCompare(a.last)), total: Object.values(games).reduce((s, g) => s + g.count, 0) }))
         .sort((a, b) => b.total - a.total)
-      const isDummy = ([key]) => /\b(test|player|first|last|bot)\w*/.test(key)
-      const isAliceBob = ([key]) => /\b(alice|bob)\b/.test(key)
-      setLogs({ real: toRows(Object.entries(people).filter(e => !isDummy(e) && !isAliceBob(e))), test: toRows(Object.entries(people).filter(e => isDummy(e) && !isAliceBob(e))) })
+      const isDummy = key => /\b(test|player|first|last|bot)\w*/.test(key)
+      const isAliceBob = key => /\b(alice|bob)\b/.test(key)
+      const toInstanceRows = insts => insts
+        .map(inst => ({ ...inst, players: inst.players.sort((a, b) => a.name.localeCompare(b.name)) }))
+        .sort((a, b) => b.date.localeCompare(a.date))
+      // Mirror the per-person filtering: Alice/Bob players are hidden entirely (as
+      // if they weren't there), then an instance is "test" only if every remaining
+      // player is a dummy — real instances are anything with at least one real player.
+      const instanceRows = Object.values(instances)
+        .map(inst => ({ ...inst, players: inst.players.filter(p => !isAliceBob(p.key)) }))
+        .filter(inst => inst.players.length > 0)
+      setLogs({
+        real: toRows(Object.entries(people).filter(([key]) => !isDummy(key) && !isAliceBob(key))),
+        test: toRows(Object.entries(people).filter(([key]) => isDummy(key) && !isAliceBob(key))),
+        instancesReal: toInstanceRows(instanceRows.filter(inst => inst.players.some(p => !isDummy(p.key)))),
+        instancesTest: toInstanceRows(instanceRows.filter(inst => inst.players.every(p => isDummy(p.key)))),
+      })
     } finally { setLogsLoading(false) }
   }
 
@@ -529,9 +551,14 @@ export default function Home() {
               <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "rgba(255,255,255,0.4)" }}>Game Logs</div>
               <button onClick={() => setLogsOpen(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: 22, cursor: "pointer", padding: "4px 8px" }}>✕</button>
             </div>
+            <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+              <button onClick={() => setLogsView("player")} style={{ background: logsView === "player" ? "rgba(255,255,255,0.15)" : "none", border: "none", color: logsView === "player" ? "white" : "rgba(255,255,255,0.4)", fontSize: 13, fontWeight: 800, padding: "8px 14px", cursor: "pointer" }}>By Player</button>
+              <button onClick={() => setLogsView("session")} style={{ background: logsView === "session" ? "rgba(255,255,255,0.15)" : "none", border: "none", color: logsView === "session" ? "white" : "rgba(255,255,255,0.4)", fontSize: 13, fontWeight: 800, padding: "8px 14px", cursor: "pointer" }}>By Session</button>
+            </div>
             {logsLoading && <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 16, fontWeight: 600, textAlign: "center", paddingTop: 40 }}>Loading…</div>}
-            {!logsLoading && logs.real.length === 0 && logs.test.length === 0 && <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 16, fontWeight: 600, textAlign: "center", paddingTop: 40 }}>No sessions found.</div>}
-            {!logsLoading && logs.real.map((person, i) => (
+            {!logsLoading && logsView === "player" && logs.real.length === 0 && logs.test.length === 0 && <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 16, fontWeight: 600, textAlign: "center", paddingTop: 40 }}>No sessions found.</div>}
+            {!logsLoading && logsView === "session" && logs.instancesReal.length === 0 && logs.instancesTest.length === 0 && <div style={{ color: "rgba(255,255,255,0.35)", fontSize: 16, fontWeight: 600, textAlign: "center", paddingTop: 40 }}>No sessions found.</div>}
+            {!logsLoading && logsView === "player" && logs.real.map((person, i) => (
               <div key={i} style={{ borderTop: "1px solid rgba(255,255,255,0.1)", padding: "16px 0" }}>
                 <div style={{ fontSize: 17, fontWeight: 800, color: "white", marginBottom: 10 }}>{person.name}</div>
                 {person.games.map(g => {
@@ -548,7 +575,7 @@ export default function Home() {
                 })}
               </div>
             ))}
-            {!logsLoading && logs.test.length > 0 && (
+            {!logsLoading && logsView === "player" && logs.test.length > 0 && (
               <>
                 <div style={{ margin: "24px 0 16px", display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{ flex: 1, height: 2, background: "rgba(255,255,255,0.15)" }} />
@@ -572,6 +599,45 @@ export default function Home() {
                     })}
                   </div>
                 ))}
+              </>
+            )}
+            {!logsLoading && logsView === "session" && logs.instancesReal.map((inst, i) => {
+              const gc = GAMES.find(x => x.name === inst.game || x.name.includes(inst.game) || inst.game.includes(x.name.replace("The ", "")))
+              return (
+                <div key={i} style={{ borderTop: "1px solid rgba(255,255,255,0.1)", padding: "16px 0" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
+                    <span style={{ background: gc?.bg ?? "rgba(255,255,255,0.15)", color: gc?.color ?? "white", fontSize: 12, fontWeight: 800, padding: "3px 8px" }}>{inst.game}</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>{shortDate(inst.date)}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.3)" }}>{inst.code}</span>
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>
+                    {inst.players.map(p => p.name).join(", ")}
+                  </div>
+                </div>
+              )
+            })}
+            {!logsLoading && logsView === "session" && logs.instancesTest.length > 0 && (
+              <>
+                <div style={{ margin: "24px 0 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ flex: 1, height: 2, background: "rgba(255,255,255,0.15)" }} />
+                  <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "rgba(255,255,255,0.3)" }}>Test Agents</span>
+                  <div style={{ flex: 1, height: 2, background: "rgba(255,255,255,0.15)" }} />
+                </div>
+                {logs.instancesTest.map((inst, i) => {
+                  const gc = GAMES.find(x => x.name === inst.game || x.name.includes(inst.game) || inst.game.includes(x.name.replace("The ", "")))
+                  return (
+                    <div key={i} style={{ borderTop: "1px solid rgba(255,255,255,0.07)", padding: "16px 0", opacity: 0.5 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
+                        <span style={{ background: gc?.bg ?? "rgba(255,255,255,0.15)", color: gc?.color ?? "white", fontSize: 12, fontWeight: 800, padding: "3px 8px" }}>{inst.game}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>{shortDate(inst.date)}</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.3)" }}>{inst.code}</span>
+                      </div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>
+                        {inst.players.map(p => p.name).join(", ")}
+                      </div>
+                    </div>
+                  )
+                })}
               </>
             )}
           </div>

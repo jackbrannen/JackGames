@@ -7,16 +7,18 @@
 
   Props:
     question     { text, authorName }  — displayed above answers (omit to hide)
-    items        { id, text, authorNames[], voteCount, voterNames[]?, isBonus?, isCorrect? }[]
+    items        { id, text, authorNames[], voteCount, voterNames[]?, isBonus?, isCorrect?, likeCount? }[]
                    — sorted externally (usually by voteCount desc); voterNames lists
                    who voted for this answer; isBonus shows "matched +1" badge;
-                   isCorrect shows a "✓ correct" label
+                   isCorrect shows a "✓ correct" label; likeCount (omit to hide) shows
+                   a thumbs-up count right-aligned in the row
     notaCount    number  — votes for "none of the above" (0 or omit to hide)
     notaLabel    string  — label for that row (default "None of the above")
     skippedNames string[]  — players who skipped (shown as small footnote)
-    scores       { name, score }[]
+    scores       { name, score, likeCount? }[]
                    — all players with their current overall score, sorted descending;
-                   shown as a simple scoreboard below the answers
+                   shown as a simple scoreboard below the answers; likeCount (omit to
+                   hide) shows each player's total likes received, right-aligned
     colors       {
                    card,    // answer card background
                    yellow,  // accent / vote badge fill when pts > 0
@@ -40,6 +42,18 @@
       colors={{ card: CARD_BG, yellow: YELLOW, dim: WARM_LIGHT }}
     />
 */
+
+import { ThumbsUpIcon } from "./Selections"
+
+function LikeBadge({ count, size = 18, fontSize = 12 }) {
+  const liked = count > 0
+  return (
+    <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, color: liked ? "#FBDF54" : "rgba(255,255,255,0.4)" }}>
+      <ThumbsUpIcon filled={liked} size={size} />
+      <span style={{ fontSize, fontWeight: 700 }}>{count}</span>
+    </div>
+  )
+}
 
 export default function Results({
   question,
@@ -72,44 +86,47 @@ export default function Results({
         {items.map(item => {
           const pts = item.voteCount ?? 0
           return (
-            <div key={item.id} style={{ background: card, padding: "16px 20px" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-                <div style={{
-                  background: pts > 0 ? yellow : dim,
-                  color: pts > 0 ? "#000" : "rgba(255,255,255,0.5)",
-                  fontSize: 20, fontWeight: 900,
-                  minWidth: 44, textAlign: "center", padding: "6px 0", flexShrink: 0,
-                }}>
-                  {pts > 0 ? `+${pts}` : "0"}
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>{item.text}</div>
-                  {(item.authorNames ?? []).length > 0 && (
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 5 }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>Written by</span>
-                      <span style={{ fontSize: 13, fontWeight: 700 }}>
-                        {(item.authorNames ?? []).join(" & ")}
-                        {item.isBonus && (
-                          <span style={{ marginLeft: 6, background: yellow, color: "#000", fontSize: 11, fontWeight: 900, padding: "1px 5px", verticalAlign: "middle" }}>
-                            matched +1
-                          </span>
-                        )}
-                        {item.isCorrect && (
-                          <span style={{ marginLeft: 6, color: yellow, fontSize: 12, fontWeight: 900 }}>
-                            ✓ correct
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  )}
-                  {(item.voterNames ?? []).length > 0 && (
-                    <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 3 }}>
-                      <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>Chosen by</span>
-                      <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.6 }}>{item.voterNames.join(", ")}</span>
-                    </div>
-                  )}
+            <div key={item.id} style={{ display: "flex", alignItems: "stretch", gap: 8 }}>
+              <div style={{ flex: 1, minWidth: 0, background: card, padding: "16px 20px" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                  <div style={{
+                    background: pts > 0 ? yellow : dim,
+                    color: pts > 0 ? "#000" : "rgba(255,255,255,0.5)",
+                    fontSize: 20, fontWeight: 900,
+                    minWidth: 44, textAlign: "center", padding: "6px 0", flexShrink: 0,
+                  }}>
+                    {pts > 0 ? `+${pts}` : "0"}
+                  </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>{item.text}</div>
+                    {(item.authorNames ?? []).length > 0 && (
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 5 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>Written by</span>
+                        <span style={{ fontSize: 13, fontWeight: 700 }}>
+                          {(item.authorNames ?? []).join(" & ")}
+                          {item.isBonus && (
+                            <span style={{ marginLeft: 6, background: yellow, color: "#000", fontSize: 11, fontWeight: 900, padding: "1px 5px", verticalAlign: "middle" }}>
+                              matched +1
+                            </span>
+                          )}
+                          {item.isCorrect && (
+                            <span style={{ marginLeft: 6, color: yellow, fontSize: 12, fontWeight: 900 }}>
+                              ✓ correct
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                    {(item.voterNames ?? []).length > 0 && (
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 3 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.4, flexShrink: 0 }}>Chosen by</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.6 }}>{item.voterNames.join(", ")}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
+              {item.likeCount !== undefined && <LikeBadge count={item.likeCount} />}
             </div>
           )
         })}
@@ -154,6 +171,7 @@ export default function Results({
                 <div style={{ background: card, padding: "10px 16px", flex: 1, display: "flex", alignItems: "center" }}>
                   <span style={{ fontSize: 17, fontWeight: 700 }}>{s.name}</span>
                 </div>
+                {s.likeCount !== undefined && <div style={{ marginLeft: 8, display: "flex", alignItems: "center" }}><LikeBadge count={s.likeCount} size={16} fontSize={13} /></div>}
               </div>
             ))}
           </div>

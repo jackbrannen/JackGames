@@ -8,7 +8,9 @@
   buttons (e.g. Fishbowl's full clue list).
 
   Props:
-    players        { id, name, score }[]   — sorted descending by score; winner = max score
+    players        { id, name, score, likeCount? }[]
+                     — sorted descending by score; winner = max score; likeCount
+                     (omit to hide) shows a thumbs-up count outside each row
     myPlayerId     string | null           — highlights "you" label on the player's own row
     onPlayAgain    fn                      — called when Play Again is tapped
     onPlayAnotherGame fn                   — called when Play Another Game is tapped
@@ -30,6 +32,18 @@
       colors={{ yellow: YELLOW, wl: WARM_LIGHT }}
     />
 */
+
+import { ThumbsUpIcon } from "./Selections"
+
+function LikeBadge({ count }) {
+  const liked = count > 0
+  return (
+    <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, color: liked ? "#FBDF54" : "rgba(255,255,255,0.4)" }}>
+      <ThumbsUpIcon filled={liked} size={16} />
+      <span style={{ fontSize: 13, fontWeight: 700 }}>{count}</span>
+    </div>
+  )
+}
 
 export default function EndGame({
   players = [],
@@ -87,6 +101,7 @@ export default function EndGame({
                   </span>
                 )}
               </div>
+              {p.likeCount !== undefined && <div style={{ marginLeft: 8, display: "flex", alignItems: "center" }}><LikeBadge count={p.likeCount} /></div>}
             </div>
           )
         })}

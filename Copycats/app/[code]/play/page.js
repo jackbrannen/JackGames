@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import FooterButton from "../../../components/FooterButton"
-import Selections from "../../../components/Selections"
+import Selections, { ThumbsUpIcon } from "../../../components/Selections"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
 import Menu from "../../../components/Menu"
@@ -127,6 +127,7 @@ export default function PlayPage({ params }) {
 
   // voting
   const [selectedVote, setSelectedVote] = useState(null)
+  const [submittingVote, setSubmittingVote] = useState(false)
 
 
   // results ready-up
@@ -257,10 +258,18 @@ export default function PlayPage({ params }) {
 
   async function toggleLike(likedPlayerId) {
     if (!myId || likedPlayerId === myId) return
+    const round = game?.current_round
+    const alreadyLiked = likes.some(l => l.round === round && l.liker_id === myId && l.liked_player_id === likedPlayerId)
+    // Optimistic update — flip the icon instantly instead of waiting on the round trip.
+    if (alreadyLiked) {
+      setLikes(prev => prev.filter(l => !(l.round === round && l.liker_id === myId && l.liked_player_id === likedPlayerId)))
+    } else {
+      setLikes(prev => [...prev, { game_code: code, round, liker_id: myId, liked_player_id: likedPlayerId, created_at: new Date().toISOString() }])
+    }
     const { error } = await supabase.rpc("cc_toggle_like", {
-      p_code: code, p_round: game?.current_round, p_liker_id: myId, p_liked_player_id: likedPlayerId,
+      p_code: code, p_round: round, p_liker_id: myId, p_liked_player_id: likedPlayerId,
     })
-    if (error) throw error
+    if (error) { await loadState(); throw error } // roll back the optimistic guess on failure
     channelRef.current?.send({ type: "broadcast", event: "sync" })
     await loadState()
   }
@@ -670,11 +679,11 @@ export default function PlayPage({ params }) {
   if (phase === "voting") {
     const votedIds = roundVotes.map(v => v.voter_id)
     const myAnswerText = myAnswerRow?.answer?.trim().toLowerCase() ?? null
-    // Exclude own player_id only; same-text answers are shown but disabled (same as GoW)
-    const visibleAnswers = shuffled.filter(a => a.player_id !== myId)
+    // Own answer stays visible (marked isMine below, disabled in Selections) rather than
+    // being hidden — same-text answers are also shown but disabled (same as GoW)
     // De-dup: collapse identical answers into one entry (first in shuffled order = canonical)
     const seenVoteTexts = new Set()
-    const dedupedVotable = visibleAnswers.filter(a => {
+    const dedupedVotable = shuffled.filter(a => {
       const key = a.answer.trim().toLowerCase()
       if (seenVoteTexts.has(key)) return false
       seenVoteTexts.add(key)
@@ -683,6 +692,7 @@ export default function PlayPage({ params }) {
 
     if (iAmTarget) {
       return (
+        <>
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <StatusBar dark={DARK} label={`Round ${current_round + 1} of ${players.length}`} />
           <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
@@ -692,15 +702,50 @@ export default function PlayPage({ params }) {
             </div>
             <Section label="The answers">
               <div style={{ display: "flex", flexDirection: "column", gap: GAP.selection }}>
-                {shuffled.map(a => {
+                {[...shuffled].sort((a, b) => (a.player_id === myId ? 1 : 0) - (b.player_id === myId ? 1 : 0)).map(a => {
                   const voteCount = roundVotes.filter(v => v.voted_for_player_id === a.player_id).length
+                  const isMine = a.player_id === myId
+                  const answerLiked = iLiked(a.player_id)
+                  const answerLikeCount = likeCount(a.player_id)
                   return (
-                    <div key={a.player_id} style={{ background: MID, padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
-                      <p style={{ fontSize: 16, fontWeight: 500, color: "white", lineHeight: 1.4, flex: 1 }}>{a.answer}</p>
-                      {voteCount > 0 && (
-                        <div style={{ flexShrink: 0, background: YELLOW, color: "#000", fontSize: 13, fontWeight: 900, padding: "3px 8px", marginTop: 2 }}>
-                          {voteCount}
+                    <div key={a.player_id} style={{ display: "flex", alignItems: "stretch", gap: 8 }}>
+                      <div style={{ flex: 1, minWidth: 0, background: MID, padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 12 }}>
+                        <p style={{ fontSize: 16, fontWeight: 500, color: "white", lineHeight: 1.4, flex: 1 }}>{a.answer}</p>
+                        {isMine && (
+                          <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.6, color: "white", flexShrink: 0, marginTop: 2 }}>
+                            your answer
+                          </span>
+                        )}
+                        {voteCount > 0 && (
+                          <div style={{ flexShrink: 0, background: YELLOW, color: "#000", fontSize: 13, fontWeight: 900, padding: "3px 8px", marginTop: 2 }}>
+                            {voteCount}
+                          </div>
+                        )}
+                      </div>
+                      {isMine ? (
+                        <div style={{ color: "white", opacity: 0.4, padding: "0 2px", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2 }}>
+                          <ThumbsUpIcon filled={false} size={22} />
+                          {answerLikeCount > 0 && <span style={{ fontSize: 12, fontWeight: 700 }}>{answerLikeCount}</span>}
                         </div>
+                      ) : (
+                        <button
+                          onClick={() => toggleLike(a.player_id)}
+                          style={{
+                            background: "transparent",
+                            color: answerLiked ? "#FBDF54" : "white",
+                            opacity: answerLiked ? 1 : 0.5,
+                            padding: "0 2px",
+                            flexShrink: 0,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 2,
+                          }}
+                        >
+                          <ThumbsUpIcon filled={answerLiked} size={22} />
+                          {answerLikeCount > 0 && <span style={{ fontSize: 12, fontWeight: 700 }}>{answerLikeCount}</span>}
+                        </button>
                       )}
                     </div>
                   )
@@ -712,37 +757,29 @@ export default function PlayPage({ params }) {
             </Section>
           </div>
         </div>
+          {pokeSystemNode()}
+        </>
       )
     }
 
-    async function submitVote(id) {
-      setSelectedVote(id)
+    async function confirmVote() {
+      if (selectedVote === null || submittingVote) return
+      setSubmittingVote(true)
       const { error } = await supabase.rpc("cc_submit_vote", {
         p_code: code,
         p_voter_id: myId,
         p_round: current_round,
-        p_voted_for_player_id: id,
+        p_voted_for_player_id: selectedVote,
       })
-      if (error) { setSelectedVote(null); throw error }
+      setSubmittingVote(false)
+      if (error) throw error
       // Gossip: broadcast so peers see vote instantly
       channelRef.current?.send({ type: "broadcast", event: "sync" })
       await loadState()
     }
 
-    async function deselectVote() {
-      setSelectedVote(null)
-      const { error } = await supabase
-        .from("cc_votes")
-        .delete()
-        .eq("game_code", code)
-        .eq("voter_id", myId)
-        .eq("round", current_round)
-      if (error) throw error
-      await loadState()
-    }
-
-    // Reflect DB vote in selectedId so it survives re-renders and loadState
-    const currentSelectedId = myVoteRow?.voted_for_player_id ?? selectedVote
+    const hasVoted = !!myVoteRow
+    const currentSelectedId = hasVoted ? myVoteRow.voted_for_player_id : selectedVote
 
     return (
       <>
@@ -762,8 +799,9 @@ export default function PlayPage({ params }) {
               isMine: !!(myAnswerText && a.answer.trim().toLowerCase() === myAnswerText),
             }))}
             selectedId={currentSelectedId}
-            onSelect={id => submitVote(id)}
-            onDeselect={deselectVote}
+            onSelect={id => setSelectedVote(id)}
+            onDeselect={() => setSelectedVote(null)}
+            disabled={hasVoted || submittingVote}
             colors={{ bg: MID, selectedBg: YELLOW, selectedText: "#000", deselectBg: DARK, deselectText: YELLOW }}
             mineLabel="Your answer — can't vote for it"
             showLikes
@@ -776,7 +814,11 @@ export default function PlayPage({ params }) {
           </Section>
         </div>
       </div>
-        {pokeSystemNode()}
+        {pokeSystemNode(!hasVoted ? (
+          <FooterButton onClick={confirmVote} disabled={selectedVote === null}>
+            Vote
+          </FooterButton>
+        ) : null)}
       </>
     )
   }
@@ -856,25 +898,34 @@ export default function PlayPage({ params }) {
               .map(v => players.find(p => p.id === v.voter_id)?.name)
               .filter(Boolean)
 
+            const realAnswerLikeCount = likeCount(roundTarget?.id)
+            const realAnswerLiked = realAnswerLikeCount > 0
+
             return (
               <div>
                 <div style={{ ...STYLE.sectionHeader, marginBottom: 16 }}>
                   {roundTarget?.name}'s real answer
                 </div>
-                <div style={{ background: GREEN, padding: "16px 20px", display: "flex", alignItems: "flex-start", gap: 14 }}>
-                  {correctVoters.length > 0 && (
-                    <div style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, minWidth: 44, textAlign: "center", padding: "6px 0", flexShrink: 0 }}>
-                      +2
-                    </div>
-                  )}
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ fontSize: 18, fontWeight: 700, color: "white", lineHeight: 1.4 }}>{targetAnswer.answer}</p>
+                <div style={{ display: "flex", alignItems: "stretch", gap: 8 }}>
+                  <div style={{ flex: 1, minWidth: 0, background: GREEN, padding: "16px 20px", display: "flex", alignItems: "flex-start", gap: 14 }}>
                     {correctVoters.length > 0 && (
-                      <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 8 }}>
-                        <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, flexShrink: 0 }}>Chosen by</span>
-                        <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.85 }}>{correctVoters.join(", ")}</span>
+                      <div style={{ background: YELLOW, color: "#000", fontSize: 20, fontWeight: 900, minWidth: 44, textAlign: "center", padding: "6px 0", flexShrink: 0 }}>
+                        +2
                       </div>
                     )}
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <p style={{ fontSize: 18, fontWeight: 700, color: "white", lineHeight: 1.4 }}>{targetAnswer.answer}</p>
+                      {correctVoters.length > 0 && (
+                        <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 8 }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, flexShrink: 0 }}>Chosen by</span>
+                          <span style={{ fontSize: 13, fontWeight: 600, opacity: 0.85 }}>{correctVoters.join(", ")}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, color: realAnswerLiked ? "#FBDF54" : "rgba(255,255,255,0.5)" }}>
+                    <ThumbsUpIcon filled={realAnswerLiked} size={18} />
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>{realAnswerLikeCount}</span>
                   </div>
                 </div>
               </div>
@@ -911,11 +962,16 @@ export default function PlayPage({ params }) {
                     voteCount: voteCount,
                     isBonus: group.playerIds.length > 1,
                     isCorrect: isCorrect,
+                    likeCount: group.playerIds.reduce((sum, id) => sum + likeCount(id), 0),
                   }
                 })
                 .sort((a, b) => b.voteCount - a.voteCount || b.voterNames.length - a.voterNames.length)
             })()}
-            scores={[...players].sort((a, b) => b.score - a.score).map(p => ({ name: p.name, score: p.score }))}
+            scores={[...players].sort((a, b) => b.score - a.score).map(p => ({
+              name: p.name,
+              score: p.score,
+              likeCount: likes.filter(l => l.liked_player_id === p.id).length,
+            }))}
             colors={{ card: MID, yellow: YELLOW, dim: "rgba(255,255,255,0.15)" }}
           />
         </div>
@@ -935,13 +991,10 @@ export default function PlayPage({ params }) {
   // ─── phase: finished ─────────────────────────────────────────────────────
 
   if (phase === "finished") {
-    const finalPlayers = [...players].sort((a, b) => b.score - a.score)
-    const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
-
     const likeTotals = {}
     for (const l of likes) likeTotals[l.liked_player_id] = (likeTotals[l.liked_player_id] ?? 0) + 1
-    const topLikeCount = Math.max(0, ...Object.values(likeTotals))
-    const mostLiked = topLikeCount > 0 ? players.filter(p => likeTotals[p.id] === topLikeCount) : []
+    const finalPlayers = [...players].sort((a, b) => b.score - a.score).map(p => ({ ...p, likeCount: likeTotals[p.id] ?? 0 }))
+    const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
     return (
       <>
@@ -949,16 +1002,6 @@ export default function PlayPage({ params }) {
         <EndGame
           players={finalPlayers}
           myPlayerId={myId}
-          aboveScores={mostLiked.length > 0 && (
-            <div style={{ background: "rgba(240,79,82,0.15)", border: "1px solid rgba(240,79,82,0.4)", padding: "14px 16px", marginBottom: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#F04F52", marginBottom: 6 }}>
-                ♥ Most liked answer{mostLiked.length > 1 ? "s" : ""}
-              </div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: "white" }}>
-                {mostLiked.map(p => p.name).join(", ")} — {topLikeCount} like{topLikeCount === 1 ? "" : "s"}
-              </div>
-            </div>
-          )}
           onPlayAgain={async () => {
             if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
             const { data, error } = await supabase.rpc("cc_create_replay", { p_code: code })

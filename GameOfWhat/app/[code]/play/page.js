@@ -14,7 +14,7 @@ import FooterButton from "../../../components/FooterButton"
 import WaitingList from "../../../components/WaitingList"
 import { useBonusMatch, formatMatchNames } from "../../../lib/useBonusMatch"
 import TextEntry from "../../../components/TextEntry"
-import Selections from "../../../components/Selections"
+import Selections, { ThumbsUpIcon } from "../../../components/Selections"
 import RandomIdeas from "../../../components/RandomIdeas"
 import StatusBar from "../../../components/StatusBar"
 import Results from "../../../components/Results"
@@ -50,6 +50,24 @@ function pickRandWord() {
   return BOT_WORDS[Math.floor(Math.random() * BOT_WORDS.length)]
 }
 
+async function fetchGameWideLikeTotals(code) {
+  const { data: qIds } = await supabase.from("gow_questions").select("id").eq("game_code", code)
+  const ids = (qIds ?? []).map(q => q.id)
+  if (!ids.length) return {}
+  const { data: lk } = await supabase.from("gow_likes").select("answer_id").in("question_id", ids)
+  const answerIds = [...new Set((lk ?? []).map(l => l.answer_id))]
+  const { data: ans } = answerIds.length
+    ? await supabase.from("gow_answers").select("id,player_id").in("id", answerIds)
+    : { data: [] }
+  const authorById = Object.fromEntries((ans ?? []).map(a => [a.id, a.player_id]))
+  const totals = {}
+  for (const l of (lk ?? [])) {
+    const pid = authorById[l.answer_id]
+    if (pid) totals[pid] = (totals[pid] ?? 0) + 1
+  }
+  return totals
+}
+
 
 export default function Play({ params }) {
   const router = useRouter()
@@ -65,8 +83,10 @@ export default function Play({ params }) {
   const [likes, setLikes] = useState([])
   const [gameOverLikes, setGameOverLikes] = useState(null)
   const gameOverLikesFetchedRef = useRef(false)
+  const [scoreLikeTotals, setScoreLikeTotals] = useState({})
   const [myAnswer, setMyAnswer] = useState("")
   const [myVoteId, setMyVoteId] = useState(null)
+  const [pendingVoteId, setPendingVoteId] = useState(null)
   const [submittingVote, setSubmittingVote] = useState(false)
   const changingVoteRef = useRef(false)
   const botIdsRef = useRef([])
@@ -95,6 +115,21 @@ export default function Play({ params }) {
     if (prev !== game.phase) playYourTurn()
   }, [game?.phase])
 
+  // Pre-fill next-round question and answer fields (dummy games)
+  useEffect(() => {
+    if (game?.phase !== "between_rounds" || !myPlayerId || !game?.is_dummy) return
+    const mine = players.find(p => p.id === myPlayerId)
+    if (mine?.question) return
+    setRoundQuestion(prev => prev || pickRandQuestion())
+  }, [game?.phase, game?.round_index, myPlayerId, players, game?.is_dummy])
+
+  useEffect(() => {
+    if (game?.question_phase !== "answering" || !myPlayerId || !game?.is_dummy) return
+    if (myPlayerId === currentQuestion?.author_id) return
+    if (answers.some(a => a.player_id === myPlayerId)) return
+    setMyAnswer(prev => prev || pickRandWord())
+  }, [game?.question_phase, currentQuestion?.id, myPlayerId, answers, game?.is_dummy])
+
 
   useEffect(() => {
     const existing = localStorage.getItem(`gow:${code}:playerId`)
@@ -109,7 +144,7 @@ export default function Play({ params }) {
     const seq = ++loadSeqRef.current
     const { data: gameData } = await supabase
       .from("gow_games")
-      .select("code,phase,round_index,rounds_total,current_question_id,question_phase,used_prompts,next_game,next_game_picker_name,next_game_code,last_completed_question_id,replay_code")
+      .select("code,phase,round_index,rounds_total,current_question_id,question_phase,used_prompts,next_game,next_game_picker_name,next_game_code,last_completed_question_id,replay_code,is_dummy")
       .eq("code", code)
       .single()
     if (seq !== loadSeqRef.current) return
@@ -176,19 +211,23 @@ export default function Play({ params }) {
             question: qData,
             answers: answerData ?? [],
             votes: voteData ?? [],
+            likes: likeData ?? [],
           })
+          fetchGameWideLikeTotals(code).then(setScoreLikeTotals)
         } else if (
           gameData.last_completed_question_id &&
           lastFetchedResultsIdRef.current !== gameData.last_completed_question_id
         ) {
           lastFetchedResultsIdRef.current = gameData.last_completed_question_id
-          const [{ data: lqData }, { data: laData }, { data: lvData }] = await Promise.all([
+          const [{ data: lqData }, { data: laData }, { data: lvData }, { data: llData }] = await Promise.all([
             supabase.from("gow_questions").select("id,text,author_id").eq("id", gameData.last_completed_question_id).single(),
             supabase.from("gow_answers").select("id,text,player_id,vote_count,skipped").eq("question_id", gameData.last_completed_question_id).order("random_order", { ascending: true }),
             supabase.from("gow_votes").select("answer_id,voter_id").eq("question_id", gameData.last_completed_question_id),
+            supabase.from("gow_likes").select("answer_id").eq("question_id", gameData.last_completed_question_id),
           ])
           if (seq !== loadSeqRef.current) return
-          setResultSnapshot({ questionId: gameData.last_completed_question_id, question: lqData, answers: laData ?? [], votes: lvData ?? [] })
+          setResultSnapshot({ questionId: gameData.last_completed_question_id, question: lqData, answers: laData ?? [], votes: lvData ?? [], likes: llData ?? [] })
+          fetchGameWideLikeTotals(code).then(setScoreLikeTotals)
         }
       }
     } else {
@@ -200,24 +239,7 @@ export default function Play({ params }) {
 
     if (gameData.phase === "finished" && !gameOverLikesFetchedRef.current) {
       gameOverLikesFetchedRef.current = true
-      const { data: qIds } = await supabase.from("gow_questions").select("id").eq("game_code", code)
-      const ids = (qIds ?? []).map(q => q.id)
-      if (ids.length) {
-        const { data: lk } = await supabase.from("gow_likes").select("answer_id").in("question_id", ids)
-        const answerIds = [...new Set((lk ?? []).map(l => l.answer_id))]
-        const { data: ans } = answerIds.length
-          ? await supabase.from("gow_answers").select("id,player_id").in("id", answerIds)
-          : { data: [] }
-        const authorById = Object.fromEntries((ans ?? []).map(a => [a.id, a.player_id]))
-        const totals = {}
-        for (const l of (lk ?? [])) {
-          const pid = authorById[l.answer_id]
-          if (pid) totals[pid] = (totals[pid] ?? 0) + 1
-        }
-        setGameOverLikes(totals)
-      } else {
-        setGameOverLikes({})
-      }
+      setGameOverLikes(await fetchGameWideLikeTotals(code))
     }
   }
 
@@ -279,6 +301,7 @@ export default function Play({ params }) {
     setMyAnswer("")
     setSubmittingVote(false)
     setMyVoteId(null)
+    setPendingVoteId(null)
     changingVoteRef.current = false
   }, [currentQuestionId])
 
@@ -381,25 +404,19 @@ export default function Play({ params }) {
 
   async function toggleLike(answerId) {
     if (!currentQuestion || !myPlayerId) return
+    const alreadyLiked = likes.some(l => l.answer_id === answerId && l.liker_id === myPlayerId)
+    // Optimistic update — flip the icon instantly instead of waiting on the round trip.
+    if (alreadyLiked) {
+      setLikes(prev => prev.filter(l => !(l.answer_id === answerId && l.liker_id === myPlayerId)))
+    } else {
+      setLikes(prev => [...prev, { question_id: currentQuestion.id, liker_id: myPlayerId, answer_id: answerId }])
+    }
     const { error } = await supabase.rpc("gow_toggle_like", {
       p_code: code, p_question_id: currentQuestion.id, p_liker_id: myPlayerId, p_answer_id: answerId,
     })
-    if (error) throw error
+    if (error) { await loadState(); throw error } // roll back the optimistic guess on failure
     syncChRef.current?.send({ type: "broadcast", event: "sync" })
     await loadState()
-  }
-
-  async function handleDeselect() {
-    changingVoteRef.current = true
-    setMyVoteId(null)
-    if (currentQuestion && myPlayerId) {
-      await supabase.rpc("gow_retract_vote", {
-        p_code: code,
-        p_question_id: currentQuestion.id,
-        p_voter_id: myPlayerId,
-      })
-    }
-    changingVoteRef.current = false
   }
 
   async function submitVote(answerId) {
@@ -415,10 +432,17 @@ export default function Play({ params }) {
         p_answer_id: answerId,
       })
       setSubmittingVote(false)
-    } catch {
+    } catch (e) {
       setSubmittingVote(false)
+      setMyVoteId(null)
       changingVoteRef.current = false
+      throw e
     }
+  }
+
+  async function confirmVote() {
+    if (pendingVoteId === null) return
+    await submitVote(pendingVoteId === "nota" ? null : pendingVoteId)
   }
 
   async function handleAdvanceFromResults() {
@@ -542,10 +566,11 @@ export default function Play({ params }) {
                 .map(v => players.find(p => p.id === v.voter_id)?.name)
                 .filter(Boolean),
               isBonus: g.playerIds.length > 1,
+              likeCount: (snap.likes ?? []).filter(l => g.answerIds.includes(l.answer_id)).length,
             }))}
             notaCount={snapNotaVoters.length}
             skippedNames={snapSkipped.map(a => players.find(p => p.id === a.player_id)?.name).filter(Boolean)}
-            scores={[...players].sort((a, b) => b.score - a.score).map(p => ({ name: p.name, score: p.score }))}
+            scores={[...players].sort((a, b) => b.score - a.score).map(p => ({ name: p.name, score: p.score, likeCount: scoreLikeTotals[p.id] ?? 0 }))}
             colors={{ card: MID, yellow: YELLOW, dim: WARM_LIGHT }}
           />
         </div>
@@ -569,10 +594,8 @@ export default function Play({ params }) {
   }
 
   if (game.phase === "finished") {
-    const finalPlayers = [...(gameOverPlayers ?? players)].sort((a, b) => b.score - a.score)
     const likeTotals = gameOverLikes ?? {}
-    const topLikeCount = Math.max(0, ...Object.values(likeTotals))
-    const mostLiked = topLikeCount > 0 ? finalPlayers.filter(p => likeTotals[p.id] === topLikeCount) : []
+    const finalPlayers = [...(gameOverPlayers ?? players)].sort((a, b) => b.score - a.score).map(p => ({ ...p, likeCount: likeTotals[p.id] ?? 0 }))
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
@@ -582,16 +605,6 @@ export default function Play({ params }) {
           onPlayAgain={resetGame}
           bottomPad={BOTTOM_PAD}
           colors={{ yellow: YELLOW, wl: WARM_LIGHT }}
-          aboveScores={mostLiked.length > 0 && (
-            <div style={{ background: "rgba(240,79,82,0.15)", border: "1px solid rgba(240,79,82,0.4)", padding: "14px 16px", marginBottom: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#F04F52", marginBottom: 6 }}>
-                ♥ Most liked answer{mostLiked.length > 1 ? "s" : ""}
-              </div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: "white" }}>
-                {mostLiked.map(p => p.name).join(", ")} — {topLikeCount} like{topLikeCount === 1 ? "" : "s"}
-              </div>
-            </div>
-          )}
         />
       </div>
         {pokeSystemNode()}
@@ -752,6 +765,16 @@ export default function Play({ params }) {
         Submit Answer
       </FooterButton>
     )
+  } else if (phase === "voting" && !myVoteId) {
+    answerFooterAction = (
+      <FooterButton
+        key={`vote-${currentQuestion?.id}`}
+        disabled={pendingVoteId === null}
+        onClick={confirmVote}
+      >
+        Vote
+      </FooterButton>
+    )
   }
 
   return (
@@ -835,15 +858,15 @@ export default function Play({ params }) {
         {phase === "voting" && (
           <>
             <div style={{ fontSize: FONT_SIZE.min, fontWeight: FONT_WEIGHT.bold, opacity: OPACITY.muted, marginBottom: 16 }}>
-              {myVoteId ? "Vote cast — tap ✕ to change:" : "Vote for your favorite:"}
+              {myVoteId ? "Vote submitted — waiting for others:" : "Vote for your favorite:"}
             </div>
             <div style={{ marginBottom: 24 }}>
               <Selections
                 options={answerGroups.map(g => ({ id: g.primaryId, text: g.text, isMine: g.playerIds.includes(myPlayerId) }))}
-                selectedId={answerGroups.find(g => g.answerIds.includes(myVoteId))?.primaryId ?? null}
-                onSelect={id => submitVote(id)}
-                onDeselect={handleDeselect}
-                disabled={submittingVote}
+                selectedId={myVoteId ? (answerGroups.find(g => g.answerIds.includes(myVoteId))?.primaryId ?? null) : pendingVoteId}
+                onSelect={id => setPendingVoteId(id)}
+                onDeselect={() => setPendingVoteId(null)}
+                disabled={!!myVoteId || submittingVote}
                 colors={{ bg: MID, selectedBg: YELLOW, selectedText: "#000", deselectBg: DARK, deselectText: YELLOW }}
                 showLikes
                 likeCounts={likeCountsById}
@@ -852,33 +875,24 @@ export default function Play({ params }) {
               />
               {/* None of the above */}
               {(() => {
-                const isNota = myVoteId === "nota"
-                const canVoteNota = !myVoteId || changingVoteRef.current
+                const isNotaSelected = myVoteId ? myVoteId === "nota" : pendingVoteId === "nota"
+                const locked = !!myVoteId
                 return (
                   <div style={{ display: "flex", alignItems: "stretch", marginTop: 10 }}>
                     <button
-                      onClick={() => { if (canVoteNota && !isNota) submitVote(null) }}
-                      disabled={submittingVote || isNota}
+                      onClick={() => { if (!locked) setPendingVoteId(isNotaSelected ? null : "nota") }}
+                      disabled={locked}
                       style={{
                         flex: 1,
-                        background: isNota ? YELLOW : WARM_LIGHT,
-                        color: isNota ? "#000" : "rgba(255,255,255,0.5)",
+                        background: isNotaSelected ? YELLOW : WARM_LIGHT,
+                        color: isNotaSelected ? "#000" : "rgba(255,255,255,0.5)",
                         fontSize: 15, fontWeight: FONT_WEIGHT.bold, padding: "16px 20px",
                         textAlign: "left", display: "block",
-                        opacity: myVoteId && !isNota && !changingVoteRef.current ? 0.45 : 1,
+                        opacity: locked && !isNotaSelected ? 0.45 : 1,
                       }}
                     >
                       None of the above
                     </button>
-                    {isNota && (
-                      <button
-                        onClick={handleDeselect}
-                        disabled={submittingVote}
-                        style={{ background: "#4A123B", color: YELLOW, fontSize: 22, fontWeight: FONT_WEIGHT.black, padding: "16px 24px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
-                      >
-                        ✕
-                      </button>
-                    )}
                   </div>
                 )
               })()}

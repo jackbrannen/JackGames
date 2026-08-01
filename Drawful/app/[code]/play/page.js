@@ -7,7 +7,7 @@ import Footer, { FOOTER_H } from "../../../components/Footer"
 import StatusBar from "../../../components/StatusBar"
 import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT } from "../../../components/styles"
 import FooterButton from "../../../components/FooterButton"
-import Selections from "../../../components/Selections"
+import Selections, { ThumbsUpIcon } from "../../../components/Selections"
 import WaitingList from "../../../components/WaitingList"
 import Results from "../../../components/Results"
 import TextEntry from "../../../components/TextEntry"
@@ -27,6 +27,16 @@ const MUTED = "rgba(255,255,255,0.65)"
 const WARM_LIGHT = "#3A9180"
 const MID = "#245E5C"
 const DRAW_SECONDS = 90
+
+function computeLikeTotals(likes, answers) {
+  const answerAuthorById = Object.fromEntries(answers.map(a => [a.id, a.author_id]))
+  const totals = {}
+  for (const l of likes) {
+    const pid = answerAuthorById[l.answer_id]
+    if (pid) totals[pid] = (totals[pid] ?? 0) + 1
+  }
+  return totals
+}
 
 function playChirp() {
   try {
@@ -858,10 +868,17 @@ export default function Play({ params }) {
 
   async function toggleLike(answerId) {
     if (!currentArtist || !myPlayerId) return
+    const alreadyLiked = likes.some(l => l.answer_id === answerId && l.liker_id === myPlayerId)
+    // Optimistic update — flip the icon instantly instead of waiting on the round trip.
+    if (alreadyLiked) {
+      setLikes(prev => prev.filter(l => !(l.answer_id === answerId && l.liker_id === myPlayerId)))
+    } else {
+      setLikes(prev => [...prev, { drawing_player_id: currentArtist.id, liker_id: myPlayerId, answer_id: answerId }])
+    }
     const { error } = await supabase.rpc("drawful_toggle_like", {
       p_code: code, p_drawing_player_id: currentArtist.id, p_liker_id: myPlayerId, p_answer_id: answerId,
     })
-    if (error) throw error
+    if (error) { await loadState(); throw error } // roll back the optimistic guess on failure
     syncChRef.current?.send({ type: "broadcast", event: "sync" })
     await loadState()
   }
@@ -892,7 +909,8 @@ export default function Play({ params }) {
   // ── Finished ──────────────────────────────────────────────────────────────
 
   if (game.phase === "finished") {
-    const finalPlayers = [...players].sort((a, b) => b.score - a.score)
+    const likeTotals = computeLikeTotals(likes, answers)
+    const finalPlayers = [...players].sort((a, b) => b.score - a.score).map(p => ({ ...p, likeCount: likeTotals[p.id] ?? 0 }))
 
     const resetGame = async () => {
       if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
@@ -904,15 +922,6 @@ export default function Play({ params }) {
 
     const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
-    const answerAuthorById = Object.fromEntries(answers.map(a => [a.id, a.author_id]))
-    const likeTotals = {}
-    for (const l of likes) {
-      const pid = answerAuthorById[l.answer_id]
-      if (pid) likeTotals[pid] = (likeTotals[pid] ?? 0) + 1
-    }
-    const topLikeCount = Math.max(0, ...Object.values(likeTotals))
-    const mostLiked = topLikeCount > 0 ? finalPlayers.filter(p => likeTotals[p.id] === topLikeCount) : []
-
     return (
       <>
       <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
@@ -922,16 +931,6 @@ export default function Play({ params }) {
           onPlayAgain={resetGame}
           bottomPad={BOTTOM_PAD}
           colors={{ yellow: ACCENT, wl: MID }}
-          aboveScores={mostLiked.length > 0 && (
-            <div style={{ background: "rgba(240,79,82,0.15)", border: "1px solid rgba(240,79,82,0.4)", padding: "14px 16px", marginBottom: 24 }}>
-              <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: "#F04F52", marginBottom: 6 }}>
-                ♥ Most liked answer{mostLiked.length > 1 ? "s" : ""}
-              </div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: "white" }}>
-                {mostLiked.map(p => p.name).join(", ")} — {topLikeCount} like{topLikeCount === 1 ? "" : "s"}
-              </div>
-            </div>
-          )}
         />
       </div>
         {pokeSystemNode()}
@@ -1213,6 +1212,8 @@ export default function Play({ params }) {
     const fakeAnswers = currentAnswers.filter(a => !a.is_real)
     const isLast = currentDrawingIndex >= n - 1
     const isMeReady = (game.ready_player_ids ?? []).includes(myPlayerId)
+    const realAnswerLikeCount = realAnswer ? likes.filter(l => l.answer_id === realAnswer.id).length : 0
+    const scoreLikeTotals = computeLikeTotals(likes, answers)
     const readyCount = (game.ready_player_ids ?? []).length
 
     return (
@@ -1240,23 +1241,29 @@ export default function Play({ params }) {
               <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 10 }}>
                 The Real Answer
               </div>
-              <div style={{ background: "rgba(240,144,106,0.15)", border: `2px solid ${ACCENT}`, padding: "14px 18px" }}>
-                <div style={{ fontSize: 20, fontWeight: 900, color: ACCENT }}>{realAnswer.text}</div>
-                {(() => {
-                  const correctVoters = currentVotes
-                    .filter(v => v.answer_id === realAnswer.id)
-                    .map(v => players.find(p => p.id === v.voter_id)?.name)
-                    .filter(Boolean)
-                  return correctVoters.length > 0
-                    ? (
-                      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4, marginTop: 6 }}>
-                        <span style={{ fontSize: 13, fontWeight: 800 }}>{correctVoters.join(", ")}</span>
-                        <span style={{ fontSize: 13, opacity: 0.75, fontWeight: 600 }}>guessed right</span>
-                        <span style={{ fontSize: 13, fontWeight: 800, color: ACCENT }}>+1 each</span>
-                      </div>
-                    )
-                    : <div style={{ fontSize: 13, opacity: 0.65, fontWeight: 600, marginTop: 6 }}>Nobody got it!</div>
-                })()}
+              <div style={{ display: "flex", alignItems: "stretch", gap: 8 }}>
+                <div style={{ flex: 1, minWidth: 0, background: "rgba(240,144,106,0.15)", border: `2px solid ${ACCENT}`, padding: "14px 18px" }}>
+                  <div style={{ fontSize: 20, fontWeight: 900, color: ACCENT }}>{realAnswer.text}</div>
+                  {(() => {
+                    const correctVoters = currentVotes
+                      .filter(v => v.answer_id === realAnswer.id)
+                      .map(v => players.find(p => p.id === v.voter_id)?.name)
+                      .filter(Boolean)
+                    return correctVoters.length > 0
+                      ? (
+                        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 4, marginTop: 6 }}>
+                          <span style={{ fontSize: 13, fontWeight: 800 }}>{correctVoters.join(", ")}</span>
+                          <span style={{ fontSize: 13, opacity: 0.75, fontWeight: 600 }}>guessed right</span>
+                          <span style={{ fontSize: 13, fontWeight: 800, color: ACCENT }}>+1 each</span>
+                        </div>
+                      )
+                      : <div style={{ fontSize: 13, opacity: 0.65, fontWeight: 600, marginTop: 6 }}>Nobody got it!</div>
+                  })()}
+                </div>
+                <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, color: realAnswerLikeCount > 0 ? "#FBDF54" : "rgba(255,255,255,0.4)" }}>
+                  <ThumbsUpIcon filled={realAnswerLikeCount > 0} size={18} />
+                  <span style={{ fontSize: 12, fontWeight: 700 }}>{realAnswerLikeCount}</span>
+                </div>
               </div>
             </div>
           )}
@@ -1276,33 +1283,41 @@ export default function Play({ params }) {
                     const existing = groups.find(g => g.key === key)
                     if (existing) {
                       existing.authorIds.push(a.author_id)
+                      existing.answerIds.push(a.id)
                     } else {
                       const fooled = currentVotes
                         .filter(v => fakeAnswers.filter(fa => fa.text.trim().toLowerCase() === key).some(fa => fa.id === v.answer_id))
                         .map(v => players.find(p => p.id === v.voter_id)?.name)
                         .filter(Boolean)
-                      groups.push({ key, text: a.text, authorIds: [a.author_id], fooled })
+                      groups.push({ key, text: a.text, authorIds: [a.author_id], answerIds: [a.id], fooled })
                     }
                   })
                   return groups.map(g => {
                     const authors = g.authorIds.map(id => players.find(p => p.id === id)?.name ?? "?")
                     const isShared = g.authorIds.length > 1
+                    const groupLikeCount = likes.filter(l => g.answerIds.includes(l.answer_id)).length
                     return (
-                      <div key={g.key} style={{ background: "#205858", padding: "12px 16px" }}>
-                        <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>{g.text}</div>
-                        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 5 }}>
-                          <span style={{ fontSize: 13, opacity: 0.7, fontWeight: 600 }}>by</span>
-                          <span style={{ fontSize: 14, fontWeight: 800 }}>{authors.join(" & ")}</span>
-                          {isShared && <span style={{ fontSize: 12, fontWeight: 800, color: ACCENT }}>+1 bonus</span>}
-                          {g.fooled.length > 0 ? (
-                            <>
-                              <span style={{ fontSize: 13, opacity: 0.7, fontWeight: 600 }}>· fooled</span>
-                              <span style={{ fontSize: 14, fontWeight: 800 }}>{g.fooled.join(", ")}</span>
-                              <span style={{ fontSize: 13, fontWeight: 800, color: ACCENT }}>+{g.fooled.length}</span>
-                            </>
-                          ) : (
-                            <span style={{ fontSize: 13, opacity: 0.65, fontWeight: 600 }}>· nobody fooled</span>
-                          )}
+                      <div key={g.key} style={{ display: "flex", alignItems: "stretch", gap: 8 }}>
+                        <div style={{ flex: 1, minWidth: 0, background: "#205858", padding: "12px 16px" }}>
+                          <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>{g.text}</div>
+                          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 5 }}>
+                            <span style={{ fontSize: 13, opacity: 0.7, fontWeight: 600 }}>by</span>
+                            <span style={{ fontSize: 14, fontWeight: 800 }}>{authors.join(" & ")}</span>
+                            {isShared && <span style={{ fontSize: 12, fontWeight: 800, color: ACCENT }}>+1 bonus</span>}
+                            {g.fooled.length > 0 ? (
+                              <>
+                                <span style={{ fontSize: 13, opacity: 0.7, fontWeight: 600 }}>· fooled</span>
+                                <span style={{ fontSize: 14, fontWeight: 800 }}>{g.fooled.join(", ")}</span>
+                                <span style={{ fontSize: 13, fontWeight: 800, color: ACCENT }}>+{g.fooled.length}</span>
+                              </>
+                            ) : (
+                              <span style={{ fontSize: 13, opacity: 0.65, fontWeight: 600 }}>· nobody fooled</span>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, color: groupLikeCount > 0 ? "#FBDF54" : "rgba(255,255,255,0.4)" }}>
+                          <ThumbsUpIcon filled={groupLikeCount > 0} size={18} />
+                          <span style={{ fontSize: 12, fontWeight: 700 }}>{groupLikeCount}</span>
                         </div>
                       </div>
                     )
@@ -1338,6 +1353,12 @@ export default function Play({ params }) {
                       {p.name}
                     </div>
                     <div style={{ fontSize: 12, opacity: 0.65, fontWeight: 700 }}>#{i + 1}</div>
+                  </div>
+                  <div style={{ marginLeft: 8, display: "flex", alignItems: "center" }}>
+                    <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, color: (scoreLikeTotals[p.id] ?? 0) > 0 ? "#FBDF54" : "rgba(255,255,255,0.4)" }}>
+                      <ThumbsUpIcon filled={(scoreLikeTotals[p.id] ?? 0) > 0} size={16} />
+                      <span style={{ fontSize: 12, fontWeight: 700 }}>{scoreLikeTotals[p.id] ?? 0}</span>
+                    </div>
                   </div>
                 </div>
               ))}

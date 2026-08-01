@@ -31,7 +31,7 @@ function randomCode() {
   return `${a}${b}`
 }
 
-async function createGame() {
+async function createGame(isDummy = false) {
   const { supabase } = await import("../lib/supabase")
   for (let attempt = 1; attempt <= 10; attempt++) {
     const code = randomCode()
@@ -45,7 +45,7 @@ async function createGame() {
 
     const { data, error: insertError } = await supabase
       .from("gow_games")
-      .insert({ code, rounds_total: 1 })
+      .insert({ code, rounds_total: 1, is_dummy: isDummy })
       .select("code")
       .single()
     if (insertError) throw insertError
@@ -61,12 +61,12 @@ export default function Home() {
   const nudgeJoin = useSubmitNudge(joinCode, false)
   const [error, setError] = useState("")
 
-  async function onCreateClick() {
+  async function onCreateClick(isDummy = false) {
     if (isCreating) return
     setError("")
     setIsCreating(true)
     try {
-      const code = await createGame()
+      const code = await createGame(isDummy)
       router.push(`/${code}`)
     } catch (e) {
       setError(e?.message ?? "unknown error")
@@ -90,7 +90,7 @@ export default function Home() {
       onJoin={onJoin}
       nudgeJoin={nudgeJoin}
       error={error}
-      onDummyGame={onCreateClick}
+      onDummyGame={() => onCreateClick(true)}
       isDummy={isCreating}
       colors={{ bg: "#6B1A44", wl: "#821F42", yellow: "#FBDF54" }}
     />

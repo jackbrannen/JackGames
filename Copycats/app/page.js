@@ -45,7 +45,7 @@ async function createGame(isDummy = false) {
 
     const { data, error: insertError } = await supabase
       .from("cc_games")
-      .insert({ code })
+      .insert({ code, is_dummy: isDummy })
       .select("code")
       .single()
     if (insertError) return null

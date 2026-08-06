@@ -70,6 +70,18 @@ A series of multiplayer web games built with Next.js 14 and Supabase. Players co
 
 ---
 
+## Realtime & Egress Management
+
+Supabase egress is a real, limited resource — one inefficient sync pattern, multiplied across many open tabs and connected clients over hours or days, can burn hundreds of MB/day. This has caused real incidents (traced via the Supabase dashboard's egress chart and `pg_stat_statements`). When building or touching anything realtime:
+
+- **Never let something that fires on every tap/drag trigger a full state reload.** Only genuine committed actions (submit, vote, ready-up, a phase transition) should call `nudge()` / `channelRef.current?.send(broadcast)` or refetch every subscribed table. Live interactions — dragging, a live cursor/selection indicator, a like/react toggle, anything a player can tap repeatedly — must NOT broadcast or reload on every occurrence. The write already propagates to every subscribed client via `postgres_changes`; broadcasting on top of that just forces everyone through an expensive full reload for no benefit. This exact bug has independently recurred in several different games across different sessions — always check for it when adding a "tap repeatedly" interaction.
+- **Patch local state from the realtime payload instead of refetching.** `postgres_changes` payloads carry the complete new row (`payload.new`) for INSERT/UPDATE. Apply it directly (`setGame(payload.new)`, or find-and-replace by `id` in an array) instead of re-querying every subscribed table via a generic `loadState()`. Reserve the full refetch for initial mount, the 60s poll fallback, visibility-change catch-up, and reconnect-after-drop.
+- **Check subscriptions have a `filter`.** `.on("postgres_changes", { table: "x_answers" }, ...)` with no `filter: "game_code=eq.${code}"` fires for every row change across every game of that type in the whole database, not just the current one. Filter whenever the table has a column to filter on; when it doesn't (e.g. a child table keyed by `question_id` rather than `game_code`), filter client-side before applying a payload.
+- **If egress looks unexpectedly high**, query `pg_stat_statements` (via the Management API) for the highest-`calls` `pgrst_source` queries — cross-reference against which tables have unpatched `postgres_changes` subscriptions to find the offender fast.
+- **Abandoned open tabs poll forever** — a deployed fix can't reach JS already loaded in an already-open tab (it keeps running the old code, talking directly to Supabase, until the tab is closed or reloaded). Keep this in mind before concluding an egress spike must be a live bug — check whether it's actually old tabs first.
+
+---
+
 ## Testing & Validation
 
 **No automated tests** — verification is manual.

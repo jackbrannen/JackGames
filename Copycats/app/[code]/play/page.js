@@ -160,11 +160,14 @@ export default function PlayPage({ params }) {
 
     function connect() {
       channel = supabase.channel(`cc-play-${code}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "cc_games", filter: `code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "cc_players", filter: `game_code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "cc_answers", filter: `game_code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "cc_votes", filter: `game_code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "cc_likes", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "cc_games", filter: `code=eq.${code}` }, payload => {
+          if (payload.eventType === "DELETE") { loadState(); return }
+          applyGameRow(payload.new)
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "cc_players", filter: `game_code=eq.${code}` }, applyRowChange(setPlayers))
+        .on("postgres_changes", { event: "*", schema: "public", table: "cc_answers", filter: `game_code=eq.${code}` }, applyRowChange(setAnswers))
+        .on("postgres_changes", { event: "*", schema: "public", table: "cc_votes", filter: `game_code=eq.${code}` }, applyRowChange(setVotes))
+        .on("postgres_changes", { event: "*", schema: "public", table: "cc_likes", filter: `game_code=eq.${code}` }, applyRowChange(setLikes))
         .on("broadcast", { event: "sync" }, loadState)
         .on("presence", { event: "sync" }, () => setPresenceState({ ...channel.presenceState() }))
         .subscribe(async status => {
@@ -256,6 +259,38 @@ export default function PlayPage({ params }) {
     setLikes(lk ?? [])
   }
 
+  // cc_games changes: apply the row directly from the realtime payload
+  // instead of a full loadState() refetch (5-table Promise.all). Each
+  // change independently reaches every subscribed client already, so
+  // there's no need to also nudge — nudge() exists for cases where a
+  // client's own realtime might be lagging, which doesn't apply to the
+  // client that just received this exact event.
+  const gamesSyncKeyRef = useRef(null)
+  function applyGameRow(newRow) {
+    if (!newRow) return
+    if (newRow.replay_code) { router.replace(`/${newRow.replay_code}`); return }
+    if (newRow.phase === "lobby") { router.replace(`/${code}`); return }
+    setGame(newRow)
+    const key = `${newRow.phase}:${newRow.current_round ?? ""}`
+    if (gamesSyncKeyRef.current !== null && gamesSyncKeyRef.current !== key) channelRef.current?.send({ type: "broadcast", event: "sync" })
+    gamesSyncKeyRef.current = key
+  }
+  // Same idea for cc_players/cc_answers/cc_votes/cc_likes.
+  function applyRowChange(setList) {
+    return (payload) => {
+      const { eventType, new: newRow, old: oldRow } = payload
+      if (eventType === "DELETE") {
+        setList(prev => prev.filter(r => r.id !== oldRow?.id))
+        return
+      }
+      if (!newRow) return
+      setList(prev => {
+        const idx = prev.findIndex(r => r.id === newRow.id)
+        return idx === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r)
+      })
+    }
+  }
+
   async function toggleLike(likedPlayerId) {
     if (!myId || likedPlayerId === myId) return
     const round = game?.current_round
@@ -266,12 +301,14 @@ export default function PlayPage({ params }) {
     } else {
       setLikes(prev => [...prev, { game_code: code, round, liker_id: myId, liked_player_id: likedPlayerId, created_at: new Date().toISOString() }])
     }
+    // No nudge/full reload on success: this fires on every tap, and the
+    // write already propagates cheaply via the payload-patched
+    // postgres_changes handler. Only resync on failure, to roll back the
+    // optimistic update.
     const { error } = await supabase.rpc("cc_toggle_like", {
       p_code: code, p_round: round, p_liker_id: myId, p_liked_player_id: likedPlayerId,
     })
-    if (error) { await loadState(); throw error } // roll back the optimistic guess on failure
-    channelRef.current?.send({ type: "broadcast", event: "sync" })
-    await loadState()
+    if (error) { await loadState(); throw error }
   }
 
   function trackTyping() {

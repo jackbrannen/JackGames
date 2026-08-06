@@ -189,14 +189,14 @@ export default function Play({ params }) {
       if (pid) {
         const { data: voteData } = await supabase
           .from("gow_votes")
-          .select("answer_id,voter_id")
+          .select("id,answer_id,voter_id")
           .eq("question_id", gameData.current_question_id)
         if (seq !== loadSeqRef.current) return
         setVotes(voteData ?? [])
 
         const { data: likeData } = await supabase
           .from("gow_likes")
-          .select("answer_id,liker_id")
+          .select("id,answer_id,liker_id")
           .eq("question_id", gameData.current_question_id)
         if (seq !== loadSeqRef.current) return
         setLikes(likeData ?? [])
@@ -243,6 +243,66 @@ export default function Play({ params }) {
     }
   }
 
+  // gow_games changes: apply the row directly from the realtime payload
+  // instead of a full loadState() refetch. Each change independently
+  // reaches every subscribed client already, so there's no need to also
+  // nudge — nudge() exists for cases where a client's own realtime might be
+  // lagging, which doesn't apply to the client that just received this
+  // exact event. Note: this only covers the top-level game row — a change
+  // that also affects current_question_id/question_phase still needs the
+  // fuller loadState() to pull the new question's answers/votes/likes, so
+  // this intentionally still calls loadState() when those fields change.
+  const gamesSyncKeyRef = useRef(null)
+  const lastGameQuestionIdRef = useRef(undefined)
+  function applyGameRow(newRow) {
+    if (!newRow) return
+    if (newRow.replay_code) { router.replace(`/${newRow.replay_code}`); return }
+    if (newRow.phase === "lobby") { router.replace(`/${code}`); return }
+    const key = `${newRow.phase}:${newRow.question_phase}:${newRow.round_index}`
+    if (gamesSyncKeyRef.current !== null && gamesSyncKeyRef.current !== key) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    gamesSyncKeyRef.current = key
+    // Only the top-level game row is cheap to apply directly. A change to
+    // current_question_id means a new question's answers/votes/likes need
+    // fetching too, which the lighter payload-patch path here can't do, so
+    // fall back to the fuller loadState() in that specific case.
+    const questionChanged = lastGameQuestionIdRef.current !== undefined && newRow.current_question_id !== lastGameQuestionIdRef.current
+    lastGameQuestionIdRef.current = newRow.current_question_id
+    if (questionChanged) { loadState(); return }
+    // Not snapshotting gameOverPlayers here (unlike loadState()): doing so
+    // would need the live `players` value, but this function is captured
+    // once when the connection effect mounts, so a closed-over `players`
+    // would be permanently stale. The finished-screen render already falls
+    // back to live `players` (`gameOverPlayers ?? players`), which is
+    // always fresh via its own separately-patched subscription, so this
+    // path just leaves the snapshot for loadState() (poll/reconnect) to
+    // fill in rather than risk using a stale one.
+    setGame(newRow)
+  }
+  // gow_players is scoped by game_code already; gow_answers/gow_votes/gow_likes
+  // have no filter at all (they fire for every GameOfWhat game in the
+  // database), so also drop anything not for the question currently on
+  // screen instead of blindly applying it.
+  function applyRowChange(setList, { questionScoped } = {}) {
+    return (payload) => {
+      const { eventType, new: newRow, old: oldRow } = payload
+      if (questionScoped) {
+        const relevantId = newRow?.question_id ?? oldRow?.question_id
+        if (relevantId !== currentQuestionIdRef.current) return
+      }
+      if (eventType === "DELETE") {
+        setList(prev => prev.filter(r => r.id !== oldRow?.id))
+        return
+      }
+      if (!newRow) return
+      setList(prev => {
+        const idx = prev.findIndex(r => r.id === newRow.id)
+        return idx === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r)
+      })
+    }
+  }
+  const currentQuestionIdRef = useRef(null)
+  useEffect(() => { currentQuestionIdRef.current = currentQuestion?.id ?? null }, [currentQuestion?.id])
+
   useEffect(() => {
     if (isIdle) return
     loadState()
@@ -256,11 +316,14 @@ export default function Play({ params }) {
 
     function connect() {
       channel = supabase.channel(`gow-play-${code}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "gow_games", filter: `code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "gow_players", filter: `game_code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "gow_answers" }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "gow_votes" }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "gow_likes" }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "gow_games", filter: `code=eq.${code}` }, payload => {
+          if (payload.eventType === "DELETE") { loadState(); return }
+          applyGameRow(payload.new)
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "gow_players", filter: `game_code=eq.${code}` }, applyRowChange(setPlayers))
+        .on("postgres_changes", { event: "*", schema: "public", table: "gow_answers" }, applyRowChange(setAnswers, { questionScoped: true }))
+        .on("postgres_changes", { event: "*", schema: "public", table: "gow_votes" }, applyRowChange(setVotes, { questionScoped: true }))
+        .on("postgres_changes", { event: "*", schema: "public", table: "gow_likes" }, applyRowChange(setLikes, { questionScoped: true }))
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {
           if (cancelled) return
@@ -411,12 +474,14 @@ export default function Play({ params }) {
     } else {
       setLikes(prev => [...prev, { question_id: currentQuestion.id, liker_id: myPlayerId, answer_id: answerId }])
     }
+    // No nudge/full reload on success: this fires on every tap, and the
+    // write already propagates cheaply via the payload-patched
+    // postgres_changes handler. Only resync on failure, to roll back the
+    // optimistic update.
     const { error } = await supabase.rpc("gow_toggle_like", {
       p_code: code, p_question_id: currentQuestion.id, p_liker_id: myPlayerId, p_answer_id: answerId,
     })
-    if (error) { await loadState(); throw error } // roll back the optimistic guess on failure
-    syncChRef.current?.send({ type: "broadcast", event: "sync" })
-    await loadState()
+    if (error) { await loadState(); throw error }
   }
 
   async function submitVote(answerId) {

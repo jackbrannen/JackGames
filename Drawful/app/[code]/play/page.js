@@ -522,6 +522,39 @@ export default function Play({ params }) {
     }
   }
 
+  // drawful_games changes: apply the row directly from the realtime payload
+  // instead of a full loadState() refetch (4-table sequential fetch). Each
+  // change independently reaches every subscribed client already, so
+  // there's no need to also nudge — nudge() exists for cases where a
+  // client's own realtime might be lagging, which doesn't apply to the
+  // client that just received this exact event.
+  const gamesSyncKeyRef = useRef(null)
+  function applyGameRow(newRow) {
+    if (!newRow) return
+    if (newRow.replay_code) { router.replace(`/${newRow.replay_code}`); return }
+    if (newRow.phase === "lobby") { router.replace(`/${code}`); return }
+    prevPhaseRef.current = newRow.phase
+    setGame(newRow)
+    const key = `${newRow.phase}:${newRow.current_drawing_index ?? ""}`
+    if (gamesSyncKeyRef.current !== null && gamesSyncKeyRef.current !== key) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    gamesSyncKeyRef.current = key
+  }
+  // Same idea for drawful_answers/drawful_votes/drawful_likes.
+  function applyRowChange(setList) {
+    return (payload) => {
+      const { eventType, new: newRow, old: oldRow } = payload
+      if (eventType === "DELETE") {
+        setList(prev => prev.filter(r => r.id !== oldRow?.id))
+        return
+      }
+      if (!newRow) return
+      setList(prev => {
+        const idx = prev.findIndex(r => r.id === newRow.id)
+        return idx === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r)
+      })
+    }
+  }
+
   useEffect(() => {
     const existing = localStorage.getItem(`drawful:${code}:playerId`)
     if (existing) setMyPlayerId(existing)
@@ -554,10 +587,13 @@ export default function Play({ params }) {
 
     function connect() {
       channel = supabase.channel(`drawful-play-${code}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "drawful_games", filter: `code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "drawful_answers", filter: `game_code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "drawful_votes", filter: `game_code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "drawful_likes", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "drawful_games", filter: `code=eq.${code}` }, payload => {
+          if (payload.eventType === "DELETE") { loadState(); return }
+          applyGameRow(payload.new)
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "drawful_answers", filter: `game_code=eq.${code}` }, applyRowChange(setAnswers))
+        .on("postgres_changes", { event: "*", schema: "public", table: "drawful_votes", filter: `game_code=eq.${code}` }, applyRowChange(setVotes))
+        .on("postgres_changes", { event: "*", schema: "public", table: "drawful_likes", filter: `game_code=eq.${code}` }, applyRowChange(setLikes))
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {
           if (cancelled) return
@@ -875,12 +911,14 @@ export default function Play({ params }) {
     } else {
       setLikes(prev => [...prev, { drawing_player_id: currentArtist.id, liker_id: myPlayerId, answer_id: answerId }])
     }
+    // No nudge/full reload on success: this fires on every tap, and the
+    // write already propagates cheaply via the payload-patched
+    // postgres_changes handler. Only resync on failure, to roll back the
+    // optimistic update.
     const { error } = await supabase.rpc("drawful_toggle_like", {
       p_code: code, p_drawing_player_id: currentArtist.id, p_liker_id: myPlayerId, p_answer_id: answerId,
     })
-    if (error) { await loadState(); throw error } // roll back the optimistic guess on failure
-    syncChRef.current?.send({ type: "broadcast", event: "sync" })
-    await loadState()
+    if (error) { await loadState(); throw error }
   }
 
   async function markReady() {

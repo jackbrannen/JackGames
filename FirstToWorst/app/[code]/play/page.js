@@ -624,6 +624,7 @@ export default function Play({ params }) {
           applyGameRow(payload.new)
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "ftw_players", filter: `game_code=eq.${code}` }, applyRowChange(setPlayers))
+        .on("postgres_changes", { event: "*", schema: "public", table: "ftw_words", filter: `game_code=eq.${code}` }, applyRowChange(setAllWords))
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {
           if (cancelled) return
@@ -660,11 +661,16 @@ export default function Play({ params }) {
   }, [code, isIdle])
 
 
-  // Seed ranking items when assigned words arrive
+  // Seed ranking items when assigned words arrive. Re-resolve (rather than
+  // seed-once) as long as the list is short of the full assignment — a word
+  // whose text hasn't synced into `allWords` yet silently drops from
+  // resolveWords(), and this keeps retrying until it's actually complete
+  // instead of locking the player into a truncated ranking permanently.
   useEffect(() => {
-    if (game?.phase !== "ranking" || !me?.assigned_word_ids?.length || rankingItems) return
+    if (game?.phase !== "ranking" || !me?.assigned_word_ids?.length) return
+    if (rankingItems && rankingItems.length >= me.assigned_word_ids.length) return
     setRankingItems(resolveWords(me.assigned_word_ids))
-  }, [game?.phase, me?.assigned_word_ids?.join(",")])
+  }, [game?.phase, me?.assigned_word_ids?.join(","), allWords])
 
   // Resize word fields to match game's words_per_writer (only before user starts typing)
   useEffect(() => {

@@ -778,3 +778,22 @@ but the client (`lib/clover.js` `LEAF_NAMES`) sends clues keyed `topLeft, topRig
 **Fixed in:** SoClover `soclover_submit_clues`, 2026-07-05.
 
 **Prevention:** Any RPC that reads named JSONB keys sent from the client should have those key names double-checked against the client's actual object shape (not just assumed from variable/column naming elsewhere in the codebase) — a mismatch here doesn't throw, it just silently does nothing, which is worse than a crash because it looks like a hang/loading bug instead of pointing at the real cause.
+
+---
+
+## Player Sees Fewer Items Than They Were Actually Assigned (Silently Truncated List)
+
+**Symptom:** A player's list of assigned items (words, clues, cards) has fewer entries than the database record actually holds — not a crash, not an error, just a visibly short list. Downstream, anyone viewing/guessing against that player's full assignment sees more items than the player ever interacted with.
+
+**Example (First to Worst, 2026-08-17):** 8-player game, everyone submitted exactly 5 words each. Several players' locked-in `ranking` array only had 3–4 entries even though `ftw_players.assigned_word_ids` was correctly 5 for every single player (confirmed via direct DB query — the assignment logic itself was fine). During group guessing, the other players were shown all 5 of that player's assigned words, 1–2 more than the ranker had actually ranked.
+
+**Cause:** The client keeps a local cache of item *content* (`allWords`, keyed by id) separate from the *assignment* (`assigned_word_ids`, an array of ids on the player row). A helper (`resolveWords`) maps assigned ids through that local cache and **silently drops any id it can't find** (`.filter(Boolean)`). The realtime subscription only listened for changes on the `_games` and `_players` tables — never the table holding the item content itself. So a player whose last full refetch happened *before* some other player submitted their words would have a stale, incomplete content cache; when their phase flipped to "rank these," any assigned id pointing at content they hadn't fetched yet just vanished from their list instead of erroring.
+
+**Fix:**
+1. Add a realtime subscription for the content table too (not just the row that references it by id), so the local cache never depends on request timing.
+2. Make sure that table has `REPLICA IDENTITY FULL` if the subscription filters on a non-PK column (e.g. `game_code`) — otherwise DELETE payloads won't carry the filter column and those events get dropped (see the "Realtime replica identity" memory).
+3. As defense in depth, don't seed the resolved list once and never touch it again — keep re-resolving (harmless once it reaches full length) until it actually matches the assignment's length, so a slow/late-arriving realtime event self-heals instead of permanently truncating the player's list.
+
+**Fixed in:** FirstToWorst `app/[code]/play/page.js` (added `ftw_words` subscription + replica identity + self-healing resolve), 2026-08-17.
+
+**Prevention:** Whenever a player's UI is built by resolving a list of ids through a locally-cached lookup table, audit that the lookup table's *source* table is itself subscribed to realtime — subscribing only to the row that references the ids (not the table holding what they point to) is an easy gap to miss, and it fails silently (a dropped item, not a visible error) which makes it look like a totally unrelated bug downstream.

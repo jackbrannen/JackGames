@@ -8,7 +8,7 @@ const YELLOW = "#FBDF54"
 const WARM_LIGHT = "#21232E"
 const PANEL_BG = "#1A1B26"
 
-const TYPES = ["Word games", "Cooperative", "Drawing", "Voting/Judging", "Teams", "Hidden roles"]
+const TYPES = ["Word games", "Cooperative", "Drawing", "Voting/Judging", "Teams", "Hidden roles", "Acting"]
 
 const GROUPS = [
   { name: "Easy Peasy", description: "Quick and low-energy" },
@@ -65,7 +65,7 @@ At the end, the full exquisite corpse — assembled from everyone's individual d
   {
     name: "Mr. White",
     description: "One player has a slightly different word—find the impostor",
-    players: "4+ players", minPlayers: 4, group: "Easy Peasy", types: ["Hidden roles"],
+    players: "4+ players", minPlayers: 4, group: "Easy Peasy", types: ["Hidden roles", "Acting"],
     url: "https://mrwhite.jackbrannen.com", bg: "#2C2540", color: "white",
     instructions: `One player secretly gets a different word from everyone else — they're Mr. White.
 
@@ -140,7 +140,7 @@ Tap any zone at any time to see what's already been placed there and gather clue
   {
     name: "Sound Board",
     description: "Make the sounds. Your team has to guess what you meant",
-    players: "4+ players", minPlayers: 4, group: "Medium Schmedium", types: ["Teams", "Word games"],
+    players: "4+ players", minPlayers: 4, group: "Medium Schmedium", types: ["Teams", "Word games", "Acting"],
     url: "https://soundboard.jackbrannen.com", bg: "#25AB61", color: "white",
     instructions: `Two teams — Boys and Girls. Everyone submits words at the start; those become the pool for the whole game.
 
@@ -202,11 +202,24 @@ You need at least one match each round. Extra matches get banked, and a banked m
 
 Survive every round to win; run out of matches and it's game over.`,
   },
+  {
+    name: "Secret Phrase",
+    description: "Slip the secret phrase into your answer—the other team guesses it",
+    players: "4+ players", minPlayers: 4, group: "Medium Schmedium", types: ["Teams", "Acting"],
+    url: "https://secretphrase.jackbrannen.com", bg: "#2434C4", color: "white",
+    instructions: `Everyone splits into two teams. Each turn, one team secretly gets a phrase. One player from that team is "up" — the other team asks them any question out loud, and they have to answer using the secret phrase, without being too obvious about it.
+
+The other team then picks a second player from the phrase team to answer the same question — that player tries to repeat the phrase too.
+
+Once both have answered, the guessing team says the phrase out loud. The phrase team confirms yes or no. If the group agrees they got it, the guessing team scores a point.
+
+Turns alternate between teams, and every player gets to be the one "up" at least once. Most points wins.`,
+  },
   // ── Big Boys ──
   {
     name: "Reverse Charades",
     description: "The team gives clues, one person guesses",
-    players: "4+ players", minPlayers: 4, group: "Big Boys", types: ["Teams", "Word games"],
+    players: "4+ players", minPlayers: 4, group: "Big Boys", types: ["Teams", "Word games", "Acting"],
     url: "https://reversecharades.jackbrannen.com", bg: "#974344", color: "white",
     instructions: `Normal Charades in reverse: instead of one person acting for the group, the whole team acts while the guesser calls out guesses until they get it.
 
@@ -261,7 +274,7 @@ Win by landing 2 Interceptions. Lose if you rack up 2 Miscommunications. If no o
   {
     name: "Fishbowl",
     description: "Teams guess clues from a bowl",
-    players: "4+ players", minPlayers: 4, group: "Big Boys", types: ["Teams"],
+    players: "4+ players", minPlayers: 4, group: "Big Boys", types: ["Teams", "Acting"],
     url: "https://fishbowl.jackbrannen.com", bg: "#3378FF", color: "white",
     instructions: `Everyone splits into two teams. Before the game starts, each player secretly submits several clue words — people, places, things, phrases, anything goes. All the clues go into a shared "fishbowl."
 
@@ -451,7 +464,7 @@ export default function Home() {
   async function openLogs() {
     setLogsOpen(true); setLogsLoading(true)
     try {
-      const [fishbowl, gow, codenames, avalon, ftw, tel, ec, rc, soclover, copycats, drawful, mrwhite, alphajam, woe, decrypto, samepage, typecast, soundboard] = await Promise.all([
+      const [fishbowl, gow, codenames, avalon, ftw, tel, ec, rc, soclover, copycats, drawful, mrwhite, alphajam, woe, decrypto, samepage, typecast, soundboard, secretphrase] = await Promise.all([
         supabase.from("players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("gow_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("codenames_players").select("first_name,last_name,game_code,created_at").limit(2000),
@@ -470,6 +483,7 @@ export default function Home() {
         supabase.from("sp_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("tc_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("sb_players").select("first_name,last_name,game_code,created_at").limit(2000),
+        supabase.from("secretphrase_players").select("first_name,last_name,game_code,created_at").limit(2000),
       ])
       const people = {}, displayNames = {}, instances = {}
       function addRows(rows, gameName) {
@@ -497,6 +511,7 @@ export default function Home() {
       addRows(copycats.data, "Copycats"); addRows(drawful.data, "Drawful"); addRows(mrwhite.data, "Mr. White")
       addRows(alphajam.data, "Alpha Jam"); addRows(woe.data, "What On Earth"); addRows(decrypto.data, "Decrypto")
       addRows(samepage.data, "Same Page"); addRows(typecast.data, "Typecast"); addRows(soundboard.data, "Sound Board")
+      addRows(secretphrase.data, "Secret Phrase")
       const toRows = entries => entries
         .map(([key, games]) => ({ name: displayNames[key], games: Object.entries(games).map(([game, s]) => ({ game, ...s })).sort((a, b) => b.last.localeCompare(a.last)), total: Object.values(games).reduce((s, g) => s + g.count, 0) }))
         .sort((a, b) => b.total - a.total)

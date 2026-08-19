@@ -491,6 +491,11 @@ export default function PlayPage({ params }) {
       nudge()
     }
     const totalTargets = players.length + customTargets.length
+    // A game can have at most 4 names total (players + custom targets) — the
+    // roster screen itself is skipped server-side once players alone reach
+    // 4, so this only ever gates the remaining case: fewer players, but
+    // already-added custom targets have used up the rest of the room.
+    const canAddCustomTargets = totalTargets < 4
     return (
       <>
         <div style={{ minHeight: "100dvh", background: BG, color: INK, paddingBottom: BOTTOM_PAD }}>
@@ -499,7 +504,9 @@ export default function PlayPage({ params }) {
             <h2 style={{ fontSize: 24, fontWeight: 900, color: "white", lineHeight: 1.2 }}>Who gets words this game?</h2>
           </div>
           <div style={{ padding: "16px 20px", fontSize: 14, fontWeight: 600, color: "rgba(255,241,234,0.9)" }}>
-            Everyone here gets words assigned to them. Add anyone else — an absent friend, a fictional character — to pad out a small group.
+            {canAddCustomTargets
+              ? "Everyone here gets words assigned to them. Add anyone else — an absent friend, a fictional character — to pad out a small group."
+              : "Everyone here gets words assigned to them."}
           </div>
           <div style={{ padding: "0 20px" }}>
             <div style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", color: "#FFF1EA", marginBottom: 10 }}>Players</div>
@@ -512,23 +519,33 @@ export default function PlayPage({ params }) {
                 </div>
               ))}
             </div>
-            <div style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", color: "#FFF1EA", marginBottom: 10 }}>Other names</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
-              {customTargets.length === 0 && <div style={{ fontSize: 14, color: "rgba(255,241,234,0.8)", fontStyle: "italic" }}>None added</div>}
-              {customTargets.map(c => (
-                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, background: WARM, padding: "12px 14px" }}>
-                  <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: INK }}>{c.name}</span>
-                  <button onClick={() => removeCustomTarget(c.id)} aria-label={`Remove ${c.name}`}
-                    style={{ background: "transparent", border: "none", color: INK_MUTED, fontSize: 16, fontWeight: 800, cursor: "pointer", padding: "2px 4px", lineHeight: 1 }}>✕</button>
+            {(canAddCustomTargets || customTargets.length > 0) && (
+              <>
+                <div style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", color: "#FFF1EA", marginBottom: 10 }}>Other names</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
+                  {customTargets.length === 0 && <div style={{ fontSize: 14, color: "rgba(255,241,234,0.8)", fontStyle: "italic" }}>None added</div>}
+                  {customTargets.map(c => (
+                    <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, background: WARM, padding: "12px 14px" }}>
+                      <span style={{ flex: 1, fontSize: 16, fontWeight: 700, color: INK }}>{c.name}</span>
+                      <button onClick={() => removeCustomTarget(c.id)} aria-label={`Remove ${c.name}`}
+                        style={{ background: "transparent", border: "none", color: INK_MUTED, fontSize: 16, fontWeight: 800, cursor: "pointer", padding: "2px 4px", lineHeight: 1 }}>✕</button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-              <input value={newTargetName} onChange={e => setNewTargetName(e.target.value)} onKeyDown={e => e.key === "Enter" && addCustomTarget()}
-                placeholder="Add a name" maxLength={40}
-                style={{ flex: 1, background: WARM, color: INK, fontSize: 16, padding: "14px 16px", border: "none", outline: "none", boxSizing: "border-box" }} />
-              <button onClick={addCustomTarget} disabled={!newTargetName.trim() || addingTarget} style={{ background: BTN, color: BTN_TEXT, fontWeight: 900, padding: "0 20px" }}>Add</button>
-            </div>
+              </>
+            )}
+            {canAddCustomTargets ? (
+              <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+                <input value={newTargetName} onChange={e => setNewTargetName(e.target.value)} onKeyDown={e => e.key === "Enter" && addCustomTarget()}
+                  placeholder="Add a name" maxLength={40}
+                  style={{ flex: 1, background: WARM, color: INK, fontSize: 16, padding: "14px 16px", border: "none", outline: "none", boxSizing: "border-box" }} />
+                <button onClick={addCustomTarget} disabled={!newTargetName.trim() || addingTarget} style={{ background: BTN, color: BTN_TEXT, fontWeight: 900, padding: "0 20px" }}>Add</button>
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,241,234,0.7)", marginBottom: 20 }}>
+                You've reached the 4-name limit for this game.
+              </div>
+            )}
           </div>
         </div>
 

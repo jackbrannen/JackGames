@@ -1,3 +1,6 @@
 {
-  "alias": ["games.jackbrannen.com"]
+  "alias": ["games.jackbrannen.com"],
+  "crons": [
+    { "path": "/api/keepalive", "schedule": "0 6 * * 1" }
+  ]
 }

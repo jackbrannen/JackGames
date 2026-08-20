@@ -179,6 +179,19 @@ A correct guess scores 3 points on attempt 1, 2 on attempt 2, and 1 on attempt 3
 With exactly 3 players the game is fully cooperative — chase one shared team score, aiming for a perfect 9.`,
   },
   {
+    name: "Secret Phrase",
+    description: "Slip the secret phrase into your answer—the other team guesses it",
+    players: "4+ players", minPlayers: 4, group: "Medium Schmedium", types: ["Teams", "Acting"],
+    url: "https://secretphrase.jackbrannen.com", bg: "#2434C4", color: "white",
+    instructions: `Everyone splits into two teams. Each turn, one team secretly gets a phrase. One player from that team is "up" — the other team asks them any question out loud, and they have to answer using the secret phrase, without being too obvious about it.
+
+The other team then picks a second player from the phrase team to answer the same question — that player tries to repeat the phrase too.
+
+Once both have answered, the guessing team says the phrase out loud. The phrase team confirms yes or no. If the group agrees they got it, the guessing team scores a point.
+
+Turns alternate between teams, and every player gets to be the one "up" at least once. Most points wins.`,
+  },
+  {
     name: "Telestrations",
     description: "Write a sentence, draw it, then write a sentence, then a drawing…",
     players: "5+ players", minPlayers: 5, group: "Medium Schmedium", types: ["Drawing"],
@@ -201,19 +214,6 @@ When all answers are revealed, the group checks every prompt where enough of you
 You need at least one match each round. Extra matches get banked, and a banked match covers a future round where you come up empty.
 
 Survive every round to win; run out of matches and it's game over.`,
-  },
-  {
-    name: "Secret Phrase",
-    description: "Slip the secret phrase into your answer—the other team guesses it",
-    players: "4+ players", minPlayers: 4, group: "Medium Schmedium", types: ["Teams", "Acting"],
-    url: "https://secretphrase.jackbrannen.com", bg: "#2434C4", color: "white",
-    instructions: `Everyone splits into two teams. Each turn, one team secretly gets a phrase. One player from that team is "up" — the other team asks them any question out loud, and they have to answer using the secret phrase, without being too obvious about it.
-
-The other team then picks a second player from the phrase team to answer the same question — that player tries to repeat the phrase too.
-
-Once both have answered, the guessing team says the phrase out loud. The phrase team confirms yes or no. If the group agrees they got it, the guessing team scores a point.
-
-Turns alternate between teams, and every player gets to be the one "up" at least once. Most points wins.`,
   },
   // ── Big Boys ──
   {

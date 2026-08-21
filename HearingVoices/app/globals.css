@@ -1,0 +1,81 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  min-height: 100%;
+  overscroll-behavior: none;
+}
+
+body {
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background: #000;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Clue-giver's view of the correct card — applied to a separate ring overlay, NOT the card
+   button itself, so the card's own border/size is never touched by assignment state (that
+   was the earlier bug — an inset border or an animated box-shadow's spread both ended up
+   changing how much of the card was actually visible). The ring's own border width is a
+   static, unanimated value; only opacity/transform/filter are animated here, which are
+   cheap for the browser to composite every frame — animating box-shadow's spread/blur
+   values directly (the previous version of this) forces a repaint on every tick, which is
+   what read as "weird and flickery" rather than smooth. */
+@keyframes hvAssignedPulse {
+  0%, 100%  { opacity: 0.8; filter: brightness(1); }
+  50%       { opacity: 1;   filter: brightness(1.3); }
+}
+
+/* One-shot "pop" played once when a card first becomes the assigned one — the ring scales
+   in from slightly small with a brightness flash so the clue-giver's eye lands on it
+   immediately, then hands off to the calmer standing pulse above. Scaling the RING (not the
+   card) is safe — the ring is a purely decorative overlay with no content of its own to
+   distort. */
+@keyframes hvAssignedPop {
+  0%   { opacity: 0; transform: scale(0.85); filter: brightness(1); }
+  40%  { opacity: 1; transform: scale(1.06); filter: brightness(1.6); }
+  100% { opacity: 1; transform: scale(1);    filter: brightness(1); }
+}
+
+/* Time's Up entrance — the headline/points block and the recap list below it both mount
+   the instant remaining hits 0 with nothing softening that moment (only the board's own
+   slide-down, a separate element, was animated). A brief fade+scale-in reads as a
+   deliberate beat rather than a jolt; the list is staggered a little behind the headline
+   (via animation-delay on the element itself) so the two don't land in the same frame. */
+@keyframes hvTimeUpIn {
+  0%   { opacity: 0; transform: scale(0.92); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Center emoji "slot reel" clunk — the new emoji drops down into place from just above the
+   window, then settles, instead of just popping into existence. Fast and mechanical rather
+   than bouncy (a straight ease-out, no overshoot) so it reads as a single reel row landing,
+   not a cartoon bounce — kept roughly the same speed as the assigned-card pop so the two
+   feel like one coordinated beat instead of two unrelated animations. */
+@keyframes hvEmojiClunk {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  100% { transform: translateY(0);     opacity: 1; }
+}
+
+/* The OUTGOING half of the same clunk — the previous emoji continues on downward and out of
+   the window (rather than just vanishing) at the same time hvEmojiClunk above brings the new
+   one in from above, so the two read as one continuous reel motion, not an entrance paired
+   with an unrelated instant disappearance. */
+@keyframes hvEmojiClunkOut {
+  0%   { transform: translateY(0);     opacity: 1; }
+  100% { transform: translateY(100%);  opacity: 0; }
+}

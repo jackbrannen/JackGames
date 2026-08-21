@@ -41,6 +41,11 @@ A series of multiplayer web games built with Next.js 14 and Supabase. Players co
 
 **CODE_PATTERNS.md** — copy-paste code examples (CSS reset, player list JSX, profile management, etc.)
 
+**REALTIME.md** — the full realtime/polling/gossip/egress architecture reference, with code shapes:
+- Before touching any `connect()`/`loadState()`/realtime-subscription code
+- Before adding any new interaction a player can tap or drag repeatedly (live cursors, reactions, drag-and-drop) — read this first, every incident in the log started with skipping this step
+- When debugging unexpected Supabase egress
+
 ---
 
 ## Stack & Conventions
@@ -71,6 +76,8 @@ A series of multiplayer web games built with Next.js 14 and Supabase. Players co
 ---
 
 ## Realtime & Egress Management
+
+**See REALTIME.md for the full architecture reference with code shapes** (the standard connect/poll/reconnect effect, payload-patching pattern, gossip discipline, write-ordering, and the idle-gate) — the bullets below are the summary.
 
 Supabase egress is a real, limited resource — one inefficient sync pattern, multiplied across many open tabs and connected clients over hours or days, can burn hundreds of MB/day. This has caused real incidents (traced via the Supabase dashboard's egress chart and `pg_stat_statements`). When building or touching anything realtime:
 

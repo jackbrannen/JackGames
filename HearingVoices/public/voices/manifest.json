@@ -1,0 +1,585 @@
+{
+  "cards": {
+    "african_king": {
+      "slug": "african_king",
+      "name": "African King",
+      "file": "african_king.webp",
+      "hash": "4618255620cd",
+      "version": 1787275396119
+    },
+    "alien": {
+      "slug": "alien",
+      "name": "Alien",
+      "file": "alien.webp",
+      "hash": "94a2b3b39b83",
+      "version": 1787275396120
+    },
+    "arab": {
+      "slug": "arab",
+      "name": "Arab",
+      "file": "arab.webp",
+      "hash": "b621ba8c74cb",
+      "version": 1787275396121
+    },
+    "at_the_dentist": {
+      "slug": "at_the_dentist",
+      "name": "At The Dentist",
+      "file": "at_the_dentist.webp",
+      "hash": "5d8fc6de43ce",
+      "version": 1787275396122
+    },
+    "australian": {
+      "slug": "australian",
+      "name": "Australian",
+      "file": "australian.webp",
+      "hash": "51efb08b0315",
+      "version": 1787275396123
+    },
+    "barbie": {
+      "slug": "barbie",
+      "name": "Barbie",
+      "file": "barbie.webp",
+      "hash": "766e3e7a6bbd",
+      "version": 1787275396124
+    },
+    "barfing": {
+      "slug": "barfing",
+      "name": "Barfing",
+      "file": "barfing.webp",
+      "hash": "fd81e0a7346e",
+      "version": 1787275396125
+    },
+    "bored": {
+      "slug": "bored",
+      "name": "Bored",
+      "file": "bored.webp",
+      "hash": "58f04a3aeea3",
+      "version": 1787275396126
+    },
+    "bratty_girl": {
+      "slug": "bratty_girl",
+      "name": "Bratty Girl",
+      "file": "bratty_girl.webp",
+      "hash": "cbdaef25649e",
+      "version": 1787275396127
+    },
+    "british": {
+      "slug": "british",
+      "name": "British",
+      "file": "british.webp",
+      "hash": "7cb55a074048",
+      "version": 1787275396128
+    },
+    "bruiser": {
+      "slug": "bruiser",
+      "name": "Bruiser",
+      "file": "bruiser.webp",
+      "hash": "feb03825e1c5",
+      "version": 1787275396129
+    },
+    "caveman": {
+      "slug": "caveman",
+      "name": "Caveman",
+      "file": "caveman.webp",
+      "hash": "152724af5a32",
+      "version": 1787275396130
+    },
+    "choking": {
+      "slug": "choking",
+      "name": "Choking",
+      "file": "choking.webp",
+      "hash": "8ba08891696d",
+      "version": 1787275396131
+    },
+    "cockney_lad": {
+      "slug": "cockney_lad",
+      "name": "Cockney Lad",
+      "file": "cockney_lad.webp",
+      "hash": "78f68270a297",
+      "version": 1787275396132
+    },
+    "cold": {
+      "slug": "cold",
+      "name": "Cold",
+      "file": "cold.webp",
+      "hash": "4405793509ef",
+      "version": 1787275396133
+    },
+    "conniving_rat": {
+      "slug": "conniving_rat",
+      "name": "Conniving Rat",
+      "file": "conniving_rat.webp",
+      "hash": "b02f4e5e6034",
+      "version": 1787275396134
+    },
+    "crazy_cat_lady": {
+      "slug": "crazy_cat_lady",
+      "name": "Crazy Cat Lady",
+      "file": "crazy_cat_lady.webp",
+      "hash": "a43656f15189",
+      "version": 1787275396135
+    },
+    "creepy_doll": {
+      "slug": "creepy_doll",
+      "name": "Creepy Doll",
+      "file": "creepy_doll.webp",
+      "hash": "9f30691a4847",
+      "version": 1787275396136
+    },
+    "demon": {
+      "slug": "demon",
+      "name": "Demon",
+      "file": "demon.webp",
+      "hash": "c29e1560f2d1",
+      "version": 1787275396137
+    },
+    "disney_princess": {
+      "slug": "disney_princess",
+      "name": "Disney Princess",
+      "file": "disney_princess.webp",
+      "hash": "081ad27013dd",
+      "version": 1787275396138
+    },
+    "diva": {
+      "slug": "diva",
+      "name": "Diva",
+      "file": "diva.webp",
+      "hash": "f3c22eb0e207",
+      "version": 1787275396139
+    },
+    "dried_up_lady": {
+      "slug": "dried_up_lady",
+      "name": "Dried Up Lady",
+      "file": "dried_up_lady.webp",
+      "hash": "801289795bd6",
+      "version": 1787275396140
+    },
+    "drill_sergeant": {
+      "slug": "drill_sergeant",
+      "name": "Drill Sergeant",
+      "file": "drill_sergeant.webp",
+      "hash": "d612b34d66e7",
+      "version": 1787275396141
+    },
+    "earth_mother": {
+      "slug": "earth_mother",
+      "name": "Earth Mother",
+      "file": "earth_mother.webp",
+      "hash": "9a46d67e6dd5",
+      "version": 1787275396142
+    },
+    "emo_singer": {
+      "slug": "emo_singer",
+      "name": "Emo Singer",
+      "file": "emo_singer.webp",
+      "hash": "4e00ca535e6e",
+      "version": 1787275396143
+    },
+    "evil_queen": {
+      "slug": "evil_queen",
+      "name": "Evil Queen",
+      "file": "evil_queen.webp",
+      "hash": "cce88d94b7ab",
+      "version": 1787275396144
+    },
+    "falling": {
+      "slug": "falling",
+      "name": "Falling",
+      "file": "falling.webp",
+      "hash": "91eb3fc82590",
+      "version": 1787275396145
+    },
+    "femme_fatale": {
+      "slug": "femme_fatale",
+      "name": "Femme Fatale",
+      "file": "femme_fatale.webp",
+      "hash": "419f943f7e6e",
+      "version": 1787275396146
+    },
+    "french_bastard": {
+      "slug": "french_bastard",
+      "name": "French Bastard",
+      "file": "french_bastard.webp",
+      "hash": "db9d04c8fae3",
+      "version": 1787275396147
+    },
+    "frog_woman": {
+      "slug": "frog_woman",
+      "name": "Frog Woman",
+      "file": "frog_woman.webp",
+      "hash": "6901f9052bb5",
+      "version": 1787275396148
+    },
+    "fruit_hat_lady": {
+      "slug": "fruit_hat_lady",
+      "name": "Fruit Hat Lady",
+      "file": "fruit_hat_lady.webp",
+      "hash": "444c9ddedc14",
+      "version": 1787275396149
+    },
+    "german": {
+      "slug": "german",
+      "name": "German",
+      "file": "german.webp",
+      "hash": "c4e0c6912456",
+      "version": 1787275396150
+    },
+    "ghost": {
+      "slug": "ghost",
+      "name": "Ghost",
+      "file": "ghost.webp",
+      "hash": "c62c9c449a35",
+      "version": 1787275396151
+    },
+    "giant": {
+      "slug": "giant",
+      "name": "Giant",
+      "file": "giant.webp",
+      "hash": "8c292b310487",
+      "version": 1787275396152
+    },
+    "gnome": {
+      "slug": "gnome",
+      "name": "Gnome",
+      "file": "gnome.webp",
+      "hash": "e96f7d6ef3c9",
+      "version": 1787275396153
+    },
+    "goblin": {
+      "slug": "goblin",
+      "name": "Goblin",
+      "file": "goblin.webp",
+      "hash": "b055369bd9bb",
+      "version": 1787275396154
+    },
+    "golden_retriever": {
+      "slug": "golden_retriever",
+      "name": "Golden Retriever",
+      "file": "golden_retriever.webp",
+      "hash": "a76f2bcfeb2d",
+      "version": 1787275396155
+    },
+    "gps": {
+      "slug": "gps",
+      "name": "Gps",
+      "file": "gps.webp",
+      "hash": "aa71415bc38c",
+      "version": 1787275396118
+    },
+    "guru": {
+      "slug": "guru",
+      "name": "Guru",
+      "file": "guru.webp",
+      "hash": "7dbe4b62f661",
+      "version": 1787275396156
+    },
+    "hot_dog": {
+      "slug": "hot_dog",
+      "name": "Hot Dog",
+      "file": "hot_dog.webp",
+      "hash": "0c89fae045d3",
+      "version": 1787275396158
+    },
+    "hot_dog_vendor": {
+      "slug": "hot_dog_vendor",
+      "name": "Hot Dog Vendor",
+      "file": "hot_dog_vendor.webp",
+      "hash": "b111051d77d2",
+      "version": 1787275396157
+    },
+    "hypnotist": {
+      "slug": "hypnotist",
+      "name": "Hypnotist",
+      "file": "hypnotist.webp",
+      "hash": "41285ffb76dc",
+      "version": 1787275396159
+    },
+    "in_labor": {
+      "slug": "in_labor",
+      "name": "In Labor",
+      "file": "in_labor.webp",
+      "hash": "208a0c346239",
+      "version": 1787275396160
+    },
+    "italian": {
+      "slug": "italian",
+      "name": "Italian",
+      "file": "italian.webp",
+      "hash": "d4d746729fad",
+      "version": 1787275396161
+    },
+    "leprechaun": {
+      "slug": "leprechaun",
+      "name": "Leprechaun",
+      "file": "leprechaun.webp",
+      "hash": "ccf8932fa51a",
+      "version": 1787275396162
+    },
+    "librarian": {
+      "slug": "librarian",
+      "name": "Librarian",
+      "file": "librarian.webp",
+      "hash": "c3936d864b8b",
+      "version": 1787275396163
+    },
+    "little_kid": {
+      "slug": "little_kid",
+      "name": "Little Kid",
+      "file": "little_kid.webp",
+      "hash": "4c015035a2a8",
+      "version": 1787275396164
+    },
+    "miss_america": {
+      "slug": "miss_america",
+      "name": "Miss America",
+      "file": "miss_america.webp",
+      "hash": "bd8d39400ff1",
+      "version": 1787275396165
+    },
+    "mobster": {
+      "slug": "mobster",
+      "name": "Mobster",
+      "file": "mobster.webp",
+      "hash": "7dfd5ace06aa",
+      "version": 1787275396166
+    },
+    "mouth_full": {
+      "slug": "mouth_full",
+      "name": "Mouth Full",
+      "file": "mouth_full.webp",
+      "hash": "470e1b7f0573",
+      "version": 1787275396167
+    },
+    "nerd": {
+      "slug": "nerd",
+      "name": "Nerd",
+      "file": "nerd.webp",
+      "hash": "29d7d754874e",
+      "version": 1787275396168
+    },
+    "newscaster": {
+      "slug": "newscaster",
+      "name": "Newscaster",
+      "file": "newscaster.webp",
+      "hash": "9cea8875bdea",
+      "version": 1787275396169
+    },
+    "old_black_guy": {
+      "slug": "old_black_guy",
+      "name": "Old Black Guy",
+      "file": "old_black_guy.webp",
+      "hash": "5c0059cda0db",
+      "version": 1787275396170
+    },
+    "old_prospector": {
+      "slug": "old_prospector",
+      "name": "Old Prospector",
+      "file": "old_prospector.webp",
+      "hash": "6ac27c369a7a",
+      "version": 1787275396171
+    },
+    "old_timey_preacher": {
+      "slug": "old_timey_preacher",
+      "name": "Old Timey Preacher",
+      "file": "old_timey_preacher.webp",
+      "hash": "6197519a9ff3",
+      "version": 1787275396172
+    },
+    "old_timey_reporter": {
+      "slug": "old_timey_reporter",
+      "name": "Old Timey Reporter",
+      "file": "old_timey_reporter.webp",
+      "hash": "6b1cc663c955",
+      "version": 1787275396173
+    },
+    "opera_singer": {
+      "slug": "opera_singer",
+      "name": "Opera Singer",
+      "file": "opera_singer.webp",
+      "hash": "bb80c645f513",
+      "version": 1787275396174
+    },
+    "parrot": {
+      "slug": "parrot",
+      "name": "Parrot",
+      "file": "parrot.webp",
+      "hash": "fe70da5fe86f",
+      "version": 1787275396175
+    },
+    "protestor": {
+      "slug": "protestor",
+      "name": "Protestor",
+      "file": "protestor.webp",
+      "hash": "965e54e52c94",
+      "version": 1787275396176
+    },
+    "puppet": {
+      "slug": "puppet",
+      "name": "Puppet",
+      "file": "puppet.webp",
+      "hash": "bfedaab5c420",
+      "version": 1787275396177
+    },
+    "rastafarian": {
+      "slug": "rastafarian",
+      "name": "Rastafarian",
+      "file": "rastafarian.webp",
+      "hash": "bdb701c24dab",
+      "version": 1787275396178
+    },
+    "redneck": {
+      "slug": "redneck",
+      "name": "Redneck",
+      "file": "redneck.webp",
+      "hash": "b77a208b28c1",
+      "version": 1787275396179
+    },
+    "robot": {
+      "slug": "robot",
+      "name": "Robot",
+      "file": "robot.webp",
+      "hash": "b0734935382d",
+      "version": 1787275396180
+    },
+    "royal_herald": {
+      "slug": "royal_herald",
+      "name": "Royal Herald",
+      "file": "royal_herald.webp",
+      "hash": "5d8092c976ea",
+      "version": 1787275396181
+    },
+    "russian": {
+      "slug": "russian",
+      "name": "Russian",
+      "file": "russian.webp",
+      "hash": "88c645e66641",
+      "version": 1787275396182
+    },
+    "santa_claus": {
+      "slug": "santa_claus",
+      "name": "Santa Claus",
+      "file": "santa_claus.webp",
+      "hash": "763e75a4418d",
+      "version": 1787275396183
+    },
+    "scottish": {
+      "slug": "scottish",
+      "name": "Scottish",
+      "file": "scottish.webp",
+      "hash": "d7257c432659",
+      "version": 1787275396184
+    },
+    "screaming": {
+      "slug": "screaming",
+      "name": "Screaming",
+      "file": "screaming.webp",
+      "hash": "429da8688919",
+      "version": 1787275396185
+    },
+    "sea_captain": {
+      "slug": "sea_captain",
+      "name": "Sea Captain",
+      "file": "sea_captain.webp",
+      "hash": "5b747103421b",
+      "version": 1787275396186
+    },
+    "secretary": {
+      "slug": "secretary",
+      "name": "Secretary",
+      "file": "secretary.webp",
+      "hash": "f9e5268b444d",
+      "version": 1787275396187
+    },
+    "slime": {
+      "slug": "slime",
+      "name": "Slime",
+      "file": "slime.webp",
+      "hash": "51db1c383ed7",
+      "version": 1787275396188
+    },
+    "smarmy_superhero": {
+      "slug": "smarmy_superhero",
+      "name": "Smarmy Superhero",
+      "file": "smarmy_superhero.webp",
+      "hash": "2d8e33b4b847",
+      "version": 1787275396189
+    },
+    "snake": {
+      "slug": "snake",
+      "name": "Snake",
+      "file": "snake.webp",
+      "hash": "5ef2f98fa065",
+      "version": 1787275396190
+    },
+    "sock_puppet": {
+      "slug": "sock_puppet",
+      "name": "Sock Puppet",
+      "file": "sock_puppet.webp",
+      "hash": "ad0fa176ef53",
+      "version": 1787275396191
+    },
+    "southern_lady": {
+      "slug": "southern_lady",
+      "name": "Southern Lady",
+      "file": "southern_lady.webp",
+      "hash": "e775dd5fda34",
+      "version": 1787275396192
+    },
+    "suave_black_guy": {
+      "slug": "suave_black_guy",
+      "name": "Suave Black Guy",
+      "file": "suave_black_guy.webp",
+      "hash": "4cf88ec4189a",
+      "version": 1787275396193
+    },
+    "surfer": {
+      "slug": "surfer",
+      "name": "Surfer",
+      "file": "surfer.webp",
+      "hash": "7e1ac6670ac8",
+      "version": 1787275396194
+    },
+    "teen": {
+      "slug": "teen",
+      "name": "Teen",
+      "file": "teen.webp",
+      "hash": "4c54636ea3c1",
+      "version": 1787275396195
+    },
+    "tiny_mouse": {
+      "slug": "tiny_mouse",
+      "name": "Tiny Mouse",
+      "file": "tiny_mouse.webp",
+      "hash": "9de29851fd50",
+      "version": 1787275396196
+    },
+    "triangle_wierdo": {
+      "slug": "triangle_wierdo",
+      "name": "Triangle Wierdo",
+      "file": "triangle_wierdo.webp",
+      "hash": "2d1b539205da",
+      "version": 1787275396197
+    },
+    "wisconsinite": {
+      "slug": "wisconsinite",
+      "name": "Wisconsinite",
+      "file": "wisconsinite.webp",
+      "hash": "aff3d685419d",
+      "version": 1787275396198
+    },
+    "witch": {
+      "slug": "witch",
+      "name": "Witch",
+      "file": "witch.webp",
+      "hash": "971a5d32d839",
+      "version": 1787275396199
+    },
+    "wizard": {
+      "slug": "wizard",
+      "name": "Wizard",
+      "file": "wizard.webp",
+      "hash": "d9068e170c35",
+      "version": 1787275396200
+    }
+  }
+}

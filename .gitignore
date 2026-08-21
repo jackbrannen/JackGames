@@ -13,3 +13,8 @@ supabase/.temp/
 
 .env.temp
 **/.env.temp
+
+# Raw source images — not read by any app code, only the generated public/voices/*.webp
+# output is actually served. Kept on disk (Dropbox already backs it up) but excluded from
+# git so it doesn't bloat repo size/clone time.
+HearingVoices/Voices/

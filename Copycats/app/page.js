@@ -84,7 +84,7 @@ export default function Home() {
     <HomeScreen
       title="Copycats"
       subtitle="Answer questions as each other"
-      onCreate={onCreateClick}
+      onCreate={() => onCreateClick()}
       isCreating={isCreating}
       joinCode={joinCode}
       onJoinCodeChange={setJoinCode}

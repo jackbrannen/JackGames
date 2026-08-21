@@ -171,7 +171,7 @@ function isBannedClue(text) {
   return BANNED_CLUES.some((b) => lower === b)
 }
 
-function AddClueForm({ code, playerId, onAdded, disabled, playerNames = [] }) {
+function AddClueForm({ code, playerId, onAdded, disabled }) {
   const [text, setText] = useState("")
   const [clueError, setClueError] = useState("")
 
@@ -243,10 +243,8 @@ function AddClueForm({ code, playerId, onAdded, disabled, playerNames = [] }) {
       <div style={{ marginTop: 16 }}>
         <RandomIdeas
           bg={WARM_LIGHT}
-          yellow={YELLOW}
+          iconColor={YELLOW}
           fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
-          playerNames={playerNames}
-          maxDraws={3}
         />
       </div>
     </div>
@@ -1218,7 +1216,6 @@ export default function Lobby({ params }) {
                     playerId={me.id}
                     disabled={false}
                     onAdded={async () => await refreshMyClues(me.id)}
-                    playerNames={players.filter(p => p.id !== me.id).map(p => p.first_name || p.name)}
                   />
                 )}
               </>

@@ -492,10 +492,8 @@ export default function PlayPage({ params }) {
           <div style={{ marginTop: 16, marginBottom: 24 }}>
             <RandomIdeas
               bg={WARM_LIGHT}
-              yellow={YELLOW}
+              iconColor={YELLOW}
               fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
-              playerNames={players.filter(p => p.id !== myId).map(p => p.first_name || p.name)}
-              maxDraws={3}
             />
           </div>
 

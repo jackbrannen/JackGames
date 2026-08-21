@@ -638,9 +638,8 @@ export default function Play({ params }) {
               </div>
               <RandomIdeas
                 bg={WARM_LIGHT}
-                yellow={YELLOW}
+                iconColor={YELLOW}
                 fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
-                playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
               />
             </div>
           </div>
@@ -766,9 +765,8 @@ export default function Play({ params }) {
             </div>
             <RandomIdeas
               bg={WARM_LIGHT}
-              yellow={YELLOW}
+              iconColor={YELLOW}
               fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
-              playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
             />
           </div>
           <Footer colors={POKE_COLORS}>

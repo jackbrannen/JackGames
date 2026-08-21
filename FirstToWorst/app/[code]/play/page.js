@@ -1085,10 +1085,8 @@ export default function Play({ params }) {
             <RandomIdeas
               key={game.round_index}
               bg={WARM_LIGHT}
-              yellow={YELLOW}
+              iconColor={YELLOW}
               fetchIdeas={fetchRandomIdeas}
-              playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
-              maxDraws={3}
             />
           </div>
 

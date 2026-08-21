@@ -34,7 +34,7 @@ const GIRLS = "#B5548A"
 function teamColor(t) { return t === "boys" ? BOYS : GIRLS }
 function teamLabel(t) { return t === "boys" ? "Boys" : "Girls" }
 
-function WordListForm({ words, setWords, onSubmit, submitting, submitLabel, maxLength, maxDraws, takenIndex, onEdit }) {
+function WordListForm({ words, setWords, onSubmit, submitting, submitLabel, maxLength, takenIndex, onEdit }) {
   const allFilled = words.every(w => w.trim())
   const { dupeIndices, hasDuplicates } = useDuplicates(words)
   return (
@@ -63,7 +63,7 @@ function WordListForm({ words, setWords, onSubmit, submitting, submitLabel, maxL
         {allFilled ? (
           <div style={{ fontSize: 14, fontWeight: 700, color: INK_MUTED, padding: "12px 0" }}>All filled in — ready to submit.</div>
         ) : (
-          <RandomIdeas bg={DARK} yellow="#FBDF54" fetchIdeas={fetchIdeas} maxDraws={maxDraws} />
+          <RandomIdeas bg={DARK} iconColor="#FBDF54" fetchIdeas={fetchIdeas} />
         )}
       </div>
       <button onClick={onSubmit} disabled={submitting || !allFilled || hasDuplicates}
@@ -111,6 +111,14 @@ export default function PlayPage({ params }) {
   const lastResolutionCardRef = useRef(null)
   const prevPendingCardRef = useRef(null)
 
+  // Unlike the other games, ThingsInRings' lobby already has its own auto-rejoin effect
+  // for replays (matches by name against the parent game's localStorage) — see
+  // "Auto-join returning players from a Play Again replay" in app/[code]/page.js, which is
+  // also where the team carry-over fix lives. No pre-seeding needed here; just redirect.
+  async function redirectToReplay(newCode) {
+    router.replace(`/${newCode}`)
+  }
+
   const loadSeqRef = useRef(0)
   async function loadState() {
     const seq = ++loadSeqRef.current
@@ -121,7 +129,7 @@ export default function PlayPage({ params }) {
     ])
     if (seq !== loadSeqRef.current) return
     if (!g) { router.replace(`/${code}`); return }
-    if (g.replay_code) { router.replace(`/${g.replay_code}`); return }
+    if (g.replay_code) { redirectToReplay(g.replay_code); return }
     if (g.phase === "lobby") { router.replace(`/${code}`); return }
     setGame(g); setPlayers(ps ?? []); setCards(cs ?? []); setLoading(false)
 
@@ -146,7 +154,7 @@ export default function PlayPage({ params }) {
   const gamesSyncKeyRef = useRef(null)
   function applyGameRow(newRow) {
     if (!newRow) return
-    if (newRow.replay_code) { router.replace(`/${newRow.replay_code}`); return }
+    if (newRow.replay_code) { redirectToReplay(newRow.replay_code); return }
     if (newRow.phase === "lobby") { router.replace(`/${code}`); return }
     setGame(newRow)
     setLoading(false)
@@ -648,7 +656,7 @@ export default function PlayPage({ params }) {
           <VennDiagram onZoneTap={onZoneTap} selectedZone={diagramSelectedZone} zoneWords={zoneWords} full />
         </div>
         {zoneDescriptionNode()}
-        <WordListForm words={initialWords} setWords={setInitialWords} onSubmit={submitWords} submitting={submittingWords} submitLabel="Submit words" maxLength={40} maxDraws={3} takenIndex={takenWordIndex} onEdit={i => { if (takenWordIndex === i) setTakenWordIndex(null) }} />
+        <WordListForm words={initialWords} setWords={setInitialWords} onSubmit={submitWords} submitting={submittingWords} submitLabel="Submit words" maxLength={40} takenIndex={takenWordIndex} onEdit={i => { if (takenWordIndex === i) setTakenWordIndex(null) }} />
       </div>
     )
   }
@@ -675,7 +683,7 @@ export default function PlayPage({ params }) {
         <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.55, marginBottom: 8 }}>{teamLabel(myTeam)} team</div>
         <h1 style={{ fontSize: 26, fontWeight: 900, marginBottom: 16, lineHeight: 1.15 }}>The word pool ran out — submit 3 more.</h1>
         <p style={{ fontSize: 15, color: INK_MUTED, fontWeight: 600, marginBottom: 16 }}>Once everyone's in, play picks back up right where it left off.</p>
-        <WordListForm words={moreWords} setWords={setMoreWords} onSubmit={submitMoreWords} submitting={submittingMoreWords} submitLabel="Submit words" maxLength={40} maxDraws={3} takenIndex={takenMoreWordIndex} onEdit={i => { if (takenMoreWordIndex === i) setTakenMoreWordIndex(null) }} />
+        <WordListForm words={moreWords} setWords={setMoreWords} onSubmit={submitMoreWords} submitting={submittingMoreWords} submitLabel="Submit words" maxLength={40} takenIndex={takenMoreWordIndex} onEdit={i => { if (takenMoreWordIndex === i) setTakenMoreWordIndex(null) }} />
       </div>
     )
   }
@@ -708,11 +716,11 @@ export default function PlayPage({ params }) {
 
         <div style={{ marginTop: 20, display: "flex", flexDirection: "column", alignItems: "center" }}>
           <button onClick={async () => {
-            if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
+            if (game.replay_code) { redirectToReplay(game.replay_code); return }
             const { data, error } = await supabase.rpc("tir_create_replay", { p_code: code })
             if (error) { alert(error.message); return }
             nudge()
-            router.replace(`/${data}`)
+            redirectToReplay(data)
           }} style={{ background: BTN, color: BTN_TEXT, fontSize: 16, fontWeight: 900, padding: "16px 24px", border: "none", marginTop: 8, maxWidth: 320, width: "100%" }}>Play Again</button>
           <a href="https://games.jackbrannen.com" style={{ display: "block", background: PANEL, color: INK, fontSize: 16, fontWeight: 700, padding: "14px 24px", textDecoration: "none", maxWidth: 320, width: "100%", marginTop: 10 }}>Play Another Game</a>
         </div>

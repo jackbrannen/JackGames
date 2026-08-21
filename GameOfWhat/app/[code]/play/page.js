@@ -748,9 +748,8 @@ export default function Play({ params }) {
                 bg={WARM_LIGHT}
                 fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
                 excludeIdeas={game.used_prompts ?? []}
-                playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
-                onDraw={ideas => supabase.from("gow_games")
-                  .update({ used_prompts: [...(game.used_prompts ?? []), ...ideas] })
+                onIdea={idea => supabase.from("gow_games")
+                  .update({ used_prompts: [...(game.used_prompts ?? []), idea] })
                   .eq("code", code)}
               />
             </div>

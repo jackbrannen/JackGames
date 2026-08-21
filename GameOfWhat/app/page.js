@@ -83,7 +83,7 @@ export default function Home() {
     <HomeScreen
       title={<>The Game<br />of What</>}
       subtitle="Like Quiplash but with DIY questions"
-      onCreate={onCreateClick}
+      onCreate={() => onCreateClick()}
       isCreating={isCreating}
       joinCode={joinCode}
       onJoinCodeChange={setJoinCode}

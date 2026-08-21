@@ -1,129 +1,153 @@
 "use client"
 /*
-  RandomIdeas — random idea chips below a text entry field
-  ─────────────────────────────────────────────────────────
-  Shows a "✦ Random ideas" button that draws 3 chips per tap.
-  On the first draw, randomly replaces one chip with a player name.
-  Reset between prompts/rounds by changing the `key` prop.
+  RandomIdeas — single-idea inspiration button
+  ─────────────────────────────────────────────
+  A button that shows one random idea at a time, written onto the button
+  itself. Tapping it swaps in a new idea and starts a short cooldown: the
+  refresh icon is replaced by a radial ring that sweeps around where it
+  was (the "ability on cooldown" idiom, not a loading bar — and the icon
+  is hidden rather than overlapping the ring) — indicating "not yet." The
+  icon reappears once it's pressable again. Every 10th press triggers a
+  longer breather (default 10s) with the button label itself switching to
+  an italic "chill for a second" for the duration, instead of the usual
+  idea text. Button background/text never dims (unlike a native
+  `disabled` button — see note below), and the press animation is toned
+  down from the game's default (this button is full-width with content
+  at both edges, so the standard scale/brightness punch reads as too
+  intense here). Unlimited presses; never runs out (pool is large enough
+  that exhaustion isn't handled). Reset between prompts/rounds by
+  changing the `key` prop.
 
   Props:
-    bg           hex      — button and chip background (use game's WARM_LIGHT)
-    yellow       hex      — name-tag highlight color (default #FBDF54)
+    bg           hex      — button background (use game's WARM_LIGHT)
+    iconColor    hex      — refresh icon + cooldown ring color (default #FBDF54)
     fetchIdeas   async (count: number, exclude: string[]) => string[]
-                          — called to get ideas; use game's supabase RPC:
+                          — called to get an idea; use game's supabase RPC:
                             (n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])
     excludeIdeas string[] — ideas already used (e.g. game.used_prompts); passed to fetchIdeas
-    playerNames  string[] — other players' first names; one injected on first draw
-    maxDraws     number   — how many times player can draw (default 3)
-    onDraw       (ideas: string[]) => void — called after each draw so game can persist
-    onIdeaClick  (idea: string) => void    — optional; do not wire this to auto-fill a field.
-                                              Chips are inspiration only — the player must still
-                                              type their own answer. Reserved for non-autofill
-                                              uses only (e.g. a copy-to-clipboard affordance).
+    cooldownMs   number   — ms before the button can be pressed again (default 900)
+    longCooldownMs number — ms for the once-every-10-presses breather (default 10000)
+    onIdea       (idea: string) => void — called each time a new idea is shown,
+                                           so the game can persist it (e.g. append to used_prompts)
 
-  Usage (GOW — display only, DB-tracked):
+  Usage (GOW):
     <RandomIdeas
       key={roundIndex}
       bg={WARM_LIGHT}
       fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
       excludeIdeas={game.used_prompts ?? []}
-      playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
-      onDraw={ideas => supabase.from("gow_games")
-        .update({ used_prompts: [...(game.used_prompts ?? []), ...ideas] })
+      onIdea={idea => supabase.from("gow_games")
+        .update({ used_prompts: [...(game.used_prompts ?? []), idea] })
         .eq("code", code)}
-    />
-
-  Usage (FTW — display only, no DB tracking):
-    <RandomIdeas
-      key={round}
-      bg={WARM_LIGHT}
-      fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
-      playerNames={players.filter(p => p.id !== myPlayerId).map(p => p.first_name || p.name)}
-      maxDraws={Math.ceil(wordFields.length * 2 / 3)}
     />
 */
 
-import { useState } from "react"
-import { FONT_SIZE, FONT_WEIGHT, OPACITY } from "./styles"
+import { useEffect, useRef, useState } from "react"
+import { FONT_WEIGHT } from "./styles"
+
+const PRESS_CSS = `.riButton:active:not(:disabled){transform:scale(0.98);filter:brightness(1.1);}`
+
+function RefreshIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+    </svg>
+  )
+}
+
+// Ring sweeps from empty back to full over `durationMs` — the "ability on
+// cooldown" idiom, drawn directly around the icon rather than a separate
+// bar (a bar reads as "loading," which is the wrong signal for a cooldown).
+// Remounted (via `key`) on every press so each cooldown gets its own sweep.
+function CooldownRing({ durationMs, color, size = 20 }) {
+  const [full, setFull] = useState(false)
+  const r = (size - 3) / 2
+  const circumference = 2 * Math.PI * r
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setFull(true))
+    return () => cancelAnimationFrame(raf)
+  }, [])
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ position: "absolute", top: 0, left: 0, transform: "rotate(-90deg)" }}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="2" />
+      <circle
+        cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"
+        strokeDasharray={circumference}
+        strokeDashoffset={full ? 0 : circumference}
+        style={{ transition: `stroke-dashoffset ${durationMs}ms linear` }}
+      />
+    </svg>
+  )
+}
 
 export default function RandomIdeas({
   bg = "rgba(255,255,255,0.15)",
-  yellow = "#FBDF54",
+  iconColor = "#FBDF54",
   fetchIdeas,
   excludeIdeas = [],
-  playerNames = [],
-  maxDraws = 3,
-  onDraw,
-  onIdeaClick,
+  cooldownMs = 900,
+  longCooldownMs = 10000,
+  onIdea,
 }) {
-  const [chips, setChips] = useState([])
-  const [draws, setDraws] = useState(0)
+  const [idea, setIdea] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [cooling, setCooling] = useState(false)
+  const [onBreak, setOnBreak] = useState(false)
+  const [activeCooldownMs, setActiveCooldownMs] = useState(cooldownMs)
+  const [cooldownKey, setCooldownKey] = useState(0)
+  const seenRef = useRef([])
+  const pressCountRef = useRef(0)
+  const cooldownTimerRef = useRef(null)
 
-  const exhausted = draws >= maxDraws
+  // Not a real HTML `disabled` — the global `button:disabled { opacity: 0.35 }`
+  // rule would dim the whole button (and its text) during cooldown, which is
+  // exactly what this button must never do. Gate the click in JS instead.
+  const busy = loading || cooling
 
-  async function handleDraw() {
-    if (exhausted || loading || !fetchIdeas) return
+  async function handlePress() {
+    if (busy || !fetchIdeas) return
     setLoading(true)
-    const seen = [...excludeIdeas, ...chips.map(c => c.text)]
-    const picked = await fetchIdeas(3, seen)
-    if (!picked?.length) { setLoading(false); return }
-    const newChips = picked.map(text => ({ text, isName: false }))
-    if (draws === 0 && playerNames.length && newChips.length) {
-      const name = playerNames[Math.floor(Math.random() * playerNames.length)]
-      newChips[Math.floor(Math.random() * newChips.length)] = { text: name, isName: true }
+    const picked = await fetchIdeas(1, [...excludeIdeas, ...seenRef.current])
+    if (picked?.[0]) {
+      seenRef.current = [...seenRef.current, picked[0]]
+      setIdea(picked[0])
+      onIdea?.(picked[0])
     }
-    setChips(prev => [...prev, ...newChips])
-    setDraws(d => d + 1)
-    onDraw?.(picked)
+    pressCountRef.current += 1
+    const isBreather = pressCountRef.current % 10 === 0
+    const duration = isBreather ? longCooldownMs : cooldownMs
     setLoading(false)
+    setOnBreak(isBreather)
+    setActiveCooldownMs(duration)
+    setCooling(true)
+    setCooldownKey(k => k + 1)
+    cooldownTimerRef.current = setTimeout(() => { setCooling(false); setOnBreak(false) }, duration)
   }
 
   return (
-    <div>
-      {!exhausted ? (
-        <button
-          onClick={handleDraw}
-          disabled={loading}
-          style={{
-            background: bg, color: "white",
-            fontSize: 15, fontWeight: FONT_WEIGHT.heavy,
-            padding: "14px 18px", display: "block", width: "100%",
-            marginBottom: chips.length ? 12 : 0,
-          }}
-        >
-          {chips.length === 0 ? "✦ Random ideas" : "✦ 3 more ideas"}
-        </button>
-      ) : (
-        <div style={{
-          fontSize: FONT_SIZE.min, fontWeight: FONT_WEIGHT.semibold,
-          color: `rgba(255,255,255,${OPACITY.disabled})`,
-          padding: "12px 18px", background: bg,
-          marginBottom: chips.length ? 12 : 0,
-        }}>
-          No more ideas for this question
-        </div>
-      )}
-      {chips.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {chips.map((chip, i) => (
-            <div
-              key={i}
-              onClick={() => onIdeaClick?.(chip.text)}
-              style={{
-                padding: "7px 14px", borderRadius: 999,
-                fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.bold,
-                background: chip.isName ? "rgba(251,223,84,0.12)" : bg,
-                color: chip.isName ? yellow : "white",
-                border: chip.isName ? "1px solid rgba(251,223,84,0.3)" : "1px solid rgba(255,255,255,0.15)",
-                cursor: onIdeaClick ? "pointer" : "default",
-              }}
-            >
-              {chip.text}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    <>
+      <style>{PRESS_CSS}</style>
+      <button
+        onClick={handlePress}
+        aria-label="Get a random idea"
+        className="riButton"
+        style={{
+          background: bg, color: "white",
+          fontSize: 15, fontWeight: FONT_WEIGHT.heavy,
+          padding: "14px 18px", width: "100%",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+          textAlign: "left",
+        }}
+      >
+        <span style={{ fontStyle: onBreak ? "italic" : "normal" }}>
+          {onBreak ? "chill for a second" : idea ?? "✦ Random ideas"}
+        </span>
+        <span style={{ position: "relative", flexShrink: 0, width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", color: iconColor, opacity: busy ? 0.4 : 1 }}>
+          {cooling ? <CooldownRing key={cooldownKey} durationMs={activeCooldownMs} color={iconColor} size={20} /> : <RefreshIcon size={16} />}
+        </span>
+      </button>
+    </>
   )
 }

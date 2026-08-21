@@ -10,6 +10,7 @@ import Footer, { FOOTER_H } from "../../../components/Footer"
 import FooterButton from "../../../components/FooterButton"
 import IdleGateModal from "../../../components/IdleGateModal"
 import EndGame from "../../../components/EndGame"
+import HighScores from "../../../components/HighScores"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import { useIdleGate } from "../../../lib/useIdleGate"
@@ -75,10 +76,14 @@ function pickEmojiWithVariety(recentCategories) {
 
 const BOYS_COLOR = "hsl(210, 70%, 45%)"
 const GIRLS_COLOR = "hsl(280, 55%, 45%)"
+const COLLAB_COLOR = "hsl(160, 55%, 40%)"
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 const POP_MS = 500 // one-shot "pop" duration on the assigned card before it settles into the gentle pulse
 const POKE_COLORS = { dark: "hsl(220, 10%, 10%)", mid: "hsl(220, 10%, 16%)", wl: "hsl(220, 10%, 20%)", yellow: "hsl(48, 95%, 60%)", notifBg: "hsl(220, 10%, 8%)" }
 
+// Pass either { boys, girls } (Teams) or a single { score } (Collaborative) — the shape of
+// scores determines which is rendered, so every call site can just pass whichever the
+// current game.mode actually has without an extra prop.
 function ScoreBoxes({ scores }) {
   const boxStyle = (bg) => ({
     background: bg,
@@ -87,6 +92,13 @@ function ScoreBoxes({ scores }) {
     fontWeight: FONT_WEIGHT.black,
     padding: `4px ${SPACE.xs}px`,
   })
+  if (scores.score !== undefined) {
+    return (
+      <div style={{ display: "flex", gap: 6 }}>
+        <span style={boxStyle(COLLAB_COLOR)}>Score {scores.score}</span>
+      </div>
+    )
+  }
   return (
     <div style={{ display: "flex", gap: 6 }}>
       <span style={boxStyle(BOYS_COLOR)}>Boys {scores.boys}</span>
@@ -347,7 +359,8 @@ export default function PlayPage({ params }) {
   const myTeam = me?.team ?? null
   const isClueGiver = !!game && myPlayerId === game.clue_giver_id
   const isOnActiveTeam = !!game && myTeam === game.active_team
-  const canSelect = isOnActiveTeam && !isClueGiver
+  const isCollab = game?.mode === "collaborative"
+  const canSelect = !isClueGiver && (isCollab ? !!game : isOnActiveTeam)
 
   const turnStartedMs = game?.turn_started_at ? new Date(game.turn_started_at).getTime() : null
   const pausedAtMs = game?.paused_at ? new Date(game.paused_at).getTime() : null
@@ -659,6 +672,29 @@ export default function PlayPage({ params }) {
   }
 
   if (game.phase === "finished") {
+    // Collaborative is fully cooperative — no team comparison, no winner/tie language,
+    // just the shared final score plus the persistent cross-game leaderboard below it.
+    if (isCollab) {
+      return (
+        <div style={{ height: "100dvh", display: "flex", flexDirection: "column", background: "#101014", color: "#fff" }}>
+          <EndGame
+            players={[]}
+            myPlayerId={myPlayerId}
+            onPlayAgain={playAgain}
+            bottomPad={BOTTOM_PAD}
+            colors={{ yellow: "hsl(48, 95%, 60%)", wl: "hsl(220, 10%, 20%)" }}
+            aboveScores={
+              <div style={{ marginBottom: SPACE.lg }}>
+                <div style={{ fontSize: FONT_SIZE.headingLg, fontWeight: FONT_WEIGHT.black, color: "#fff" }}>
+                  Final score: {game.score}
+                </div>
+              </div>
+            }
+            belowButtons={<HighScores colors={{ wl: "hsl(220, 10%, 20%)" }} />}
+          />
+        </div>
+      )
+    }
     const boysWin = game.score_boys > game.score_girls
     const girlsWin = game.score_girls > game.score_boys
     const winnerText = boysWin ? "Boys win!" : girlsWin ? "Girls win!" : "It's a tie!"
@@ -686,24 +722,28 @@ export default function PlayPage({ params }) {
     )
   }
 
-  const bannerText = isClueGiver ? "You're doing voices" : canSelect ? "You're guessing" : "Don't guess"
+  // Collaborative has no "other team to sit out" — everyone but the clue-giver can always
+  // guess, so there's no third "Don't guess" state to show.
+  const bannerText = isClueGiver ? "You're doing voices" : "You're guessing"
   const bannerColor = isClueGiver ? "hsl(48, 95%, 60%)" : canSelect ? "#fff" : "hsl(0, 85%, 65%)"
   const clueGiverPlayer = players.find((p) => p.id === game.clue_giver_id)
   const clueGiverName = clueGiverPlayer?.first_name || clueGiverPlayer?.name || null
+  const scoresProp = isCollab ? { score: game.score } : { boys: game.score_boys, girls: game.score_girls }
 
   // The board (and this bar) now stay up through "Time's Up!" instead of swapping to a
   // predicted interstitial, so game.active_team is always the real, current team — no more
   // need to guess what's coming next before the vote-triggered transition actually happens.
-  const activeColor = game.active_team === "boys" ? BOYS_COLOR : GIRLS_COLOR
+  const activeColor = isCollab ? COLLAB_COLOR : game.active_team === "boys" ? BOYS_COLOR : GIRLS_COLOR
   const roundHistory = game.round_history ?? []
   const roundPoints = roundHistory.reduce((sum, h) => sum + h.points, 0)
   // Server-side "round_index"/"rounds_total" count boys+girls turns together as one round
   // (so 2v2 shows "Round 1 of 2" even though all 4 players get a turn) — displayed instead
   // as one round per INDIVIDUAL turn, so 2v2 correctly reads "Round 1 of 4" through
   // "Round 4 of 4". Purely a display transform; the underlying fairness/rotation math is
-  // untouched.
-  const displayRound = (game.round_index - 1) * 2 + (game.active_team === "boys" ? 1 : 2)
-  const displayRoundsTotal = game.rounds_total * 2
+  // untouched. Collaborative mode has no such doubling — round_index/rounds_total already
+  // count individual turns directly (see hv_start_game/hv_end_turn).
+  const displayRound = isCollab ? game.round_index : (game.round_index - 1) * 2 + (game.active_team === "boys" ? 1 : 2)
+  const displayRoundsTotal = isCollab ? game.rounds_total : game.rounds_total * 2
   const votesCount = game.end_round_votes?.length ?? 0
   const voteThreshold = Math.ceil(players.length / 2)
   const hasVoted = !!myPlayerId && !!game.end_round_votes?.includes(myPlayerId)
@@ -721,8 +761,8 @@ export default function PlayPage({ params }) {
         name: p.name,
         firstName: p.first_name,
         lastName: p.last_name,
-        teamColor: p.team === "boys" ? BOYS_COLOR : GIRLS_COLOR,
-        teamLabel: p.team === "boys" ? "Boys" : "Girls",
+        teamColor: p.team === "boys" ? BOYS_COLOR : p.team === "girls" ? GIRLS_COLOR : COLLAB_COLOR,
+        teamLabel: p.team === "boys" ? "Boys" : p.team === "girls" ? "Girls" : undefined,
       }))}
       gamePhase={game.phase}
       onResetToLobby={async () => { await supabase.rpc("hv_reset_to_lobby", { p_code: code }) }}
@@ -744,7 +784,7 @@ export default function PlayPage({ params }) {
             fontWeight: FONT_WEIGHT.black,
           }}
         >
-          {game.active_team === "boys" ? "Boys' Turn" : "Girls' Turn"}
+          {isCollab ? `${clueGiverName ?? "…"}'s Turn` : game.active_team === "boys" ? "Boys' Turn" : "Girls' Turn"}
         </div>
       )}
 
@@ -781,7 +821,7 @@ export default function PlayPage({ params }) {
             <span style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.semibold, color: `rgba(255,255,255,${OPACITY.muted})` }}>
               Round {displayRound} of {displayRoundsTotal}
             </span>
-            <ScoreBoxes scores={{ boys: game.score_boys, girls: game.score_girls }} />
+            <ScoreBoxes scores={scoresProp} />
           </div>
           <div style={{ marginTop: 6, fontSize: FONT_SIZE.heading, fontWeight: FONT_WEIGHT.black, color: bannerColor }}>
             {bannerText}
@@ -937,13 +977,15 @@ export default function PlayPage({ params }) {
               Get ready for Round {displayRound} of {displayRoundsTotal}
             </div>
             <div style={{ marginTop: SPACE.md, display: "flex", justifyContent: "center" }}>
-              <ScoreBoxes scores={{ boys: game.score_boys, girls: game.score_girls }} />
+              <ScoreBoxes scores={scoresProp} />
             </div>
             <div style={{ marginTop: SPACE.md, background: "hsl(220, 10%, 16%)", padding: CARD.wellPadding, display: "inline-block", minWidth: 220 }}>
-              <div style={{ fontSize: FONT_SIZE.bodyLg, fontWeight: FONT_WEIGHT.black, color: game.active_team === "boys" ? "hsl(210, 90%, 65%)" : "hsl(280, 75%, 72%)" }}>
-                {game.active_team === "boys" ? "Boys" : "Girls"} up next
-              </div>
-              <div style={{ marginTop: 4, fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold, color: `rgba(255,255,255,${OPACITY.normal})` }}>
+              {!isCollab && (
+                <div style={{ fontSize: FONT_SIZE.bodyLg, fontWeight: FONT_WEIGHT.black, color: game.active_team === "boys" ? "hsl(210, 90%, 65%)" : "hsl(280, 75%, 72%)" }}>
+                  {game.active_team === "boys" ? "Boys" : "Girls"} up next
+                </div>
+              )}
+              <div style={{ marginTop: isCollab ? 0 : 4, fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold, color: `rgba(255,255,255,${OPACITY.normal})` }}>
                 {clueGiverName ?? "…"} doing voices
               </div>
             </div>

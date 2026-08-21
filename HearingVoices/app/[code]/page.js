@@ -20,6 +20,7 @@ const DARK = "hsl(220, 10%, 10%)"
 const MID = "hsl(220, 10%, 14%)"
 const BOYS_COLOR = "hsl(210, 70%, 45%)"
 const GIRLS_COLOR = "hsl(280, 55%, 45%)"
+const COLLAB_COLOR = "hsl(160, 55%, 40%)"
 
 const LOBBY_COLORS = { dark: DARK, mid: MID, wl: WARM_LIGHT, yellow: YELLOW }
 const POKE_COLORS = { dark: DARK, mid: MID, wl: WARM_LIGHT, yellow: YELLOW, notifBg: DARK }
@@ -60,9 +61,20 @@ function saveProfile(profile) {
   document.cookie = `jackgames_profile=${encodeURIComponent(json)}; domain=.jackbrannen.com; max-age=31536000; path=/; SameSite=Lax`
 }
 
-function HowToPlay() {
+function HowToPlay({ mode = "teams" }) {
   const p = { fontSize: 15, color: "rgba(255,255,255,0.85)", lineHeight: 1.6, marginBottom: 14 }
   const b = { fontWeight: 800, color: "white" }
+  if (mode === "collaborative") {
+    return (
+      <div>
+        <p style={p}>Everyone shares one score. Players take turns, one at a time — on your turn, you're secretly shown which of the 8 character cards matches the emoji on screen.</p>
+        <p style={p}>Say the emoji's name out loud <span style={b}>once</span>, in that character's voice — no retries, no other hints.</p>
+        <p style={p}>Everyone else taps to guess which card it was. Taps are shared live, so you'll see who's pointing at what. Once you're sure, tap <span style={b}>Submit</span> to lock in the answer.</p>
+        <p style={p}>Correct is always <span style={b}>+2</span>, wrong is always <span style={b}>-1</span> — fixed, not host-configurable. A new emoji appears immediately either way — same 8 cards, next guess.</p>
+        <p style={{ ...p, marginBottom: 0 }}>Anyone can pause if you need to. When the timer runs out, tap <span style={b}>End Round</span> — once half the players have, it's the next player's turn. The game ends once everyone's had exactly one turn.</p>
+      </div>
+    )
+  }
   return (
     <div>
       <p style={p}>Teams take turns. On your team's turn, one player is secretly shown which of the 8 character cards matches the emoji on screen.</p>
@@ -105,6 +117,7 @@ export default function LobbyPage({ params }) {
   const [draftTurnSeconds, setDraftTurnSeconds] = useState(45)
   const [draftWrongPoints, setDraftWrongPoints] = useState(-1)
   const [draftCorrectPoints, setDraftCorrectPoints] = useState(2)
+  const [draftMode, setDraftMode] = useState("teams")
   const isIdle = useIdleGate()
   const loadSeqRef = useRef(0)
   const justJoinedRef = useRef(false)
@@ -119,7 +132,7 @@ export default function LobbyPage({ params }) {
   async function loadState() {
     const seq = ++loadSeqRef.current
     const [{ data: gameData }, { data: playerData }] = await Promise.all([
-      supabase.from("hv_games").select("code,phase,rounds_total,turn_duration_seconds,wrong_points,correct_points").eq("code", code).single(),
+      supabase.from("hv_games").select("code,phase,mode,rounds_total,turn_duration_seconds,wrong_points,correct_points").eq("code", code).single(),
       supabase.from("hv_players").select("id,name,first_name,last_name,team,created_at").eq("game_code", code).order("created_at", { ascending: true }),
     ])
     if (seq !== loadSeqRef.current) return // a newer call already landed, discard this one
@@ -228,6 +241,7 @@ export default function LobbyPage({ params }) {
     setDraftTurnSeconds(game.turn_duration_seconds)
     setDraftWrongPoints(game.wrong_points)
     setDraftCorrectPoints(game.correct_points)
+    setDraftMode(game.mode)
   }, [game])
 
   // If another player removes us from the roster (or this localStorage id is stale from a
@@ -301,8 +315,14 @@ export default function LobbyPage({ params }) {
         turn_duration_seconds: draftTurnSeconds,
         wrong_points: draftWrongPoints,
         correct_points: draftCorrectPoints,
+        mode: draftMode,
       })
       .eq("code", code)
+    // Switching to Collaborative clears every player's team so no stale Boys/Girls label
+    // lingers in the roster — harmless no-op if everyone's already null.
+    if (draftMode === "collaborative") {
+      await supabase.from("hv_players").update({ team: null }).eq("game_code", code)
+    }
     close()
   }
 
@@ -330,7 +350,8 @@ export default function LobbyPage({ params }) {
     else { await navigator.clipboard.writeText(url); alert("Link copied!") }
   }
 
-  const canStart = boysTeam.length >= 2 && girlsTeam.length >= 2
+  const isCollab = game?.mode === "collaborative"
+  const canStart = isCollab ? players.length >= 3 : boysTeam.length >= 2 && girlsTeam.length >= 2
 
   const lobbyPlayers = players.map((p) => ({
     id: p.id,
@@ -338,6 +359,8 @@ export default function LobbyPage({ params }) {
     teamLabel: p.team === "boys" ? "Boys" : p.team === "girls" ? "Girls" : undefined,
     teamColor: p.team === "boys" ? BOYS_COLOR : p.team === "girls" ? GIRLS_COLOR : undefined,
   }))
+
+  const canJoin = !!username.trim() && (savedProfile || (firstName.trim() && lastName.trim())) && !joining
 
   // Only rendered pre-join — showJoinZone (default !myPlayerId) hides this once `me`
   // exists, so a "switch team" affordance can't live in here; it's rendered unconditionally
@@ -358,27 +381,37 @@ export default function LobbyPage({ params }) {
         maxLength={40}
         style={inputStyle}
       />
+      {isCollab ? (
+        <button
+          onClick={() => join(null)}
+          disabled={!canJoin}
+          style={{ background: COLLAB_COLOR, color: "white", fontSize: 16, fontWeight: 900, padding: "16px", width: "100%", display: "block", marginTop: 8 }}
+        >
+          {joining ? "…" : "Join Game"}
+        </button>
+      ) : (
       <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
         <button
           onClick={() => join("boys")}
-          disabled={!username.trim() || (!savedProfile && (!firstName.trim() || !lastName.trim())) || joining}
+          disabled={!canJoin}
           style={{ background: BOYS_COLOR, color: "white", fontSize: 16, fontWeight: 900, padding: "16px", flex: 1, display: "block" }}
         >
           {joining ? "…" : "Join Boys"}
         </button>
         <button
           onClick={() => join("girls")}
-          disabled={!username.trim() || (!savedProfile && (!firstName.trim() || !lastName.trim())) || joining}
+          disabled={!canJoin}
           style={{ background: GIRLS_COLOR, color: "white", fontSize: 16, fontWeight: 900, padding: "16px", flex: 1, display: "block" }}
         >
           {joining ? "…" : "Join Girls"}
         </button>
       </div>
+      )}
       {joinError && <div style={{ fontSize: 14, fontWeight: 700, color: "#F04F52", marginTop: 10 }}>{joinError}</div>}
     </>
   )
 
-  const genderSwitchButton = me && (
+  const genderSwitchButton = me && !isCollab && (
     <button
       onClick={switchTeam}
       style={{ background: WARM_LIGHT, color: "white", fontSize: 15, fontWeight: 800, padding: "14px 18px", width: "100%" }}
@@ -394,6 +427,23 @@ export default function LobbyPage({ params }) {
   const settingsContent = (close) => (
     <>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
+        <span style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>Mode</span>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            onClick={() => setDraftMode("teams")}
+            style={{ background: draftMode === "teams" ? YELLOW : WARM_LIGHT, color: draftMode === "teams" ? "#000" : "white", fontSize: 14, fontWeight: 800, padding: "8px 14px" }}
+          >
+            Teams
+          </button>
+          <button
+            onClick={() => setDraftMode("collaborative")}
+            style={{ background: draftMode === "collaborative" ? YELLOW : WARM_LIGHT, color: draftMode === "collaborative" ? "#000" : "white", fontSize: 14, fontWeight: 800, padding: "8px 14px" }}
+          >
+            Collaborative
+          </button>
+        </div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
         <span style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>Turn length</span>
         <select
           value={draftTurnSeconds}
@@ -405,30 +455,38 @@ export default function LobbyPage({ params }) {
           ))}
         </select>
       </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
-        <span style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>Wrong answer</span>
-        <select
-          value={draftWrongPoints}
-          onChange={(e) => setDraftWrongPoints(parseInt(e.target.value))}
-          style={{ background: WARM_LIGHT, color: "white", fontSize: 16, padding: "8px 12px", border: "none" }}
-        >
-          {WRONG_POINTS_OPTIONS.map((p) => (
-            <option key={p} value={p}>{p}</option>
-          ))}
-        </select>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
-        <span style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>Correct answer</span>
-        <select
-          value={draftCorrectPoints}
-          onChange={(e) => setDraftCorrectPoints(parseInt(e.target.value))}
-          style={{ background: WARM_LIGHT, color: "white", fontSize: 16, padding: "8px 12px", border: "none" }}
-        >
-          {CORRECT_POINTS_OPTIONS.map((p) => (
-            <option key={p} value={p}>+{p}</option>
-          ))}
-        </select>
-      </div>
+      {draftMode === "collaborative" ? (
+        <div style={{ padding: "10px 0", fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.55)" }}>
+          Fixed scoring: +2 correct / -1 incorrect
+        </div>
+      ) : (
+        <>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
+            <span style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>Wrong answer</span>
+            <select
+              value={draftWrongPoints}
+              onChange={(e) => setDraftWrongPoints(parseInt(e.target.value))}
+              style={{ background: WARM_LIGHT, color: "white", fontSize: 16, padding: "8px 12px", border: "none" }}
+            >
+              {WRONG_POINTS_OPTIONS.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
+            <span style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>Correct answer</span>
+            <select
+              value={draftCorrectPoints}
+              onChange={(e) => setDraftCorrectPoints(parseInt(e.target.value))}
+              style={{ background: WARM_LIGHT, color: "white", fontSize: 16, padding: "8px 12px", border: "none" }}
+            >
+              {CORRECT_POINTS_OPTIONS.map((p) => (
+                <option key={p} value={p}>+{p}</option>
+              ))}
+            </select>
+          </div>
+        </>
+      )}
       <button onClick={() => saveSettings(close)} style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "12px 20px", width: "100%", marginTop: 12 }}>
         Save
       </button>
@@ -446,16 +504,16 @@ export default function LobbyPage({ params }) {
           code={code}
           gameName="Hearing Voices"
           players={lobbyPlayers}
-          teams={[{ label: "Boys", color: BOYS_COLOR }, { label: "Girls", color: GIRLS_COLOR }]}
+          teams={isCollab ? undefined : [{ label: "Boys", color: BOYS_COLOR }, { label: "Girls", color: GIRLS_COLOR }]}
           myPlayerId={myPlayerId}
           onInvite={handleInvite}
-          howToPlayContent={<HowToPlay />}
+          howToPlayContent={<HowToPlay mode={game?.mode} />}
           settingsContent={settingsContent}
           joinContent={joinForm}
           onRemovePlayer={removePlayer}
           extraContent={genderSwitchButton}
           colors={LOBBY_COLORS}
-          minPlayers={4}
+          minPlayers={isCollab ? 3 : 4}
           notFound={notFound}
           loading={!game}
         />
@@ -480,14 +538,14 @@ export default function LobbyPage({ params }) {
           <div onClick={(e) => e.stopPropagation()} style={{ background: DARK, width: "100%", maxWidth: 400, padding: "28px 24px" }}>
             <h2 style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 8 }}>Start the game?</h2>
             <p style={{ fontSize: 15, color: "white", opacity: 0.75, fontWeight: 600, marginBottom: 20 }}>
-              {roundsTotal * 2} rounds · {draftTurnSeconds}s each. Are all players in?
+              {isCollab ? `${players.length} turns` : `${roundsTotal * 2} rounds`} · {draftTurnSeconds}s each. Are all players in?
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 24 }}>
               {players.map((p, i) => (
                 <div key={p.id} style={{ display: "flex" }}>
                   <div style={{
                     padding: "10px 0", minWidth: 40, flexShrink: 0,
-                    background: p.team === "boys" ? BOYS_COLOR : GIRLS_COLOR,
+                    background: isCollab ? COLLAB_COLOR : p.team === "boys" ? BOYS_COLOR : GIRLS_COLOR,
                     fontSize: 15, fontWeight: 900, color: "white",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>

@@ -6,15 +6,22 @@
 create table public.hv_games (
   code                  text primary key,
   phase                 text not null default 'lobby',   -- lobby | playing | finished
+  mode                  text not null default 'teams',   -- 'teams' | 'collaborative' — host setting, off by
+                                                            -- default; check constraint added below
   rounds_total          int not null default 4,
   round_index           int not null default 0,
   turn_duration_seconds int not null default 45,
-  wrong_points          int not null default -1,        -- points lost on an incorrect guess (host-configurable, -3..0)
-  correct_points        int not null default 2,          -- points gained on a correct guess (host-configurable, 1..3)
-  active_team           text,                             -- 'boys' | 'girls'
+  wrong_points          int not null default -1,        -- points lost on an incorrect guess (host-configurable
+                                                           -- for teams, -3..0; fixed at -1 for collaborative)
+  correct_points        int not null default 2,          -- points gained on a correct guess (host-configurable
+                                                           -- for teams, 1..3; fixed at 2 for collaborative)
+  active_team           text,                             -- 'boys' | 'girls' — unused (null) in collaborative mode
   clue_giver_id         uuid,                              -- FK added below, after hv_players exists
   boys_order            uuid[] not null default '{}',      -- team roster snapshot, ordered by join time at start
   girls_order           uuid[] not null default '{}',
+  player_order          uuid[] not null default '{}',      -- collaborative-mode turn order (all players, random),
+                                                             -- parallel to boys_order/girls_order
+  score                 int not null default 0,            -- shared collaborative-mode score
   turn_started_at       timestamptz,
   paused                boolean not null default false,
   paused_by             uuid,
@@ -58,13 +65,32 @@ create table public.hv_players (
   name        text not null,
   first_name  text,
   last_name   text,
-  team        text,                                        -- 'boys' | 'girls' | null (unchosen)
+  team        text,                                        -- 'boys' | 'girls' | null (unchosen, or
+                                                              -- always-null in collaborative mode)
   created_at  timestamptz not null default now()
 );
 
 alter table public.hv_games
   add constraint hv_games_clue_giver_id_fkey
   foreign key (clue_giver_id) references public.hv_players(id);
+
+alter table public.hv_games
+  add constraint hv_games_mode_check check (mode in ('teams', 'collaborative'));
+
+-- Persistent cross-game leaderboard for Collaborative mode, grouped by player_count (a
+-- 3-player game has a lower score ceiling than an 8-player one). NOT cleared by
+-- hv_reset_to_lobby or hv_create_replay, and deliberately has no FK to hv_games(code) —
+-- entries must outlive the game row's normal lifecycle. Only the top 5 per player_count
+-- group are ever kept; hv_end_turn prunes the rest in the same call that inserts a new
+-- score (see below), not just at display time.
+create table public.hv_high_scores (
+  id           bigint generated always as identity primary key,
+  game_code    text not null,
+  score        int not null,
+  player_count int not null,
+  player_names text[] not null,
+  created_at   timestamptz not null default now()
+);
 
 -- The correct-card answer. Deliberately its OWN table, never realtime-subscribed, and
 -- (see RLS section below) never readable by anon/authenticated clients — only through
@@ -113,9 +139,10 @@ ALTER PUBLICATION supabase_realtime ADD TABLE hv_games, hv_players;
 -- ============================================================
 -- RLS
 -- ============================================================
-alter table public.hv_games   enable row level security;
-alter table public.hv_players enable row level security;
-alter table public.hv_secrets enable row level security;
+alter table public.hv_games       enable row level security;
+alter table public.hv_players     enable row level security;
+alter table public.hv_secrets     enable row level security;
+alter table public.hv_high_scores enable row level security;
 
 create policy "anon all" on public.hv_games   for all using (true) with check (true);
 create policy "anon all" on public.hv_players for all using (true) with check (true);
@@ -126,6 +153,12 @@ create policy "anon all" on public.hv_players for all using (true) with check (t
 -- bypass RLS and are the only legitimate access paths. Do NOT add a permissive policy
 -- to this table — that would leak the correct-card answer to every player.
 revoke all on public.hv_secrets from anon, authenticated;
+
+-- hv_high_scores: readable by anyone (it's a public leaderboard), but only a SECURITY
+-- DEFINER RPC (hv_end_turn, on game finish) can write — no insert/update/delete policy
+-- exists, so a client can't spoof a score directly. Same lockdown shape as hv_secrets,
+-- applied to writes instead of reads.
+create policy "anon select" on public.hv_high_scores for select using (true);
 
 -- ============================================================
 -- RPC: hv_start_game
@@ -144,12 +177,62 @@ declare
   g record;
   v_boys_order uuid[];
   v_girls_order uuid[];
+  v_player_order uuid[];
   v_clue_giver uuid;
   v_correct text;
+  v_rounds_total int;
+  v_wrong_points int;
+  v_correct_points int;
 begin
   select * into g from public.hv_games where code = p_code for update;
   if not found or g.phase <> 'lobby' then return; end if;
   if array_length(p_card_pool, 1) <> 8 then return; end if;
+
+  if g.mode = 'collaborative' then
+    -- Every joined player takes a turn, regardless of the (unused, null) team column.
+    select array_agg(id order by random()) into v_player_order
+      from public.hv_players where game_code = p_code;
+    if v_player_order is null or array_length(v_player_order, 1) < 3 then return; end if;
+
+    v_clue_giver := v_player_order[1];
+    v_rounds_total := array_length(v_player_order, 1); -- exactly one pass, not host-configurable
+    -- Fixed scoring for Collaborative — not host-configurable, ignores p_wrong_points/
+    -- p_correct_points entirely.
+    v_wrong_points := -1;
+    v_correct_points := 2;
+    v_correct := p_card_pool[1 + floor(random() * 8)::int];
+
+    update public.hv_games set
+      phase = 'playing',
+      rounds_total = v_rounds_total,
+      turn_duration_seconds = p_turn_duration_seconds,
+      wrong_points = v_wrong_points,
+      correct_points = v_correct_points,
+      round_index = 1,
+      active_team = null,
+      player_order = v_player_order,
+      clue_giver_id = v_clue_giver,
+      card_pool = p_card_pool,
+      current_emoji = p_first_emoji,
+      guess_nonce = 1,
+      selected_card_slug = null,
+      selected_by = null,
+      selected_at = null,
+      last_result = null,
+      last_result_at = null,
+      score = 0,
+      turn_started_at = null,
+      paused = false,
+      paused_by = null,
+      paused_at = null,
+      round_history = '[]'
+    where code = p_code;
+
+    insert into public.hv_secrets (game_code, correct_card_slug)
+    values (p_code, v_correct)
+    on conflict (game_code) do update set correct_card_slug = excluded.correct_card_slug;
+    return;
+  end if;
 
   -- Ordered randomly (not by created_at) so that, combined with the modulo rotation in
   -- this function and hv_end_turn, an uneven smaller team's "extra" turns land on
@@ -221,8 +304,11 @@ begin
   if g.clue_giver_id = p_player_id then return; end if;
   if g.selected_card_slug is not distinct from p_card_slug then return; end if; -- no-op on re-tap
 
-  select team into v_team from public.hv_players where id = p_player_id and game_code = p_code;
-  if v_team is distinct from g.active_team then return; end if;
+  if g.mode = 'teams' then
+    select team into v_team from public.hv_players where id = p_player_id and game_code = p_code;
+    if v_team is distinct from g.active_team then return; end if;
+  end if;
+  -- Collaborative: any non-clue-giver player may select — already guarded above.
 
   update public.hv_games set
     selected_card_slug = p_card_slug,
@@ -255,8 +341,11 @@ begin
   if g.clue_giver_id = p_player_id then return; end if;
   if g.selected_card_slug is null then return; end if;
 
-  select team into v_team from public.hv_players where id = p_player_id and game_code = p_code;
-  if v_team is distinct from g.active_team then return; end if;
+  if g.mode = 'teams' then
+    select team into v_team from public.hv_players where id = p_player_id and game_code = p_code;
+    if v_team is distinct from g.active_team then return; end if;
+  end if;
+  -- Collaborative: any non-clue-giver player may submit — already guarded above.
 
   select correct_card_slug into v_correct_slug from public.hv_secrets where game_code = p_code;
   v_is_correct := (g.selected_card_slug = v_correct_slug);
@@ -288,8 +377,9 @@ begin
   );
 
   update public.hv_games set
-    score_boys = score_boys + case when g.active_team = 'boys' then v_points else 0 end,
-    score_girls = score_girls + case when g.active_team = 'girls' then v_points else 0 end,
+    score_boys = score_boys + case when g.mode = 'teams' and g.active_team = 'boys' then v_points else 0 end,
+    score_girls = score_girls + case when g.mode = 'teams' and g.active_team = 'girls' then v_points else 0 end,
+    score = score + case when g.mode = 'collaborative' then v_points else 0 end,
     last_result = v_is_correct,
     last_result_at = now(),
     current_emoji = p_next_emoji,
@@ -349,6 +439,8 @@ declare
   v_order uuid[];
   v_clue_giver uuid;
   v_correct text;
+  v_player_count int;
+  v_player_names text[];
 begin
   select * into g from public.hv_games where code = p_code for update;
   if not found or g.phase <> 'playing' or g.paused then return; end if;
@@ -358,6 +450,58 @@ begin
   -- without it, a browser clock running even slightly fast shows the "time's up" button
   -- while the server's own now() still disagrees, silently rejecting the call.
   if now() < g.turn_started_at + (g.turn_duration_seconds || ' seconds')::interval - interval '2 seconds' then return; end if;
+
+  if g.mode = 'collaborative' then
+    v_new_round := g.round_index + 1;
+
+    if v_new_round > g.rounds_total then
+      v_player_count := array_length(g.player_order, 1);
+      select array_agg(first_name order by created_at) into v_player_names
+        from public.hv_players where game_code = p_code;
+
+      update public.hv_games set phase = 'finished', end_round_votes = '{}' where code = p_code;
+
+      insert into public.hv_high_scores (game_code, score, player_count, player_names)
+      values (p_code, g.score, v_player_count, coalesce(v_player_names, '{}'));
+
+      -- Keep only the top 5 for this player_count group — anything else is deleted
+      -- permanently in the same call that inserted it, not just hidden from the display.
+      delete from public.hv_high_scores
+      where player_count = v_player_count
+        and id not in (
+          select id from public.hv_high_scores
+          where player_count = v_player_count
+          order by score desc, created_at asc
+          limit 5
+        );
+
+      return;
+    end if;
+
+    if array_length(p_next_card_pool, 1) <> 8 then return; end if;
+
+    v_clue_giver := g.player_order[1 + ((v_new_round - 1) % array_length(g.player_order, 1))];
+    v_correct := p_next_card_pool[1 + floor(random() * 8)::int];
+
+    update public.hv_games set
+      round_index = v_new_round,
+      clue_giver_id = v_clue_giver,
+      card_pool = p_next_card_pool,
+      current_emoji = p_next_emoji,
+      selected_card_slug = null,
+      selected_by = null,
+      selected_at = null,
+      turn_started_at = null,
+      guess_nonce = guess_nonce + 1,
+      end_round_votes = '{}',
+      round_history = '[]'
+    where code = p_code;
+
+    insert into public.hv_secrets (game_code, correct_card_slug)
+    values (p_code, v_correct)
+    on conflict (game_code) do update set correct_card_slug = excluded.correct_card_slug;
+    return;
+  end if;
 
   if g.active_team = 'boys' then
     v_new_team := 'girls';
@@ -473,8 +617,9 @@ declare
   v_new_code text;
   v_claimed text;
   v_turn_dur int;
+  v_mode text;
 begin
-  select replay_code, turn_duration_seconds into v_existing, v_turn_dur from public.hv_games where code = p_code;
+  select replay_code, turn_duration_seconds, mode into v_existing, v_turn_dur, v_mode from public.hv_games where code = p_code;
   if v_existing is not null then return v_existing; end if;
 
   loop
@@ -482,8 +627,8 @@ begin
     exit when not exists (select 1 from public.hv_games where code = v_new_code);
   end loop;
 
-  insert into public.hv_games (code, phase, replay_of, turn_duration_seconds)
-  values (v_new_code, 'lobby', p_code, v_turn_dur);
+  insert into public.hv_games (code, phase, replay_of, turn_duration_seconds, mode)
+  values (v_new_code, 'lobby', p_code, v_turn_dur, v_mode);
 
   insert into public.hv_players (game_code, name, first_name, last_name, team)
   select v_new_code, name, first_name, last_name, team
@@ -523,6 +668,7 @@ begin
     last_result_at = null,
     score_boys = 0,
     score_girls = 0,
+    score = 0,
     turn_started_at = null,
     paused = false,
     paused_by = null,

@@ -800,7 +800,7 @@ export default function Play({ params }) {
   // ── Actions ───────────────────────────────────────────────────────────────
 
   async function uploadAndSubmitDrawing() {
-    if (!myChainOwner || myDrawingSubmitted || !canvasDirty) return
+    if (!myChainOwner || myDrawingSubmitted || (!canvasDirty && !game?.is_dummy)) return
     const getExport = getExportRef.current
     if (!getExport) { alert("Canvas not ready"); return }
     const { dataUrl, foldPct } = getExport()

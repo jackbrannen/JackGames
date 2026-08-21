@@ -102,17 +102,8 @@ Answers are revealed anonymously, and the group votes for their favorite. The au
 Highest score after all rounds wins.`,
   },
   // ── Medium Schmedium ──
-  {
-    name: "Alpha Jam",
-    description: "Word race tournament",
-    players: "2+ players", minPlayers: 2, group: "Medium Schmedium", types: ["Word games"],
-    url: "https://alphajam.jackbrannen.com", bg: "#FA955C", color: "white",
-    instructions: `A head-to-head word-finding tournament. Each matchup shows two letters — a starting letter and an ending letter. The first player to think of a word that starts with the first letter and ends with the second letter wins the round.
-
-The game runs as a round-robin tournament where every player faces every other player. At the end, the player with the most wins is the champion.
-
-If players get stuck on impossible letters, both can agree to request new letters and keep playing.`,
-  },
+  // Alpha Jam hidden from the catalog (still deployed at alphajam.jackbrannen.com, and still
+  // wired into the activity log below) — re-add the object here to bring it back.
   {
     name: "Word Birds",
     description: "Shout a word using every card on the table",
@@ -190,6 +181,19 @@ The other team then picks a second player from the phrase team to answer the sam
 Once both have answered, the guessing team says the phrase out loud. The phrase team confirms yes or no. If the group agrees they got it, the guessing team scores a point.
 
 Turns alternate between teams, and every player gets to be the one "up" at least once. Most points wins.`,
+  },
+  {
+    name: "Hearing Voices",
+    description: "Do a voice, teammates guess who from an emoji clue",
+    players: "4+ players", minPlayers: 4, group: "Medium Schmedium", types: ["Teams", "Acting"],
+    url: "https://hearingvoices.jackbrannen.com", bg: "#7A4FDB", color: "white",
+    instructions: `Boys vs Girls. Each turn, one player on the active team secretly sees which of 9 characters they've been assigned — everyone else just sees an emoji in the center of the grid.
+
+That player does the assigned character's voice, reacting to the emoji however that character would. Their teammates guess which of the 9 cards matches by tapping it, then submit their guess.
+
+Correct guesses score points, wrong guesses lose points (host sets how many of each in the lobby). The emoji changes and a new character is assigned after every guess, so a single turn can run through several guesses before time runs out.
+
+Turns alternate between teams. Most points when the rounds run out wins.`,
   },
   {
     name: "Telestrations",
@@ -464,7 +468,7 @@ export default function Home() {
   async function openLogs() {
     setLogsOpen(true); setLogsLoading(true)
     try {
-      const [fishbowl, gow, codenames, avalon, ftw, tel, ec, rc, soclover, copycats, drawful, mrwhite, alphajam, woe, decrypto, samepage, typecast, soundboard, secretphrase] = await Promise.all([
+      const [fishbowl, gow, codenames, avalon, ftw, tel, ec, rc, soclover, copycats, drawful, mrwhite, alphajam, woe, decrypto, samepage, typecast, soundboard, secretphrase, hearingvoices] = await Promise.all([
         supabase.from("players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("gow_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("codenames_players").select("first_name,last_name,game_code,created_at").limit(2000),
@@ -484,6 +488,7 @@ export default function Home() {
         supabase.from("tc_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("sb_players").select("first_name,last_name,game_code,created_at").limit(2000),
         supabase.from("secretphrase_players").select("first_name,last_name,game_code,created_at").limit(2000),
+        supabase.from("hv_players").select("first_name,last_name,game_code,created_at").limit(2000),
       ])
       const people = {}, displayNames = {}, instances = {}
       function addRows(rows, gameName) {
@@ -511,7 +516,7 @@ export default function Home() {
       addRows(copycats.data, "Copycats"); addRows(drawful.data, "Drawful"); addRows(mrwhite.data, "Mr. White")
       addRows(alphajam.data, "Alpha Jam"); addRows(woe.data, "What On Earth"); addRows(decrypto.data, "Decrypto")
       addRows(samepage.data, "Same Page"); addRows(typecast.data, "Typecast"); addRows(soundboard.data, "Sound Board")
-      addRows(secretphrase.data, "Secret Phrase")
+      addRows(secretphrase.data, "Secret Phrase"); addRows(hearingvoices.data, "Hearing Voices")
       const toRows = entries => entries
         .map(([key, games]) => ({ name: displayNames[key], games: Object.entries(games).map(([game, s]) => ({ game, ...s })).sort((a, b) => b.last.localeCompare(a.last)), total: Object.values(games).reduce((s, g) => s + g.count, 0) }))
         .sort((a, b) => b.total - a.total)

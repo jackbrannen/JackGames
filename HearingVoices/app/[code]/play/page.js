@@ -458,22 +458,22 @@ export default function PlayPage({ params }) {
     }))
   }, [game?.selected_card_slug, game?.selected_by, game?.selected_at, feedbackActive])
 
-  // Clue-giver's secret fetch — fires as soon as guess_nonce changes, WITHOUT waiting for
-  // the feedback flash to clear, so the next card's green ring shows up while the
-  // Correct/Incorrect strip on the just-guessed card is still visible instead of only after
-  // it fades — that's the point, the clue-giver should already be able to start on the next
-  // card the moment the result of the last one is known.
+  // Clue-giver's secret fetch — fires as soon as guess_nonce OR clue_giver_id changes,
+  // WITHOUT waiting for the feedback flash to clear, and WITHOUT waiting for turn_started_at
+  // (the reveal interstitial) either. Fetching during the interstitial — while they're still
+  // reading "Waiting on you to start" — is what actually hides the network round-trip: the
+  // pop is triggered separately by the reveal transition itself (see the effect below), not
+  // by this fetch resolving, so there's no risk of the old "pop fires and expires behind the
+  // interstitial" bug from arming it too early. What WAS still broken: relying only on
+  // beginFirstTurn's own pre-fetch (fired at the instant Start is tapped) wasn't early enough
+  // in production — a cold serverless-function invocation for /api/hv-secret can itself take
+  // 1-2s, well past the RPC + board reveal, so the ring visibly lagged the board by that much.
+  // Fetching here, the moment this client becomes the incoming clue-giver (well before they
+  // physically tap the button), gives the round-trip the whole interstitial-reading window to
+  // finish in, so by the time they tap Start the value is already sitting there.
   // Sequence-guarded: without this, two fetches in flight at once (e.g. guess_nonce
   // changing twice in quick succession) could resolve out of order and have the STALE
   // response win.
-  // Still held off while turn_started_at is null (still on the reveal interstitial, board
-  // not visible yet) for the passive dependency-driven path below — but beginFirstTurn (see
-  // below) now pre-fetches directly the instant the clue-giver taps Start, before
-  // turn_started_at has even changed, specifically to eliminate the network round-trip that
-  // used to sit between the board revealing and the ring actually showing up (previously
-  // ~150-450ms of the ring visibly appearing "late"). game?.turn_started_at is still in this
-  // dependency array so the passive path also re-fires once it flips, as a fallback for
-  // anyone who reaches this effect some other way (e.g. reconnect mid-turn).
   function fetchSecret() {
     const seq = ++secretFetchSeqRef.current
     fetch("/api/hv-secret", {
@@ -488,9 +488,9 @@ export default function PlayPage({ params }) {
 
   useEffect(() => {
     if (!game) return
-    if (!isClueGiver || game.turn_started_at === null) { setCorrectSlug(null); return }
+    if (!isClueGiver) { setCorrectSlug(null); return }
     fetchSecret()
-  }, [game?.guess_nonce, game?.turn_started_at, isClueGiver, code, myPlayerId])
+  }, [game?.guess_nonce, game?.clue_giver_id, isClueGiver, code, myPlayerId])
 
   // Arms a brief one-shot "pop" so the clue-giver's eye is drawn to the assigned card
   // immediately instead of having to scan for the (otherwise identical-looking) gentle pulse
@@ -617,14 +617,11 @@ export default function PlayPage({ params }) {
 
   async function beginFirstTurn() {
     if (!game || !myPlayerId) return
-    // Pre-fetch the secret right now, in parallel with the RPC below, instead of waiting
-    // for the passive guess_nonce/turn_started_at effect to notice the board has revealed —
-    // isClueGiver is already known true here (this button only renders for them), and
-    // /api/hv-secret reveals to the clue-giver regardless of turn timing, so there's no need
-    // to wait. By the time the board actually reveals a few hundred ms later, correctSlug is
-    // already populated and the ring can render with it immediately, with no visible
-    // network gap. The pop effect's reveal-transition trigger (see above) still fires the
-    // actual pop animation at the right visual moment even though the value arrived early.
+    // Redundant safety-net fetch — the passive guess_nonce/clue_giver_id effect above
+    // already fetches this the moment the client becomes the incoming clue-giver, well
+    // before Start is tapped (see that effect's comment for why that's the actual fix for
+    // the ring lagging the board). This just covers the edge case of someone tapping Start
+    // fast enough to beat that effect's own fetch, or a fetch that failed and never retried.
     if (isClueGiver) fetchSecret()
     // Broadcast AFTER the RPC actually lands, not before — every other action in this file
     // does it in this order. Broadcasting first (the old code) meant every other client's

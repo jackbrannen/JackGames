@@ -52,7 +52,6 @@ export default function Play({ params }) {
 
   // Fetched from API — never stored in DB-accessible state
   const [myWord, setMyWord] = useState(null)
-  const [eliminatedWasMrWhite, setEliminatedWasMrWhite] = useState(null)
   const [revealData, setRevealData] = useState(null)
 
   // Local interaction state
@@ -194,41 +193,30 @@ export default function Play({ params }) {
       })
       const data = await res.json()
       if (data.word) setMyWord(data.word)
-      if (data.eliminatedWasMrWhite !== null && data.eliminatedWasMrWhite !== undefined) {
-        setEliminatedWasMrWhite(data.eliminatedWasMrWhite)
-      }
       if (data.revealData) setRevealData(data.revealData)
     } catch (e) {
       console.error("fetchPlayerInfo error:", e)
     }
   }
 
-  // Reveal timer
+  // Reveal timer — the outcome (caught / survived / game over) is already
+  // decided server-side, atomically, as part of mw_eliminate. This timer is
+  // purely a shared dramatic pause: every client flips from "Revealing…" to
+  // the actual result at the same server-provided instant, so it stays in
+  // sync without any client needing to trigger a follow-up action.
   useEffect(() => {
-    if (game?.phase !== "reveal" || !game.reveal_at) return
+    if ((game?.phase !== "reveal" && game?.phase !== "finished") || !game.reveal_at) return
     const ms = new Date(game.reveal_at) - Date.now()
     if (ms <= 0) { setRevealVisible(true); return }
     const t = setTimeout(() => setRevealVisible(true), ms)
     return () => clearTimeout(t)
   }, [game?.phase, game?.reveal_at])
 
-  // When reveal is visible and Mr. White was caught, finish the game.
-  // Retry until the server phase actually changes — a one-shot call can be
-  // lost to a transient error or the triggering client dropping, which would
-  // strand everyone on "Game ending…". The UPDATE is idempotent (guarded by
-  // phase = 'reveal'), so every client firing it repeatedly is safe.
-  useEffect(() => {
-    if (game?.phase !== "reveal" || !revealVisible || eliminatedWasMrWhite !== true) return
-    const fire = () => { supabase.rpc("mw_finish_game", { p_code: code }) }
-    fire()
-    const retry = setInterval(fire, 2000)
-    return () => clearInterval(retry)
-  }, [game?.phase, revealVisible, eliminatedWasMrWhite, code])
-
   // Reset ready state when phase changes
   useEffect(() => {
     setStatementsPressed(false)
     setNextRoundPressed(false)
+    setEliminating(false)
   }, [game?.phase])
 
   const me = players.find(p => p.id === myPlayerId)
@@ -242,7 +230,6 @@ export default function Play({ params }) {
   }, [game?.phase])
 
   const isEliminated = me?.is_eliminated ?? false
-  const isCurrentlyEliminated = game?.eliminated_player_id === myPlayerId
 
   const activePlayers = players.filter(p => !p.is_eliminated)
   const eliminatedPlayer = players.find(p => p.id === game?.eliminated_player_id)
@@ -254,9 +241,9 @@ export default function Play({ params }) {
   // For statements: count ready among active non-eliminated
   const statementsReadyCount = activePlayers.filter(p => readyIds.includes(p.id)).length
 
-  // For next round: count ready among active non-eliminated, excluding just-eliminated
-  const nextRoundEligible = activePlayers.filter(p => p.id !== game?.eliminated_player_id)
-  const nextRoundReadyCount = nextRoundEligible.filter(p => readyIds.includes(p.id)).length
+  // For next round: count ready among active non-eliminated (the just-eliminated
+  // player is already excluded — mw_eliminate marks is_eliminated immediately)
+  const nextRoundReadyCount = activePlayers.filter(p => readyIds.includes(p.id)).length
 
   async function handleStatementsDone() {
     if (iHavePressedStatements) return
@@ -315,9 +302,24 @@ export default function Play({ params }) {
     </>
   )
 
+  // ─── REVEALING (shared pause before any result is shown) ──────────────────
+  // Covers both the acting client's immediate post-click gap (`eliminating`)
+  // and every client's wait for the synchronized reveal_at instant, whatever
+  // the eventual outcome (survived / caught / game over) turns out to be.
+  if (eliminating || ((game.phase === "reveal" || game.phase === "finished") && !revealVisible)) {
+    return (
+      <>
+        <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
+          <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.5px" }}>Revealing…</div>
+        </div>
+        {renderUI()}
+      </>
+    )
+  }
+
   // ─── FINISHED ────────────────────────────────────────────────────────────────
   if (game.phase === "finished" && revealData) {
-    const mrWhiteWins = game.mr_white_wins
+    const mrWhiteCaught = game.mr_white_wins === false
     return (
       <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", paddingBottom: BOTTOM_PAD }}>
         <div style={{ padding: "28px 24px 20px", background: DARK }}>
@@ -325,38 +327,30 @@ export default function Play({ params }) {
             Game Over
           </div>
           <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: "-1px" }}>
-            {mrWhiteWins ? "Mr. White wins." : "The group wins!"}
+            {mrWhiteCaught ? "Mr. White was caught!" : "Mr. White wins!"}
           </div>
         </div>
 
         <div style={{ padding: "32px 24px", flex: 1 }}>
-          {mrWhiteWins ? (
-            <p style={{ fontSize: 17, fontWeight: 600, color: "rgba(255,255,255,0.75)", marginBottom: 32, lineHeight: 1.5 }}>
-              Only 2 players remained — {revealData.mrWhiteName} survived undetected.
-            </p>
-          ) : (
-            <p style={{ fontSize: 17, fontWeight: 600, color: "rgba(255,255,255,0.75)", marginBottom: 32, lineHeight: 1.5 }}>
-              {revealData.mrWhiteName} was Mr. White!
-            </p>
-          )}
-
           <div style={{ display: "flex", flexDirection: "column", gap: GAP.card }}>
-            <div style={{ display: "flex" }}>
-              <div style={{ padding: "16px 18px", background: DARK, minWidth: 130, fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.65, flexShrink: 0 }}>
-                Real word
-              </div>
-              <div style={{ padding: "16px 18px", background: MID, flex: 1, fontSize: 22, fontWeight: 900, letterSpacing: "-0.5px" }}>
-                {revealData.correctWord}
-              </div>
-            </div>
-            <div style={{ display: "flex" }}>
-              <div style={{ padding: "16px 18px", background: DARK, minWidth: 130, fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.65, flexShrink: 0 }}>
-                Mr. White
-              </div>
-              <div style={{ padding: "16px 18px", background: MID, flex: 1, fontSize: 22, fontWeight: 900, letterSpacing: "-0.5px" }}>
-                {revealData.impostorWord}
-              </div>
-            </div>
+            {players.map(p => {
+              const isMrWhite = p.id === revealData.mrWhiteId
+              return (
+                <div key={p.id} style={{ display: "flex" }}>
+                  <div style={{
+                    padding: "16px 18px", minWidth: 130, flexShrink: 0,
+                    background: isMrWhite ? YELLOW : DARK, color: isMrWhite ? "#000" : "white",
+                    fontSize: 15, fontWeight: 900,
+                    display: "flex", alignItems: "center",
+                  }}>
+                    {p.name}
+                  </div>
+                  <div style={{ padding: "16px 18px", background: MID, flex: 1, fontSize: 20, fontWeight: 900, letterSpacing: "-0.5px" }}>
+                    {isMrWhite ? revealData.impostorWord : revealData.correctWord}
+                  </div>
+                </div>
+              )
+            })}
           </div>
 
           <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -386,16 +380,13 @@ export default function Play({ params }) {
     )
   }
 
-  // ─── REVEAL ──────────────────────────────────────────────────────────────────
+  // ─── REVEAL (survived — game continues) ────────────────────────────────────
   if (game.phase === "reveal") {
-    const revealFooterAction = (() => {
-      if (!revealVisible) return footerWait("Revealing…")
-      if (eliminatedWasMrWhite === true) return footerWait("Game ending…")
-      if (eliminatedWasMrWhite === null) return footerWait("Revealing…")
-      if (isCurrentlyEliminated || isEliminated) return footerWait("Waiting for the group…")
-      if (iHavePressedNextRound) return footerWait(`${nextRoundReadyCount} / ${nextRoundEligible.length} ready…`)
-      return <FooterButton onClick={handleNextRound} bg={YELLOW} textColor="#000">Next Round</FooterButton>
-    })()
+    const revealFooterAction = isEliminated
+      ? footerWait("Waiting for the group…")
+      : iHavePressedNextRound
+        ? footerWait(`${nextRoundReadyCount} / ${activePlayers.length} ready…`)
+        : <FooterButton onClick={handleNextRound} bg={YELLOW} textColor="#000">Next Round</FooterButton>
 
     return (
       <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", paddingBottom: BOTTOM_PAD }}>
@@ -403,24 +394,18 @@ export default function Play({ params }) {
           <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.65, marginBottom: 6 }}>
             Round {game.round_number}
           </div>
-          <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: "-0.5px" }}>
-            {revealVisible ? "The verdict is in." : "Stand by…"}
-          </div>
+          <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: "-0.5px" }}>The verdict is in.</div>
         </div>
 
         <div style={{ padding: "40px 24px", flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-          {revealVisible && (
-            <div style={{ background: MID, padding: "28px 24px", width: "100%", textAlign: "center" }}>
-              <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>
-                {eliminatedPlayer?.name ?? "That player"}
-              </div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: eliminatedWasMrWhite ? YELLOW : "rgba(255,255,255,0.85)", letterSpacing: "-0.5px" }}>
-                {eliminatedWasMrWhite === true && "was Mr. White."}
-                {eliminatedWasMrWhite === false && "was NOT Mr. White."}
-                {eliminatedWasMrWhite === null && "…"}
-              </div>
+          <div style={{ background: MID, padding: "28px 24px", width: "100%", textAlign: "center" }}>
+            <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 8 }}>
+              {eliminatedPlayer?.name ?? "That player"}
             </div>
-          )}
+            <div style={{ fontSize: 28, fontWeight: 900, color: "rgba(255,255,255,0.85)", letterSpacing: "-0.5px" }}>
+              was NOT Mr. White.
+            </div>
+          </div>
         </div>
 
         {renderUI(revealFooterAction)}
@@ -430,9 +415,9 @@ export default function Play({ params }) {
 
   // ─── DISCUSSION ──────────────────────────────────────────────────────────────
   if (game.phase === "discussion") {
-    const discussionFooterAction = isEliminated ? null : eliminating
-      ? footerWait("Revealing…")
-      : <FooterButton onClick={() => setConfirmElimination(true)} bg={WARM_LIGHT} textColor="white">I've been eliminated.</FooterButton>
+    const discussionFooterAction = isEliminated
+      ? null
+      : <FooterButton onClick={() => { setConfirmElimination(true); throw new Error("Modal opened") }} bg={WARM_LIGHT} textColor="white">I've been eliminated.</FooterButton>
 
     return (
       <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", paddingBottom: BOTTOM_PAD }}>

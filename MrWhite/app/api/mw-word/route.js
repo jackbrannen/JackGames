@@ -12,18 +12,13 @@ export async function POST(req) {
   try {
     const { data: game } = await supabase
       .from("mrwhite_games")
-      .select("phase, correct_word, impostor_word, mr_white_id, eliminated_player_id")
+      .select("phase, correct_word, impostor_word, mr_white_id")
       .eq("code", code)
       .single()
 
     if (!game?.correct_word) return Response.json({ word: null })
 
     const word = playerId === game.mr_white_id ? game.impostor_word : game.correct_word
-
-    let eliminatedWasMrWhite = null
-    if (game.phase === "reveal" || game.phase === "finished") {
-      eliminatedWasMrWhite = game.eliminated_player_id === game.mr_white_id
-    }
 
     let revealData = null
     if (game.phase === "finished") {
@@ -36,11 +31,12 @@ export async function POST(req) {
       revealData = {
         correctWord: game.correct_word,
         impostorWord: game.impostor_word,
+        mrWhiteId: game.mr_white_id,
         mrWhiteName: mrWhitePlayer?.name ?? "Unknown",
       }
     }
 
-    return Response.json({ word, eliminatedWasMrWhite, revealData })
+    return Response.json({ word, revealData })
   } catch (e) {
     console.error("mw-word error:", e)
     return Response.json({ error: e.message }, { status: 500 })

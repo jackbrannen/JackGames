@@ -219,8 +219,18 @@ export default function LobbyPage({ params }) {
   async function startGame() {
     if (starting) return
     setStarting(true)
-    const { error } = await supabase.rpc("start_mrwhite_game", { p_code: code })
-    if (error) { alert("Failed to start: " + error.message); setStarting(false) }
+    try {
+      const res = await fetch("/api/mw-start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error ?? "unknown error")
+    } catch (e) {
+      alert("Failed to start: " + e.message)
+      setStarting(false)
+    }
   }
 
   function onInvite() {
@@ -303,7 +313,7 @@ export default function LobbyPage({ params }) {
       {canStart && (
         <Footer colors={POKE_COLORS}>
           <FooterButton
-            onClick={() => setConfirmingStart(true)}
+            onClick={() => { setConfirmingStart(true); throw new Error("Modal opened") }}
             disabled={starting || confirmingStart}
           >
             Start Game

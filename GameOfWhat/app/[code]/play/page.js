@@ -323,7 +323,25 @@ export default function Play({ params }) {
         .on("postgres_changes", { event: "*", schema: "public", table: "gow_players", filter: `game_code=eq.${code}` }, applyRowChange(setPlayers))
         .on("postgres_changes", { event: "*", schema: "public", table: "gow_answers" }, applyRowChange(setAnswers, { questionScoped: true }))
         .on("postgres_changes", { event: "*", schema: "public", table: "gow_votes" }, applyRowChange(setVotes, { questionScoped: true }))
-        .on("postgres_changes", { event: "*", schema: "public", table: "gow_likes" }, applyRowChange(setLikes, { questionScoped: true }))
+        .on("postgres_changes", { event: "*", schema: "public", table: "gow_likes" }, payload => {
+          const { eventType, new: newRow, old: oldRow } = payload
+          const relevantId = newRow?.question_id ?? oldRow?.question_id
+          if (relevantId !== currentQuestionIdRef.current) return
+          if (eventType === "DELETE") {
+            setLikes(prev => prev.filter(l => l.id !== oldRow?.id))
+            return
+          }
+          if (!newRow) return
+          setLikes(prev => {
+            const idx = prev.findIndex(l => l.id === newRow.id)
+            if (idx !== -1) return prev.map(l => l.id === newRow.id ? newRow : l)
+            // Reconcile against our own id-less optimistic insert (toggleLike)
+            // instead of appending a duplicate once the real row arrives.
+            const optimisticIdx = prev.findIndex(l => !l.id && l.question_id === newRow.question_id && l.liker_id === newRow.liker_id && l.answer_id === newRow.answer_id)
+            if (optimisticIdx !== -1) return prev.map((l, i) => i === optimisticIdx ? newRow : l)
+            return [...prev, newRow]
+          })
+        })
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {
           if (cancelled) return
@@ -912,6 +930,15 @@ export default function Play({ params }) {
                   bg={WARM_LIGHT}
                   fontSize={20}
                   style={{ marginBottom: 8 }}
+                />
+                <RandomIdeas
+                  key={currentQuestionId}
+                  bg={WARM_LIGHT}
+                  fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
+                  excludeIdeas={game.used_prompts ?? []}
+                  onIdea={idea => supabase.from("gow_games")
+                    .update({ used_prompts: [...(game.used_prompts ?? []), idea] })
+                    .eq("code", code)}
                 />
               </div>
             )}

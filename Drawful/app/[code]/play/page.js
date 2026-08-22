@@ -593,7 +593,23 @@ export default function Play({ params }) {
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "drawful_answers", filter: `game_code=eq.${code}` }, applyRowChange(setAnswers))
         .on("postgres_changes", { event: "*", schema: "public", table: "drawful_votes", filter: `game_code=eq.${code}` }, applyRowChange(setVotes))
-        .on("postgres_changes", { event: "*", schema: "public", table: "drawful_likes", filter: `game_code=eq.${code}` }, applyRowChange(setLikes))
+        .on("postgres_changes", { event: "*", schema: "public", table: "drawful_likes", filter: `game_code=eq.${code}` }, payload => {
+          const { eventType, new: newRow, old: oldRow } = payload
+          if (eventType === "DELETE") {
+            setLikes(prev => prev.filter(l => l.id !== oldRow?.id))
+            return
+          }
+          if (!newRow) return
+          setLikes(prev => {
+            const idx = prev.findIndex(l => l.id === newRow.id)
+            if (idx !== -1) return prev.map(l => l.id === newRow.id ? newRow : l)
+            // Reconcile against our own id-less optimistic insert (toggleLike)
+            // instead of appending a duplicate once the real row arrives.
+            const optimisticIdx = prev.findIndex(l => !l.id && l.drawing_player_id === newRow.drawing_player_id && l.liker_id === newRow.liker_id && l.answer_id === newRow.answer_id)
+            if (optimisticIdx !== -1) return prev.map((l, i) => i === optimisticIdx ? newRow : l)
+            return [...prev, newRow]
+          })
+        })
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {
           if (cancelled) return

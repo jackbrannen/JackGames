@@ -1072,11 +1072,13 @@ export default function Play({ params }) {
         </div>
 
         {currentArtist?.drawing_url && (
-          <img
-            src={currentArtist.drawing_url}
-            alt="Drawing to guess"
-            style={{ width: "100%", display: "block", maxHeight: "40vh", objectFit: "contain" }}
-          />
+          <div style={{ padding: "0 24px" }}>
+            <img
+              src={currentArtist.drawing_url}
+              alt="Drawing to guess"
+              style={{ width: "100%", display: "block", maxHeight: "40vh", objectFit: "contain" }}
+            />
+          </div>
         )}
 
         <div style={{ padding: "20px 24px", paddingBottom: BOTTOM_PAD }}>
@@ -1177,7 +1179,7 @@ export default function Play({ params }) {
     const seenAnswerTexts = new Set()
     const dedupedAnswers = sortedAnswers.filter(a => {
       if (a.is_real) return true
-      const key = a.text.trim().toLowerCase()
+      const key = (a.text ?? "").trim().toLowerCase()
       if (seenAnswerTexts.has(key)) return false
       seenAnswerTexts.add(key)
       return true
@@ -1331,14 +1333,14 @@ export default function Play({ params }) {
                   // Group fakes by text
                   const groups = []
                   fakeAnswers.forEach(a => {
-                    const key = a.text.trim().toLowerCase()
+                    const key = (a.text ?? "").trim().toLowerCase()
                     const existing = groups.find(g => g.key === key)
                     if (existing) {
                       existing.authorIds.push(a.author_id)
                       existing.answerIds.push(a.id)
                     } else {
                       const fooled = currentVotes
-                        .filter(v => fakeAnswers.filter(fa => fa.text.trim().toLowerCase() === key).some(fa => fa.id === v.answer_id))
+                        .filter(v => fakeAnswers.filter(fa => (fa.text ?? "").trim().toLowerCase() === key).some(fa => fa.id === v.answer_id))
                         .map(v => players.find(p => p.id === v.voter_id)?.name)
                         .filter(Boolean)
                       groups.push({ key, text: a.text, authorIds: [a.author_id], answerIds: [a.id], fooled })

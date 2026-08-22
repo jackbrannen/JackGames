@@ -876,7 +876,7 @@ export default function Play({ params }) {
 
     return (
       <>
-      <div style={{ minHeight: "100dvh", background: BG, color: "white" }}>
+      <div style={{ minHeight: "100dvh", background: BG, color: "white", animation: "endGameIn 300ms ease-out both" }}>
         <div style={{ padding: "36px 24px 24px", textAlign: "center" }}>
           <h1 style={{ fontSize: 32, fontWeight: 900, letterSpacing: "-1px", marginBottom: 8 }}>That's a wrap!</h1>
           <p style={{ fontSize: 16, opacity: 0.65, fontWeight: 500, marginBottom: 28 }}>This is your reminder to take screenshots.</p>

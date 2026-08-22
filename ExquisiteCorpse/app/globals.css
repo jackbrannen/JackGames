@@ -53,3 +53,10 @@ ul, ol {
   0%, 100% { filter: brightness(1); transform: scale(1); }
   50% { filter: brightness(2.2); transform: scale(1.04); }
 }
+
+/* Game Over screen fade+scale-in — softens the abrupt cut from gameplay to the
+   final screen, same idea as Hearing Voices' "Time's Up!" beat. */
+@keyframes endGameIn {
+  0%   { opacity: 0; transform: scale(0.92); }
+  100% { opacity: 1; transform: scale(1); }
+}

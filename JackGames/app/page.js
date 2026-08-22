@@ -132,7 +132,7 @@ Tap any zone at any time to see what's already been placed there and gather clue
     name: "Sound Board",
     description: "Make the sounds. Your team has to guess what you meant",
     players: "4+ players", minPlayers: 4, group: "Medium Schmedium", types: ["Teams", "Word games", "Acting"],
-    url: "https://soundboard.jackbrannen.com", bg: "#25AB61", color: "white",
+    url: "https://soundboard.jackbrannen.com", bg: "#249E64", color: "white",
     instructions: `Two teams — Boys and Girls. Everyone submits words at the start; those become the pool for the whole game.
 
 On your turn, pick 1–3 words from the board. When the countdown ends, make sound effects for the words you picked — no talking, no miming, just noises. Your team works together on one shared guess — anyone can tap a word to add it, and anyone can submit once you're ready.

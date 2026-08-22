@@ -15,7 +15,7 @@ export const GAMES = [
   { name: "Copycats",         sub: "copycats",          players: "3+ players",   description: "Write a question for another player. Everyone else tries to fake their answer.",     bg: "#5C2D8C", color: "white"    },
   { name: "Mr. White",        sub: "mrwhite",           players: "4+ players",   description: "One player has a slightly different word. Find the impostor.",                       bg: "#2C2540", color: "white"    },
   { name: "Reverse Charades", sub: "reversecharades",   players: "4+ players",   description: "Everyone acts it out — one person guesses.",                                        bg: "#974344", color: "white"    },
-  { name: "Sound Board",      sub: "soundboard",        players: "4+ players",   description: "Make sound effects. Your team has to guess what you meant.",                        bg: "#25AB61", color: "white"    },
+  { name: "Sound Board",      sub: "soundboard",        players: "4+ players",   description: "Make sound effects. Your team has to guess what you meant.",                        bg: "#249E64", color: "white"    },
 ]
 
 // Returns the GAMES list excluding the current game

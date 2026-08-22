@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation"
 import { useSubmitNudge } from "../lib/useSubmitNudge"
 import HomeScreen from "../components/HomeScreen"
 
-const BG = "#25AB61"
+const BG = "#249E64"
 const YELLOW = "#FBDF54"
-const WARM_LIGHT = "#2AC255"
+const WARM_LIGHT = "#29B55B"
 
 const WORDS_A = [
   "MAPLE","RIVER","OCEAN","SUNRISE","VELVET","COPPER","SILVER","EMBER","FOREST","CLOUD",

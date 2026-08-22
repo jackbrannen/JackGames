@@ -16,11 +16,11 @@ import { useDuplicates } from "../../../lib/useDuplicates"
 import IdleGateModal from "../../../components/IdleGateModal"
 import { useIdleGate } from "../../../lib/useIdleGate"
 
-const RED = "#25AB61"
-const DARK = "#209467"
-const MID = "#229E64"
+const BG         = "#249E64"
+const DARK       = "#1F8767"
+const MID        = "#219165"
 const YELLOW = "#FBDF54"
-const WARM_LIGHT = "#2AC255"
+const WARM_LIGHT = "#29B55B"
 const BOYS = "#174867"
 const GIRLS = "#D4377C"
 const INK = "#2A303C"
@@ -175,6 +175,7 @@ export default function Play({ params }) {
       supabase.from("sb_words").select("*").eq("game_code", code),
     ])
     if (seq !== loadSeqRef.current) return
+    if (g?.replay_code) { router.replace(`/${g.replay_code}`); return }
     if (g) setGame(g)
     if (p) setPlayers(p)
     if (w) setWords(w)
@@ -232,6 +233,7 @@ export default function Play({ params }) {
           // avoiding a 3-table refetch fanned out to every connected client
           // on every single tap.
           if (payload.eventType === "DELETE") { loadState(); return }
+          if (payload.new?.replay_code) { router.replace(`/${payload.new.replay_code}`); return }
           if (payload.new) setGame(payload.new)
         })
         .on("postgres_changes", { event: "*", schema: "public", table: "sb_players", filter: `game_code=eq.${code}` }, applyRowChange(setPlayers))
@@ -281,7 +283,6 @@ export default function Play({ params }) {
     if (lastRoundSeenRef.current !== game.round_number) {
       lastRoundSeenRef.current = game.round_number
       setPickedIds(new Set())
-      setGuessIds(new Set())
       setResultsDismissedLocal(false)
       setTopupSubmittedLocal(false)
       advancedSoundsRef.current = false
@@ -336,10 +337,10 @@ export default function Play({ params }) {
     if (game.phase === "submit" && !me0?.words_submitted && wordFields.every(w => !w.trim())) {
       fillWords(5).then(setWordFields)
     }
-    if (game.phase === "results" && game.pool_needs_topup && !me0?.topup_submitted && topupFields.every(w => !w.trim())) {
+    if (game.phase === "results" && game.pool_needs_topup && !game.winner && !me0?.topup_submitted && topupFields.every(w => !w.trim())) {
       fillWords(3).then(setTopupFields)
     }
-  }, [game?.is_demo, game?.phase, game?.pool_needs_topup, myPlayerId, me0?.words_submitted, me0?.topup_submitted])
+  }, [game?.is_demo, game?.phase, game?.pool_needs_topup, game?.winner, myPlayerId, me0?.words_submitted, me0?.topup_submitted])
 
   // Board replenish animation: diff board slots frame-to-frame so only the
   // cells actually being swapped this turn (removed word + its replacement)
@@ -384,7 +385,7 @@ export default function Play({ params }) {
     return <IdleGateModal colors={POKE_COLORS} />
   }
   if (!game || !myPlayerId) {
-    return <div style={{ minHeight: "100dvh", background: RED, display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "rgba(255,255,255,0.6)", fontSize: 18, fontWeight: 700 }}>Loading…</p></div>
+    return <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}><p style={{ color: "rgba(255,255,255,0.6)", fontSize: 18, fontWeight: 700 }}>Loading…</p></div>
   }
 
   const me = players.find(p => p.id === myPlayerId)
@@ -494,17 +495,13 @@ export default function Play({ params }) {
 
   async function playAgain() {
     if (creatingReplay) return
+    if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
     setCreatingReplay(true)
-    let newCode = null
-    for (let attempt = 0; attempt < 10; attempt++) {
-      const c = Math.random().toString(36).slice(2, 8).toUpperCase()
-      const { count } = await supabase.from("sb_games").select("code", { count: "exact", head: true }).eq("code", c)
-      if ((count ?? 0) > 0) continue
-      const { data, error } = await supabase.from("sb_games").insert({ code: c }).select("code").single()
-      if (!error && data?.code) { newCode = data.code; break }
-    }
+    const { data, error } = await supabase.rpc("sb_create_replay", { p_code: code })
     setCreatingReplay(false)
-    if (newCode) router.push(`/${newCode}`)
+    if (error) { alert(error.message ?? "Failed to create replay"); return }
+    channelRef.current?.send({ type: "broadcast", event: "sync" })
+    if (data) router.replace(`/${data}`)
   }
 
   const rulesForMenu = INSTRUCTIONS
@@ -515,13 +512,13 @@ export default function Play({ params }) {
     if (isIt) {
       const mySoundWords = (game.it_selection ?? []).map(id => wordsById[id]?.text).filter(Boolean)
       return (
-        <div style={{ minHeight: "100dvh", background: RED, color: "white", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
+        <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
           <ItSoundsBlock words={mySoundWords} secs={secs} caption="Get ready to make sounds" />
         </div>
       )
     }
     return (
-      <div style={{ minHeight: "100dvh", background: RED, color: "white", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
+      <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
         <div style={{ fontSize: 18, fontWeight: 800, opacity: 0.85, marginBottom: 24 }}>
           {currentPlayer?.name ?? "Someone"} is about to make sounds…
         </div>
@@ -536,18 +533,18 @@ export default function Play({ params }) {
     if (isIt) {
       const mySoundWords = (game.it_selection ?? []).map(id => wordsById[id]?.text).filter(Boolean)
       return (
-        <div style={{ minHeight: "100dvh", background: "#fff", color: RED, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
+        <div style={{ minHeight: "100dvh", background: "#fff", color: BG, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" }}>
           <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 10, background: "rgba(37,171,97,0.15)" }}>
-            <div style={{ height: "100%", width: `${pct}%`, background: RED, transition: "width 0.1s linear" }} />
+            <div style={{ height: "100%", width: `${pct}%`, background: BG, transition: "width 0.1s linear" }} />
           </div>
           <ItSoundsBlock words={mySoundWords} secs={null} caption="Make sounds!" />
         </div>
       )
     }
     return (
-      <div style={{ minHeight: "100dvh", background: "#fff", color: RED, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ minHeight: "100dvh", background: "#fff", color: BG, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24 }}>
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 10, background: "rgba(115,37,50,0.15)" }}>
-          <div style={{ height: "100%", width: `${pct}%`, background: RED, transition: "width 0.1s linear" }} />
+          <div style={{ height: "100%", width: `${pct}%`, background: BG, transition: "width 0.1s linear" }} />
         </div>
         <div style={{ fontSize: "clamp(60px, 20vw, 140px)", fontWeight: 900, letterSpacing: "-2px" }}>Sounds!</div>
       </div>
@@ -558,7 +555,7 @@ export default function Play({ params }) {
   if (game.phase === "gameover") {
     const winnerLabel = game.winner === "boys" ? "Boys" : "Girls"
     return (
-      <div style={{ minHeight: "100dvh", background: RED, color: "white" }}>
+      <div style={{ minHeight: "100dvh", background: BG, color: "white" }}>
         <div style={{ padding: "40px 24px", paddingBottom: BOTTOM_PAD }}>
           <div style={{ fontSize: "clamp(48px, 14vw, 80px)", fontWeight: 900, lineHeight: 0.95, marginBottom: 8 }}>
             {winnerLabel} Win!
@@ -605,7 +602,7 @@ export default function Play({ params }) {
       const allFilled = wordFields.every(w => w.trim())
       return (
         <>
-          <div style={{ minHeight: "100dvh", background: RED, color: "white", paddingBottom: BOTTOM_PAD }}>
+          <div style={{ minHeight: "100dvh", background: BG, color: "white", paddingBottom: BOTTOM_PAD }}>
             <StatusBar dark={DARK} label="Sound Board" />
             <div style={{ padding: "24px 20px" }}>
               <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.75, marginBottom: 6 }}>Your 5 sounds</div>
@@ -651,7 +648,7 @@ export default function Play({ params }) {
     }
     return (
       <>
-      <div style={{ minHeight: "100dvh", background: RED, color: "white", paddingBottom: BOTTOM_PAD }}>
+      <div style={{ minHeight: "100dvh", background: BG, color: "white", paddingBottom: BOTTOM_PAD }}>
         <StatusBar dark={DARK} label="Sound Board" />
         <div style={{ padding: "24px 20px" }}>
           <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.75, marginBottom: 16 }}>Waiting for everyone…</div>
@@ -688,7 +685,7 @@ export default function Play({ params }) {
 
       return (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 300 }}>
-          <div style={{ background: RED, color: "white", width: "100%", maxWidth: 420, maxHeight: "85dvh", overflowY: "auto" }}>
+          <div style={{ background: BG, color: "white", width: "100%", maxWidth: 420, maxHeight: "85dvh", overflowY: "auto" }}>
             <div style={{ background: teamColor, color: "white", padding: "18px 24px", textAlign: "center", fontSize: 18, fontWeight: 900 }}>
               {teamLabel}' Results
             </div>
@@ -728,10 +725,10 @@ export default function Play({ params }) {
         </div>
       )
     }
-    if (game.pool_needs_topup && !topupSubmittedLocal && !me?.topup_submitted) {
+    if (game.pool_needs_topup && !game.winner && !topupSubmittedLocal && !me?.topup_submitted) {
       const allFilled = topupFields.every(w => w.trim())
       return (
-        <div style={{ minHeight: "100dvh", background: RED, color: "white", paddingBottom: BOTTOM_PAD }}>
+        <div style={{ minHeight: "100dvh", background: BG, color: "white", paddingBottom: BOTTOM_PAD }}>
           <StatusBar dark={DARK} label="More words needed" />
           <div style={{ padding: "24px 20px" }}>
             <div style={{ fontSize: 20, fontWeight: 900, marginBottom: 8 }}>More words needed</div>
@@ -777,12 +774,12 @@ export default function Play({ params }) {
     }
     return (
       <>
-      <div style={{ minHeight: "100dvh", background: RED, color: "white", paddingBottom: BOTTOM_PAD }}>
+      <div style={{ minHeight: "100dvh", background: BG, color: "white", paddingBottom: BOTTOM_PAD }}>
         <StatusBar dark={DARK} label="Sound Board" />
         <div style={{ padding: "24px 20px" }}>
           <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.75, marginBottom: 16 }}>Waiting for everyone…</div>
           <WaitingList
-            players={players.map(p => ({ name: p.name, done: game.pool_needs_topup ? !!p.topup_submitted : !!p.results_dismissed }))}
+            players={players.map(p => ({ name: p.name, done: (game.pool_needs_topup && !game.winner) ? !!p.topup_submitted : !!p.results_dismissed }))}
             myName={me?.name} colors={{ mid: MID }}
             onPoke={sendInlinePoke} cooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent}
           />
@@ -812,7 +809,7 @@ export default function Play({ params }) {
 
   return (
     <>
-      <div style={{ minHeight: "100dvh", background: RED, color: "white", paddingBottom: BOTTOM_PAD }}>
+      <div style={{ minHeight: "100dvh", background: BG, color: "white", paddingBottom: BOTTOM_PAD }}>
         <div style={{ padding: "14px 20px", background: game.active_team === "boys" ? BOYS : GIRLS, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em" }}>
             {activeTeamLabel}' Turn

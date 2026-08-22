@@ -9,12 +9,12 @@ import FooterButton from "../../components/FooterButton"
 import IdleGateModal from "../../components/IdleGateModal"
 import { useIdleGate } from "../../lib/useIdleGate"
 
-const BG         = "#25AB61"
-const DARK       = "#209467"
-const MID        = "#229E64"
+const BG         = "#249E64"
+const DARK       = "#1F8767"
+const MID        = "#219165"
 const YELLOW     = "#FBDF54"
 const TEXT       = "white"
-const WARM_LIGHT = "#2AC255"
+const WARM_LIGHT = "#29B55B"
 const BOYS       = "#174867"
 const GIRLS      = "#D4377C"
 
@@ -86,6 +86,8 @@ export default function LobbyPage({ params }) {
   const [name, setName] = useState("")
   const [joining, setJoining] = useState(false)
   const [joinError, setJoinError] = useState("")
+  const [confirmingStart, setConfirmingStart] = useState(false)
+  const [starting, setStarting] = useState(false)
   const channelRef = useRef(null)
 
   const me = players.find(p => p.id === myPlayerId)
@@ -188,11 +190,13 @@ export default function LobbyPage({ params }) {
   }
 
   async function startGame() {
-    if (!window.confirm("Start the game for everyone?")) throw new Error("cancelled")
+    if (starting) return
+    setStarting(true)
     const { error } = await supabase.rpc("sb_start_game", { p_code: code })
     if (error) {
       alert(error.message ?? "Failed to start game")
-      throw error
+      setStarting(false)
+      return
     }
     channelRef.current?.send({ type: "broadcast", event: "sync" })
     router.push(`/${code}/play`)
@@ -343,10 +347,72 @@ export default function LobbyPage({ params }) {
 
       {canStart && (
         <Footer colors={POKE_COLORS}>
-          <FooterButton onClick={startGame} bg={YELLOW} textColor="#000">
+          <FooterButton
+            onClick={() => { setConfirmingStart(true); throw new Error("Modal opened") }}
+            disabled={starting || confirmingStart}
+            bg={YELLOW}
+            textColor="#000"
+          >
             Start Game
           </FooterButton>
         </Footer>
+      )}
+
+      {confirmingStart && (
+        <div
+          onClick={() => setConfirmingStart(false)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, zIndex: 100 }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ background: DARK, width: "100%", maxWidth: 400, padding: "28px 24px" }}
+          >
+            <h2 style={{ fontSize: 22, fontWeight: 900, color: TEXT, marginBottom: 8 }}>
+              Start the game?
+            </h2>
+            <p style={{ fontSize: 15, color: TEXT, opacity: 0.75, fontWeight: 600, marginBottom: 20 }}>
+              This will begin for everyone. Are all players in?
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 24 }}>
+              {players.map((p, i) => (
+                <div key={p.id} style={{ display: "flex" }}>
+                  <div style={{
+                    padding: "10px 0", minWidth: 40, flexShrink: 0,
+                    background: MID,
+                    fontSize: 15, fontWeight: 900, color: TEXT,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    {i + 1}
+                  </div>
+                  <div style={{
+                    padding: "10px 14px", flex: 1,
+                    background: MID,
+                    display: "flex", alignItems: "center",
+                  }}>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: TEXT }}>
+                      {p.name}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => setConfirmingStart(false)}
+                style={{ flex: 1, background: WARM_LIGHT, color: TEXT, fontSize: 17, fontWeight: 800, padding: "16px" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { setConfirmingStart(false); startGame() }}
+                disabled={starting}
+                style={{ flex: 2, background: YELLOW, color: "#000", fontSize: 17, fontWeight: 900, padding: "16px" }}
+              >
+                {starting ? "Starting…" : "Start Game"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )

@@ -533,8 +533,6 @@ export default function Play({ params }) {
   const isIdle = useIdleGate()
 
   const [canvasDirty, setCanvasDirty] = useState(false)
-  const [shownIdeas, setShownIdeas] = useState([])
-  const [loadingIdeas, setLoadingIdeas] = useState(false)
 
   const getExportRef = useRef(null)
 
@@ -751,7 +749,6 @@ export default function Play({ params }) {
   // Reset per-round UI state when round changes
   useEffect(() => {
     setCanvasDirty(false)
-    setShownIdeas([])
   }, [currentRound])
 
   // Auto-advance bot chains during dummy game reveal
@@ -833,17 +830,6 @@ export default function Play({ params }) {
       alert("Error submitting: " + e.message)
       throw e
     }
-  }
-
-  async function handleGetIdeas() {
-    if (loadingIdeas || shownIdeas.length >= 9) return
-    setLoadingIdeas(true)
-    const { data } = await supabase.rpc("get_random_ideas", {
-      p_count: 3,
-      p_exclude: shownIdeas,
-    })
-    if (data?.length) setShownIdeas(prev => [...prev, ...data])
-    setLoadingIdeas(false)
   }
 
   async function handleAdvanceReveal() {
@@ -1077,28 +1063,11 @@ export default function Play({ params }) {
 
         {/* Random ideas */}
         <div style={{ marginTop: 20 }}>
-          {shownIdeas.length < 9 ? (
-            <button
-              onClick={handleGetIdeas}
-              disabled={loadingIdeas}
-              style={{ background: WARM_LIGHT, color: "white", fontSize: 15, fontWeight: 800, padding: "14px 18px", width: "100%", marginBottom: shownIdeas.length ? 12 : 0 }}
-            >
-              {shownIdeas.length === 0 ? "✦ Random ideas" : "✦ 3 more ideas"}
-            </button>
-          ) : (
-            <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.25)", padding: "12px 18px", background: WARM_LIGHT, borderRadius: 6, marginBottom: 12 }}>
-              No more ideas
-            </div>
-          )}
-          {shownIdeas.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {shownIdeas.map((idea, i) => (
-                <div key={i} style={{ padding: "7px 14px", borderRadius: 999, fontSize: 14, fontWeight: 700, background: WARM_LIGHT, color: "rgba(255,255,255,0.65)", border: "1px solid rgba(255,255,255,0.12)" }}>
-                  {idea}
-                </div>
-              ))}
-            </div>
-          )}
+          <RandomIdeas
+            key={`${currentRound}-${myChainOwner.id}`}
+            bg={WARM_LIGHT}
+            fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
+          />
         </div>
       </div>
     </div>

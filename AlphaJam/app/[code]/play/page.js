@@ -968,7 +968,7 @@ export default function PlayPage({ params }) {
     const winner = sortedPlayers[0]
 
     return (
-      <div style={{ background: BG, color: TEXT, minHeight: "100vh", paddingBottom: BOTTOM_PAD }}>
+      <div style={{ background: BG, color: TEXT, minHeight: "100vh", paddingBottom: BOTTOM_PAD, animation: "endGameIn 300ms ease-out both" }}>
         <Notifications pokes={myPokes} onDismiss={dismissPoke} colors={{ dark: DARK, yellow: YELLOW, notifBg: MID }} />
         {renderMenu()}
 

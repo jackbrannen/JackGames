@@ -1,7 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@supabase/supabase-js"
-import { readFileSync } from "fs"
-import { join } from "path"
 
 export async function POST() {
   const supabase = createClient(
@@ -10,13 +8,15 @@ export async function POST() {
   )
   const client = new Anthropic()
   try {
-    // Load random ideas (only the categories we need)
-    const ideasPath = join(process.cwd(), "..", "JackGames", "random_ideas.json")
-    const allIdeas = JSON.parse(readFileSync(ideasPath, "utf8"))
+    // Load random ideas (only the categories we need) — the master categorized
+    // list lives in the random_ideas table now, not the old JackGames JSON file.
     const relevantCategories = ["daily life", "people", "places", "food & drink", "animals", "life events", "objects & tools", "social events"]
-    const ideas = Object.fromEntries(
-      relevantCategories.map(cat => [cat, allIdeas[cat]])
-    )
+    const { data: ideaRows } = await supabase
+      .from("random_ideas")
+      .select("idea, category")
+      .in("category", relevantCategories)
+    const ideas = Object.fromEntries(relevantCategories.map(cat => [cat, []]))
+    for (const row of ideaRows ?? []) ideas[row.category].push(row.idea)
     const ideasList = JSON.stringify(ideas, null, 2)
 
     // Fetch the last 50 used prompts to exclude

@@ -1477,7 +1477,7 @@ export default function Play({ params }) {
 
     return (
       <>
-      <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
+      <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", animation: "endGameIn 300ms ease-out both" }}>
         <div style={{ flex: 1, overflowY: "auto", padding: "40px 24px", paddingBottom: BOTTOM_PAD }}>
           <div style={{ fontSize: "clamp(52px, 15vw, 80px)", fontWeight: 900, lineHeight: 0.9, marginBottom: 28 }}>
             Game<br />Over

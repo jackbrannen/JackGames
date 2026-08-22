@@ -392,12 +392,18 @@ function RevealCard({ step, authorName }) {
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-const IDEAS_URL = "https://raw.githubusercontent.com/jackbrannen/JackGames/main/JackGames/random_ideas.json"
+// The master categorized list lives in the random_ideas table now, not the
+// old JackGames JSON file (fetched from GitHub before).
 let _ideasCache = null
 async function fetchIdeas() {
   if (_ideasCache) return _ideasCache
-  const res = await fetch(IDEAS_URL)
-  _ideasCache = await res.json()
+  const { data } = await supabase.from("random_ideas").select("idea, category")
+  const grouped = {}
+  for (const row of data ?? []) {
+    if (!grouped[row.category]) grouped[row.category] = []
+    grouped[row.category].push(row.idea)
+  }
+  _ideasCache = grouped
   return _ideasCache
 }
 function sampleIdeas(categories, excludeSet, count = 3) {
@@ -995,7 +1001,7 @@ export default function Play({ params }) {
 
     return (
       <>
-      <div style={{ minHeight: "100dvh", background: BG, color: "white", paddingBottom: FOOTER_H }}>
+      <div style={{ minHeight: "100dvh", background: BG, color: "white", paddingBottom: FOOTER_H, animation: "endGameIn 300ms ease-out both" }}>
         {/* Header */}
         <div style={{ padding: "36px 24px 24px", textAlign: "center" }}>
           <h1 style={{ fontSize: 32, fontWeight: 900, letterSpacing: "-1px", marginBottom: 8 }}>That's a wrap!</h1>

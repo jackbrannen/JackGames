@@ -154,6 +154,8 @@ export default function Play({ params }) {
   const [acting, setActing]             = useState(false)
   const [cardPhase, setCardPhase]       = useState("unset")
   const [animReady, setAnimReady]       = useState(false)
+  const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
+  const [pokeJustSent, setPokeJustSent] = useState(null)
   const [instructions, setInstructions] = useState("")
   const soundTriggerRef = useRef(null)
   const syncChRef = useRef(null)
@@ -396,11 +398,20 @@ export default function Play({ params }) {
 
   async function rpc(fn, args = {}) {
     const { error } = await supabase.rpc(fn, args)
-    if (error) throw error
+    if (error) { alert(error.message); throw error }
     // Refresh immediately so the acting client's own button resolves right
     // away instead of waiting on its own realtime round-trip or another
     // peer's gossip nudge (both of which can take a few seconds).
     await refresh()
+  }
+
+  async function sendInlinePoke(targetName) {
+    if (pokeCooldownActive) return
+    setPokeCooldownActive(true)
+    setPokeJustSent(targetName)
+    await supabase.from("pokes").insert({ room_code: code, from_player: me.name, to_player: targetName, message: "👉" })
+    setTimeout(() => setPokeJustSent(null), 2000)
+    setTimeout(() => setPokeCooldownActive(false), 10000)
   }
 
 
@@ -614,7 +625,7 @@ export default function Play({ params }) {
                   <RoleCardBody />
                   <button
                     onClick={handleHide}
-                    style={{ background: WARM_LIGHT, color: TEXT, fontSize: 13, fontWeight: 700, padding: "10px 18px", marginTop: 22, display: "inline-block" }}
+                    style={{ background: TEXT, color: WARM_LIGHT, fontSize: 13, fontWeight: 700, padding: "10px 18px", marginTop: 22, display: "inline-block" }}
                   >
                     Hide
                   </button>
@@ -641,7 +652,9 @@ export default function Play({ params }) {
               players={players.map(p => ({ name: p.name, done: !!p.ready }))}
               myName={me?.name}
               colors={{ mid: CARD }}
-              showCount={false}
+              onPoke={sendInlinePoke}
+              cooldownActive={pokeCooldownActive}
+              pokeJustSent={pokeJustSent}
             />
           </div>
         </div>
@@ -981,7 +994,7 @@ export default function Play({ params }) {
     const evilPlayers2 = players.filter(p => p.team === "evil")
 
     phaseContent = (
-      <div style={{ paddingBottom: BOTTOM_PAD }}>
+      <div style={{ paddingBottom: BOTTOM_PAD, animation: "endGameIn 300ms ease-out both" }}>
         <Header sub="Game Over" showTrack={false} />
         <div style={{ padding: "20px 24px" }}>
           <div style={{

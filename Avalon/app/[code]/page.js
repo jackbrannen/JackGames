@@ -77,6 +77,8 @@ export default function LobbyPage({ params }) {
   const [confirmingStart, setConfirmingStart] = useState(false)
 
   const me = players.find(p => p.id === myPlayerId)
+  const justJoinedRef = useRef(false)
+  const hasLoadedPlayersRef = useRef(false)
 
   async function refreshPlayers() {
     const { data } = await supabase
@@ -84,6 +86,7 @@ export default function LobbyPage({ params }) {
       .select("id,name,created_at")
       .eq("game_code", code)
       .order("created_at", { ascending: true })
+    hasLoadedPlayersRef.current = true
     if (data) setPlayers(data)
   }
 
@@ -130,6 +133,20 @@ export default function LobbyPage({ params }) {
     if (gamePhase !== "lobby" && myPlayerId) router.replace(`/${code}/play`)
   }, [gamePhase, myPlayerId])
 
+  // If the host removes us from the roster (or this localStorage id is stale from a
+  // previous session where that happened), `me` becomes undefined but `myPlayerId`
+  // itself stays set — and the join form only reappears when `myPlayerId` is cleared.
+  // Clearing it here lets the normal join form come back. justJoinedRef guards the
+  // moment right after this tab's own join() call, before the realtime insert has
+  // round-tripped back into `players` yet.
+  useEffect(() => {
+    if (!myPlayerId || gamePhase !== "lobby" || !hasLoadedPlayersRef.current) return
+    if (players.some(p => p.id === myPlayerId)) { justJoinedRef.current = false; return }
+    if (justJoinedRef.current) return
+    localStorage.removeItem(`avalon:${code}:playerId`)
+    setMyPlayerId(null)
+  }, [myPlayerId, gamePhase, players, code])
+
   const hasAutoJoinedRef = useRef(false)
   useEffect(() => {
     if (gamePhase !== "lobby" || myPlayerId || hasAutoJoinedRef.current) return
@@ -146,6 +163,7 @@ export default function LobbyPage({ params }) {
         .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName.trim(), last_name: saved.lastName.trim() })
         .select("id").single()
       if (error || !data) return
+      justJoinedRef.current = true
       localStorage.setItem(`avalon:${code}:playerId`, data.id)
       setMyPlayerId(data.id)
     })()
@@ -165,6 +183,7 @@ export default function LobbyPage({ params }) {
     ;(async () => {
       const { data: taken } = await supabase.from("avalon_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
       if (taken?.length > 0) {
+        justJoinedRef.current = true
         localStorage.setItem(`avalon:${code}:playerId`, taken[0].id)
         setMyPlayerId(taken[0].id)
         return
@@ -173,6 +192,7 @@ export default function LobbyPage({ params }) {
         .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName?.trim() ?? "", last_name: saved.lastName?.trim() ?? "" })
         .select("id").single()
       if (error || !data) { hasReplayJoinedRef.current = false; return }
+      justJoinedRef.current = true
       localStorage.setItem(`avalon:${code}:playerId`, data.id)
       setMyPlayerId(data.id)
     })()
@@ -212,6 +232,7 @@ export default function LobbyPage({ params }) {
       .select("id").single()
     if (error) { alert("Failed to join: " + error.message); setJoining(false); return }
 
+    justJoinedRef.current = true
     localStorage.setItem(`avalon:${code}:playerId`, data.id)
     setMyPlayerId(data.id)
   }

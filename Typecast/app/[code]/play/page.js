@@ -449,7 +449,7 @@ export default function PlayPage({ params }) {
     const rating = pct >= 0.85 ? "Telepathic." : pct >= 0.6 ? "Seriously in sync." : pct >= 0.35 ? "Getting to know each other." : "Total strangers."
     return (
       <>
-        <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center", paddingBottom: BOTTOM_PAD }}>
+        <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center", paddingBottom: BOTTOM_PAD, animation: "endGameIn 300ms ease-out both" }}>
           <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,241,234,0.85)", marginBottom: 12 }}>Final score</div>
           <div style={{ fontSize: 64, fontWeight: 900, color: "#FFF1EA", lineHeight: 1 }}>{g.score}<span style={{ fontSize: 28, opacity: 0.7 }}> / {max}</span></div>
           <div style={{ fontSize: 22, fontWeight: 900, color: "#FFF1EA", marginTop: 16 }}>{rating}</div>

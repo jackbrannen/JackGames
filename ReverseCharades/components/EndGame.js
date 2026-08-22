@@ -41,7 +41,7 @@ export default function EndGame({
   bottomPad = "40px",
   colors = {},
 }) {
-  const { yellow = "#FBDF54", wl = "rgba(255,255,255,0.15)" } = colors
+  const { yellow = "#FBDF54", wl = "rgba(255,255,255,0.15)", accentText = "#000" } = colors
 
   const topScore = players[0]?.score ?? 0
   const isTie = players.filter(p => p.score === topScore).length > 1
@@ -67,14 +67,14 @@ export default function EndGame({
               <div style={{
                 padding: "13px 0", minWidth: 48, flexShrink: 0,
                 background: isWinner ? yellow : wl,
-                fontSize: 18, fontWeight: 900, color: isWinner ? "#000" : "white",
+                fontSize: 18, fontWeight: 900, color: isWinner ? accentText : "white",
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 {p.score}
               </div>
               <div style={{
                 padding: "13px 16px", flex: 1,
-                background: isWinner ? "rgba(251, 223, 84, 0.15)" : "rgba(255,255,255,0.08)",
+                background: isWinner ? "rgba(255, 241, 234, 0.15)" : "rgba(255,255,255,0.08)",
                 display: "flex", alignItems: "center", justifyContent: "space-between",
               }}>
                 <div style={{ fontSize: 17, fontWeight: 700 }}>
@@ -82,7 +82,7 @@ export default function EndGame({
                   {myPlayerId === p.id && <span style={{ fontSize: 12, opacity: 0.65, marginLeft: 6 }}>you</span>}
                 </div>
                 {isWinner && (
-                  <span style={{ fontSize: 11, fontWeight: 800, color: yellow, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: accentText, textTransform: "uppercase", letterSpacing: "0.1em" }}>
                     {isTie ? "Tied" : "Winner"}
                   </span>
                 )}
@@ -97,7 +97,7 @@ export default function EndGame({
         {onPlayAgain && (
           <button
             onClick={onPlayAgain}
-            style={{ background: yellow, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}
+            style={{ background: yellow, color: accentText, fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}
           >
             Play Again
           </button>

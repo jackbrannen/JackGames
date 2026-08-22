@@ -54,7 +54,7 @@ export default function HomeScreen({
   isDummy = false,
   colors = {},
 }) {
-  const { bg = "#111", wl = "#333", yellow = "#FBDF54" } = colors
+  const { bg = "#111", wl = "#333", yellow = "#FBDF54", accentText = "#000" } = colors
 
   return (
     <div style={{
@@ -97,7 +97,7 @@ export default function HomeScreen({
           disabled={isCreating}
           style={{
             background: yellow,
-            color: "#000",
+            color: accentText,
             fontSize: 22,
             fontWeight: 900,
             padding: "22px 40px",
@@ -147,7 +147,7 @@ export default function HomeScreen({
       </div>
 
       {!!error && (
-        <p style={{ color: yellow, marginTop: 20, fontSize: 14, fontWeight: 600, textAlign: "center" }}>
+        <p style={{ color: accentText, marginTop: 20, fontSize: 14, fontWeight: 600, textAlign: "center" }}>
           Error: {error}
         </p>
       )}

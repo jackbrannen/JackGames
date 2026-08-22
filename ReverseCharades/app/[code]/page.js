@@ -14,7 +14,10 @@ const PRIMARY = "#974344"
 const DARK    = "#803946"
 const MID     = "#8A3D45"
 const WARM    = "#AE5C4D"
-const YELLOW  = "#FBDF54"
+const ACCENT      = "#283D3B"
+const ACCENT_TEXT = "#FFF1EA"
+const BOYS        = "#76CBC5"
+const GIRLS       = "#DE85A3"
 
 
 const GAME_STYLES = {
@@ -70,7 +73,7 @@ const inputStyle = {
   display: "block",
 }
 
-const POKE_COLORS = { dark: DARK, mid: MID, wl: WARM, yellow: YELLOW, notifBg: "#5A2428" }
+const POKE_COLORS = { dark: DARK, mid: MID, wl: WARM, yellow: ACCENT, accentText: ACCENT_TEXT, notifBg: "#5A2428" }
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
 const selectStyle = {
@@ -154,7 +157,7 @@ function AddClueForm({ code, playerId, onAdded, disabled }) {
       <button
         disabled={disabled || !text.trim()}
         onClick={submit}
-        style={{ background: YELLOW, color: "#000", fontSize: 18, fontWeight: 900, padding: "16px", width: "100%", marginTop: 8, display: "block" }}
+        style={{ background: ACCENT, color: ACCENT_TEXT, fontSize: 18, fontWeight: 900, padding: "16px", width: "100%", marginTop: 8, display: "block" }}
       >
         Add Clue
       </button>
@@ -167,7 +170,7 @@ function AddClueForm({ code, playerId, onAdded, disabled }) {
       <div style={{ marginTop: 16 }}>
         <RandomIdeas
           bg={WARM}
-          iconColor={YELLOW}
+          iconColor={ACCENT_TEXT}
           fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
         />
       </div>
@@ -461,8 +464,8 @@ export default function Lobby({ params }) {
   const [word1, word2] = splitCode(code)
 
   const teamHeaderStyle = (team) => ({
-    background: team === "A" ? YELLOW : WARM,
-    color: team === "A" ? "#000" : "white",
+    background: team === "A" ? BOYS : GIRLS,
+    color: ACCENT,
     fontSize: 13,
     fontWeight: 900,
     padding: "8px 12px",
@@ -546,8 +549,8 @@ export default function Lobby({ params }) {
                     key={key}
                     onClick={() => setSettingsDraft(p => ({ ...p, game_style: key }))}
                     style={{
-                      background: settingsDraft.game_style === key ? YELLOW : DARK,
-                      color: settingsDraft.game_style === key ? "#000" : "white",
+                      background: settingsDraft.game_style === key ? ACCENT : DARK,
+                      color: settingsDraft.game_style === key ? ACCENT_TEXT : "white",
                       fontSize: 15,
                       fontWeight: settingsDraft.game_style === key ? 900 : 600,
                       padding: "10px 14px",
@@ -615,7 +618,7 @@ export default function Lobby({ params }) {
               setSavingSettings(false)
               setShowSettings(false)
             }}
-            style={{ background: YELLOW, color: "#000", fontSize: 18, fontWeight: 900, padding: "16px", width: "100%", marginTop: 20, display: "block" }}
+            style={{ background: ACCENT, color: ACCENT_TEXT, fontSize: 18, fontWeight: 900, padding: "16px", width: "100%", marginTop: 20, display: "block" }}
           >
             {savingSettings ? "Saving…" : "Save Settings"}
           </button>
@@ -623,7 +626,7 @@ export default function Lobby({ params }) {
       )}
 
       {!canStart && everyoneReady && !teamsValid && (
-        <div style={{ padding: "16px 24px", background: DARK, fontSize: 14, fontWeight: 700, color: YELLOW }}>
+        <div style={{ padding: "16px 24px", background: DARK, fontSize: 14, fontWeight: 700, color: ACCENT_TEXT }}>
           Need at least 2 players per team to start.
         </div>
       )}
@@ -645,7 +648,7 @@ export default function Lobby({ params }) {
                   )}
                   {tPlayers.map(p => (
                     <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-                      <div style={{ width: 7, height: 7, borderRadius: "50%", background: p.ready ? YELLOW : "rgba(255,255,255,0.25)", flexShrink: 0 }} />
+                      <div style={{ width: 7, height: 7, borderRadius: "50%", background: p.ready ? ACCENT_TEXT : "rgba(255,255,255,0.25)", flexShrink: 0 }} />
                       <span style={{ flex: 1, fontSize: 16, fontWeight: 700 }}>
                         {p.name}
                       </span>
@@ -684,8 +687,8 @@ export default function Lobby({ params }) {
                   disabled={!name.trim() || (!savedProfile && (!firstName.trim() || !lastName.trim()))}
                   style={{
                     flex: 1,
-                    background: YELLOW,
-                    color: "#000",
+                    background: team === "A" ? BOYS : GIRLS,
+                    color: ACCENT,
                     fontSize: 16,
                     fontWeight: 900,
                     padding: "18px 12px",
@@ -693,7 +696,7 @@ export default function Lobby({ params }) {
                 >{label}</button>
               ))}
             </div>
-            {joinError && <p style={{ color: YELLOW, marginTop: 10, fontSize: 14, fontWeight: 700 }}>{joinError}</p>}
+            {joinError && <p style={{ color: ACCENT_TEXT, marginTop: 10, fontSize: 14, fontWeight: 700 }}>{joinError}</p>}
           </>
         ) : (
           <>
@@ -716,13 +719,13 @@ export default function Lobby({ params }) {
                   if (error) { alert("Ready toggle failed: " + error.message); return }
                   await refreshPlayers()
                 }}
-                style={{ background: me.ready ? MID : YELLOW, color: me.ready ? "white" : "#000", fontSize: 14, fontWeight: 900, padding: "12px 18px" }}
+                style={{ background: me.ready ? MID : ACCENT, color: me.ready ? "white" : ACCENT_TEXT, fontSize: 14, fontWeight: 900, padding: "12px 18px" }}
               >
                 {me.ready ? "✓ Ready" : "Mark Ready"}
               </button>
             </div>
             {!me.ready && myClues.length < settings.min_clues_per_player && (
-              <p style={{ marginTop: 12, fontSize: 13, opacity: 0.75, fontWeight: 600, color: YELLOW }}>
+              <p style={{ marginTop: 12, fontSize: 13, opacity: 0.75, fontWeight: 600, color: ACCENT_TEXT }}>
                 Add {settings.min_clues_per_player - myClues.length} more clue{settings.min_clues_per_player - myClues.length !== 1 ? "s" : ""} before marking ready.
               </p>
             )}
@@ -744,7 +747,7 @@ export default function Lobby({ params }) {
                 My Clues
               </div>
               {!myEditsLocked && settings.min_clues_per_player > myClues.length && (
-                <span style={{ fontSize: 13, color: YELLOW, fontWeight: 700 }}>
+                <span style={{ fontSize: 13, color: ACCENT_TEXT, fontWeight: 700 }}>
                   {settings.min_clues_per_player - myClues.length} more needed
                 </span>
               )}
@@ -859,7 +862,7 @@ export default function Lobby({ params }) {
               <button onClick={() => setConfirmingStart(false)} style={{ flex: 1, background: WARM, color: "white", fontSize: 17, fontWeight: 800, padding: "16px" }}>Cancel</button>
               <button
                 onClick={() => { setConfirmingStart(false); startGame() }}
-                style={{ flex: 2, background: YELLOW, color: "#000", fontSize: 17, fontWeight: 900, padding: "16px" }}
+                style={{ flex: 2, background: ACCENT, color: ACCENT_TEXT, fontSize: 17, fontWeight: 900, padding: "16px" }}
               >
                 Start Game
               </button>

@@ -11,7 +11,8 @@ const PRIMARY = "#974344"
 const DARK    = "#803946"
 const WARM    = "#AE5C4D"
 const WARM_LIGHT = "#B85556"
-const YELLOW  = "#FBDF54"
+const ACCENT      = "#283D3B"
+const ACCENT_TEXT = "#FFF1EA"
 
 const TEST_CLUES = [
   "Surfing", "Eating spaghetti", "A robot", "Swimming", "Playing guitar",
@@ -133,7 +134,7 @@ export default function Home() {
       error={error}
       onDummyGame={handleDummyClick}
       isDummy={testCreating}
-      colors={{ bg: BG, wl: WARM_LIGHT, yellow: YELLOW }}
+      colors={{ bg: BG, wl: WARM_LIGHT, yellow: ACCENT, accentText: ACCENT_TEXT }}
     />
   )
 }

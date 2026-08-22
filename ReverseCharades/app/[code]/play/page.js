@@ -21,7 +21,10 @@ const PRIMARY = "#974344"
 const DARK    = "#803946"
 const MID     = "#8A3D45"
 const WARM    = "#AE5C4D"
-const YELLOW  = "#FBDF54"
+const ACCENT      = "#283D3B"
+const ACCENT_TEXT = "#FFF1EA"
+const BOYS        = "#76CBC5"
+const GIRLS       = "#DE85A3"
 
 function playChirp() {
   try {
@@ -90,15 +93,15 @@ function clueTextSize(text) {
 }
 
 const teamLabel = (t) => t === "A" ? "Boys" : "Girls"
-const teamColor = (t) => t === "A" ? YELLOW : "white"
-const teamTextColor = (t) => t === "A" ? "#000" : "#000"
+const teamColor = (t) => t === "A" ? BOYS : GIRLS
+const teamTextColor = (t) => ACCENT
 
 // Shared stat chip component (inline, no state)
 function StatChips({ correct, left }) {
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
       <div style={{ background: DARK, padding: "10px 16px", display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 22, fontWeight: 900, color: YELLOW }}>{correct}</span>
+        <span style={{ fontSize: 22, fontWeight: 900, color: ACCENT_TEXT }}>{correct}</span>
         <span style={{ fontSize: 13, fontWeight: 700, opacity: 0.65 }}>correct</span>
       </div>
       {left != null && (
@@ -145,13 +148,13 @@ function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
               <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.65, marginBottom: 2 }}>
                 {teamLabel(t)}
               </div>
-              <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, color: t === playingTeam ? YELLOW : "white" }}>
+              <div style={{ fontSize: 26, fontWeight: 900, lineHeight: 1, color: t === playingTeam ? teamColor(t) : "white" }}>
                 {score}
               </div>
             </div>
           ))}
         </div>
-        <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, color: timerUrgent ? YELLOW : "white" }}>
+        <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, color: timerUrgent ? ACCENT_TEXT : "white" }}>
           {isPaused && <span style={{ fontSize: 18, marginRight: 8, opacity: 0.75 }}>⏸</span>}
           {secondsRemaining}<span style={{ fontSize: 18, fontWeight: 600, opacity: 0.55 }}>s</span>
         </div>
@@ -167,7 +170,7 @@ function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
             top: 0,
             bottom: 0,
             width: "100%",
-            background: playingTeam === "A" ? "white" : YELLOW,
+            background: "white",
             animation: `timerDrain ${totalDuration}s linear forwards`,
             animationDelay: `-${elapsed}s`,
             animationPlayState,
@@ -186,7 +189,7 @@ function PlayingTopBar({ game, secondsRemaining, timerUrgent, playingTeam }) {
 }
 
 
-const POKE_COLORS = { dark: "#803946", mid: "#8A3D45", wl: "#AE5C4D", yellow: "#FBDF54", notifBg: "#4A1F28" }
+const POKE_COLORS = { dark: "#803946", mid: "#8A3D45", wl: "#AE5C4D", yellow: "#283D3B", accentText: "#FFF1EA", notifBg: "#4A1F28" }
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
 export default function Play({ params }) {
@@ -213,6 +216,23 @@ export default function Play({ params }) {
     if (existing) setMyPlayerId(existing)
   }, [code])
 
+  // rc_create_replay now copies every player's name/team into the fresh lobby — before
+  // following everyone there, look up which row is ours in the new game (matched by name,
+  // already unique per game) and pre-seed localStorage with it, so this player lands back
+  // on their team instead of needing to rejoin from scratch. Looks up its own name fresh by
+  // id rather than trusting `players` state, since this can fire before that's populated
+  // (e.g. a fresh page load straight into a finished+replayed game).
+  async function redirectToReplay(newCode) {
+    if (myPlayerId) {
+      const { data: mine } = await supabase.from("reversecharades_players").select("name").eq("id", myPlayerId).single()
+      if (mine?.name) {
+        const { data } = await supabase.from("reversecharades_players").select("id").eq("game_code", newCode).ilike("name", mine.name).limit(1)
+        if (data?.[0]) localStorage.setItem(`rc:${newCode}:playerId`, data[0].id)
+      }
+    }
+    router.replace(`/${newCode}`)
+  }
+
   async function rpc(fn, args = {}) {
     const { error } = await supabase.rpc(fn, args)
     if (error) throw error
@@ -232,7 +252,7 @@ export default function Play({ params }) {
       .single()
     if (seq !== loadSeqRef.current) return
     if (!gameData) return
-    if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
+    if (gameData.replay_code) { redirectToReplay(gameData.replay_code); return }
 
     const { data: playerData } = await supabase
       .from("reversecharades_players")
@@ -412,7 +432,7 @@ export default function Play({ params }) {
           style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }} />
       </label>
       <button onClick={saveTeamScores}
-        style={{ background: YELLOW, color: "#000", fontSize: 14, fontWeight: 900, padding: "8px 16px" }}>
+        style={{ background: ACCENT, color: ACCENT_TEXT, fontSize: 14, fontWeight: 900, padding: "8px 16px" }}>
         Save
       </button>
     </div>
@@ -559,11 +579,11 @@ export default function Play({ params }) {
   }
 
   async function doResetGame() {
-    if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
+    if (game.replay_code) { redirectToReplay(game.replay_code); return }
     const { data, error } = await supabase.rpc("rc_create_replay", { p_code: code })
     if (error) { alert(error.message); return }
     syncChRef.current?.send({ type: "broadcast", event: "sync" })
-    router.replace(`/${data}`)
+    redirectToReplay(data)
   }
 
 
@@ -597,7 +617,7 @@ export default function Play({ params }) {
     const teamAbove = (
       <div style={{ marginBottom: 32 }}>
         {turnImbalance && (
-          <div style={{ background: MID, padding: "14px 18px", marginBottom: 12, fontSize: 14, fontWeight: 600, opacity: 0.85, borderLeft: `4px solid ${YELLOW}` }}>
+          <div style={{ background: MID, padding: "14px 18px", marginBottom: 12, fontSize: 14, fontWeight: 600, opacity: 0.85, borderLeft: `4px solid ${ACCENT_TEXT}` }}>
             Note: {teamLabel(winner)} had one more turn than {teamLabel(winner === "A" ? "B" : "A")}.
           </div>
         )}
@@ -619,7 +639,7 @@ export default function Play({ params }) {
                       {turns != null ? ` · ${turns} turn${turns !== 1 ? "s" : ""}` : ""}
                     </div>
                   </div>
-                  {isWinner && <span style={{ fontSize: 11, fontWeight: 800, color: YELLOW, textTransform: "uppercase", letterSpacing: "0.1em" }}>Winner</span>}
+                  {isWinner && <span style={{ fontSize: 11, fontWeight: 800, color: ACCENT_TEXT, textTransform: "uppercase", letterSpacing: "0.1em" }}>Winner</span>}
                   {tied && <span style={{ fontSize: 11, fontWeight: 800, opacity: 0.65, textTransform: "uppercase", letterSpacing: "0.1em" }}>Tied</span>}
                 </div>
               </div>
@@ -636,7 +656,7 @@ export default function Play({ params }) {
           players={[]}
           onPlayAgain={doResetGame}
           bottomPad={BOTTOM_PAD}
-          colors={{ yellow: YELLOW, wl: MID }}
+          colors={{ yellow: ACCENT, wl: MID, accentText: ACCENT_TEXT }}
           aboveScores={teamAbove}
         />
       </div>
@@ -663,7 +683,7 @@ export default function Play({ params }) {
                 <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.65, marginBottom: 2 }}>
                   {teamLabel(t)}
                 </div>
-                <div style={{ fontSize: 30, fontWeight: 900, lineHeight: 1, color: t === playingTeam ? YELLOW : "white" }}>
+                <div style={{ fontSize: 30, fontWeight: 900, lineHeight: 1, color: t === playingTeam ? teamColor(t) : "white" }}>
                   {score}
                 </div>
               </div>
@@ -707,9 +727,9 @@ export default function Play({ params }) {
         </div>
       </div>
 
-      <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: YELLOW, notifBg: DARK }} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
+      <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: ACCENT, notifBg: DARK }} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
         {amGuesser && (
-          <FooterButton onClick={doStartTurn} loading={acting} bg={YELLOW} textColor="#000">
+          <FooterButton onClick={doStartTurn} loading={acting} bg={ACCENT} textColor={ACCENT_TEXT}>
             Start
           </FooterButton>
         )}
@@ -759,18 +779,19 @@ export default function Play({ params }) {
           </div>
         </div>
 
-        <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: YELLOW, notifBg: DARK }} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} height={stackedFooterH} timerRunning={timerRunning}>
+        <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: ACCENT, notifBg: DARK }} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} height={stackedFooterH} timerRunning={timerRunning}>
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
             <FooterButton
               onClick={game.is_paused ? doResume : doPause}
               loading={acting}
-              bg={YELLOW}
-              textColor="#000"
+              bg={ACCENT}
+              textColor={ACCENT_TEXT}
             >
               {game.is_paused ? "Resume" : "Pause"}
             </FooterButton>
             <FooterButton
               onClick={() => setConfirmingEndEarly(true)}
+              loading={false}
               bg={WARM}
               textColor="white"
             >
@@ -824,14 +845,14 @@ export default function Play({ params }) {
           </div>
         </div>
 
-        <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: YELLOW, notifBg: DARK }} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} height={stackedFooterH} timerRunning={timerRunning}>
+        <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: ACCENT, notifBg: DARK }} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} height={stackedFooterH} timerRunning={timerRunning}>
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
             <FooterButton
               onClick={doCorrect}
               disabled={!currentClue || game.is_paused}
               loading={acting}
-              bg={game.is_paused ? MID : YELLOW}
-              textColor={game.is_paused ? "rgba(255,255,255,0.5)" : "#000"}
+              bg={game.is_paused ? MID : ACCENT}
+              textColor={game.is_paused ? "rgba(255,255,255,0.5)" : ACCENT_TEXT}
               style={{ fontSize: 28 }}
             >
               ✓ Correct
@@ -866,6 +887,7 @@ export default function Play({ params }) {
               </FooterButton>
               <FooterButton
                 onClick={() => setConfirmingEndEarly(true)}
+                loading={false}
                 bg={WARM}
                 textColor="white"
                 style={{
@@ -927,7 +949,7 @@ export default function Play({ params }) {
           </div>
         </div>
 
-        <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: YELLOW, notifBg: DARK }} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} height={stackedFooterH} timerRunning={timerRunning}>
+        <Footer colors={{ dark: DARK, mid: MID, wl: WARM, yellow: ACCENT, notifBg: DARK }} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} height={stackedFooterH} timerRunning={timerRunning}>
           <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
             <FooterButton
               onClick={game.is_paused ? doResume : doPause}
@@ -939,6 +961,7 @@ export default function Play({ params }) {
             </FooterButton>
             <FooterButton
               onClick={() => setConfirmingEndEarly(true)}
+              loading={false}
               bg={WARM}
               textColor="white"
             >

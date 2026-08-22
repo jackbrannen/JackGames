@@ -70,7 +70,7 @@ export default function Menu({
     dark    = "#1A1A2E",
     mid     = "#252540",
     wl      = "#3A3A60",
-    yellow  = "#FBDF54",
+    accentText = "#000",
   } = colors
 
   const [panel, setPanel]             = useState(null)
@@ -270,7 +270,7 @@ export default function Menu({
             <div style={modal.title}>How to Play</div>
             {rules.map(([title, body]) => (
               <div key={title}>
-                <div style={{ fontSize: 13, fontWeight: 800, color: yellow, marginBottom: 4 }}>{title}</div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: accentText, marginBottom: 4 }}>{title}</div>
                 <div style={{ fontSize: 15, fontWeight: 500, color: "rgba(255,255,255,0.85)", lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{body}</div>
               </div>
             ))}

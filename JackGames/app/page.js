@@ -279,7 +279,7 @@ Win by landing 2 Interceptions. Lose if you rack up 2 Miscommunications. If no o
     name: "Fishbowl",
     description: "Teams guess clues from a bowl",
     players: "4+ players", minPlayers: 4, group: "Big Boys", types: ["Teams", "Acting"],
-    url: "https://fishbowl.jackbrannen.com", bg: "#3378FF", color: "white",
+    url: "https://fishbowl.jackbrannen.com", bg: "#194DDB", color: "white",
     instructions: `Everyone splits into two teams. Before the game starts, each player secretly submits several clue words — people, places, things, phrases, anything goes. All the clues go into a shared "fishbowl."
 
 The game has 3 rounds. In each round, teams take turns sending one player up to give clues. That clue-giver draws from the fishbowl and tries to get their team to guess as many clues as possible before time runs out.

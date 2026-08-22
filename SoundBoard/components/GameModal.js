@@ -3,7 +3,7 @@
 import { useState } from "react"
 
 export const GAMES = [
-  { name: "Fishbowl",         sub: "fishbowl",         players: "4+ players",   description: "Teams guess clues from a bowl.",                                                     bg: "#3378FF", color: "white"    },
+  { name: "Fishbowl",         sub: "fishbowl",         players: "4+ players",   description: "Teams guess clues from a bowl.",                                                     bg: "#194DDB", color: "white"    },
   { name: "The Game of What", sub: "gameofwhat",        players: "4+ players",   description: "Like Quiplash but with DIY Questions.",                                              bg: "#A02866", color: "white"    },
   { name: "Avalon",           sub: "avalon",            players: "5–10 players", description: "Hidden roles — find the traitors before they sabotage the quests.",                  bg: "#C9A84C", color: "#2A1800"  },
   { name: "First to Worst",   sub: "firsttoworst",      players: "4+ players",   description: "Submit 5 things, rank them secretly, then the group guesses your order.",            bg: "#004F45", color: "white"    },

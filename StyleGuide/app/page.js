@@ -3,7 +3,7 @@ import { useState } from "react"
 import { FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, FOOTER_H, STYLE } from "../../packages/shared/components/styles"
 
 const GAMES = [
-  { name: "Fishbowl",         bg: "#3378FF", dark: "#0C47E9", mid: "#2357E7", wl: "#4A70FF", yellow: "#FBDF54", actionBg: "#FBDF54", actionColor: "#000" },
+  { name: "Fishbowl",         bg: "#194DDB", dark: "#1628C4", mid: "#1839CE", wl: "#1C79F2", yellow: "#FBDF54", actionBg: "#FBDF54", actionColor: "#000" },
   { name: "Game of What",     bg: "#6B1A44", dark: "#4A123B", mid: "#5C1640", wl: "#8B2060", yellow: "#FBDF54", actionBg: "#FBDF54", actionColor: "#000" },
   { name: "Avalon",           bg: "#0F1923", dark: "#0A1520", mid: "#121F2E", wl: "#1E3248", yellow: "#C9A84C", actionBg: "#C9A84C", actionColor: "#2A1800" },
   { name: "First to Worst",   bg: "#004F45", dark: "#003638", mid: "#00423f", wl: "#006648", yellow: "#FBDF54", actionBg: "#FBDF54", actionColor: "#000" },

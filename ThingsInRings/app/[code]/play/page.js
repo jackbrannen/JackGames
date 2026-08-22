@@ -705,7 +705,7 @@ export default function PlayPage({ params }) {
   if (game.phase === "finished") {
     const winners = game.winning_teams ?? []
     return (
-      <div style={{ height: "100dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: BG, color: INK, padding: "36px 24px" }}>
+      <div style={{ height: "100dvh", overflowY: "auto", WebkitOverflowScrolling: "touch", background: BG, color: INK, padding: "36px 24px", animation: "endGameIn 300ms ease-out both" }}>
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.5, marginBottom: 12 }}>Game over</div>
           <div style={{ fontSize: 40, fontWeight: 900, marginBottom: 20, lineHeight: 1.1 }}>

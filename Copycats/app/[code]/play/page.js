@@ -167,7 +167,23 @@ export default function PlayPage({ params }) {
         .on("postgres_changes", { event: "*", schema: "public", table: "cc_players", filter: `game_code=eq.${code}` }, applyRowChange(setPlayers))
         .on("postgres_changes", { event: "*", schema: "public", table: "cc_answers", filter: `game_code=eq.${code}` }, applyRowChange(setAnswers))
         .on("postgres_changes", { event: "*", schema: "public", table: "cc_votes", filter: `game_code=eq.${code}` }, applyRowChange(setVotes))
-        .on("postgres_changes", { event: "*", schema: "public", table: "cc_likes", filter: `game_code=eq.${code}` }, applyRowChange(setLikes))
+        .on("postgres_changes", { event: "*", schema: "public", table: "cc_likes", filter: `game_code=eq.${code}` }, payload => {
+          const { eventType, new: newRow, old: oldRow } = payload
+          if (eventType === "DELETE") {
+            setLikes(prev => prev.filter(l => l.id !== oldRow?.id))
+            return
+          }
+          if (!newRow) return
+          setLikes(prev => {
+            const idx = prev.findIndex(l => l.id === newRow.id)
+            if (idx !== -1) return prev.map(l => l.id === newRow.id ? newRow : l)
+            // Reconcile against our own id-less optimistic insert (toggleLike)
+            // instead of appending a duplicate once the real row arrives.
+            const optimisticIdx = prev.findIndex(l => !l.id && l.round === newRow.round && l.liker_id === newRow.liker_id && l.liked_player_id === newRow.liked_player_id)
+            if (optimisticIdx !== -1) return prev.map((l, i) => i === optimisticIdx ? newRow : l)
+            return [...prev, newRow]
+          })
+        })
         .on("broadcast", { event: "sync" }, loadState)
         .on("presence", { event: "sync" }, () => setPresenceState({ ...channel.presenceState() }))
         .subscribe(async status => {
@@ -657,6 +673,13 @@ export default function PlayPage({ params }) {
               />
               {!!answerError && <p style={{ fontSize: 14, fontWeight: 600, color: YELLOW }}>{answerError}</p>}
             </div>
+            <div style={{ marginTop: 16, marginBottom: 24 }}>
+              <RandomIdeas
+                bg={WARM_LIGHT}
+                iconColor={YELLOW}
+                fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
+              />
+            </div>
             <Section label="Waiting for everyone…">
               <WaitingList players={makeWaitingPlayers(players, answeredIds)} myName={me.name} colors={{ mid: MID }} onPoke={sendInlinePoke} cooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />
             </Section>
@@ -694,6 +717,13 @@ export default function PlayPage({ params }) {
               placeholder={`Fake ${roundTarget?.name}'s answer…`}
             />
             {!!answerError && <p style={{ fontSize: 14, fontWeight: 600, color: YELLOW }}>{answerError}</p>}
+          </div>
+          <div style={{ marginTop: 16, marginBottom: 24 }}>
+            <RandomIdeas
+              bg={WARM_LIGHT}
+              iconColor={YELLOW}
+              fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
+            />
           </div>
           <Section label="Waiting for everyone…">
             <WaitingList players={makeWaitingPlayers(players, answeredIds)} myName={me.name} colors={{ mid: MID }} onPoke={sendInlinePoke} cooldownActive={pokeCooldownActive} pokeJustSent={pokeJustSent} />

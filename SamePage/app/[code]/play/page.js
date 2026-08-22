@@ -332,7 +332,7 @@ export default function PlayPage({ params }) {
     const win = game.outcome === "win"
     return (
       <>
-        <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center", paddingBottom: BOTTOM_PAD }}>
+        <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center", paddingBottom: BOTTOM_PAD, animation: "endGameIn 300ms ease-out both" }}>
           <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", color: INK_MUTED, marginBottom: 12 }}>{win ? "You did it" : "Game over"}</div>
           <div style={{ fontSize: 44, fontWeight: 900, color: win ? INK : RED, marginBottom: 12, lineHeight: 1 }}>
             {win ? "On the same page!" : "Out of sync."}

@@ -59,46 +59,6 @@ function ReverseCard() {
   )
 }
 
-// Crop focal point for each voice photo (as a CSS object-position), since
-// each was shot/framed differently — most are portrait crops where the
-// face sits somewhere in the top third rather than dead center.
-const ACCENT_META = {
-  african_king: { label: "African King", position: "50% 20%" },
-  arab: { label: "Arab man", position: "50% 24%" },
-  australian: { label: "Australian", position: "50% 16%" },
-  british: { label: "British", position: "50% 18%" },
-  german: { label: "German", position: "50% 20%" },
-  goblin: { label: "Goblin", position: "50% 13%" },
-  italian: { label: "Italian Chef", position: "50% 24%" },
-  leprechaun: { label: "Leprechaun", position: "50% 30%" },
-  nerd: { label: "Nerd", position: "50% 13%" },
-  old_man: { label: "Old Man", position: "50% 20%" },
-  prospector: { label: "Prospector", position: "50% 11%" },
-  raging: { label: "Raging", position: "50% 11%" },
-  robot: { label: "Robot", position: "50% 11%" },
-  scottish: { label: "Scottish", position: "50% 16%" },
-  southern_lady: { label: "Southern Lady", position: "50% 18%" },
-}
-
-function AccentCard({ card }) {
-  const meta = ACCENT_META[card.id] ?? { label: card.id, position: "50% 25%" }
-  return (
-    <div style={{ ...cardBoxStyle, position: "relative", overflow: "hidden", padding: 0 }}>
-      <img
-        src={`/voices/${card.id}.jpg`}
-        alt={meta.label}
-        style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: meta.position, display: "block" }}
-      />
-      <div style={{
-        position: "absolute", left: 0, right: 0, bottom: 0,
-        background: "rgba(0,0,0,0.55)", color: "#FFF8ED",
-        fontSize: 22, fontWeight: 800, lineHeight: 1.2, padding: "3px 5px", textAlign: "center",
-      }}>
-        {meta.label}
-      </div>
-    </div>
-  )
-}
 
 export default function PlayPage({ params }) {
   const router = useRouter()
@@ -302,7 +262,7 @@ export default function PlayPage({ params }) {
   // ── FINISHED ─────────────────────────────────────────────
   if (game.phase === "finished") {
     return (
-      <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center" }}>
+      <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center", animation: "endGameIn 300ms ease-out both" }}>
         <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.5, marginBottom: 12 }}>Game over</div>
         <div style={{ fontSize: 40, fontWeight: 900, marginBottom: 28, lineHeight: 1.1 }}>{nameOf(game.winner_id)} wins!</div>
         <button onClick={async () => {
@@ -345,7 +305,6 @@ export default function PlayPage({ params }) {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, maxWidth: "84%", margin: "0 auto" }}>
             {(game.cards ?? []).map((card, i) => (
               card.type === "reverse" ? <ReverseCard key={i} /> :
-              card.type === "accent" ? <AccentCard key={i} card={card} /> :
               <LetterCard key={i} card={card} />
             ))}
           </div>

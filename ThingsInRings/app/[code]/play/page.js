@@ -135,8 +135,13 @@ export default function PlayPage({ params }) {
 
     if (g.last_resolution?.card_id && g.last_resolution.card_id !== lastResolutionCardRef.current) {
       lastResolutionCardRef.current = g.last_resolution.card_id
-      setFlashResolution(g.last_resolution)
-      setResolutionDismissed(false)
+      // Skip the modal when this move also ended the game — go straight to
+      // the finished screen instead of flashing the modal for an instant
+      // before the phase check below yanks it away.
+      if (g.phase !== "finished") {
+        setFlashResolution(g.last_resolution)
+        setResolutionDismissed(false)
+      }
     }
 
     const key = `${g.phase}:${g.active_team}:${g.round_number}:${g.pending_card_id ?? ""}:${g.turn_decision_pending}:${(g.winning_teams || []).join(",")}:${(ps ?? []).map(p => p.words_submitted).join("")}`
@@ -161,8 +166,10 @@ export default function PlayPage({ params }) {
 
     if (newRow.last_resolution?.card_id && newRow.last_resolution.card_id !== lastResolutionCardRef.current) {
       lastResolutionCardRef.current = newRow.last_resolution.card_id
-      setFlashResolution(newRow.last_resolution)
-      setResolutionDismissed(false)
+      if (newRow.phase !== "finished") {
+        setFlashResolution(newRow.last_resolution)
+        setResolutionDismissed(false)
+      }
     }
 
     const key = `${newRow.phase}:${newRow.active_team}:${newRow.round_number}:${newRow.pending_card_id ?? ""}:${newRow.turn_decision_pending}:${(newRow.winning_teams || []).join(",")}`
@@ -461,6 +468,12 @@ export default function PlayPage({ params }) {
     setTurnDecisionBusy(true)
     await supabase.rpc("tir_team_turn_decision", { p_code: code, p_player_id: myPlayerId, p_continue: cont })
     setTurnDecisionBusy(false)
+    // Patch locally instead of waiting on the realtime round-trip — otherwise
+    // there's a brief window where turn_decision_pending is still true
+    // locally, which flashes the standalone "Nice! Keep going?" fallback
+    // modal (showKeepGoingModal) right after this same decision was just
+    // made via the resolution modal's own inline choice.
+    setGame(prev => prev ? { ...prev, turn_decision_pending: false } : prev)
     nudge()
   }
 
@@ -642,7 +655,7 @@ export default function PlayPage({ params }) {
         <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center" }}>
           <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.5, marginBottom: 12 }}>{isKnower ? "Setup complete" : "Words submitted"}</div>
           <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 16 }}>Waiting for both teams to submit their words…</div>
-          <div style={{ background: PANEL, color: INK, padding: "12px 20px", width: "100%", maxWidth: 360 }}>
+          <div style={{ background: PANEL, color: INK, padding: "12px 20px", width: "100%", maxWidth: 360, textAlign: "left" }}>
             <WaitingList players={teamWritingWaitingList} myName={me.name} colors={{ mid: PANEL }} showCount />
           </div>
         </div>
@@ -672,7 +685,7 @@ export default function PlayPage({ params }) {
         <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center" }}>
           <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.5, marginBottom: 12 }}>Running low on words</div>
           <div style={{ fontSize: 22, fontWeight: 900, marginBottom: 16 }}>Waiting for both teams to submit a few more…</div>
-          <div style={{ background: PANEL, color: INK, padding: "12px 20px", width: "100%", maxWidth: 360 }}>
+          <div style={{ background: PANEL, color: INK, padding: "12px 20px", width: "100%", maxWidth: 360, textAlign: "left" }}>
             <WaitingList players={replenishWaitingList} myName={me.name} colors={{ mid: PANEL }} showCount />
           </div>
         </div>
@@ -722,7 +735,7 @@ export default function PlayPage({ params }) {
             nudge()
             redirectToReplay(data)
           }} style={{ background: BTN, color: BTN_TEXT, fontSize: 16, fontWeight: 900, padding: "16px 24px", border: "none", marginTop: 8, maxWidth: 320, width: "100%" }}>Play Again</button>
-          <a href="https://games.jackbrannen.com" style={{ display: "block", background: PANEL, color: INK, fontSize: 16, fontWeight: 700, padding: "14px 24px", textDecoration: "none", maxWidth: 320, width: "100%", marginTop: 10 }}>Play Another Game</a>
+          <a href="https://games.jackbrannen.com" style={{ display: "block", background: PANEL, color: INK, fontSize: 16, fontWeight: 700, padding: "14px 24px", textDecoration: "none", textAlign: "center", maxWidth: 320, width: "100%", marginTop: 10 }}>Play Another Game</a>
         </div>
       </div>
     )
@@ -784,8 +797,12 @@ export default function PlayPage({ params }) {
         const title = flashResolution.correct ? "Correct!" : isNA ? "Stumped the Knower!" : "Incorrect"
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-            <div style={{ background: RESOLUTION_MODAL_BG, color: INK, padding: "28px 24px", maxWidth: 360, width: "100%", textAlign: "center" }}>
-              <div style={{ fontSize: 24, fontWeight: 900, marginBottom: 18 }}>{title}</div>
+            <div style={{ background: RESOLUTION_MODAL_BG, color: INK, maxWidth: 360, width: "100%", textAlign: "center" }}>
+              {(() => {
+                const headerBg = flashResolution.correct ? ZONE_COLORS.B : PENALTY_RED
+                return <div style={{ background: headerBg, color: textColorFor(headerBg), padding: "20px 24px", fontSize: 24, fontWeight: 900 }}>{title}</div>
+              })()}
+              <div style={{ padding: "24px 24px 28px" }}>
 
               {flashResolution.correct ? (
                 <>
@@ -832,13 +849,13 @@ export default function PlayPage({ params }) {
                 <button onClick={dismissResolutionModal} style={{ background: "rgba(42,48,60,0.15)", color: INK, fontWeight: 900, padding: "12px 24px", width: "100%" }}>
                   {(() => {
                     if (isNA) return "Continue"
-                    if (game.phase === "finished") return "See who won →"
                     if (game.turn_decision_pending) return `Waiting on ${teamLabel(activeTeam)} →`
                     if (isKnower) return "Continue"
                     return isMyTurn ? "Your turn →" : `${teamLabel(activeTeam)}' turn →`
                   })()}
                 </button>
               )}
+              </div>
             </div>
           </div>
         )

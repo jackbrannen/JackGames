@@ -142,6 +142,18 @@ export default function LobbyPage({ params }) {
     }
   }, [rulesSubmitted, knowerReady, me?.is_knower])
 
+  // Auto-start once the Knower is ready and both teams have enough players —
+  // no one needs to separately tap Start Game. Fires from whichever client
+  // first sees canStart flip true; tir_start_game is idempotent (guarded by
+  // phase = 'lobby' server-side), so a race across multiple clients is safe.
+  const autoStartedRef = useRef(false)
+  useEffect(() => {
+    if (canStart && phase === "lobby" && !autoStartedRef.current) {
+      autoStartedRef.current = true
+      startGame()
+    }
+  }, [canStart, phase])
+
   useEffect(() => {
     if (isIdle) return
     function loadState() { loadGame(); refreshPlayers(); refreshCards() }
@@ -224,6 +236,12 @@ export default function LobbyPage({ params }) {
     if (!saved?.username) return
     hasReplayJoinedRef.current = true
     ;(async () => {
+      // Carry over the player-chosen team (boys/girls) from the parent game — is_knower is
+      // deliberately NOT looked up here, since that's auto-assigned at game start, not
+      // player-chosen, so there's nothing meaningful to carry over for it.
+      const { data: oldMe } = await supabase.from("tir_players").select("team").eq("id", wasInParent).single()
+      const myOldTeam = oldMe?.team ?? null
+
       const { data: taken } = await supabase.from("tir_players").select("id").eq("game_code", code).ilike("name", saved.username.trim()).limit(1)
       if (taken?.length > 0) {
         localStorage.setItem(`thingsinrings:${code}:playerId`, taken[0].id)
@@ -234,6 +252,7 @@ export default function LobbyPage({ params }) {
         .insert({ game_code: code, name: saved.username.trim(), first_name: saved.firstName?.trim() ?? "", last_name: saved.lastName?.trim() ?? "" })
         .select("id").single()
       if (error || !data) { hasReplayJoinedRef.current = false; return }
+      if (myOldTeam) await supabase.rpc("tir_set_role", { p_code: code, p_player_id: data.id, p_role: myOldTeam })
       localStorage.setItem(`thingsinrings:${code}:playerId`, data.id)
       setMyPlayerId(data.id)
       refreshPlayers()
@@ -489,10 +508,6 @@ export default function LobbyPage({ params }) {
           <>
             <div style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", color: INK, opacity: 0.55, marginBottom: 12 }}>Your role</div>
             {roleSelector(setRole)}
-            <button onClick={startGame} disabled={!canStart || starting}
-              style={{ background: BTN, color: BTN_TEXT, fontSize: 18, fontWeight: 900, padding: "18px", width: "100%", display: "block", marginTop: 16 }}>
-              {starting ? "Starting…" : "Start Game"}
-            </button>
           </>
         )}
       </div>
@@ -547,7 +562,8 @@ export default function LobbyPage({ params }) {
           ) : (
             <div style={{ padding: "0 20px" }}>
               <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.55, marginBottom: 8 }}>Rules locked in</div>
-              <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 16, lineHeight: 1.15 }}>Optionally pre-fill a few zones for context.</h1>
+              <h1 style={{ fontSize: 22, fontWeight: 900, marginBottom: 12, lineHeight: 1.15 }}>Optionally pre-fill a few zones for context.</h1>
+              <p style={{ fontSize: 15, color: INK_MUTED, fontWeight: 600, marginBottom: 16 }}>Tap a zone to write something in it.</p>
               <div style={{ background: PANEL, padding: "14px 16px", marginBottom: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.55, marginBottom: 10 }}>Your rules & hints</div>
                 {["A", "B", "C"].map(zone => (

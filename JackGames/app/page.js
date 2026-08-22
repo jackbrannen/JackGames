@@ -520,7 +520,7 @@ export default function Home() {
       const toRows = entries => entries
         .map(([key, games]) => ({ name: displayNames[key], games: Object.entries(games).map(([game, s]) => ({ game, ...s })).sort((a, b) => b.last.localeCompare(a.last)), total: Object.values(games).reduce((s, g) => s + g.count, 0) }))
         .sort((a, b) => b.total - a.total)
-      const isDummy = key => /\b(test|player|first|last|bot)\w*/.test(key)
+      const isDummy = key => /\b(test|player|first|last|bot|firefox|safari|chrome)\w*/.test(key)
       const isAliceBob = key => /\b(alice|bob)\b/.test(key)
       const toInstanceRows = insts => insts
         .map(inst => ({ ...inst, players: inst.players.sort((a, b) => a.name.localeCompare(b.name)) }))

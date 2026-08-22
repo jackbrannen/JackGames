@@ -9,8 +9,8 @@ import RandomIdeas from "../../components/RandomIdeas"
 import IdleGateModal from "../../components/IdleGateModal"
 import { useIdleGate } from "../../lib/useIdleGate"
 
-const T1         = "#3378FF"  // page background blue
-const WARM_LIGHT = "#3399FF"
+const T1         = "#194DDB"  // page background blue
+const WARM_LIGHT = "#1C79F2"
 const BOYS  = "#F97316"  // boys team orange
 const GIRLS = "#C026D3"  // girls team fuchsia
 const YELLOW = "#FBDF54"
@@ -70,8 +70,8 @@ const DEFAULT_SETTINGS = {
 
 const SETTINGS_LOCK_SECONDS = 30
 
-const COOL_DARK = "#0C47E9"
-const MID_DARK = "#2357E7"
+const COOL_DARK = "#1628C4"
+const MID_DARK = "#1839CE"
 const POKE_COLORS = { dark: COOL_DARK, mid: MID_DARK, wl: WARM_LIGHT, yellow: YELLOW, notifBg: "#071A8A" }
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
@@ -104,7 +104,7 @@ const inputStyle = {
 }
 
 const selectStyle = {
-  background: "#0C47E9",
+  background: "#1628C4",
   color: "white",
   fontSize: 16,
   padding: "8px 12px",
@@ -235,7 +235,7 @@ function AddClueForm({ code, playerId, onAdded, disabled }) {
         Add Clue
       </button>
       {clueError && (
-        <div style={{ fontSize: 13, fontWeight: 700, color: "white", background: "#0C47E9", padding: "8px 12px", marginTop: 8 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "white", background: "#1628C4", padding: "8px 12px", marginTop: 8 }}>
           {clueError}
         </div>
       )}
@@ -272,6 +272,7 @@ export default function Lobby({ params }) {
   const [joinGender, setJoinGender] = useState(null) // 1 = Boy, 2 = Girl
   const [joinError, setJoinError] = useState("")
   const [myPlayerId, setMyPlayerId] = useState(null)
+  const [replayOf, setReplayOf] = useState(null)
   const isIdle = useIdleGate()
   const [myClues, setMyClues] = useState([])
   const [showSettingsPanel, setShowSettingsPanel] = useState(false)
@@ -384,7 +385,7 @@ export default function Lobby({ params }) {
         const { data, error } = await supabase
           .from("games")
           .select(
-            "code,locked,phase,is_demo,rounds_total,turn_duration_seconds,skip_limit,skip_penalty,min_clues_per_player,max_clues_per_player,settings_editor_player_id,settings_lock_expires_at,replay_code"
+            "code,locked,phase,is_demo,rounds_total,turn_duration_seconds,skip_limit,skip_penalty,min_clues_per_player,max_clues_per_player,settings_editor_player_id,settings_lock_expires_at,replay_code,replay_of"
           )
           .eq("code", code)
           .single()
@@ -405,6 +406,7 @@ export default function Lobby({ params }) {
         setGameSettings(normalizeSettings(data))
         setSettingsEditorPlayerId(data.settings_editor_player_id ?? null)
         setSettingsLockExpiresAt(data.settings_lock_expires_at ?? null)
+        setReplayOf(data.replay_of || null)
         await refreshPlayers()
         await refreshMyClues(existing)
       } catch {
@@ -420,6 +422,24 @@ export default function Lobby({ params }) {
     supabase.from("game_instructions").select("body").eq("game_key", "fishbowl").single()
       .then(({ data }) => { if (data) setInstructions(data.body) })
   }, [])
+
+  // Replay continuation: create_fishbowl_replay pre-seeds the new lobby with the same
+  // player names/teams from the finished game, so a returning player's own row already
+  // exists here under their saved name. redirectToReplay() on the play page normally
+  // claims it by writing localStorage before redirecting, but that only works if this
+  // browser still had its old playerId at that moment (e.g. not if this tab was reloaded,
+  // or the lobby was opened fresh via a shared link). Fall back to claiming by exact name
+  // match — safe here specifically because replayOf being set means every pre-seeded row
+  // really is a just-copied-over teammate, not a name a stranger happened to also pick.
+  useEffect(() => {
+    if (!replayOf || myPlayerId || !savedProfile?.username || players.length === 0) return
+    if (localStorage.getItem(`fishbowl:${code}:playerId`)) return
+    const mine = players.find(p => p.name.toLowerCase() === savedProfile.username.trim().toLowerCase())
+    if (mine) {
+      localStorage.setItem(`fishbowl:${code}:playerId`, mine.id)
+      setMyPlayerId(mine.id)
+    }
+  }, [replayOf, players, savedProfile, myPlayerId, code])
 
   useEffect(() => {
     if (isIdle) return
@@ -502,6 +522,18 @@ export default function Lobby({ params }) {
       .ilike("name", trimmed)
       .limit(1)
     if (existing?.length > 0) {
+      // In a replay lobby, an existing row under this exact name is our own pre-seeded
+      // returning seat (see the auto-claim effect above) rather than a real conflict —
+      // claim it instead of blocking.
+      if (replayOf) {
+        const newProfile = { firstName: trimmedFirst, lastName: trimmedLast, username: trimmed, team: joinGender }
+        saveProfile(newProfile)
+        setSavedProfile(newProfile)
+        localStorage.setItem(`fishbowl:${code}:playerId`, existing[0].id)
+        setMyPlayerId(existing[0].id)
+        setJoining(false)
+        return
+      }
       alert("That username is already taken in this game. Please choose another.")
       setJoining(false)
       return
@@ -755,7 +787,7 @@ export default function Lobby({ params }) {
     <div style={{ minHeight: "100dvh", background: T1, color: "white", paddingBottom: BOTTOM_PAD }}>
 
       {/* Header */}
-      <div style={{ padding: "28px 24px 24px", background: "#0C47E9", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+      <div style={{ padding: "28px 24px 24px", background: "#1628C4", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", opacity: 0.65, marginBottom: 4 }}>
             Fishbowl
@@ -809,14 +841,14 @@ export default function Lobby({ params }) {
 
       {/* Team balance warning */}
       {!teamsBalanced && gameExists && !gameLocked && players.length > 0 && (
-        <div style={{ padding: "16px 24px", background: "#0C47E9", fontSize: 14, fontWeight: 700, color: YELLOW }}>
+        <div style={{ padding: "16px 24px", background: "#1628C4", fontSize: 14, fontWeight: 700, color: YELLOW }}>
           Need at least 2 players per team to start.
         </div>
       )}
 
       {/* Settings strip */}
       {!!me && !showSettingsPanel && (
-        <div style={{ padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#2357E7", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <div style={{ padding: "14px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#1839CE", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           <span style={{ fontSize: 14, opacity: 0.6, fontWeight: 600 }}>
             {gameSettings.rounds_total} rounds · {gameSettings.turn_duration_seconds}s turns
           </span>
@@ -831,7 +863,7 @@ export default function Lobby({ params }) {
 
       {/* Settings panel */}
       {showSettingsPanel && (
-        <div style={{ padding: "24px", background: "#0C47E9" }}>
+        <div style={{ padding: "24px", background: "#1628C4" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
             <div style={{ fontSize: 20, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.05em" }}>
               Settings
@@ -990,7 +1022,7 @@ export default function Lobby({ params }) {
             { label: "Boys",  color: BOYS,  players: team1Players },
             { label: "Girls", color: GIRLS, players: team2Players },
           ].map(({ label, color, players: teamPlayers }) => (
-            <div key={label} style={{ background: "#2357E7", overflow: "hidden" }}>
+            <div key={label} style={{ background: "#1839CE", overflow: "hidden" }}>
               <div style={{ background: color, color: "white", fontSize: 13, fontWeight: 900, padding: "8px 12px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                 {label}
               </div>
@@ -1270,7 +1302,7 @@ export default function Lobby({ params }) {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ background: "#0C47E9", width: "100%", maxWidth: 400, padding: "28px 24px" }}
+            style={{ background: "#1628C4", width: "100%", maxWidth: 400, padding: "28px 24px" }}
           >
             <h2 style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 8 }}>
               Start the game?
@@ -1283,7 +1315,7 @@ export default function Lobby({ params }) {
                 <div key={p.id} style={{ display: "flex" }}>
                   <div style={{
                     padding: "10px 0", minWidth: 40, flexShrink: 0,
-                    background: "#2357E7",
+                    background: "#1839CE",
                     fontSize: 15, fontWeight: 900, color: "white",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>

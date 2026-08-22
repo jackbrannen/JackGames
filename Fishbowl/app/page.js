@@ -37,9 +37,9 @@ const WORDS_B = [
   "AURORA","HORIZON","SKYLINE","PARADE","CIRCUS","WONDER","VELVET","MAPLE"
 ]
 
-const BG = "#3378FF"
+const BG = "#194DDB"
 const YELLOW = "#FBDF54"
-const WARM_LIGHT = "#3399FF"
+const WARM_LIGHT = "#1C79F2"
 
 function randomCode() {
   const a = WORDS_A[Math.floor(Math.random() * WORDS_A.length)]

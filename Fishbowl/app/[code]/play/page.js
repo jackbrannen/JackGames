@@ -18,8 +18,8 @@ import EndGame from "../../../components/EndGame"
 import IdleGateModal from "../../../components/IdleGateModal"
 import { useIdleGate } from "../../../lib/useIdleGate"
 
-const T1         = "#3378FF"  // page background blue
-const WARM_LIGHT = "#3399FF"
+const T1         = "#194DDB"  // page background blue
+const WARM_LIGHT = "#1C79F2"
 const BOYS   = "#F97316"  // boys team orange
 const GIRLS  = "#C026D3"  // girls team fuchsia
 const YELLOW = "#FBDF54"
@@ -89,7 +89,7 @@ function clueTextSize(text) {
 }
 
 
-const POKE_COLORS = { dark: "#0C47E9", mid: "#2357E7", wl: "#3399FF", yellow: "#FBDF54", notifBg: "#071A6B" }
+const POKE_COLORS = { dark: "#1628C4", mid: "#1839CE", wl: "#1C79F2", yellow: "#FBDF54", notifBg: "#071A6B" }
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
 
@@ -147,6 +147,23 @@ export default function Play({ params }) {
     if (existing) setMyPlayerId(existing)
   }, [code])
 
+  // create_fishbowl_replay now copies every player's name/team into the fresh lobby —
+  // before following everyone there, look up which row is ours in the new game (matched by
+  // name, already unique per game) and pre-seed localStorage with it, so this player lands
+  // back on their team instead of needing to rejoin from scratch. Looks up its own name
+  // fresh by id rather than trusting `players` state, since this can fire before that's
+  // populated (e.g. a fresh page load straight into a finished+replayed game).
+  async function redirectToReplay(newCode) {
+    if (myPlayerId) {
+      const { data: mine } = await supabase.from("players").select("name").eq("id", myPlayerId).single()
+      if (mine?.name) {
+        const { data } = await supabase.from("players").select("id").eq("game_code", newCode).ilike("name", mine.name).limit(1)
+        if (data?.[0]) localStorage.setItem(`fishbowl:${newCode}:playerId`, data[0].id)
+      }
+    }
+    router.replace(`/${newCode}`)
+  }
+
   async function loadState() {
     const epoch = ++loadEpochRef.current
 
@@ -160,7 +177,7 @@ export default function Play({ params }) {
       .single()
 
     if (!gameData) return
-    if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
+    if (gameData.replay_code) { redirectToReplay(gameData.replay_code); return }
 
     const { data: playerData } = await supabase
       .from("players")
@@ -445,11 +462,11 @@ export default function Play({ params }) {
 
   async function doPlayAgain() {
     setPlayAgainError(null)
-    if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
+    if (game.replay_code) { redirectToReplay(game.replay_code); return }
     const { data, error } = await supabase.rpc("create_fishbowl_replay", { p_code: code })
     if (error) { setPlayAgainError(error.message); return }
     syncChRef.current?.send({ type: "broadcast", event: "sync" })
-    router.replace(`/${data}`)
+    redirectToReplay(data)
   }
 
   if (isIdle) {
@@ -516,7 +533,7 @@ export default function Play({ params }) {
           players={[]}
           onPlayAgain={doPlayAgain}
           bottomPad={BOTTOM_PAD}
-          colors={{ yellow: YELLOW, wl: "#2357E7" }}
+          colors={{ yellow: YELLOW, wl: "#1839CE" }}
           aboveScores={teamAbove}
           belowButtons={clueList}
         />
@@ -653,8 +670,6 @@ export default function Play({ params }) {
     setDragX(0)
   }
 
-  const timerUrgent = secondsRemaining <= 5
-
   const hasPassTurn = !!(me && game.phase === "play" && isMyTurn && !game.turn_running && !isPaused && players.filter(p => p.team === me.team).length > 1)
   const footerHeight = hasPassTurn ? FOOTER_H * 2 : FOOTER_H
   const dynamicBottomPad = `calc(${footerHeight + 8}px + env(safe-area-inset-bottom))`
@@ -689,7 +704,7 @@ export default function Play({ params }) {
     <div style={{ minHeight: "100dvh", background: T1, color: "white", display: "flex", flexDirection: "column" }}>
 
       {/* Top bar: scores + round */}
-      <div style={{ padding: "16px 20px", background: "#0C47E9", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexShrink: 0 }}>
+      <div style={{ padding: "16px 20px", background: "#1628C4", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexShrink: 0 }}>
 
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
           <div style={{ textAlign: "center", minWidth: 40 }}>
@@ -845,12 +860,7 @@ export default function Play({ params }) {
               <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: GAP.section, textAlign: "center" }}>
                 {isPaused ? (
                   /* PAUSED */
-                  <>
-                    <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.6 }}>Paused</div>
-                    <div style={{ fontSize: 96, fontWeight: 900, lineHeight: 1 }}>
-                      {secondsRemaining}<span style={{ fontSize: 36, fontWeight: 600, opacity: 0.6 }}>s</span>
-                    </div>
-                  </>
+                  <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.6 }}>Paused</div>
                 ) : (
                   <>
                     <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.6 }}>Your Turn</div>
@@ -865,17 +875,6 @@ export default function Play({ params }) {
             ) : (
               /* Turn running */
               <>
-                {/* Timer */}
-                <div style={{
-                  fontSize: 96,
-                  fontWeight: 900,
-                  lineHeight: 1,
-                  color: timerUrgent ? YELLOW : "white",
-                  marginBottom: 8,
-                  flexShrink: 0,
-                }}>
-                  {secondsRemaining}
-                </div>
 
                 {/* Clue — swipeable */}
                 {(() => {
@@ -979,18 +978,6 @@ export default function Play({ params }) {
               <div style={{ fontSize: "clamp(44px, 12vw, 64px)", fontWeight: 900, lineHeight: 1, marginBottom: 12 }}>
                 {currentActor?.name ?? "—"}
               </div>
-              {game.turn_running && (
-                <div style={{ fontSize: 64, fontWeight: 900, lineHeight: 1, color: timerUrgent ? YELLOW : "rgba(255,255,255,0.85)" }}>
-                  {secondsRemaining}
-                  <span style={{ fontSize: 22, fontWeight: 600, opacity: 0.65 }}>s</span>
-                </div>
-              )}
-              {isPaused && (
-                <div style={{ fontSize: 64, fontWeight: 900, lineHeight: 1, opacity: 0.85 }}>
-                  {secondsRemaining}
-                  <span style={{ fontSize: 22, fontWeight: 600, opacity: 0.65 }}>s</span>
-                </div>
-              )}
             </div>
 
             {onDeck.length > 1 && (
@@ -1033,27 +1020,34 @@ export default function Play({ params }) {
           rules={instructions ? [["How to Play", instructions]] : null}
           onResetToLobby={async () => { await supabase.rpc("reset_game_for_replay", { p_code: code }); await loadState() }}
           settingsContent={<>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-              <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: GAP.selection }}>
-                Boys
-                <input value={manualT1} onChange={e => setManualT1(e.target.value)}
-                  style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }} />
-              </label>
-              <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: GAP.selection }}>
-                Girls
-                <input value={manualT2} onChange={e => setManualT2(e.target.value)}
-                  style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }} />
-              </label>
-              <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: GAP.selection }}>
-                Rounds
-                <input value={roundsTotal} onChange={e => setRoundsTotal(e.target.value)}
-                  style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }} />
-              </label>
-              <button onClick={saveScoreAndSettings}
-                style={{ background: YELLOW, color: "#000", fontSize: 14, fontWeight: 900, padding: "8px 16px" }}>
-                Save
-              </button>
+            <div>
+              {[
+                ["Boys", manualT1, setManualT1],
+                ["Girls", manualT2, setManualT2],
+                ["Rounds", roundsTotal, setRoundsTotal],
+              ].map(([label, value, setValue], i, arr) => (
+                <label
+                  key={label}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.85)",
+                    padding: "10px 0",
+                    borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.1)" : "none",
+                  }}
+                >
+                  <span>{label}</span>
+                  <input
+                    value={value}
+                    onChange={e => setValue(e.target.value)}
+                    style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "8px 12px", width: 64, textAlign: "center" }}
+                  />
+                </label>
+              ))}
             </div>
+            <button onClick={saveScoreAndSettings}
+              style={{ background: YELLOW, color: "#000", fontSize: 15, fontWeight: 900, padding: "12px 16px", width: "100%", marginTop: 16 }}>
+              Save
+            </button>
           </>}
         />
         {showTurnActionBar ? (

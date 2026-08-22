@@ -321,7 +321,7 @@ export default function Play({ params }) {
   if (game.phase === "finished" && revealData) {
     const mrWhiteCaught = game.mr_white_wins === false
     return (
-      <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", paddingBottom: BOTTOM_PAD }}>
+      <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column", paddingBottom: BOTTOM_PAD, animation: "endGameIn 300ms ease-out both" }}>
         <div style={{ padding: "28px 24px 20px", background: DARK }}>
           <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.65, marginBottom: 6 }}>
             Game Over

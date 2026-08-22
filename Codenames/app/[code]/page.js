@@ -91,6 +91,7 @@ export default function Lobby({ params }) {
   const [gamePhase, setGamePhase] = useState("lobby")
   const [firstTurnTeam, setFirstTurnTeam] = useState("red")
   const [lastUsedWords, setLastUsedWords] = useState([])
+  const [replayOf, setReplayOf] = useState(null)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
   const isIdle = useIdleGate()
@@ -119,7 +120,7 @@ export default function Lobby({ params }) {
   async function loadGame() {
     const { data, error } = await supabase
       .from("codenames_games")
-      .select("code,phase,first_turn_team,last_used_words,replay_code")
+      .select("code,phase,first_turn_team,last_used_words,replay_code,replay_of")
       .eq("code", code)
       .single()
     if (error || !data) { setGameExists(false); return }
@@ -128,6 +129,7 @@ export default function Lobby({ params }) {
     setGamePhase(data.phase || "lobby")
     setFirstTurnTeam(data.first_turn_team || "red")
     setLastUsedWords(data.last_used_words || [])
+    setReplayOf(data.replay_of || null)
   }
 
   useEffect(() => {
@@ -148,10 +150,30 @@ export default function Lobby({ params }) {
     loadGame().then(() => refreshPlayers())
   }, [code])
 
-  // Auto-join disabled: codenames_games has no is_dummy signal (its "Dummy
-  // Game" button inserts 4 bot players directly at creation instead), so
-  // there is no legitimate case where a real saved profile should silently
-  // auto-join a lobby. Re-enable, gated on dummy detection, if that's added.
+  // Auto-join disabled in general: codenames_games has no is_dummy signal
+  // (its "Dummy Game" button inserts 4 bot players directly at creation
+  // instead), so there is no legitimate case where a real saved profile
+  // should silently auto-join a lobby.
+  //
+  // Replay is the one exception: create_codenames_replay pre-seeds the new
+  // lobby with the same player names/teams from the finished game, so a
+  // returning player's own row already exists here under their saved name.
+  // redirectToReplay() on the play page normally claims it by writing
+  // localStorage before redirecting, but that only works if this browser
+  // still had its old playerId at that moment (e.g. not if this tab was
+  // reloaded, or the lobby was opened fresh via a shared link). Fall back to
+  // claiming by exact name match — safe here specifically because replayOf
+  // being set means every pre-seeded row really is a just-copied-over
+  // teammate, not a name a stranger happened to also pick.
+  useEffect(() => {
+    if (!replayOf || myPlayerId || !savedProfile?.username || players.length === 0) return
+    if (localStorage.getItem(`codenames:${code}:playerId`)) return
+    const mine = players.find(p => p.name.toLowerCase() === savedProfile.username.trim().toLowerCase())
+    if (mine) {
+      localStorage.setItem(`codenames:${code}:playerId`, mine.id)
+      setMyPlayerId(mine.id)
+    }
+  }, [replayOf, players, savedProfile, myPlayerId, code])
 
   async function loadState() {
     await refreshPlayers()
@@ -203,6 +225,18 @@ export default function Lobby({ params }) {
       .ilike("name", trimmed)
       .limit(1)
     if (existing?.length > 0) {
+      // In a replay lobby, an existing row under this exact name is our own
+      // pre-seeded returning seat (see the auto-claim effect above) rather
+      // than a real conflict — claim it instead of blocking.
+      if (replayOf) {
+        const newProfile = { firstName: trimmedFirst, lastName: trimmedLast, username: trimmed }
+        saveProfile(newProfile)
+        setSavedProfile(newProfile)
+        localStorage.setItem(`codenames:${code}:playerId`, existing[0].id)
+        setMyPlayerId(existing[0].id)
+        setJoining(false)
+        return
+      }
       setJoinError("That name is already taken. Please choose another.")
       setJoining(false)
       return

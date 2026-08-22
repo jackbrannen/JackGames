@@ -132,13 +132,13 @@ export default function Play({ params }) {
         .eq("game_code", code)
         .order("created_at", { ascending: true }),
       supabase.from("codenames_cards")
-        .select("id,word,position,color,revealed")
+        .select("id,word,position,color,revealed,revealed_order,revealed_turn,revealed_team")
         .eq("game_code", code)
         .order("position", { ascending: true }),
     ])
 
     if (epoch !== loadEpochRef.current) return
-    if (gameData?.replay_code) { router.replace(`/${gameData.replay_code}`); return }
+    if (gameData?.replay_code) { redirectToReplay(gameData.replay_code); return }
     if (gameData) setGame(gameData)
     if (playerData) setPlayers(playerData)
     if (cardData) setCards(cardData)
@@ -154,6 +154,23 @@ export default function Play({ params }) {
     const existing = localStorage.getItem(`codenames:${code}:playerId`)
     if (existing) setMyPlayerId(existing)
   }, [code])
+
+  // create_codenames_replay now copies every player's name/team into the fresh lobby —
+  // before following everyone there, look up which row is ours in the new game (matched by
+  // name, already unique per game) and pre-seed localStorage with it, so this player lands
+  // back on their team instead of needing to rejoin from scratch. Looks up its own name
+  // fresh by id rather than trusting `players` state, since this can fire before that's
+  // populated (e.g. a fresh page load straight into a finished+replayed game).
+  async function redirectToReplay(newCode) {
+    if (myPlayerId) {
+      const { data: mine } = await supabase.from("codenames_players").select("name").eq("id", myPlayerId).single()
+      if (mine?.name) {
+        const { data } = await supabase.from("codenames_players").select("id").eq("game_code", newCode).ilike("name", mine.name).limit(1)
+        if (data?.[0]) localStorage.setItem(`codenames:${newCode}:playerId`, data[0].id)
+      }
+    }
+    router.replace(`/${newCode}`)
+  }
 
   useEffect(() => {
     if (isIdle) return
@@ -278,11 +295,11 @@ export default function Play({ params }) {
   }
 
   async function playAgain() {
-    if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
+    if (game.replay_code) { redirectToReplay(game.replay_code); return }
     const { data, error } = await supabase.rpc("create_codenames_replay", { p_code: code })
     if (error) { alert(error.message); return }
     syncChRef.current?.send({ type: "broadcast", event: "sync" })
-    router.replace(`/${data}`)
+    redirectToReplay(data)
   }
 
 
@@ -406,6 +423,96 @@ export default function Play({ params }) {
       </div>
     )
 
+    const boardReveal = (
+      <div style={{ marginTop: 32 }}>
+        <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 16 }}>
+          The Board
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 5 }}>
+          {[...cards].sort((a, b) => a.position - b.position).map(card => (
+            <div
+              key={card.id}
+              style={{
+                aspectRatio: "1",
+                minWidth: 0,
+                overflow: "hidden",
+                position: "relative",
+                background: cardBg(card, true),
+                color: cardText(card, true),
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 4,
+                textAlign: "center",
+                fontSize: card.word.length <= 4 ? 15 : card.word.length <= 6 ? 13 : 11,
+                fontWeight: 800,
+                lineHeight: 1.15,
+                overflowWrap: "break-word",
+              }}
+            >
+              <span style={{ position: "relative", zIndex: 1, opacity: card.revealed ? 0.55 : 1 }}>{titleCase(card.word)}</span>
+              {card.revealed && (
+                <svg
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                >
+                  <line x1="0" y1="0" x2="100" y2="100" stroke={spyXColor(card.color)} strokeWidth="18" strokeLinecap="square" />
+                  <line x1="100" y1="0" x2="0" y2="100" stroke={spyXColor(card.color)} strokeWidth="18" strokeLinecap="square" />
+                </svg>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+
+    const turnHistory = (() => {
+      const guessed = cards.filter(c => c.revealed_order != null).sort((a, b) => a.revealed_order - b.revealed_order)
+      const turnsMap = new Map()
+      for (const c of guessed) {
+        if (!turnsMap.has(c.revealed_turn)) turnsMap.set(c.revealed_turn, { team: c.revealed_team, cards: [] })
+        turnsMap.get(c.revealed_turn).cards.push(c)
+      }
+      return [...turnsMap.entries()].sort((a, b) => a[0] - b[0]).map(([turnNum, data]) => ({ turnNum, ...data }))
+    })()
+
+    const turnHistoryTable = turnHistory.length > 0 && (
+      <div style={{ marginTop: 32 }}>
+        <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 16 }}>
+          Turn History
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          {turnHistory.map(turn => (
+            <div key={turn.turnNum} style={{ display: "flex" }}>
+              <div style={{
+                padding: "10px 0", minWidth: 40, flexShrink: 0,
+                background: teamColor(turn.team),
+                fontSize: 15, fontWeight: 900, color: "white",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                {turn.turnNum}
+              </div>
+              <div style={{ padding: "10px 12px", flex: 1, background: "rgba(255,255,255,0.08)", display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
+                {turn.cards.map(c => (
+                  <span
+                    key={c.id}
+                    style={{
+                      background: cardBg({ ...c, revealed: false }, true),
+                      color: cardText({ ...c, revealed: false }, true),
+                      padding: "5px 12px", borderRadius: 999, fontSize: 13, fontWeight: 700,
+                    }}
+                  >
+                    {titleCase(c.word)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+
     return (
       <>
       <div style={{ minHeight: "100dvh", background: "#1A1008", color: "white", display: "flex", flexDirection: "column" }}>
@@ -415,6 +522,7 @@ export default function Play({ params }) {
           bottomPad={BOTTOM_PAD}
           colors={{ yellow: TAN, wl: "#2E1E0F" }}
           aboveScores={teamAbove}
+          belowButtons={<>{boardReveal}{turnHistoryTable}</>}
         />
       </div>
       {pokeSystemNode}
@@ -528,7 +636,7 @@ export default function Play({ params }) {
                   WebkitUserSelect: "none",
                 }}
               >
-                {!card.revealed && display}
+                <span style={{ position: "relative", zIndex: 1, opacity: card.revealed ? 0.55 : 1 }}>{display}</span>
                 {isCluegiver && showColors && card.revealed && (
                   <svg
                     style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}

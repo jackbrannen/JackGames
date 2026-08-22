@@ -29,7 +29,6 @@ const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 const TEAM_LABEL = { 1: "Boys", 2: "Girls" }
 const TEAM_COLOR = { 1: BOYS, 2: GIRLS }
 const DEFAULT_ANSWER_SECONDS = 20
-const TIMEUP_LOCKOUT_MS = 3000
 
 function Nm({ children }) {
   return <span style={{ color: "#FBDF54" }}>{children}</span>
@@ -273,8 +272,7 @@ export default function Play({ params }) {
     : "secondary_timeup"
 
   const secondaryUnlockable = subPhase === "primary_timeup"
-  const guesserUnlockAt = secondaryStartedMs ? secondaryStartedMs + answerSeconds * 1000 + TIMEUP_LOCKOUT_MS : null
-  const guesserUnlockable = subPhase === "secondary_timeup" && now >= guesserUnlockAt
+  const guesserUnlockable = subPhase === "secondary_timeup"
 
   // Secondary sees the phrase as soon as primary starts answering (not just once
   // their own timer starts) — they need it to follow along and get ready.
@@ -440,7 +438,8 @@ export default function Play({ params }) {
           if (isPhraseTeam) {
             if (meIsPrimary && subPhase === "primary_wait") mainText = primaryStartPrompt
             else if (meIsPrimary && subPhase === "primary_timer") mainText = "You have to use the secret phrase in your answer."
-            else if (meIsPrimary) mainText = <>Nice work! Waiting for <Nm>{second?.name ?? "your teammate"}</Nm> now.</>
+            else if (meIsPrimary && subPhase === "primary_timeup") mainText = <>Nice work! Waiting for <Nm>{second?.name ?? "your teammate"}</Nm> now.</>
+            else if (meIsPrimary) mainText = null
             else if (meIsSecondary && (subPhase === "primary_wait" || subPhase === "primary_timer")) mainText = <>Waiting for <Nm>{primary?.name ?? "your teammate"}</Nm> to answer…</>
             else if (meIsSecondary && subPhase === "primary_timeup" && !secondaryUnlockable) mainText = "Get ready — you’re up next."
             else if (meIsSecondary && subPhase === "primary_timeup") mainText = secondaryStartPrompt
@@ -455,29 +454,33 @@ export default function Play({ params }) {
             else if (subPhase === "primary_timeup") mainText = <>Now it’s <Nm>{second?.name ?? "them"}’s</Nm> turn to answer your question.</>
             else mainText = null
           } else {
-            mainText = <><Nm>{guesser?.name ?? "Your teammate"}</Nm> is asking the question this turn.</>
+            mainText = timerRunning ? null : <><Nm>{guesser?.name ?? "Your teammate"}</Nm> is asking the question this turn.</>
           }
 
           return (
             <>
-              <div style={{ background: MID_DARK, padding: "14px 16px", marginBottom: 12 }}>
-                <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.7, marginBottom: 3 }}>
-                  Official guesser
-                </div>
-                <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 4 }}>{guesser?.name ?? "—"}</div>
-                <div style={{ fontSize: 14, opacity: 0.85 }}>Can consult their team.</div>
-              </div>
-
-              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-                {[["First", primary, activeRole === "first"], ["Second", second, activeRole === "second"]].map(([label, p, active]) => (
-                  <div key={label} style={{ flex: 1, background: MID_DARK, padding: "10px 14px", opacity: active ? 1 : 0.55 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.7, marginBottom: 2 }}>
-                      {label} answerer
+              {!timerRunning && (
+                <>
+                  <div style={{ background: MID_DARK, padding: "14px 16px", marginBottom: 12 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.7, marginBottom: 3 }}>
+                      Official guesser
                     </div>
-                    <div style={{ fontSize: 16, fontWeight: 800 }}>{p?.name ?? "—"}</div>
+                    <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 4 }}>{guesser?.name ?? "—"}</div>
+                    <div style={{ fontSize: 14, opacity: 0.85 }}>Can consult their team.</div>
                   </div>
-                ))}
-              </div>
+
+                  <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                    {[["First", primary, activeRole === "first"], ["Second", second, activeRole === "second"]].map(([label, p, active]) => (
+                      <div key={label} style={{ flex: 1, background: MID_DARK, padding: "10px 14px", opacity: active ? 1 : 0.55 }}>
+                        <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.7, marginBottom: 2 }}>
+                          {label} answerer
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 800 }}>{p?.name ?? "—"}</div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
 
               {mainText && (
                 <div style={{ fontSize: 19, fontWeight: 800, lineHeight: 1.35, padding: "4px 2px" }}>
@@ -610,17 +613,22 @@ export default function Play({ params }) {
         <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} />
       )}
 
-      {game.turn_phase === "turn_result" && (
-        <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
-          <button
-            onClick={readyNextTurn}
-            disabled={iAmReadyNext}
-            style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 17, fontWeight: 900, opacity: iAmReadyNext ? 0.6 : 1 }}
-          >
-            {iAmReadyNext ? `${(game.ready_player_ids || []).length}/${players.length} ready — waiting…` : "Next turn →"}
-          </button>
-        </Footer>
-      )}
+      {game.turn_phase === "turn_result" && (() => {
+        const isLastTurn = game.turn_index + 1 >= game.total_turns
+        return (
+          <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
+            <button
+              onClick={readyNextTurn}
+              disabled={iAmReadyNext}
+              style={{ flex: 1, height: "100%", background: YELLOW, color: "#000", fontSize: 17, fontWeight: 900, opacity: iAmReadyNext ? 0.6 : 1 }}
+            >
+              {iAmReadyNext
+                ? `${(game.ready_player_ids || []).length}/${players.length} ready — waiting…`
+                : isLastTurn ? "See final score →" : "Next turn →"}
+            </button>
+          </Footer>
+        )
+      })()}
 
       {confirmingReveal && (
         <div

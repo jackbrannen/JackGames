@@ -91,6 +91,20 @@ export default function PlayPage({ params }) {
 
   const me = players.find(p => p.id === myPlayerId)
 
+  // dc_create_replay now copies every player's name/team into the fresh lobby — before
+  // following everyone there, look up which row is ours (matched by name, already unique
+  // per game) and pre-seed localStorage with it, so this player lands back on their team
+  // instead of needing to rejoin from scratch. myName is passed in rather than read from
+  // `players` state because loadState's own call site can hit this before `players` has
+  // ever been populated (e.g. a fresh page load straight into a finished+replayed game).
+  async function redirectToReplay(newCode, myName) {
+    if (myName) {
+      const { data } = await supabase.from("dc_players").select("id").eq("game_code", newCode).ilike("name", myName).limit(1)
+      if (data?.[0]) localStorage.setItem(`decrypto:${newCode}:playerId`, data[0].id)
+    }
+    router.replace(`/${newCode}`)
+  }
+
   const loadSeqRef = useRef(0)
   async function loadState() {
     const seq = ++loadSeqRef.current
@@ -102,7 +116,7 @@ export default function PlayPage({ params }) {
     ])
     if (seq !== loadSeqRef.current) return
     if (!g) { router.replace(`/${code}`); return }
-    if (g.replay_code) { router.replace(`/${g.replay_code}`); return }
+    if (g.replay_code) { redirectToReplay(g.replay_code, ps?.find(p => p.id === myPlayerId)?.name); return }
     if (g.phase === "lobby") { router.replace(`/${code}`); return }
     setGame(g); setPlayers(ps ?? []); setRounds(rs ?? []); setGuesses(gs ?? []); setLoading(false)
     // Gossip: re-broadcast on a state change so peers that missed the realtime push catch up fast.
@@ -125,7 +139,7 @@ export default function PlayPage({ params }) {
   const gamesSyncKeyRef = useRef(null)
   function applyGameRow(newRow) {
     if (!newRow) return
-    if (newRow.replay_code) { router.replace(`/${newRow.replay_code}`); return }
+    if (newRow.replay_code) { redirectToReplay(newRow.replay_code, me?.name); return }
     if (newRow.phase === "lobby") { router.replace(`/${code}`); return }
     setGame(newRow)
     setLoading(false)
@@ -552,7 +566,7 @@ export default function PlayPage({ params }) {
       : g.win_reason === "miscomms" ? "2 miscommunications — they fell apart."
       : "Most interceptions after 8 rounds."
     return (
-      <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center" }}>
+      <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center", animation: "endGameIn 300ms ease-out both" }}>
         <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.5, marginBottom: 12 }}>Game over</div>
         <div style={{ fontSize: 44, fontWeight: 900, color: winner === "tie" ? INK : teamColor(winner), marginBottom: 8 }}>
           {winner === "tie" ? "It's a tie!" : `${teamLabel(winner)} win!`}
@@ -567,11 +581,11 @@ export default function PlayPage({ params }) {
           ))}
         </div>
         <button onClick={async () => {
-          if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
+          if (game.replay_code) { redirectToReplay(game.replay_code, me?.name); return }
           const { data, error } = await supabase.rpc("dc_create_replay", { p_code: code })
           if (error) { alert(error.message); return }
           nudge()
-          router.replace(`/${data}`)
+          redirectToReplay(data, me?.name)
         }} style={{ background: ACCENT, color: "#000", fontSize: 16, fontWeight: 900, padding: "16px 24px", border: "none", cursor: "pointer", marginBottom: 12, maxWidth: 320, width: "100%" }}>Play Again</button>
         <a href="https://games.jackbrannen.com" style={{ display: "block", background: "rgba(255,255,255,0.4)", color: INK, fontSize: 16, fontWeight: 700, padding: "14px 24px", textDecoration: "none", maxWidth: 320, width: "100%", textAlign: "center" }}>Play Another Game</a>
       </div>

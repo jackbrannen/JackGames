@@ -555,7 +555,7 @@ export default function Play({ params }) {
   if (game.phase === "gameover") {
     const winnerLabel = game.winner === "boys" ? "Boys" : "Girls"
     return (
-      <div style={{ minHeight: "100dvh", background: BG, color: "white" }}>
+      <div style={{ minHeight: "100dvh", background: BG, color: "white", animation: "endGameIn 300ms ease-out both" }}>
         <div style={{ padding: "40px 24px", paddingBottom: BOTTOM_PAD }}>
           <div style={{ fontSize: "clamp(48px, 14vw, 80px)", fontWeight: 900, lineHeight: 0.95, marginBottom: 8 }}>
             {winnerLabel} Win!

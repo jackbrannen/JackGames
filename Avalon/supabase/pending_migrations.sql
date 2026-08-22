@@ -10,7 +10,14 @@ alter table public.avalon_players
 alter table public.avalon_games
   add column if not exists reveal_at timestamptz;
 
--- 3. start_avalon_game: only Merlin + Assassin as specials, reset ready
+-- 2b. Add role_image column to players: the generic-art variant (1-5) assigned
+--     to loyal/minion players this game. Null for unique-art roles (merlin, assassin).
+alter table public.avalon_players
+  add column if not exists role_image int;
+
+-- 3. start_avalon_game: only Merlin + Assassin as specials, reset ready,
+--    assign generic character art (role_image) without repeats per game
+--    until each 5-image pool is exhausted, then reshuffle and keep going.
 create or replace function public.start_avalon_game(p_code text)
 returns void language plpgsql security definer as $$
 declare
@@ -19,12 +26,16 @@ declare
   good_n       int;
   evil_n       int;
   roles        text[];
+  images       int[];
   seats        int[];
   i            int;
   j            int;
   tmp_text     text;
   tmp_int      int;
+  tmp_swap     int;
   first_leader uuid;
+  loyal_pool   int[];
+  minion_pool  int[];
 begin
   perform 1 from public.avalon_games where code = p_code and phase = 'lobby' for update;
   if not found then return; end if;
@@ -61,9 +72,41 @@ begin
     tmp_int := seats[i]; seats[i] := seats[j]; seats[j] := tmp_int;
   end loop;
 
+  -- Assign generic character art without repeats until each 5-image pool is
+  -- exhausted, then reshuffle a fresh pool and keep going.
+  loyal_pool := array[]::int[];
+  minion_pool := array[]::int[];
+  images := array[]::int[];
+  for i in 1..n loop
+    if roles[i] = 'loyal' then
+      if array_length(loyal_pool, 1) is null or array_length(loyal_pool, 1) = 0 then
+        loyal_pool := array[1,2,3,4,5];
+        for j in reverse 5..2 loop
+          tmp_int := floor(random() * j + 1)::int;
+          tmp_swap := loyal_pool[j]; loyal_pool[j] := loyal_pool[tmp_int]; loyal_pool[tmp_int] := tmp_swap;
+        end loop;
+      end if;
+      images := images || loyal_pool[array_length(loyal_pool, 1)];
+      loyal_pool := loyal_pool[1:array_length(loyal_pool, 1) - 1];
+    elsif roles[i] = 'minion' then
+      if array_length(minion_pool, 1) is null or array_length(minion_pool, 1) = 0 then
+        minion_pool := array[1,2,3,4,5];
+        for j in reverse 5..2 loop
+          tmp_int := floor(random() * j + 1)::int;
+          tmp_swap := minion_pool[j]; minion_pool[j] := minion_pool[tmp_int]; minion_pool[tmp_int] := tmp_swap;
+        end loop;
+      end if;
+      images := images || minion_pool[array_length(minion_pool, 1)];
+      minion_pool := minion_pool[1:array_length(minion_pool, 1) - 1];
+    else
+      images := images || null::int;
+    end if;
+  end loop;
+
   for i in 1..n loop
     update public.avalon_players set
       role           = roles[i],
+      role_image     = images[i],
       team           = case when roles[i] in ('assassin', 'minion') then 'evil' else 'good' end,
       seat           = seats[i],
       submitted_card = null,

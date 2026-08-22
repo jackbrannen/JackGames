@@ -47,6 +47,15 @@ const ROLE_LABEL = {
   minion:   "Minion of Mordred",
 }
 
+// Loyal/minion have 5 generic-art variants each (role_image, assigned server-side
+// without repeats per game); merlin/assassin have one unique image each.
+function roleImageSrc(p) {
+  if (!p) return null
+  if (p.role === "merlin" || p.role === "assassin") return `/roles/${p.role}.webp`
+  if (p.role === "loyal" || p.role === "minion") return `/roles/${p.role}-${p.role_image}.webp`
+  return null
+}
+
 const POKE_COLORS = { dark: "#091218", mid: "#1C2B3A", wl: "#19303B", yellow: "#C9A84C", notifBg: "#070D13" }
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
@@ -109,18 +118,23 @@ function PlayingCard({ frontBg, frontContent, delay = 0, animate }) {
   )
 }
 
-// Static playing card (same design, shown immediately — no flip)
-function StaticCard({ bg, children }) {
+// Teammate card — shows a fellow evil player's character art (image + bottom
+// gradient) with their name overlaid, same treatment as the main role card.
+function TeammateCard({ p, bg }) {
+  const src = roleImageSrc(p)
   return (
     <div style={{
       width: CARD_W, height: CARD_H,
       background: bg, borderRadius: 10,
-      display: "flex", flexDirection: "column",
-      alignItems: "center", justifyContent: "center",
-      padding: "12px 8px", textAlign: "center",
-      overflow: "hidden", flexShrink: 0,
+      position: "relative", overflow: "hidden", flexShrink: 0,
     }}>
-      {children}
+      {src && (
+        <img src={src} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+      )}
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "55%", background: "linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0))" }} />
+      <div style={{ position: "absolute", left: 8, right: 8, bottom: 8 }}>
+        <span style={{ fontSize: 14, fontWeight: 900, color: "#fff", wordBreak: "break-word", textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}>{p.name}</span>
+      </div>
     </div>
   )
 }
@@ -377,15 +391,25 @@ export default function Play({ params }) {
   // Stable shuffled vote cards — only reshuffles when phase or card counts change
   const resultFailCount = phase === "result" ? proposed.filter(p => p.submitted_card === "fail").length : 0
   const resultSuccCount = phase === "result" ? proposed.length - resultFailCount : 0
+  // Deterministic shuffle seeded from code+quest number, so every player's
+  // client lands on the exact same card order — otherwise each device would
+  // independently randomize and the fail card could reveal at a different
+  // position for different players.
   const voteCards = useMemo(() => {
     const arr = [...Array(resultSuccCount).fill("succeed"), ...Array(resultFailCount).fill("fail")]
+    const seedStr = `${code}:${game?.quest_number ?? 0}`
+    let seed = 0
+    for (let i = 0; i < seedStr.length; i++) seed = (seed * 31 + seedStr.charCodeAt(i)) >>> 0
+    function rand() {
+      seed = (seed * 1664525 + 1013904223) >>> 0
+      return seed / 4294967296
+    }
     for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rand() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]]
     }
     return arr
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, resultSuccCount, resultFailCount])
+  }, [phase, resultSuccCount, resultFailCount, code, game?.quest_number])
 
   // Role info
   const evilPlayers = players.filter(p => p.team === "evil")
@@ -420,7 +444,6 @@ export default function Play({ params }) {
   function QuestTrack() {
     const results = game.quest_results ?? []
     return (
-      <>
       <div>
         <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "rgba(232,220,200,0.35)", textAlign: "center", paddingTop: 14, paddingBottom: 6 }}>
           Quests
@@ -446,14 +469,11 @@ export default function Play({ params }) {
           })}
         </div>
       </div>
-        {pokeSystemNode}
-      </>
     )
   }
 
   function Header({ sub, showTrack = true }) {
     return (
-      <>
       <div style={{ background: "#0A1520" }}>
         {sub && (
           <div style={{ padding: "14px 24px 0" }}>
@@ -462,14 +482,11 @@ export default function Play({ params }) {
         )}
         {showTrack ? <QuestTrack /> : sub ? <div style={{ paddingBottom: 16 }} /> : null}
       </div>
-        {pokeSystemNode}
-      </>
     )
   }
 
   function PlayerRow({ p, onClick, highlight }) {
     return (
-      <>
       <div
         onClick={onClick}
         style={{
@@ -487,28 +504,60 @@ export default function Play({ params }) {
         )}
         <span style={{ fontSize: 16, fontWeight: 700, flex: 1 }}>
           {p.name}
-          
+
           {p.id === game?.leader_id && <span style={{ opacity: 0.45, fontSize: 13, fontWeight: 600 }}> ♛</span>}
         </span>
       </div>
-        {pokeSystemNode}
-      </>
     )
   }
 
 
   // Role card content (shared between role reveal card and modal)
+  // Full-bleed portrait for the finished-screen reveal cards — image + bottom
+  // gradient + name/role, same treatment as the role card and teammate cards.
+  function PortraitCardFace({ p }) {
+    const src = roleImageSrc(p)
+    return (
+      <div style={{ position: "absolute", inset: 0 }}>
+        {src && <img src={src} alt={p.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />}
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "55%", background: "linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0))" }} />
+        <div style={{ position: "absolute", left: 8, right: 8, bottom: 8 }}>
+          <div style={{ fontSize: 16, fontWeight: 900, color: "#fff", lineHeight: 1.2, wordBreak: "break-word", textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}>{p.name}</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.85)", marginTop: 4, lineHeight: 1.3, textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}>{ROLE_LABEL[p.role] ?? p.role}</div>
+          {p.id === myId && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", marginTop: 3, textShadow: "0 2px 6px rgba(0,0,0,0.6)" }}>you</div>}
+        </div>
+      </div>
+    )
+  }
+
   function RoleCardBody() {
     if (!me) return null
     const roleSubtitle = me.role === "merlin" ? "Good — Loyal Servant of King Arthur" : teamLabel
+    const imgSrc = roleImageSrc(me)
     return (
       <>
-        <div style={{ fontSize: 36, fontWeight: 900, color: teamColor, lineHeight: 1.1 }}>
+        {imgSrc && (
+          <div style={{ position: "relative", width: "100%", aspectRatio: "866 / 1082", overflow: "hidden", marginBottom: 16 }}>
+            <img src={imgSrc} alt={ROLE_LABEL[me.role] ?? me.role} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "50%", background: "linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0))" }} />
+            <div style={{ position: "absolute", left: 16, right: 16, bottom: 14 }}>
+              <div style={{ fontSize: 28, fontWeight: 900, color: "#fff", lineHeight: 1.05, textShadow: "0 2px 8px rgba(0,0,0,0.6)" }}>
+                {ROLE_LABEL[me.role] ?? me.role}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: teamColor, textShadow: "0 2px 6px rgba(0,0,0,0.6)", marginTop: 6 }}>
+                {roleSubtitle}
+              </div>
+            </div>
+          </div>
+        )}
+        <div style={{ fontSize: 36, fontWeight: 900, color: teamColor, lineHeight: 1.1, display: imgSrc ? "none" : "block" }}>
           {ROLE_LABEL[me.role] ?? me.role}
         </div>
-        <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: teamColor, opacity: 0.75, marginTop: 6 }}>
-          {roleSubtitle}
-        </div>
+        {!imgSrc && (
+          <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: teamColor, marginTop: 6 }}>
+            {roleSubtitle}
+          </div>
+        )}
 
         {me.role === "merlin" && (
           <div style={{ marginTop: 18 }}>
@@ -517,9 +566,7 @@ export default function Play({ params }) {
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-start" }}>
               {evilPlayers.map(p => (
-                <StaticCard key={p.id} bg={EVIL}>
-                  <span style={{ fontSize: 16, fontWeight: 900, color: "#fff", wordBreak: "break-word" }}>{p.name}</span>
-                </StaticCard>
+                <TeammateCard key={p.id} p={p} bg={EVIL} />
               ))}
             </div>
             <div style={{ fontSize: 13, color: "rgba(232,220,200,0.55)", marginTop: 12, lineHeight: 1.6 }}>
@@ -537,9 +584,7 @@ export default function Play({ params }) {
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "flex-start" }}>
                   {evilOthers.map(p => (
-                    <StaticCard key={p.id} bg={EVIL}>
-                      <span style={{ fontSize: 16, fontWeight: 900, color: "#fff", wordBreak: "break-word" }}>{p.name}</span>
-                    </StaticCard>
+                    <TeammateCard key={p.id} p={p} bg={EVIL} />
                   ))}
                 </div>
                 <div style={{ fontSize: 13, color: "rgba(232,220,200,0.55)", marginTop: 12, lineHeight: 1.6 }}>
@@ -1020,13 +1065,7 @@ export default function Play({ params }) {
                 animate={true}
                 delay={i * 0.1}
                 frontBg={GOOD}
-                frontContent={
-                  <>
-                    <div style={{ fontSize: 16, fontWeight: 900, color: "#fff", lineHeight: 1.2, wordBreak: "break-word" }}>{p.name}</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.65)", marginTop: 6, lineHeight: 1.3 }}>{ROLE_LABEL[p.role] ?? p.role}</div>
-                    {p.id === myId && <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>you</div>}
-                  </>
-                }
+                frontContent={<PortraitCardFace p={p} />}
               />
             ))}
           </div>
@@ -1041,13 +1080,7 @@ export default function Play({ params }) {
                 animate={true}
                 delay={(goodPlayers.length + i) * 0.1}
                 frontBg={EVIL}
-                frontContent={
-                  <>
-                    <div style={{ fontSize: 16, fontWeight: 900, color: "#fff", lineHeight: 1.2, wordBreak: "break-word" }}>{p.name}</div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.65)", marginTop: 6, lineHeight: 1.3 }}>{ROLE_LABEL[p.role] ?? p.role}</div>
-                    {p.id === myId && <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>you</div>}
-                  </>
-                }
+                frontContent={<PortraitCardFace p={p} />}
               />
             ))}
           </div>

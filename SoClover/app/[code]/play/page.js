@@ -1470,7 +1470,7 @@ export default function PlayPage({ params }) {
 
     return (
       <>
-      <div style={{ height: "100dvh", overflow: "hidden", background: BG, display: "flex", flexDirection: "column" }}>
+      <div style={{ height: "100dvh", overflow: "hidden", background: BG, display: "flex", flexDirection: "column", animation: "endGameIn 300ms ease-out both" }}>
         <StatusBar dark={COOL_DARK} label="FINAL SCORE" />
         <div style={{ flex: 1, minHeight: 0, overflow: "auto", WebkitOverflowScrolling: "touch", padding: `24px 16px ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: GAP.section, width: "100%" }}>
           <div style={{ textAlign: "center" }}>

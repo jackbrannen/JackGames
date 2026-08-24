@@ -203,6 +203,12 @@ export default function Play({ params }) {
   const [pendingCount, setPendingCount] = useState(0)
   const [nowMs, setNowMs] = useState(Date.now())
   const [acting, setActing] = useState(false)
+  // Synchronous guard for doCorrect/doSkip — `acting` state alone isn't
+  // enough: two click events landing in the same tick (mobile double-tap /
+  // touchend+click firing back-to-back) both read the pre-render `acting`
+  // value before React commits the update, so both can slip through. This
+  // ref is checked and set synchronously before any await, closing that gap.
+  const actingRef = useRef(false)
   const [instructions, setInstructions] = useState("")
   const [manualScoreA, setManualScoreA] = useState("0")
   const [manualScoreB, setManualScoreB] = useState("0")
@@ -293,6 +299,50 @@ export default function Play({ params }) {
     syncKeyRef.current = syncKey
   }
 
+  // reversecharades_games changes: apply the row directly from the
+  // realtime payload instead of a full loadState() refetch, unless
+  // current_clue_id/phase changed (that needs the fuller fetch to pull the
+  // new clue text + pending count, which aren't in this payload). Each
+  // change independently reaches every subscribed client already, so
+  // there's no need to also nudge on the lightweight path — nudge() exists
+  // for cases where a client's own realtime might be lagging, which
+  // doesn't apply to the client that just received this exact event.
+  const gamesSyncKeyRef = useRef(null)
+  const lastClueIdRef = useRef(undefined)
+  const lastPhaseRef = useRef(undefined)
+  function applyGameRow(newRow) {
+    if (!newRow) return
+    if (newRow.replay_code) { redirectToReplay(newRow.replay_code); return }
+    const key = `${newRow.phase}:${newRow.current_team ?? ""}:${newRow.current_clue_id ?? ""}:${newRow.correct_this_turn ?? ""}`
+    if (gamesSyncKeyRef.current !== null && gamesSyncKeyRef.current !== key) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    gamesSyncKeyRef.current = key
+    const clueChanged = lastClueIdRef.current !== undefined &&
+      (newRow.current_clue_id !== lastClueIdRef.current || newRow.phase !== lastPhaseRef.current)
+    lastClueIdRef.current = newRow.current_clue_id
+    lastPhaseRef.current = newRow.phase
+    if (clueChanged) { loadState(); return }
+    setGame(newRow)
+    setManualScoreA(String(newRow.team_a_score ?? 0))
+    setManualScoreB(String(newRow.team_b_score ?? 0))
+  }
+  // reversecharades_players has no game_code filter on its subscription
+  // (fires for every ReverseCharades game in the database), so drop
+  // anything not for this game instead of blindly applying it.
+  function applyPlayerChange(payload) {
+    const { eventType, new: newRow, old: oldRow } = payload
+    const relevant = newRow?.game_code ?? oldRow?.game_code
+    if (relevant !== code) return
+    if (eventType === "DELETE") {
+      setPlayers(prev => prev.filter(r => r.id !== oldRow?.id))
+      return
+    }
+    if (!newRow) return
+    setPlayers(prev => {
+      const idx = prev.findIndex(r => r.id === newRow.id)
+      return idx === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r)
+    })
+  }
+
   useEffect(() => {
     if (!game || !myPlayerId) return
     const prev = soundTriggerRef.current
@@ -321,8 +371,11 @@ export default function Play({ params }) {
 
     function connect() {
       channel = supabase.channel(`rc-play-${code}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_games", filter: `code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_players" }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_games", filter: `code=eq.${code}` }, payload => {
+          if (payload.eventType === "DELETE") { loadState(); return }
+          applyGameRow(payload.new)
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_players" }, applyPlayerChange)
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {
           if (cancelled) return
@@ -493,29 +546,35 @@ export default function Play({ params }) {
   }
 
   async function doCorrect() {
-    if (!currentClue || !myPlayerId || acting) return
+    if (!currentClue || !myPlayerId || acting || actingRef.current) return
+    actingRef.current = true
     setActing(true)
     sfxCorrect()
     try {
       await rpc("rc_correct", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
       await loadState() // Immediate feedback for score/clue update
       setActing(false)
+      actingRef.current = false
     } catch (e) {
       setActing(false)
+      actingRef.current = false
       throw e
     }
   }
 
   async function doSkip() {
-    if (!currentClue || !myPlayerId || acting) return
+    if (!currentClue || !myPlayerId || acting || actingRef.current) return
+    actingRef.current = true
     setActing(true)
     sfxSkip()
     try {
       await rpc("rc_skip", { p_code: code, p_clue_id: currentClue.id, p_player_id: myPlayerId })
       await loadState() // Immediate feedback for score/clue update
       setActing(false)
+      actingRef.current = false
     } catch (e) {
       setActing(false)
+      actingRef.current = false
       throw e
     }
   }

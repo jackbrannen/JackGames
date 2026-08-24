@@ -81,12 +81,59 @@ export default function PlayPage({ params }) {
     const { data: as } = await supabase.from("sp_answers").select("*").eq("game_code", code).eq("round_index", g.round_index)
     if (seq !== loadSeqRef.current) return
     setGame(g); setPlayers(ps ?? []); setAnswers(as ?? []); setLoading(false)
+    lastRoundIndexRef.current = g.round_index
     // Gossip: whoever notices a phase/round change re-broadcasts a sync so any
     // peer that missed the realtime push catches up in a round-trip, not on the poll.
     const key = `${g.phase}:${g.round_index}`
     if (syncKeyRef.current !== null && syncKeyRef.current !== key) nudge()
     syncKeyRef.current = key
   }
+
+  // sp_games/sp_players/sp_answers changes: apply the row directly from the
+  // realtime payload instead of a full loadState() refetch, unless
+  // round_index changed (that needs the fuller fetch to pull the new
+  // round's answers, which aren't in this payload). Each change
+  // independently reaches every subscribed client already, so there's no
+  // need to also nudge on the lightweight path — nudge() exists for cases
+  // where a client's own realtime might be lagging, which doesn't apply to
+  // the client that just received this exact event.
+  const gamesSyncKeyRef = useRef(null)
+  const lastRoundIndexRef = useRef(undefined)
+  function applyGameRow(newRow) {
+    if (!newRow) return
+    if (newRow.replay_code) { router.replace(`/${newRow.replay_code}`); return }
+    if (newRow.phase === "lobby") { router.replace(`/${code}`); return }
+    const key = `${newRow.phase}:${newRow.round_index}`
+    if (gamesSyncKeyRef.current !== null && gamesSyncKeyRef.current !== key) nudge()
+    gamesSyncKeyRef.current = key
+    const roundChanged = lastRoundIndexRef.current !== undefined && newRow.round_index !== lastRoundIndexRef.current
+    lastRoundIndexRef.current = newRow.round_index
+    if (roundChanged) { loadState(); return }
+    setGame(newRow)
+  }
+  function applyRowChange(setList) {
+    return (payload) => {
+      const { eventType, new: newRow, old: oldRow } = payload
+      if (eventType === "DELETE") {
+        setList(prev => prev.filter(r => r.id !== oldRow?.id))
+        return
+      }
+      if (!newRow) return
+      setList(prev => {
+        const idx = prev.findIndex(r => r.id === newRow.id)
+        return idx === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r)
+      })
+    }
+  }
+  // sp_answers is scoped by round_index (not just game_code) — drop
+  // anything not for the round currently on screen instead of applying it.
+  function applyAnswerChange(payload) {
+    const { eventType, new: newRow, old: oldRow } = payload
+    const relevantRound = newRow?.round_index ?? oldRow?.round_index
+    if (relevantRound !== lastRoundIndexRef.current) return
+    applyRowChange(setAnswers)(payload)
+  }
+
   async function loadPokes() {
     const { data } = await supabase.from("pokes").select("*").eq("room_code", code).order("created_at", { ascending: false }).limit(10)
     if (data) setPokes(data)
@@ -111,9 +158,12 @@ export default function PlayPage({ params }) {
 
     function connect() {
       ch = supabase.channel(`samepage-play-${code}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "sp_games", filter: `code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "sp_players", filter: `game_code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "sp_answers", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "sp_games", filter: `code=eq.${code}` }, payload => {
+          if (payload.eventType === "DELETE") { loadState(); return }
+          applyGameRow(payload.new)
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "sp_players", filter: `game_code=eq.${code}` }, applyRowChange(setPlayers))
+        .on("postgres_changes", { event: "*", schema: "public", table: "sp_answers", filter: `game_code=eq.${code}` }, applyAnswerChange)
         .on("postgres_changes", { event: "*", schema: "public", table: "pokes", filter: `room_code=eq.${code}` }, loadPokes)
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {

@@ -98,6 +98,37 @@ export default function PlayPage({ params }) {
   }
   function nudge() { channelRef.current?.send({ type: "broadcast", event: "sync" }) }
 
+  // wb_games/wb_players changes: apply the row directly from the realtime
+  // payload instead of a full loadState() refetch. Each change
+  // independently reaches every subscribed client already, so there's no
+  // need to also nudge — nudge() exists for cases where a client's own
+  // realtime might be lagging, which doesn't apply to the client that just
+  // received this exact event.
+  const gamesSyncKeyRef = useRef(null)
+  function applyGameRow(newRow) {
+    if (!newRow) return
+    if (newRow.replay_code) { router.replace(`/${newRow.replay_code}`); return }
+    if (newRow.phase === "lobby") { router.replace(`/${code}`); return }
+    setGame(newRow); setLoading(false)
+    const key = `${newRow.phase}:${newRow.round_number}:${newRow.paused}`
+    if (gamesSyncKeyRef.current !== null && gamesSyncKeyRef.current !== key) nudge()
+    gamesSyncKeyRef.current = key
+  }
+  function applyRowChange(setList) {
+    return (payload) => {
+      const { eventType, new: newRow, old: oldRow } = payload
+      if (eventType === "DELETE") {
+        setList(prev => prev.filter(r => r.id !== oldRow?.id))
+        return
+      }
+      if (!newRow) return
+      setList(prev => {
+        const idx = prev.findIndex(r => r.id === newRow.id)
+        return idx === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r)
+      })
+    }
+  }
+
   useEffect(() => {
     const stored = localStorage.getItem(`wordbirds:${code}:playerId`)
     if (stored) setMyPlayerId(stored); else router.replace(`/${code}`)
@@ -112,8 +143,11 @@ export default function PlayPage({ params }) {
 
     function connect() {
       channel = supabase.channel(`wb-play-${code}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "wb_games", filter: `code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "wb_players", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "wb_games", filter: `code=eq.${code}` }, payload => {
+          if (payload.eventType === "DELETE") { loadState(); return }
+          applyGameRow(payload.new)
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "wb_players", filter: `game_code=eq.${code}` }, applyRowChange(setPlayers))
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {
           if (cancelled) return

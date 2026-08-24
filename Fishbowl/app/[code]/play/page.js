@@ -239,6 +239,7 @@ export default function Play({ params }) {
     const syncKey = `${gameData.phase}:${gameData.round ?? ""}:${gameData.current_player_id ?? ""}`
     if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) syncChRef.current?.send({ type: "broadcast", event: "sync" })
     syncKeyRef.current = syncKey
+
     setManualT1(String(gameData.team1_score ?? 0))
     setManualT2(String(gameData.team2_score ?? 0))
     setRoundsTotal(String(gameData.rounds_total ?? 3))
@@ -260,6 +261,41 @@ export default function Play({ params }) {
     prevRunningRef.current = !!gameData.turn_running
   }
 
+  // games/players changes: apply the row directly from the realtime
+  // payload instead of a full loadState() refetch. Each change
+  // independently reaches every subscribed client already, so there's no
+  // need to also nudge — nudge() exists for cases where a client's own
+  // realtime might be lagging, which doesn't apply to the client that just
+  // received this exact event. `clues` is intentionally NOT patched this
+  // way — its handling in loadState() derives several different shapes
+  // (active clue text, next-in-bowl preview, remaining count, full history
+  // for the finished screen) from multiple conditional queries, not a
+  // simple 1:1 row list, so it stays on the fuller refetch rather than risk
+  // a subtly wrong reimplementation.
+  const gamesSyncKeyRef = useRef(null)
+  function applyGameRow(newRow) {
+    if (!newRow) return
+    if (newRow.replay_code) { redirectToReplay(newRow.replay_code); return }
+    setGame(newRow)
+    const key = `${newRow.phase}:${newRow.round ?? ""}:${newRow.current_player_id ?? ""}`
+    if (gamesSyncKeyRef.current !== null && gamesSyncKeyRef.current !== key) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    gamesSyncKeyRef.current = key
+  }
+  function applyRowChange(setList) {
+    return (payload) => {
+      const { eventType, new: newRow, old: oldRow } = payload
+      if (eventType === "DELETE") {
+        setList(prev => prev.filter(r => r.id !== oldRow?.id))
+        return
+      }
+      if (!newRow) return
+      setList(prev => {
+        const idx = prev.findIndex(r => r.id === newRow.id)
+        return idx === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r)
+      })
+    }
+  }
+
   useEffect(() => {
     if (isIdle) return
     loadState()
@@ -277,8 +313,11 @@ export default function Play({ params }) {
 
     function connect() {
       channel = supabase.channel(`fishbowl-play-${code}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "games", filter: `code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "games", filter: `code=eq.${code}` }, payload => {
+          if (payload.eventType === "DELETE") { loadState(); return }
+          applyGameRow(payload.new)
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `game_code=eq.${code}` }, applyRowChange(setPlayers))
         .on("postgres_changes", { event: "*", schema: "public", table: "clues", filter: `game_code=eq.${code}` }, loadState)
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {

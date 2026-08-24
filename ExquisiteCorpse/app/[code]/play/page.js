@@ -634,6 +634,38 @@ export default function Play({ params }) {
     syncKeyRef.current = syncKey
   }
 
+  // ec_games/ec_drawings changes: apply the row directly from the realtime
+  // payload instead of a full loadState() refetch. Each change
+  // independently reaches every subscribed client already, so there's no
+  // need to also nudge — nudge() exists for cases where a client's own
+  // realtime might be lagging, which doesn't apply to the client that just
+  // received this exact event.
+  const gamesSyncKeyRef = useRef(null)
+  function applyGameRow(newRow) {
+    if (!newRow) return
+    if (newRow.replay_code) { router.replace(`/${newRow.replay_code}`); return }
+    if (newRow.phase === "lobby") { router.replace(`/${code}`); return }
+    prevPhaseRef.current = newRow.phase
+    setGame(newRow)
+    const key = `${newRow.phase}:${newRow.current_round ?? ""}`
+    if (gamesSyncKeyRef.current !== null && gamesSyncKeyRef.current !== key) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    gamesSyncKeyRef.current = key
+  }
+  function applyRowChange(setList) {
+    return (payload) => {
+      const { eventType, new: newRow, old: oldRow } = payload
+      if (eventType === "DELETE") {
+        setList(prev => prev.filter(r => r.id !== oldRow?.id))
+        return
+      }
+      if (!newRow) return
+      setList(prev => {
+        const idx = prev.findIndex(r => r.id === newRow.id)
+        return idx === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r)
+      })
+    }
+  }
+
   useEffect(() => {
     const existing = localStorage.getItem(`exquisitecorpse:${code}:playerId`)
     if (existing) setMyPlayerId(existing)
@@ -655,8 +687,11 @@ export default function Play({ params }) {
 
     function connect() {
       channel = supabase.channel(`ec-play-${code}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "ec_games", filter: `code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "ec_drawings", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "ec_games", filter: `code=eq.${code}` }, payload => {
+          if (payload.eventType === "DELETE") { loadState(); return }
+          applyGameRow(payload.new)
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "ec_drawings", filter: `game_code=eq.${code}` }, applyRowChange(setDrawings))
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {
           if (cancelled) return

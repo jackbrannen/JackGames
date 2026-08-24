@@ -80,6 +80,7 @@ Bad pair examples (do NOT generate these):
 	- Turtle / Tortoise - different only on a technicality, will confuse players
 	- River / Lake - way too similar
 	- Kayak / Canoe - too similar, almost anything that would apply to one would apply to the other
+	- Hammer / Mallet - way too similar, both blunt striking tools, nearly interchangeable
 - Bad because they're too different
 	- Cat / Dog — too different, obvious after one clue
 	- Sword / Shield — same era/context but no physical overlap in clues

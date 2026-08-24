@@ -114,6 +114,35 @@ export default function Play({ params }) {
     if (playerData) setPlayers(playerData.filter(p => !p.is_bot))
   }
 
+  // mrwhite_games/mrwhite_players changes: apply the row directly from the
+  // realtime payload instead of a full loadState() refetch. Each change
+  // independently reaches every subscribed client already, so there's no
+  // need to also nudge — nudge() exists for cases where a client's own
+  // realtime might be lagging, which doesn't apply to the client that just
+  // received this exact event.
+  const gamesSyncKeyRef = useRef(null)
+  function applyGameRow(newRow) {
+    if (!newRow) return
+    if (newRow.replay_code) { router.replace(`/${newRow.replay_code}`); return }
+    if (newRow.phase === "lobby") { router.replace(`/${code}`); return }
+    setGame(newRow)
+    const key = `${newRow.phase}:${newRow.round_number ?? ""}:${newRow.eliminated_player_id ?? ""}`
+    if (gamesSyncKeyRef.current !== null && gamesSyncKeyRef.current !== key) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    gamesSyncKeyRef.current = key
+  }
+  function applyPlayerChange(payload) {
+    const { eventType, new: newRow, old: oldRow } = payload
+    if (eventType === "DELETE") {
+      setPlayers(prev => prev.filter(r => r.id !== oldRow?.id))
+      return
+    }
+    if (!newRow || newRow.is_bot) return
+    setPlayers(prev => {
+      const idx = prev.findIndex(r => r.id === newRow.id)
+      return idx === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r)
+    })
+  }
+
   useEffect(() => {
     if (isIdle) return
     supabase.from("game_instructions").select("body").eq("game_key", "mrwhite").single()
@@ -129,8 +158,11 @@ export default function Play({ params }) {
 
     function connect() {
       channel = supabase.channel(`mw-play-${code}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "mrwhite_games", filter: `code=eq.${code}` }, loadState)
-        .on("postgres_changes", { event: "*", schema: "public", table: "mrwhite_players", filter: `game_code=eq.${code}` }, loadState)
+        .on("postgres_changes", { event: "*", schema: "public", table: "mrwhite_games", filter: `code=eq.${code}` }, payload => {
+          if (payload.eventType === "DELETE") { loadState(); return }
+          applyGameRow(payload.new)
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "mrwhite_players", filter: `game_code=eq.${code}` }, applyPlayerChange)
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {
           if (cancelled) return

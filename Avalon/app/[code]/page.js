@@ -12,7 +12,7 @@ import { useIdleGate } from "../../lib/useIdleGate"
 const BG         = "#0F1923"
 const DARK       = "#0A1520"
 const MID        = "#121F2E"
-const GOLD       = "#C9A84C"
+const GOLD       = "#C8A84B"
 const TEXT       = "#E8DCC8"
 const WARM_LIGHT = "#1E3248"
 

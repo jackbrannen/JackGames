@@ -70,7 +70,7 @@ export default function Menu({
     dark    = "#1A1A2E",
     mid     = "#252540",
     wl      = "#3A3A60",
-    yellow  = "#FBDF54",
+    yellow  = "#C8A84B",
   } = colors
 
   const [panel, setPanel]             = useState(null)

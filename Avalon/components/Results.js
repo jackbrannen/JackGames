@@ -51,7 +51,7 @@ export default function Results({
   colors = {},
   gap = 12,
 }) {
-  const { card = "rgba(255,255,255,0.12)", yellow = "#FBDF54", dim = "rgba(255,255,255,0.15)" } = colors
+  const { card = "rgba(255,255,255,0.12)", yellow = "#C8A84B", dim = "rgba(255,255,255,0.15)" } = colors
 
   return (
     <div>

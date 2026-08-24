@@ -5,7 +5,7 @@ import { useState } from "react"
 export const GAMES = [
   { name: "Fishbowl",         sub: "fishbowl",         players: "4+ players",   description: "Teams guess clues from a bowl.",                                                     bg: "#194DDB", color: "white"    },
   { name: "The Game of What", sub: "gameofwhat",        players: "4+ players",   description: "Like Quiplash but with DIY Questions.",                                              bg: "#A02866", color: "white"    },
-  { name: "Avalon",           sub: "avalon",            players: "5–10 players", description: "Hidden roles — find the traitors before they sabotage the quests.",                  bg: "#C9A84C", color: "#2A1800"  },
+  { name: "Avalon",           sub: "avalon",            players: "5–10 players", description: "Hidden roles — find the traitors before they sabotage the quests.",                  bg: "#C8A84B", color: "#2A1800"  },
   { name: "First to Worst",   sub: "firsttoworst",      players: "4+ players",   description: "Submit 5 things, rank them secretly, then the group guesses your order.",            bg: "#004F45", color: "white"    },
   { name: "Codenames",        sub: "codenames",         players: "4+ players",   description: "Two teams race to find their secret agents using one-word clues.",                   bg: "#C0B298", color: "#2C1A0A"  },
   { name: "Telestrations",    sub: "telestrations",     players: "4+ players",   description: "Write a sentence, draw it, guess the drawing — watch it fall apart.",                bg: "#2B0F6B", color: "white"    },
@@ -68,13 +68,13 @@ export default function GameModal({
             <div style={{ fontSize: 24, fontWeight: 900, color: "white", marginBottom: 12 }}>
               {nextGamePickerName} wants to play
             </div>
-            <div style={{ fontSize: 28, fontWeight: 900, color: "#FBDF54", marginBottom: 24 }}>
+            <div style={{ fontSize: 28, fontWeight: 900, color: "#C8A84B", marginBottom: 24 }}>
               {inviteGameName}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <button
                 onClick={() => window.location.href = `https://${nextGame}.jackbrannen.com/${nextGameCode}`}
-                style={{ background: "#FBDF54", color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}
+                style={{ background: "#C8A84B", color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 24px", width: "100%" }}
               >
                 Join
               </button>

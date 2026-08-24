@@ -20,7 +20,7 @@
 
   Props:
     bg           hex      — button background (use game's WARM_LIGHT)
-    iconColor    hex      — refresh icon + cooldown ring color (default #FBDF54)
+    iconColor    hex      — refresh icon + cooldown ring color (default #C8A84B)
     fetchIdeas   async (count: number, exclude: string[]) => string[]
                           — called to get an idea; use game's supabase RPC:
                             (n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])
@@ -84,7 +84,7 @@ function CooldownRing({ durationMs, color, size = 20 }) {
 
 export default function RandomIdeas({
   bg = "rgba(255,255,255,0.15)",
-  iconColor = "#FBDF54",
+  iconColor = "#C8A84B",
   fetchIdeas,
   excludeIdeas = [],
   cooldownMs = 900,

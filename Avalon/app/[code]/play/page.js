@@ -19,7 +19,7 @@ import { useIdleGate } from "../../../lib/useIdleGate"
 
 const BG         = "#0F1923"
 const CARD       = "#1C2B3A"
-const GOLD       = "#C9A84C"
+const GOLD       = "#C8A84B"
 const TEXT       = "#E8DCC8"
 const GOOD       = "#4A8FD4"
 const EVIL       = "#AA2222"
@@ -28,6 +28,7 @@ const CARD_BACK  = "#243040"
 const WARM_LIGHT = "#19303B"
 
 // ~1/3 of the padded viewport (24px side padding × 2 + 20px for gaps = 68px)
+const QUEST_IMG_COUNT = { succeed: 5, fail: 4 }
 const CARD_W = "calc((100vw - 68px) / 3)"
 const CARD_H = "calc((100vw - 68px) / 2)"
 
@@ -56,7 +57,7 @@ function roleImageSrc(p) {
   return null
 }
 
-const POKE_COLORS = { dark: "#091218", mid: "#1C2B3A", wl: "#19303B", yellow: "#C9A84C", notifBg: "#070D13" }
+const POKE_COLORS = { dark: "#091218", mid: "#1C2B3A", wl: "#19303B", yellow: "#C8A84B", notifBg: "#070D13" }
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
 const STYLES = `
@@ -76,12 +77,24 @@ const STYLES = `
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }
   }
+  @keyframes questPop {
+    0%   { transform: scale(1); }
+    45%  { transform: scale(1.25); }
+    100% { transform: scale(1); }
+  }
+  @keyframes scoreReveal {
+    from { opacity: 0; transform: translateY(6px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0)    scale(1); }
+  }
   .av-flip-in  { animation: avFlipIn   0.35s ease forwards; }
   .av-flip-out { animation: avCardFly 0.5s ease-in forwards; }
+  .av-quest-pop { animation: questPop 0.45s ease; }
 `
 
 // Playing card with 180° flip reveal. animate=false → stays face-down; animate=true → flips in.
-function PlayingCard({ frontBg, frontContent, delay = 0, animate }) {
+// frontBorder: renders an edge-to-edge photo with a colored stroke instead of
+// a solid color fill behind padded content — used by the quest result cards.
+function PlayingCard({ frontBg, frontBorder, frontContent, delay = 0, animate }) {
   return (
     <div style={{
       width: CARD_W, height: CARD_H,
@@ -95,10 +108,12 @@ function PlayingCard({ frontBg, frontContent, delay = 0, animate }) {
       <div style={{
         position: "absolute", inset: 0,
         backfaceVisibility: "hidden",
-        background: frontBg, borderRadius: 10,
+        background: frontBorder ? "transparent" : frontBg,
+        border: frontBorder ? `3px solid ${frontBorder}` : "none",
+        borderRadius: 10,
         display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
-        padding: "12px 8px", textAlign: "center", overflow: "hidden",
+        padding: frontBorder ? 0 : "12px 8px", textAlign: "center", overflow: "hidden",
       }}>
         {frontContent}
       </div>
@@ -168,6 +183,7 @@ export default function Play({ params }) {
   const [acting, setActing]             = useState(false)
   const [cardPhase, setCardPhase]       = useState("unset")
   const [animReady, setAnimReady]       = useState(false)
+  const [cardsDone, setCardsDone]       = useState(false)
   const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
   const [pokeJustSent, setPokeJustSent] = useState(null)
   const [instructions, setInstructions] = useState("")
@@ -208,6 +224,36 @@ export default function Play({ params }) {
     }
   }
 
+  // avalon_games/avalon_players changes: apply the row directly from the
+  // realtime payload instead of a full refresh() refetch. Each change
+  // independently reaches every subscribed client already, so there's no
+  // need to also nudge — nudge() exists for cases where a client's own
+  // realtime might be lagging, which doesn't apply to the client that just
+  // received this exact event.
+  const gamesSyncKeyRef = useRef(null)
+  function applyGameRow(newRow) {
+    if (!newRow) return
+    if (newRow.replay_code) { router.replace(`/${newRow.replay_code}`); return }
+    setGame(newRow)
+    const key = `${newRow.phase}:${newRow.quest_number ?? ""}:${newRow.leader_id ?? ""}:${newRow.reject_count ?? ""}:${(newRow.proposed_ids ?? []).join(",")}:${(newRow.quest_results ?? []).join(",")}`
+    if (gamesSyncKeyRef.current !== null && gamesSyncKeyRef.current !== key) syncChRef.current?.send({ type: "broadcast", event: "sync" })
+    gamesSyncKeyRef.current = key
+  }
+  function applyRowChange(setList) {
+    return (payload) => {
+      const { eventType, new: newRow, old: oldRow } = payload
+      if (eventType === "DELETE") {
+        setList(prev => prev.filter(r => r.id !== oldRow?.id))
+        return
+      }
+      if (!newRow) return
+      setList(prev => {
+        const idx = prev.findIndex(r => r.id === newRow.id)
+        return idx === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r)
+      })
+    }
+  }
+
   useEffect(() => {
     if (isIdle) return
     supabase.from("game_instructions").select("body").eq("game_key", "avalon").single()
@@ -224,8 +270,11 @@ export default function Play({ params }) {
 
     function connect() {
       channel = supabase.channel(`avalon-play-${code}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "avalon_games", filter: `code=eq.${code}` }, refresh)
-        .on("postgres_changes", { event: "*", schema: "public", table: "avalon_players", filter: `game_code=eq.${code}` }, refresh)
+        .on("postgres_changes", { event: "*", schema: "public", table: "avalon_games", filter: `code=eq.${code}` }, payload => {
+          if (payload.eventType === "DELETE") { refresh(); return }
+          applyGameRow(payload.new)
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "avalon_players", filter: `game_code=eq.${code}` }, applyRowChange(setPlayers))
         .on("broadcast", { event: "sync" }, refresh)
         .subscribe(status => {
           if (cancelled) return
@@ -319,10 +368,20 @@ export default function Play({ params }) {
     const goodWins = (game?.quest_results ?? []).filter(r => r === "success").length
     const evilWins = (game?.quest_results ?? []).filter(r => r === "fail").length
     const nextLabel = goodWins >= 3 || evilWins >= 3 ? "Continue to Results" : "Next Quest"
+    const readyIds  = game?.ready_player_ids ?? []
+    const iAmReady  = readyIds.includes(me.id)
+    // Raw button, not FooterButton — this is a "stays visible, label keeps
+    // changing" ready-up control (matches SecretPhrase), not a one-shot
+    // phase-changing action. FooterButton's internal loading state would
+    // permanently render "Loading…" over our own "X/Y ready" label instead.
     footerButtons = (
-      <FooterButton variant="primary" onClick={() => rpc("advance_avalon_quest", { p_code: code })}>
-        {nextLabel}
-      </FooterButton>
+      <button
+        onClick={() => rpc("advance_avalon_quest", { p_code: code, p_player_id: me.id })}
+        disabled={iAmReady}
+        style={{ flex: 1, height: "100%", background: GOLD, color: "#000", fontSize: 18, fontWeight: 900, opacity: iAmReady ? 0.6 : 1 }}
+      >
+        {iAmReady ? `${readyIds.length}/${players.length} ready — waiting…` : nextLabel}
+      </button>
     )
   } else if (me && phase === "servants_won" && me.role === "assassin") {
     footerButtons = (
@@ -408,17 +467,49 @@ export default function Play({ params }) {
       const j = Math.floor(rand() * (i + 1));
       [arr[i], arr[j]] = [arr[j], arr[i]]
     }
-    return arr
+    // Same seed → every client picks the identical image per card, drawn
+    // after the shuffle so it doesn't disturb the shuffle's own randomness.
+    // Draw without replacement per type (a shuffled pool, popped off) so
+    // two succeed cards in the same reveal never show the same photo;
+    // reshuffle a fresh pool if a single reveal ever needs more than
+    // QUEST_IMG_COUNT[type] of one type.
+    const pools = {}
+    function nextIdx(type) {
+      if (!pools[type] || pools[type].length === 0) {
+        const pool = Array.from({ length: QUEST_IMG_COUNT[type] }, (_, i) => i + 1)
+        for (let i = pool.length - 1; i > 0; i--) {
+          const j = Math.floor(rand() * (i + 1));
+          [pool[i], pool[j]] = [pool[j], pool[i]]
+        }
+        pools[type] = pool
+      }
+      return pools[type].pop()
+    }
+    return arr.map(type => ({ type, img: `/quests/${type}-${nextIdx(type)}.webp` }))
   }, [phase, resultSuccCount, resultFailCount, code, game?.quest_number])
+
+  // Quest bubble fills in only once the LAST card's flip animation finishes,
+  // not the instant the first one starts (which is when `animReady` itself
+  // flips true). Depends on `animReady` alone — deliberately not on
+  // `resultSuccCount`/`resultFailCount`/`quest_number` — so this can only
+  // ever fire because `animReady` itself changed, never as a side effect of
+  // some other value changing while `animReady` is stale. `resultSuccCount`/
+  // `resultFailCount` are read fresh from the closure when this runs; by the
+  // time `animReady` flips true (already a ~2s wait on its own), that data
+  // has long since settled, so there's no staleness risk in omitting them.
+  useEffect(() => {
+    if (!animReady) { setCardsDone(false); return }
+    const totalCards = resultSuccCount + resultFailCount
+    const lastCardDoneMs = (Math.max(0, totalCards - 1) * 0.15 + 0.52) * 1000
+    const t = setTimeout(() => setCardsDone(true), lastCardDoneMs)
+    return () => clearTimeout(t)
+  }, [animReady])
 
   // Role info
   const evilPlayers = players.filter(p => p.team === "evil")
   const evilOthers  = evilPlayers.filter(p => p.id !== myId)
   const teamColor   = me ? (me.team === "good" ? GOOD : EVIL) : GOLD
   const teamLabel   = me?.team === "good" ? "Good" : "Evil — Minions of Mordred"
-
-// Score menu bar: show during active quest phases
-  const showMenuBar = ["propose", "vote", "mission", "result", "servants_won", "assassination"].includes(phase)
 
   async function rpc(fn, args = {}) {
     const { error } = await supabase.rpc(fn, args)
@@ -441,7 +532,10 @@ export default function Play({ params }) {
 
   // ─── shared components ────────────────────────────────────────
 
-  function QuestTrack() {
+  // hideResultForQuest: while the result-phase card flip/title animation is
+  // still playing, treat this quest number as unresolved so its bubble stays
+  // in the "current" state instead of jumping straight to filled.
+  function QuestTrack({ hideResultForQuest } = {}) {
     const results = game.quest_results ?? []
     return (
       <div>
@@ -451,15 +545,23 @@ export default function Play({ params }) {
         <div style={{ display: "flex", gap: 8, justifyContent: "center", padding: "0 24px 18px" }}>
           {sizes.map((sz, i) => {
             const qn     = i + 1
-            const result = results[i]
+            const result = qn === hideResultForQuest ? undefined : results[i]
             const curr   = qn === game.quest_number && !result
             const dbl    = qn === 4 && (game.player_count ?? 5) >= 7
             const bg     = result === "success" ? GOOD : result === "fail" ? EVIL : curr ? "rgba(201,168,76,0.12)" : "rgba(255,255,255,0.06)"
             const border = curr ? `2px solid ${GOLD}` : result ? "2px solid transparent" : "2px solid rgba(255,255,255,0.12)"
             const col    = result ? "#fff" : curr ? GOLD : "rgba(232,220,200,0.4)"
+            // Plays once, the instant this bubble's result first becomes
+            // visible (qn === hideResultForQuest flips from hiding to not) —
+            // className only changes on that one transition, so the browser
+            // only (re)starts the keyframe then, no extra state needed.
+            const justRevealed = qn === game.quest_number && hideResultForQuest == null && !!result
             return (
               <div key={i} style={{ flex: 1, maxWidth: 60, display: "flex", flexDirection: "column", alignItems: "center" }}>
-                <div style={{ width: "100%", aspectRatio: "1", borderRadius: "50%", background: bg, border, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                <div
+                  className={justRevealed ? "av-quest-pop" : ""}
+                  style={{ width: "100%", aspectRatio: "1", borderRadius: "50%", background: bg, border, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", transition: "background 0.35s ease, border-color 0.35s ease" }}
+                >
                   <span style={{ fontSize: 16, fontWeight: 900, color: col, lineHeight: 1 }}>{sz}</span>
                   {dbl && <span style={{ fontSize: 13, fontWeight: 800, color: col, marginTop: 1 }}>†</span>}
                 </div>
@@ -472,7 +574,7 @@ export default function Play({ params }) {
     )
   }
 
-  function Header({ sub, showTrack = true }) {
+  function Header({ sub, showTrack = true, hideResultForQuest }) {
     return (
       <div style={{ background: "#0A1520" }}>
         {sub && (
@@ -480,7 +582,7 @@ export default function Play({ params }) {
             <div style={{ fontSize: 14, fontWeight: 800, color: GOLD }}>{sub}</div>
           </div>
         )}
-        {showTrack ? <QuestTrack /> : sub ? <div style={{ paddingBottom: 16 }} /> : null}
+        {showTrack ? <QuestTrack hideResultForQuest={hideResultForQuest} /> : sub ? <div style={{ paddingBottom: 16 }} /> : null}
       </div>
     )
   }
@@ -775,7 +877,7 @@ export default function Play({ params }) {
 
     phaseContent = (
       <div style={{ paddingBottom: BOTTOM_PAD }}>
-        <Header sub={`Quest ${game.quest_number}`} />
+        <Header />
         <div style={{ padding: "20px 24px" }}>
           <div style={{ fontSize: 28, fontWeight: 900, color: TEXT, marginBottom: 12 }}>
             Proposed Team
@@ -830,7 +932,7 @@ export default function Play({ params }) {
 
     phaseContent = (
       <div style={{ paddingBottom: BOTTOM_PAD }}>
-        <Header sub={`Quest ${game.quest_number}`} />
+        <Header />
         <div style={{ padding: "20px 24px" }}>
           <div style={{ background: "rgba(74,143,212,0.1)", border: `1px solid rgba(74,143,212,0.3)`, padding: "14px 18px", marginBottom: 20, textAlign: "center" }}>
             <div style={{ fontSize: 19, fontWeight: 900, color: GOOD }}>Team approved!</div>
@@ -916,7 +1018,7 @@ export default function Play({ params }) {
 
     phaseContent = (
       <div style={{ paddingBottom: BOTTOM_PAD }}>
-        <Header />
+        <Header hideResultForQuest={!cardsDone ? game.quest_number : null} />
         <div style={{ padding: "20px 24px" }}>
 
           <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginBottom: 24 }}>
@@ -925,11 +1027,9 @@ export default function Play({ params }) {
                 key={i}
                 animate={animReady}
                 delay={i * 0.15}
-                frontBg={v === "succeed" ? GOOD : EVIL}
+                frontBorder={v.type === "succeed" ? GOOD : EVIL}
                 frontContent={
-                  <span style={{ fontSize: 16, fontWeight: 900, color: "#fff" }}>
-                    {v === "succeed" ? "Succeed" : "Fail"}
-                  </span>
+                  <img src={v.img} alt={v.type === "succeed" ? "Succeed" : "Fail"} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                 }
               />
             ))}
@@ -944,8 +1044,15 @@ export default function Play({ params }) {
             {lastResult === "success" ? "Quest Succeeded" : "Quest Failed"}
           </div>
 
-          {/* Score */}
-          <div style={{ textAlign: "center", marginTop: 28 }}>
+          {/* Score — same pure-CSS animation-delay pattern as the title above,
+              keyed off the same `animReady` boolean, just delayed further so
+              it visibly follows the title. No separate timer/state: nothing
+              here to race against anything else. */}
+          <div style={{
+            textAlign: "center", marginTop: 28,
+            opacity: animReady ? 1 : 0,
+            animation: animReady ? `scoreReveal 0.35s ease ${titleDelay + 0.3}s both` : "none",
+          }}>
             <div style={{ fontSize: 28, fontWeight: 900, display: "flex", flexDirection: "column", gap: 4 }}>
               <span style={{ color: GOOD }}>Loyal Servants: {goodWins}</span>
               <span style={{ color: EVIL }}>Evil Minions: {evilWins}</span>
@@ -1102,21 +1209,6 @@ export default function Play({ params }) {
     <>
     <div style={{ minHeight: "100dvh", background: BG, color: TEXT }}>
       <style>{STYLES}</style>
-
-      {/* Score menu bar */}
-      {showMenuBar && (
-        <div style={{ background: "#0A1520", padding: "12px 20px", display: "flex", alignItems: "center", gap: 16 }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: GOOD, opacity: 0.7, marginBottom: 2 }}>Loyal Servants</div>
-            <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1, color: GOOD }}>{goodWins}</div>
-          </div>
-          <div style={{ fontSize: 18, color: "rgba(232,220,200,0.2)", fontWeight: 300 }}>–</div>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: EVIL, opacity: 0.7, marginBottom: 2 }}>Evil Minions</div>
-            <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1, color: EVIL }}>{evilWins}</div>
-          </div>
-        </div>
-      )}
 
       {phaseContent ?? (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100dvh" }}>

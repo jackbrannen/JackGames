@@ -41,7 +41,7 @@ export default function EndGame({
   bottomPad = "40px",
   colors = {},
 }) {
-  const { yellow = "#FBDF54", wl = "rgba(255,255,255,0.15)" } = colors
+  const { yellow = "#C8A84B", wl = "rgba(255,255,255,0.15)" } = colors
 
   const topScore = players[0]?.score ?? 0
   const isTie = players.filter(p => p.score === topScore).length > 1

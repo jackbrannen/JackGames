@@ -36,7 +36,7 @@
       nudgeJoin={nudgeJoin}
       error={error}
       onDummyGame={onCreateClick}
-      colors={{ bg: "#6B1A44", wl: "#821F42", yellow: "#FBDF54" }}
+      colors={{ bg: "#6B1A44", wl: "#821F42", yellow: "#C8A84B" }}
     />
 */
 
@@ -54,7 +54,7 @@ export default function HomeScreen({
   isDummy = false,
   colors = {},
 }) {
-  const { bg = "#111", wl = "#333", yellow = "#FBDF54" } = colors
+  const { bg = "#111", wl = "#333", yellow = "#C8A84B" } = colors
 
   return (
     <div style={{

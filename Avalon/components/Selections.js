@@ -15,7 +15,7 @@
     disabled      bool                      — disables all interaction
     colors        {
                     bg,           // unselected row background
-                    selectedBg,   // selected row background (default #FBDF54)
+                    selectedBg,   // selected row background (default #C8A84B)
                     selectedText, // selected row text color (default #000)
                     flash?,       // flash color on own-item tap (default rgba red 0.25)
                     mineBg?,      // own-item background (default rgba white 0.05)
@@ -85,13 +85,13 @@ export default function Selections({
 
   const {
     bg = "rgba(255,255,255,0.12)",
-    selectedBg = "#FBDF54",
+    selectedBg = "#C8A84B",
     selectedText = "#000",
     flash = "rgba(255,80,80,0.25)",
     mineBg = "rgba(255,255,255,0.05)",
     mineText = "rgba(255,255,255,0.4)",
     deselectBg,  // separate ✕ button background
-    deselectText = "#FBDF54",  // separate ✕ button text color
+    deselectText = "#C8A84B",  // separate ✕ button text color
   } = colors
 
   // Put own items last

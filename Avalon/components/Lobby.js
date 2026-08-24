@@ -42,7 +42,7 @@
       startContent={canStart ? <StartCTA onStart={...} /> : null}
       joinContent={<JoinForm ... />}
       extraContent={null}
-      colors={{ dark: "#4A123B", mid: "#5C1640", wl: "#821F42", yellow: "#FBDF54" }}
+      colors={{ dark: "#4A123B", mid: "#5C1640", wl: "#821F42", yellow: "#C8A84B" }}
       minPlayers={4}
     />
 */
@@ -124,7 +124,7 @@ export default function Lobby({
   loading = false,
   onRemovePlayer,
 }) {
-  const { dark = "#333", mid = "#444", wl = "#555", yellow = "#FBDF54", bg } = colors
+  const { dark = "#333", mid = "#444", wl = "#555", yellow = "#C8A84B", bg } = colors
   const [showHowToPlay, setShowHowToPlay] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
 

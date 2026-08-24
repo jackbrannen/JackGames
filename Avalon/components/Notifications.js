@@ -38,7 +38,7 @@ function playPing() {
 }
 
 export default function Notifications({ supabase, colors = {}, roomCode, currentPlayer }) {
-  const { notifBg = "#0F0F20", yellow = "#FBDF54" } = colors
+  const { notifBg = "#0F0F20", yellow = "#C8A84B" } = colors
 
   const [notifications, setNotifications] = useState([])
   const knownIdsRef      = useRef(new Set())

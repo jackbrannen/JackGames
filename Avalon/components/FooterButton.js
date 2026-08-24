@@ -45,7 +45,7 @@
 import { useState } from "react"
 
 const VARIANTS = {
-  primary:   { bg: "#FBDF54", color: "#000",   fontWeight: 900 },
+  primary:   { bg: "#C8A84B", color: "#000",   fontWeight: 900 },
   secondary: { bg: "rgba(255,255,255,0.15)", color: "#fff", fontWeight: 700 },
   danger:    { bg: "#F04F52", color: "#fff",   fontWeight: 700 },
 }

@@ -6,7 +6,7 @@ import { useSubmitNudge } from "../lib/useSubmitNudge"
 import HomeScreen from "../components/HomeScreen"
 
 const BG = "#0F1923"
-const GOLD = "#C9A84C"
+const GOLD = "#C8A84B"
 const TEXT = "#E8DCC8"
 const WARM_LIGHT = "#19303B"
 

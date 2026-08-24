@@ -13,6 +13,7 @@ create table if not exists public.avalon_games (
   proposed_ids  uuid[]      not null default '{}',
   quest_results text[]      not null default '{}', -- 'success'|'fail' per quest
   winning_team  text,                               -- 'good'|'evil'
+  ready_player_ids uuid[]   not null default '{}',  -- 50%+ ready gate on the result screen
   created_at    timestamptz not null default now()
 );
 
@@ -270,12 +271,16 @@ end;
 $$;
 
 -- ============================================================
--- advance_avalon_quest: result -> next propose / assassination / finished
+-- advance_avalon_quest: result -> next propose / servants_won / finished
+-- Gated on 50%+ of players marking ready (see CODE_PATTERNS.md); requires
+-- avalon_games.ready_player_ids uuid[] default '{}'.
 -- ============================================================
-create or replace function public.advance_avalon_quest(p_code text)
+create or replace function public.advance_avalon_quest(p_code text, p_player_id uuid)
 returns void language plpgsql security definer as $$
 declare
   g           record;
+  v_ready     uuid[];
+  v_total     int;
   good_wins   int;
   evil_wins   int;
   cur_seat    int;
@@ -285,16 +290,27 @@ begin
   select * into g from public.avalon_games where code = p_code and phase = 'result' for update;
   if not found then return; end if;
 
+  v_ready := coalesce(g.ready_player_ids, '{}');
+  if not (p_player_id = any(v_ready)) then
+    v_ready := array_append(v_ready, p_player_id);
+  end if;
+  update public.avalon_games set ready_player_ids = v_ready where code = p_code;
+
+  select count(*) into v_total from public.avalon_players where game_code = p_code;
+  if v_total = 0 or array_length(v_ready, 1) * 2 < v_total then
+    return;
+  end if;
+
   good_wins := (select count(*) from unnest(g.quest_results) r where r = 'success');
   evil_wins := (select count(*) from unnest(g.quest_results) r where r = 'fail');
 
   if good_wins >= 3 then
-    update public.avalon_games set phase = 'assassination' where code = p_code;
+    update public.avalon_games set phase = 'servants_won', ready_player_ids = '{}' where code = p_code;
     return;
   end if;
 
   if evil_wins >= 3 then
-    update public.avalon_games set phase = 'finished', winning_team = 'evil' where code = p_code;
+    update public.avalon_games set phase = 'finished', winning_team = 'evil', ready_player_ids = '{}' where code = p_code;
     return;
   end if;
 
@@ -307,11 +323,12 @@ begin
   update public.avalon_players set submitted_card = null where game_code = p_code;
 
   update public.avalon_games set
-    phase         = 'propose',
-    quest_number  = quest_number + 1,
-    reject_count  = 0,
-    leader_id     = next_leader,
-    proposed_ids  = '{}'
+    phase             = 'propose',
+    quest_number      = quest_number + 1,
+    reject_count      = 0,
+    leader_id         = next_leader,
+    proposed_ids      = '{}',
+    ready_player_ids  = '{}'
   where code = p_code;
 end;
 $$;

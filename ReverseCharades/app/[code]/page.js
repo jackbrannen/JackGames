@@ -347,7 +347,7 @@ export default function Lobby({ params }) {
     document.addEventListener("visibilitychange", handleVisibility)
 
     const channel = supabase.channel(`rc-lobby-${code}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_players" }, refreshPlayers)
+      .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_players", filter: `game_code=eq.${code}` }, refreshPlayers)
       .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_games", filter: `code=eq.${code}` }, () => loadGame())
       .subscribe()
 

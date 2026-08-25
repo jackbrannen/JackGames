@@ -381,7 +381,7 @@ export default function Play({ params }) {
           if (payload.eventType === "DELETE") { loadState(); return }
           applyGameRow(payload.new)
         })
-        .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_players" }, applyPlayerChange)
+        .on("postgres_changes", { event: "*", schema: "public", table: "reversecharades_players", filter: `game_code=eq.${code}` }, applyPlayerChange)
         .on("broadcast", { event: "sync" }, loadState)
         .subscribe(status => {
           if (cancelled) return

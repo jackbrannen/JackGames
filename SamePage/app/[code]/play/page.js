@@ -284,13 +284,18 @@ export default function PlayPage({ params }) {
   function maxMatchForPrompt(i) {
     return answersByPrompt(i).filter(a => a.text !== SHRUG).length
   }
+  // No nudge() here: the +/- stepper can be tapped repeatedly (comparing
+  // answers across prompts), and a broadcast forces every other client
+  // through a full loadState() reload on every single tap. The write
+  // already propagates cheaply via the payload-patched postgres_changes
+  // handler on sp_games. loadState() here is just for this client's own
+  // immediate feedback, not for telling anyone else.
   async function incrementMatch(i) {
     const cur = matchCounts[i] ?? 0
     const max = maxMatchForPrompt(i)
     const next = cur === 0 ? 2 : cur + 1
     if (next > max) return
     await supabase.rpc("sp_set_match_count", { p_code: code, p_index: i, p_value: next })
-    nudge()
     await loadState()
   }
   async function decrementMatch(i) {
@@ -298,7 +303,6 @@ export default function PlayPage({ params }) {
     if (cur === 0) return
     const next = cur <= 2 ? 0 : cur - 1
     await supabase.rpc("sp_set_match_count", { p_code: code, p_index: i, p_value: next })
-    nudge()
     await loadState()
   }
   async function resolveRound() {

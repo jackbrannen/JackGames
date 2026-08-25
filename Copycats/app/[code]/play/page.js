@@ -157,6 +157,15 @@ export default function PlayPage({ params }) {
     let channel = null
     let reconnectTimer = null
     let reconnectAttempt = 0
+    // Only reset reconnectAttempt after the connection has stayed up for a
+    // while — resetting it on every bare SUBSCRIBED (as this used to) makes
+    // the backoff useless against a *flapping* connection (briefly connects,
+    // drops, repeat): each brief success zeroed the counter right before the
+    // next drop, so it could reconnect (and loadState()) as fast as the
+    // network allowed, unthrottled. One flapping phone in a real game
+    // generated ~17,500 loadState() calls in 36 minutes this way, saturating
+    // the shared connection pool and stalling the whole room. See BUGS.md.
+    let stableTimer = null
 
     function connect() {
       channel = supabase.channel(`cc-play-${code}`)
@@ -189,7 +198,12 @@ export default function PlayPage({ params }) {
         .subscribe(async status => {
           if (cancelled) return
           if (status === "SUBSCRIBED") {
-            reconnectAttempt = 0
+            // Don't reset reconnectAttempt immediately — only once this
+            // connection has actually stayed up for a bit. A flapping
+            // connection would otherwise hit SUBSCRIBED just long enough to
+            // zero the counter before dropping again, defeating backoff.
+            clearTimeout(stableTimer)
+            stableTimer = setTimeout(() => { reconnectAttempt = 0 }, 10000)
             // Catch up immediately on (re)connect in case events were missed while disconnected.
             loadState()
             if (id) await channel.track({ playerId: id, typing: false })
@@ -197,6 +211,7 @@ export default function PlayPage({ params }) {
             // A dropped websocket otherwise leaves this client stuck until the 60s poll fires.
             // Recreate the channel instead of waiting on it, backing off if it keeps failing
             // so a persistent outage doesn't turn into a reconnect storm across many clients.
+            clearTimeout(stableTimer)
             if (reconnectTimer) return
             const delay = Math.min(2000 * 2 ** reconnectAttempt, 30000)
             reconnectAttempt++
@@ -215,6 +230,7 @@ export default function PlayPage({ params }) {
     return () => {
       cancelled = true
       if (reconnectTimer) clearTimeout(reconnectTimer)
+      clearTimeout(stableTimer)
       clearInterval(poll)
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)

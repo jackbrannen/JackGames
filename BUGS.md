@@ -849,4 +849,32 @@ if (status === "SUBSCRIBED") {
 
 **Fixed in:** Copycats `app/[code]/play/page.js`, 2026-08-24.
 
+---
+
+## Full-Codebase Realtime Audit, 2026-08-24 — Findings
+
+Following the two bugs above, ran a systematic sweep of all 20 active games for the same general failure classes. Most games were clean; real hits below.
+
+**Unfiltered `postgres_changes` subscription** (no `filter:`, so every row change across every concurrent game of that type in the whole database triggers a reload here):
+- Fishbowl lobby (`app/[code]/page.js`) — `players` table subscription had no filter. (The play-page version was already correctly filtered.)
+- ReverseCharades lobby AND play page — `reversecharades_players` subscription had no filter in both files.
+- Fixed by adding `filter: "game_code=eq.${code}"` to each.
+
+**`nudge()`/broadcast fired on a repeated-tap interaction** (same shape as the FirstToWorst/Copycats bugs above, just via a direct `nudge()` call instead of a gossip syncKey):
+- SamePage's `incrementMatch`/`decrementMatch` — back the +/- match-count stepper on the reveal screen, which a player naturally taps repeatedly while comparing answers. Each tap broadcast a `sync` event, forcing every other client through a full 3-table `loadState()`. Fixed by removing the `nudge()` calls — the write already propagates via the payload-patched `postgres_changes` handler.
+
+**Missing `REPLICA IDENTITY FULL` on a table filtered by a non-PK column** (DELETE payloads only carry the PK under default identity, so the client-side filter can't match and the row silently never disappears — see the "Realtime replica identity" memory for the general pattern):
+- `gow_answers`, `gow_votes` (GameOfWhat) — filtered client-side on `question_id`, a non-PK column.
+- `wb_players` (WordBirds) — filtered on `game_code`, a non-PK column.
+- Fixed with `ALTER TABLE ... REPLICA IDENTITY FULL` on all three.
+
+**RPC guards that silently no-op instead of raising** (same class as the Avalon/Typecast fixes earlier tonight — a guard failure leaves `error` null, so a `FooterButton` following the "never reset loading on success, only unmount" pattern hangs on "Loading…" forever):
+- `dc_submit_clues`/`dc_submit_guess` (Decrypto) — the *early* guards (phase/round_phase, wrong player, empty clues) gate the `INSERT` the client's UI depends on to unmount; fixed to raise. The *later* guards in `dc_submit_guess` (waiting on the other team's guess, the atomic resolve-claim) are legitimate normal-flow waits/race guards — deliberately left as silent returns, since the client's button already unmounts once the caller's own guess row exists, independent of whether those later branches run.
+- `start_codenames_game` — silent no-op on a guard failure, but the client navigates to `/play` unconditionally on success (`error === null`), landing players in a phase-mismatched game with no error shown. Fixed to raise.
+- `wb_start_game` (WordBirds) — fixed to raise on both the player-count and starting-points/phase guards.
+
+**Checked and confirmed clean:** unfiltered-subscription and nudge-on-tap checks across Avalon, Codenames, Decrypto, Drawful, ExquisiteCorpse, GameOfWhat, HearingVoices, MrWhite, SecretPhrase, SoClover, SoundBoard, Telestrations, ThingsInRings, WhatOnEarth, WordBirds, Copycats, Typecast. WhatOnEarth's two previously-documented shared-pool race fixes (`woe_start_game`/`woe_award_points`/`woe_swap_word`) reconfirmed intact. No new shared-pool races found (WordBirds/ThingsInRings pools are scoped per-game, not shared across concurrent games).
+
+**Noted but not fixed (low severity, no player-facing hang in normal play):** Fishbowl's `start_turn` guard, ReverseCharades's `rc_start_turn` (caller already resets loading unconditionally), ThingsInRings's `tir_start_game` (auto-start effect, not bound to visible loading UI), a duplicate/dead `cc_start_game(p_code)` overload in Copycats (client only ever calls the `p_host_id` version).
+
 **Prevention:** Any exponential-backoff/reconnect loop that resets its counter on success must consider the *flapping* failure mode (rapid connect/drop/connect), not just the *sustained outage* failure mode it's usually designed for — a naive reset-on-success is only real backoff against the latter. Audit other games' `CHANNEL_ERROR`/`TIMED_OUT`/`CLOSED` reconnect handlers for the same bare `reconnectAttempt = 0` pattern.

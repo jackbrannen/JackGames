@@ -684,6 +684,12 @@ export default function Play({ params }) {
     let channel = null
     let reconnectTimer = null
     let reconnectAttempt = 0
+    // Only reset reconnectAttempt after the connection has stayed up for a
+    // while — resetting on every bare SUBSCRIBED lets a flapping connection
+    // (briefly connects, drops, repeat) reconnect+loadState() unthrottled,
+    // since each brief success zeroes the backoff right before the next
+    // drop. See BUGS.md (found in Copycats, 2026-08-24).
+    let stableTimer = null
 
     function connect() {
       channel = supabase.channel(`ec-play-${code}`)
@@ -696,13 +702,15 @@ export default function Play({ params }) {
         .subscribe(status => {
           if (cancelled) return
           if (status === "SUBSCRIBED") {
-            reconnectAttempt = 0
+            clearTimeout(stableTimer)
+            stableTimer = setTimeout(() => { reconnectAttempt = 0 }, 10000)
             // Catch up immediately on (re)connect in case events were missed while disconnected.
             loadState()
           } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
             // A dropped websocket otherwise leaves this client stuck until the 60s poll fires.
             // Recreate the channel instead of waiting on it, backing off if it keeps failing
             // so a persistent outage doesn't turn into a reconnect storm across many clients.
+            clearTimeout(stableTimer)
             if (reconnectTimer) return
             const delay = Math.min(2000 * 2 ** reconnectAttempt, 30000)
             reconnectAttempt++
@@ -721,6 +729,7 @@ export default function Play({ params }) {
     return () => {
       cancelled = true
       if (reconnectTimer) clearTimeout(reconnectTimer)
+      clearTimeout(stableTimer)
       clearInterval(poll)
       document.removeEventListener("visibilitychange", handleVisibility)
       supabase.removeChannel(channel)

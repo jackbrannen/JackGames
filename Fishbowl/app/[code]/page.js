@@ -450,7 +450,7 @@ export default function Lobby({ params }) {
 
     const channel = supabase
       .channel("game-" + code)
-      .on("postgres_changes", { event: "*", schema: "public", table: "players" }, async () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `game_code=eq.${code}` }, async () => {
         await refreshPlayers()
       })
       .on(

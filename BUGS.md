@@ -797,3 +797,56 @@ but the client (`lib/clover.js` `LEAF_NAMES`) sends clues keyed `topLeft, topRig
 **Fixed in:** FirstToWorst `app/[code]/play/page.js` (added `ftw_words` subscription + replica identity + self-healing resolve), 2026-08-17.
 
 **Prevention:** Whenever a player's UI is built by resolving a list of ids through a locally-cached lookup table, audit that the lookup table's *source* table is itself subscribed to realtime — subscribing only to the row that references the ids (not the table holding what they point to) is an easy gap to miss, and it fails silently (a dropped item, not a visible error) which makes it look like a totally unrelated bug downstream.
+
+---
+
+## Gossip syncKey Includes a High-Frequency Field, Turning a Live-Cursor Interaction into a Reload Storm
+
+**Symptom:** During heavy use of a live-cursor/drag-style interaction (dragging items to reorder, live board editing), the game becomes extremely slow or unresponsive for everyone in the room — not just the player dragging. Supabase egress/request-volume charts show a sustained spike (thousands of requests/minute) for as long as the interaction continues.
+
+**Example (FirstToWorst, 2026-08-23):** A 10-player game dragging words into rank order produced ~15,400 requests in 27 minutes (~9.5/sec sustained) — roughly 30x what 10 clients on a 60s poll should ever generate.
+
+**Cause:** The drag handler correctly avoided nudging on every drag tick (per the standard rule — see REALTIME.md), writing the live-cursor position straight to a `last_move`-style DB column so it propagates via the already-payload-patched `postgres_changes` handler. But the separate **gossip** mechanism — "re-broadcast a `sync` event when this client's own state changed, so a peer that missed the realtime push catches up" — computed its dedup key *including* that same `last_move` column:
+```js
+const syncKey = `${game.phase}:${game.round_phase}:${game.current_round}:${game.last_move}`
+if (syncKeyRef.current !== syncKey) channel.send({ type: "broadcast", event: "sync" })
+```
+Since `last_move` is a nonce that changes on *every single drag step*, every drag looked like a "new state" to the gossip logic. Every client that received a drag update re-broadcast a `sync` event to every other client, and the broadcast handler (`.on("broadcast", { event: "sync" }, loadState)`) forced each of those peers through a full multi-table `loadState()` reload — which itself recomputed the same `last_move`-including key, making the loop self-reinforcing. One drag step could fan out into dozens of full reloads across a full room.
+
+**Fix:** Remove the high-frequency field from the gossip syncKey — scope it to genuine phase/round/turn-level transitions only. The live-cursor field still propagates fine via the payload-patched realtime handler; it never needed gossip.
+
+**Fixed in:** FirstToWorst `app/[code]/play/page.js` (`loadState()` and `applyGameRow()`, both syncKey computations), 2026-08-23.
+
+**Prevention:** Any column written on every tap/drag/keystroke (a live-cursor position, a typing nonce, a `last_move`-style field) must be excluded from a gossip/dedup syncKey, not just excluded from a direct nudge call — the same "fires on every interaction" rule applies to *any* mechanism that can trigger a broadcast or reload, not only the obvious one. Audit every `syncKey`/`key` template string built from a game row for fields that update at interaction-frequency rather than state-transition-frequency.
+
+---
+
+## Reconnect Backoff Resets on Every Bare Success, Letting a Flapping Connection Bypass It Entirely
+
+**Symptom:** A large multiplayer game suddenly goes unresponsive for the *whole room* for ~30 seconds — every player's screen goes blank/stale, refreshing does nothing, then everything catches up and repaints at once. Supabase request-volume logs show one specific device generating dramatically more traffic than everyone else in the room (e.g. 60% of all requests from one of six devices).
+
+**Example (Copycats, 2026-08-24):** One player's phone with unstable venue WiFi/cellular generated ~10,500 of ~17,700 requests to a single game in 36 minutes — the other 5 devices in the room did 1,400–2,900 each, elevated but nowhere close.
+
+**Cause:** The realtime reconnect logic uses exponential backoff on failure (`CHANNEL_ERROR`/`TIMED_OUT`/`CLOSED`) — but resets the attempt counter to 0 on *any* bare `SUBSCRIBED` status:
+```js
+if (status === "SUBSCRIBED") {
+  reconnectAttempt = 0   // ← resets immediately, no matter how briefly connected
+  loadState()
+}
+```
+A connection that's *flapping* — briefly connects, drops again within a second or two, repeat — hits `SUBSCRIBED` just long enough to zero the backoff counter before its next drop, so the exponential delay never accumulates. The client can reconnect (and call `loadState()`, a multi-table refetch) as fast as the network allows, effectively unthrottled, despite backoff code being present and "working" by every unit-level check. The resulting flood saturates the shared Postgres connection pool, degrading REST and Realtime for every other client in the game — not just the flapping one.
+
+**Fix:** Only reset the attempt counter after the connection has stayed `SUBSCRIBED` for a minimum stable duration (e.g. 10s), not on every bare success:
+```js
+if (status === "SUBSCRIBED") {
+  clearTimeout(stableTimer)
+  stableTimer = setTimeout(() => { reconnectAttempt = 0 }, 10000)
+  loadState()
+}
+// on CHANNEL_ERROR/TIMED_OUT/CLOSED: clearTimeout(stableTimer) too, so a
+// drop before the stable window elapses doesn't sneak a reset in.
+```
+
+**Fixed in:** Copycats `app/[code]/play/page.js`, 2026-08-24.
+
+**Prevention:** Any exponential-backoff/reconnect loop that resets its counter on success must consider the *flapping* failure mode (rapid connect/drop/connect), not just the *sustained outage* failure mode it's usually designed for — a naive reset-on-success is only real backoff against the latter. Audit other games' `CHANNEL_ERROR`/`TIMED_OUT`/`CLOSED` reconnect handlers for the same bare `reconnectAttempt = 0` pattern.

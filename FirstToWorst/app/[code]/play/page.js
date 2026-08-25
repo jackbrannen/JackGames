@@ -551,7 +551,15 @@ export default function Play({ params }) {
     setPlayers(playerData ?? [])
     setAllWords(wordData ?? [])
     // Gossip: re-broadcast on a state change so a peer that missed the realtime push catches up fast.
-    const syncKey = `${gameData.phase}:${gameData.round_phase ?? ""}:${gameData.current_round ?? ""}:${gameData.last_move ?? ""}`
+    // Deliberately excludes last_move — it's a nonce that changes on every
+    // single drag step, and each broadcast this triggers forces every OTHER
+    // peer through a full loadState() (see the broadcast handler below),
+    // which itself recomputes this same syncKey — a drag-driven feedback
+    // loop that fanned a single move out into dozens of full 3-table
+    // reloads per tick across a full room. last_move already propagates
+    // cheaply via the payload-patched postgres_changes handler; no gossip
+    // needed for it.
+    const syncKey = `${gameData.phase}:${gameData.round_phase ?? ""}:${gameData.current_round ?? ""}`
     if (syncKeyRef.current !== null && syncKeyRef.current !== syncKey) syncChRef.current?.send({ type: "broadcast", event: "sync" })
     syncKeyRef.current = syncKey
   }
@@ -580,7 +588,9 @@ export default function Play({ params }) {
     }
 
     setGame(newRow)
-    const syncKey = `${newRow.phase}:${newRow.round_phase ?? ""}:${newRow.current_round ?? ""}:${newRow.last_move ?? ""}`
+    // See the matching comment in loadState() — last_move deliberately
+    // excluded from this key to avoid a drag-driven gossip feedback loop.
+    const syncKey = `${newRow.phase}:${newRow.round_phase ?? ""}:${newRow.current_round ?? ""}`
     if (gamesSyncKeyRef.current !== null && gamesSyncKeyRef.current !== syncKey) syncChRef.current?.send({ type: "broadcast", event: "sync" })
     gamesSyncKeyRef.current = syncKey
   }

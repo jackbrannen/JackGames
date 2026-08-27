@@ -33,17 +33,24 @@ function SwapCard({ word, fromX, fromY, toX, toY }) {
     const el = ref.current
     if (!el) return
     el.style.transition = "none"
-    el.style.transform = `translate(${fromX}px, ${fromY}px)`
+    // fromX/fromY/toX/toY are CENTER points (of the slot the card sits in) —
+    // measure the card's own rendered size so its center, not its corner,
+    // lands there (cards vary in width/height now that phrases can wrap).
+    const { width, height } = el.getBoundingClientRect()
+    el.style.transform = `translate(${fromX - width / 2}px, ${fromY - height / 2}px)`
     el.getBoundingClientRect()
     requestAnimationFrame(() => {
       el.style.transition = "transform 0.3s cubic-bezier(0.34, 1.5, 0.64, 1)"
-      el.style.transform = `translate(${toX}px, ${toY}px)`
+      el.style.transform = `translate(${toX - width / 2}px, ${toY - height / 2}px)`
     })
   }, [])
   return (
+    // Definite `width` (not `maxWidth`) — see the drag-ghost comment below for why
+    // an auto-width fixed-position box with wordBreak needs a fixed width instead.
     <div ref={ref} style={{ position: "fixed", top: 0, left: 0, zIndex: 320, pointerEvents: "none",
       background: INK, color: BTN_TEXT, padding: "10px 16px", borderRadius: 10, fontSize: 16, fontWeight: 800,
-      whiteSpace: "nowrap", boxShadow: "0 8px 24px rgba(0,0,0,0.35)", willChange: "transform" }}>
+      width: 160, textAlign: "center", lineHeight: 1.25, wordBreak: "break-word",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.35)", willChange: "transform" }}>
       {cap(word)}
     </div>
   )
@@ -66,7 +73,6 @@ export default function PlayPage({ params }) {
   const [slots, setSlots] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [confirming, setConfirming] = useState(false)
   const isIdle = useIdleGate()
   const [dragValue, setDragValue] = useState(null)
   const [dragPos, setDragPos] = useState(null)
@@ -104,8 +110,10 @@ export default function PlayPage({ params }) {
   const poolWords = phase === "assign" ? (myMatchup?.words ?? []) : (currentMatchup?.used_words ?? [])
   const matcherKey = currentMatchup?.key ?? []
 
+  const imReadyGuess = !!me?.guess_ready
+  const imReadyReveal = !!me?.reveal_ready
   const canEditAssign = phase === "assign" && !!myMatchup && !mySubmitted
-  const canEditGuess = phase === "guess" && !isCurrentMatcher
+  const canEditGuess = phase === "guess" && !isCurrentMatcher && !imReadyGuess
   const interactive = canEditAssign || canEditGuess
   const synced = canEditGuess
 
@@ -308,9 +316,11 @@ export default function PlayPage({ params }) {
     const tgtRect = document.querySelector(`[data-tc-slot="${targetIndex}"]`)?.getBoundingClientRect()
     if (!srcRect || !tgtRect) return
     setHidingSlots(new Set([srcIndex, targetIndex]))
+    const srcX = srcRect.left + srcRect.width / 2, srcY = srcRect.top + srcRect.height / 2
+    const tgtX = tgtRect.left + tgtRect.width / 2, tgtY = tgtRect.top + tgtRect.height / 2
     setSwapAnim([
-      { word: draggedValue, fromX: dropX - 30, fromY: dropY - 22, toX: tgtRect.left + 6, toY: tgtRect.top + 6 },
-      { word: displacedValue, fromX: tgtRect.left + 6, fromY: tgtRect.top + 6, toX: srcRect.left + 6, toY: srcRect.top + 6 },
+      { word: draggedValue, fromX: dropX, fromY: dropY, toX: tgtX, toY: tgtY },
+      { word: displacedValue, fromX: tgtX, fromY: tgtY, toX: srcX, toY: srcY },
     ])
     setTimeout(() => { setSwapAnim(null); setHidingSlots(new Set()) }, 320)
   }
@@ -319,9 +329,11 @@ export default function PlayPage({ params }) {
     const rectB = document.querySelector(`[data-tc-slot="${indexB}"]`)?.getBoundingClientRect()
     if (!rectA || !rectB) return
     setHidingSlots(new Set([indexA, indexB]))
+    const aX = rectA.left + rectA.width / 2, aY = rectA.top + rectA.height / 2
+    const bX = rectB.left + rectB.width / 2, bY = rectB.top + rectB.height / 2
     setSwapAnim([
-      { word: valueA, fromX: rectA.left + 6, fromY: rectA.top + 6, toX: rectB.left + 6, toY: rectB.top + 6 },
-      { word: valueB, fromX: rectB.left + 6, fromY: rectB.top + 6, toX: rectA.left + 6, toY: rectA.top + 6 },
+      { word: valueA, fromX: aX, fromY: aY, toX: bX, toY: bY },
+      { word: valueB, fromX: bX, fromY: bY, toX: aX, toY: aY },
     ])
     setTimeout(() => { setSwapAnim(null); setHidingSlots(new Set()) }, 320)
   }
@@ -329,8 +341,8 @@ export default function PlayPage({ params }) {
     const drag = dragRef.current
     if (!drag) return
     const el = document.elementFromPoint(x, y)
-    const slotEl = el?.closest("[data-tc-slot]")
-    const targetIndex = slotEl ? Number(slotEl.dataset.tcSlot) : null
+    const slotEl = el?.closest("[data-tc-slot-hit]")
+    const targetIndex = slotEl ? Number(slotEl.dataset.tcSlotHit) : null
     const cur = [...slotsRef.current]
     if (targetIndex != null) {
       const existing = cur[targetIndex]
@@ -350,14 +362,15 @@ export default function PlayPage({ params }) {
     if (error) { alert(error.message); setSubmitting(false); throw error }
     nudge()
   }
-  async function submitGuess() {
-    setConfirming(false)
-    const { error } = await supabase.rpc("tc_submit_guess", { p_code: code })
+  async function handleReadyGuess() {
+    if (imReadyGuess || !myPlayerId) return
+    const { error } = await supabase.rpc("tc_submit_guess_ready", { p_code: code, p_player_id: myPlayerId })
     if (error) { alert(error.message); return }
     nudge()
   }
-  async function nextRound() {
-    const { error } = await supabase.rpc("tc_next_round", { p_code: code })
+  async function handleReadyReveal() {
+    if (imReadyReveal || !myPlayerId) return
+    const { error } = await supabase.rpc("tc_submit_reveal_ready", { p_code: code, p_player_id: myPlayerId })
     if (error) { alert(error.message); return }
     nudge()
   }
@@ -395,7 +408,8 @@ export default function PlayPage({ params }) {
       <div
         onPointerDown={interactive ? e => startDrag(e, word, source, slotIndex) : undefined}
         style={{ background: INK, color: BTN_TEXT, padding: "10px 16px", borderRadius: 10, fontSize: 16, fontWeight: 800,
-          whiteSpace: "nowrap", cursor: interactive ? "grab" : "default", touchAction: "none",
+          maxWidth: 160, textAlign: "center", lineHeight: 1.25, wordBreak: "break-word",
+          cursor: interactive ? "grab" : "default", touchAction: "none",
           opacity: dragValue === word ? 0.35 : 1 }}>
         {cap(word)}
       </div>
@@ -418,7 +432,7 @@ export default function PlayPage({ params }) {
         )}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {slotPlayers.map((p, i) => (
-            <div key={i} style={{ background: PANEL, padding: "10px 10px" }}>
+            <div key={i} data-tc-slot-hit={i} style={{ background: PANEL, padding: "10px 10px", touchAction: "none" }}>
               <div style={{ fontSize: 15, fontWeight: 800, color: INK, textAlign: "center", marginBottom: 8 }}>
                 {p?.name ?? "?"}{p?.id === myPlayerId && <span style={{ opacity: 0.5, fontWeight: 600 }}> (you)</span>}
               </div>
@@ -613,7 +627,17 @@ export default function PlayPage({ params }) {
             )
           )}
 
-          {phase === "guess" && board()}
+          {phase === "guess" && (
+            <>
+              {board()}
+              <div style={{ marginTop: 16 }}>
+                <WaitingList
+                  players={players.filter(p => p.id !== currentMatcherId).map(p => ({ name: p.name, done: !!p.guess_ready }))}
+                  myName={me.name} onPoke={sendPoke} cooldownActive={pokeCooldown} pokeJustSent={pokeJustSent}
+                />
+              </div>
+            </>
+          )}
 
           {phase === "reveal" && (
             <div>
@@ -632,6 +656,12 @@ export default function PlayPage({ params }) {
               <div style={{ textAlign: "center", marginTop: 16, fontSize: 16, fontWeight: 800, color: "#FFF1EA" }}>
                 The group matched {g.last_correct} of {N}.
               </div>
+              <div style={{ marginTop: 16 }}>
+                <WaitingList
+                  players={players.map(p => ({ name: p.name, done: !!p.reveal_ready }))}
+                  myName={me.name} onPoke={sendPoke} cooldownActive={pokeCooldown} pokeJustSent={pokeJustSent}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -643,35 +673,34 @@ export default function PlayPage({ params }) {
             {allPlaced ? "Submit your casting" : "Place a word on each player"}
           </FooterButton>
         ) : canEditGuess ? (
-          <FooterButton key={`guess-${guessIndex}`} onClick={() => { setConfirming(true); throw new Error("modal") }} disabled={!allPlaced} bg={BTN} textColor={BTN_TEXT}>
-            {allPlaced ? "Lock in the group's guess" : "Place every word"}
+          <FooterButton key={`guess-${guessIndex}`} onClick={handleReadyGuess} disabled={!allPlaced} bg={BTN} textColor={BTN_TEXT}>
+            {allPlaced ? "Ready" : "Place every word"}
+          </FooterButton>
+        ) : phase === "guess" && !isCurrentMatcher && imReadyGuess ? (
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.65)" }}>
+            {players.filter(p => p.id !== currentMatcherId && p.guess_ready).length} / {players.filter(p => p.id !== currentMatcherId).length} ready…
+          </div>
+        ) : phase === "reveal" && !imReadyReveal ? (
+          <FooterButton key={`reveal-${guessIndex}`} onClick={handleReadyReveal} bg={BTN} textColor={BTN_TEXT}>
+            Ready
           </FooterButton>
         ) : phase === "reveal" ? (
-          <FooterButton key={`reveal-${guessIndex}`} onClick={nextRound} bg={BTN} textColor={BTN_TEXT}>
-            {guessIndex + 1 >= totalRounds ? "See final score →" : "Next →"}
-          </FooterButton>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.65)" }}>
+            {players.filter(p => p.reveal_ready).length} / {players.length} ready…
+          </div>
         ) : null
       )}
 
       {dragValue != null && dragPos && (
-        <div style={{ position: "fixed", left: dragPos.x - 30, top: dragPos.y - 22, zIndex: 300, pointerEvents: "none",
+        // Definite `width` (not `maxWidth`) is load-bearing here: this div has no flex/grid
+        // parent to size it, and an auto-width position:fixed box combined with wordBreak
+        // can collapse to min-content (one character per line) in shrink-to-fit layout.
+        <div style={{ position: "fixed", left: dragPos.x, top: dragPos.y, transform: "translate(-50%, -50%)", zIndex: 300, pointerEvents: "none",
           background: INK, color: BTN_TEXT, padding: "10px 16px", borderRadius: 10, fontSize: 16, fontWeight: 800,
-          whiteSpace: "nowrap", boxShadow: "0 8px 20px rgba(0,0,0,0.3)" }}>{cap(dragValue)}</div>
+          width: 140, textAlign: "center", lineHeight: 1.25, wordBreak: "break-word",
+          boxShadow: "0 8px 20px rgba(0,0,0,0.3)" }}>{cap(dragValue)}</div>
       )}
       {swapAnim?.map((s, i) => <SwapCard key={i} {...s} />)}
-
-      {confirming && (
-        <div onClick={() => setConfirming(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", width: "100%", maxWidth: 400, padding: "28px 24px" }}>
-            <div style={{ fontSize: 22, fontWeight: 900, color: INK, marginBottom: 8 }}>Lock in the group's guess?</div>
-            <p style={{ fontSize: 15, color: INK_MUTED, fontWeight: 600, marginBottom: 20 }}>This scores the round against {matcherName}'s picks.</p>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => setConfirming(false)} style={{ flex: 1, background: WARM, color: INK, fontSize: 16, fontWeight: 800, padding: "16px" }}>Back</button>
-              <button onClick={submitGuess} style={{ flex: 2, background: BTN, color: BTN_TEXT, fontSize: 16, fontWeight: 900, padding: "16px" }}>Lock in</button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   )
 }

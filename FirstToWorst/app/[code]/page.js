@@ -78,6 +78,7 @@ export default function LobbyPage({ params }) {
   const [confirmingStart, setConfirmingStart] = useState(false)
   const [theme, setTheme] = useState("random")
   const [isPersonal, setIsPersonal] = useState(true)
+  const [mode, setMode] = useState("classic")
 
   const me = players.find(p => p.id === myPlayerId)
 
@@ -93,7 +94,7 @@ export default function LobbyPage({ params }) {
   async function loadGame() {
     const { data, error } = await supabase
       .from("ftw_games")
-      .select("code,phase,is_demo,replay_of,replay_code,theme,word_distribution")
+      .select("code,phase,is_demo,replay_of,replay_code,theme,word_distribution,mode")
       .eq("code", code)
       .single()
     if (error || !data) { setGameExists(false); return }
@@ -104,6 +105,7 @@ export default function LobbyPage({ params }) {
     setReplayOf(data.replay_of ?? null)
     setTheme(data.theme)
     setIsPersonal(data.word_distribution === "personal")
+    setMode(data.mode ?? "classic")
   }
 
   async function loadState() {
@@ -233,7 +235,7 @@ export default function LobbyPage({ params }) {
   async function saveSettings() {
     const { error } = await supabase
       .from("ftw_games")
-      .update({ theme, word_distribution: isPersonal ? "personal" : "random" })
+      .update({ theme, word_distribution: isPersonal ? "personal" : "random", mode })
       .eq("code", code)
     if (error) console.error("Failed to save settings:", error)
   }
@@ -309,6 +311,38 @@ export default function LobbyPage({ params }) {
           }
           settingsContent={closeModal => (
             <div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 20 }}>Mode</div>
+              <div style={{ fontSize: 15, fontWeight: 600, opacity: 0.65, marginBottom: 12, lineHeight: 1.4 }}>
+                Classic ranks a list of things. Would You Rather asks players to pick a favorite from 5 would-you-rathers instead.
+              </div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 32, alignItems: "flex-start" }}>
+                {[["classic", "Classic"], ["would_you_rather", "Would You Rather"]].map(([m, label]) => (
+                  <div key={m} style={{ flex: 1 }}>
+                    <button
+                      onClick={() => setMode(m)}
+                      style={{
+                        width: "100%",
+                        background: mode === m ? GOLD : WARM_LIGHT,
+                        color: mode === m ? "#000" : "white",
+                        fontSize: 16,
+                        fontWeight: 900,
+                        padding: "14px 8px",
+                        display: "block",
+                      }}
+                    >
+                      {label}
+                    </button>
+                    {m === "would_you_rather" && (
+                      <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.5, textAlign: "center", marginTop: 6 }}>
+                        a.k.a. Justin Mode
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {mode === "classic" && (
+                <>
               <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 20 }}>Theme</div>
               <div style={{ fontSize: 15, fontWeight: 600, opacity: 0.65, marginBottom: 12, lineHeight: 1.4 }}>
                 What kinds of words should people write?
@@ -332,6 +366,8 @@ export default function LobbyPage({ params }) {
                   </button>
                 ))}
               </div>
+                </>
+              )}
 
               <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 20 }}>Word Distribution</div>
               <div style={{ fontSize: 15, fontWeight: 600, opacity: 0.65, marginBottom: 12, lineHeight: 1.4 }}>

@@ -386,6 +386,7 @@ export default function Play({ params }) {
 
   // Ranking phase
   const [rankingItems, setRankingItems] = useState(null)
+  const [favoriteId, setFavoriteId] = useState(null) // would_you_rather mode only
 
   // Submitting phase — length set from game.words_per_writer once loaded
   const [wordFields, setWordFields] = useState(["", "", "", "", ""])
@@ -402,6 +403,13 @@ export default function Play({ params }) {
   const [highlightMove, setHighlightMove] = useState(null) // { slot, dir }
   const pendingMovesRef = useRef(0)
   const highlightTimerRef = useRef(null)
+
+  // Would-You-Rather group picking: a frozen display order (never reordered
+  // by a pick, unlike classic mode's drag-to-rank list) plus an explicit
+  // "has anyone actually picked yet" flag, so nothing shows as selected
+  // until a real pick happens.
+  const [wyrStableOrder, setWyrStableOrder] = useState(null)
+  const [wyrHasPicked, setWyrHasPicked] = useState(false)
 
   // Reveal phase
   const [showGroupView, setShowGroupView] = useState(false)
@@ -731,12 +739,25 @@ export default function Play({ params }) {
       prevGuessRound.current = round
       prevLastMoveRef.current = null  // reset so first move of new round is always detected
       setWatchThanks(false)
+      // Freeze this round's display order once, and reset the pick flag —
+      // a new round starts with nothing selected.
+      setWyrStableOrder(game?.guess_order?.length ? resolveWords(game.guess_order) : null)
+      setWyrHasPicked(false)
     }
     // Only update order from DB when no local move is in flight (prevents double-animation)
     if (game?.guess_order?.length && pendingMovesRef.current === 0) {
       setGroupItems(resolveWords(game.guess_order))
     }
   }, [game?.guessing_index, game?.guess_order?.join(","), game?.round_phase])
+
+  // A pick from any player changes guess_order away from this round's frozen
+  // starting order — catches it even for clients who didn't make the pick
+  // themselves (e.g. joined mid-round).
+  useEffect(() => {
+    if (wyrHasPicked || !wyrStableOrder || !game?.guess_order) return
+    const stableIds = wyrStableOrder.map(i => i.id).join(",")
+    if (game.guess_order.join(",") !== stableIds) setWyrHasPicked(true)
+  }, [game?.guess_order?.join(","), wyrStableOrder, wyrHasPicked])
 
   const personalGroups = useMemo(() => {
     if (!game || game.word_distribution !== "personal" || !game.word_assignments || !myPlayerId) return null
@@ -1005,9 +1026,9 @@ export default function Play({ params }) {
                     onSubmit={idx < wordFields.length - 1
                       ? () => wordInputRefs.current[idx + 1]?.focus()
                       : handleSubmitWords}
-                    multiline={false}
-                    placeholder={`${thingWord.charAt(0).toUpperCase() + thingWord.slice(1)} ${k + 1}`}
-                    maxLength={60}
+                    multiline={isWouldYouRather}
+                    placeholder={isWouldYouRather ? `Would you rather... ${k + 1}` : `${thingWord.charAt(0).toUpperCase() + thingWord.slice(1)} ${k + 1}`}
+                    maxLength={isWouldYouRather ? 140 : 60}
                     bg={hasError ? "rgba(240,79,82,0.18)" : isDupe ? "#5C1010" : WARM_LIGHT}
                     fontSize={18}
                     style={{ fontWeight: 600, marginBottom: hasError ? 4 : 6 }}
@@ -1051,9 +1072,9 @@ export default function Play({ params }) {
               onSubmit={i < wordFields.length - 1
                 ? () => wordInputRefs.current[i + 1]?.focus()
                 : handleSubmitWords}
-              multiline={false}
-              placeholder={`${thingWord.charAt(0).toUpperCase() + thingWord.slice(1)} ${i + 1}`}
-              maxLength={60}
+              multiline={isWouldYouRather}
+              placeholder={isWouldYouRather ? `Would you rather... ${i + 1}` : `${thingWord.charAt(0).toUpperCase() + thingWord.slice(1)} ${i + 1}`}
+              maxLength={isWouldYouRather ? 140 : 60}
               bg={hasError ? "rgba(240,79,82,0.18)" : isDupe ? "#5C1010" : WARM_LIGHT}
               fontSize={18}
               style={{ fontWeight: 600, marginBottom: hasError ? 4 : 8 }}
@@ -1073,14 +1094,19 @@ export default function Play({ params }) {
       })
     }
 
+    const isWouldYouRather = game.mode === "would_you_rather"
     const countWord = wCount === 5 ? "five" : String(wCount)
-    const introInstruction = isPersonal
-      ? `Name ${thingsWord} for each player below — they'll rank all the words they receive from first to worst.`
-      : theme === "good"
-        ? `Name ${countWord} good things. Other players will rank your list.`
-        : theme === "bad"
-          ? `Name ${countWord} bad things. Other players will rank your list.`
-          : `Name ${countWord} things — good, bad, weird, boring. Other players will rank these.`
+    const introInstruction = isWouldYouRather
+      ? (isPersonal
+          ? `Write ${thingsWord === "things" ? "would-you-rathers" : thingsWord} for each player below — they'll pick their favorite.`
+          : `Write ${countWord} would-you-rathers. Other players will pick their favorite.`)
+      : isPersonal
+        ? `Name ${thingsWord} for each player below — they'll rank all the words they receive from first to worst.`
+        : theme === "good"
+          ? `Name ${countWord} good things. Other players will rank your list.`
+          : theme === "bad"
+            ? `Name ${countWord} bad things. Other players will rank your list.`
+            : `Name ${countWord} things — good, bad, weird, boring. Other players will rank these.`
 
     return (
       <>
@@ -1089,7 +1115,7 @@ export default function Play({ params }) {
         <div style={{ flex: 1, overflowY: "auto", padding: "28px 24px", paddingBottom: BOTTOM_PAD }}>
 
           <div style={{ fontSize: "clamp(28px, 8vw, 40px)", fontWeight: 900, lineHeight: 1, marginBottom: 10 }}>
-            Your {wCount} Things
+            {isWouldYouRather ? `Your ${wCount} Would You Rathers` : `Your ${wCount} Things`}
           </div>
           <p style={{ fontSize: 16, fontWeight: 600, opacity: 0.65, marginBottom: 24, lineHeight: 1.4 }}>
             {introInstruction}
@@ -1099,7 +1125,9 @@ export default function Play({ params }) {
             {renderInputs()}
           </div>
 
-          {/* Random ideas */}
+          {/* Random ideas — single-word/short-phrase prompts don't fit the
+              would-you-rather format, so skip this helper in that mode. */}
+          {!isWouldYouRather && (
           <div style={{ marginBottom: 20 }}>
             <RandomIdeas
               key={game.round_index}
@@ -1108,6 +1136,7 @@ export default function Play({ params }) {
               fetchIdeas={fetchRandomIdeas}
             />
           </div>
+          )}
 
           {submitError && (
             <p style={{ fontSize: 14, fontWeight: 700, color: "#F04F52", marginBottom: 12 }}>{submitError}</p>
@@ -1184,8 +1213,22 @@ export default function Play({ params }) {
       )
     }
 
+    const isWouldYouRather = game.mode === "would_you_rather"
+
     async function handleLockIn() {
       if (!rankingItems || !myPlayerId) return
+      if (isWouldYouRather) {
+        if (!favoriteId) return
+        const rankingIds = [favoriteId, ...rankingItems.filter(item => item.id !== favoriteId).map(item => item.id)]
+        try {
+          await rpc("ftw_lock_ranking", { p_code: code, p_player_id: myPlayerId, p_ranking: rankingIds })
+        } catch (e) {
+          console.error("Lock ranking failed:", e)
+          alert("Failed to lock ranking: " + (e?.message ?? "Unknown error"))
+          throw e
+        }
+        return
+      }
       const rankingIds = rankingItems.map(item => item.id)
       try {
         await rpc("ftw_lock_ranking", { p_code: code, p_player_id: myPlayerId, p_ranking: rankingIds })
@@ -1194,6 +1237,51 @@ export default function Play({ params }) {
         alert("Failed to lock ranking: " + (e?.message ?? "Unknown error"))
         throw e  // Re-throw so FooterButton resets loading state
       }
+    }
+
+    if (isWouldYouRather) {
+      return (
+        <>
+        <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
+          <StatusBar dark={DARK} label="First to Worst" />
+          <div style={{ flex: 1, overflowY: "auto", padding: "24px 24px", paddingBottom: BOTTOM_PAD }}>
+
+            <div style={{ fontSize: "clamp(26px, 8vw, 40px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 10 }}>
+              Pick your favorite
+            </div>
+            <p style={{ fontSize: 15, fontWeight: 600, opacity: 0.6, marginBottom: 24, lineHeight: 1.4 }}>
+              Which would-you-rather do you like best? Only you can see this.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {(rankingItems ?? []).map(item => {
+                const selected = favoriteId === item.id
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => setFavoriteId(item.id)}
+                    style={{
+                      textAlign: "left",
+                      background: selected ? YELLOW : WARM_LIGHT,
+                      color: selected ? "#000" : "white",
+                      fontSize: 16,
+                      fontWeight: 700,
+                      padding: "16px 18px",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {item.text}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+          {pokeSystemNode(
+            <FooterButton onClick={handleLockIn} disabled={!favoriteId} style={{ fontSize: 16 }}>Lock It In</FooterButton>
+          )}
+        </>
+      )
     }
 
     const listH = listTotalH(rankingItems ?? [], vw() - 90)
@@ -1254,7 +1342,7 @@ export default function Play({ params }) {
                 Your words are up!
               </div>
               <p style={{ fontSize: 18, fontWeight: 700, opacity: 0.6, marginBottom: 48, lineHeight: 1.4 }}>
-                Shh! Everyone is guessing your ranking. No talking.
+                {game.mode === "would_you_rather" ? "Shh! Everyone is guessing your favorite. No talking." : "Shh! Everyone is guessing your ranking. No talking."}
               </p>
               <button
                 onClick={() => setWatchThanks(true)}
@@ -1284,7 +1372,9 @@ export default function Play({ params }) {
               {subjectPlayer?.name}&rsquo;s words
             </div>
             <p style={{ fontSize: 17, fontWeight: 600, opacity: 0.6, marginBottom: 48, lineHeight: 1.4 }}>
-              Work together to figure out the order {subjectPlayer?.name} ranked them, from their first to their worst.
+              {game.mode === "would_you_rather"
+                ? `Work together to guess which one is ${subjectPlayer?.name}'s favorite.`
+                : `Work together to figure out the order ${subjectPlayer?.name} ranked them, from their first to their worst.`}
             </p>
             <p style={{ fontSize: 15, fontWeight: 700, color: YELLOW }}>
               Starting…
@@ -1298,6 +1388,133 @@ export default function Play({ params }) {
 
     // ── DRAGGING ──
     if (game.round_phase === "dragging") {
+      const isWouldYouRather = game.mode === "would_you_rather"
+
+      async function onGroupPick(id) {
+        if (!groupItems || imReady) return
+        const next = [id, ...groupItems.filter(item => item.id !== id).map(item => item.id)]
+        pendingMovesRef.current++
+        setGroupItems([groupItems.find(item => item.id === id), ...groupItems.filter(item => item.id !== id)])
+        setWyrHasPicked(true)
+        await supabase.rpc("ftw_update_guess_order", { p_code: code, p_order: next })
+        pendingMovesRef.current--
+      }
+
+      async function handleReadyWYR() {
+        if (imReady || !myPlayerId || isSubject) return
+        const { error } = await supabase.rpc("ftw_submit_ready", { p_code: code, p_player_id: myPlayerId })
+        if (error) throw error
+        await loadState()
+      }
+
+      if (isWouldYouRather) {
+        const currentPick = wyrHasPicked ? (groupItems?.[0]?.id ?? null) : null
+        const displayOrder = wyrStableOrder ?? groupItems ?? []
+
+        if (isSubject || (me?.opt_out_guess && !isSubject)) {
+          const isWatcher = me?.opt_out_guess && !isSubject
+          return (
+            <>
+            <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
+              <StatusBar dark={DARK} label={roundLabel} right={scoreRight} />
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "28px 24px", paddingBottom: BOTTOM_PAD }}>
+                <div style={{ fontSize: "clamp(28px, 8vw, 44px)", fontWeight: 900, lineHeight: 1, marginBottom: 8 }}>
+                  {isWatcher ? "Watching" : "Stay quiet!"}
+                </div>
+                <p style={{ fontSize: 16, fontWeight: 600, opacity: 0.65, marginBottom: 28 }}>
+                  {isWatcher
+                    ? `Everyone is guessing ${subjectPlayer?.name}'s favorite.`
+                    : "No hints. Wait and see what everyone decides."}
+                </p>
+
+                <div style={{ fontSize: 17, fontWeight: 800, color: "rgba(255,255,255,0.85)", marginBottom: 16 }}>
+                  Group&rsquo;s current pick
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  {displayOrder.map(item => (
+                    <div
+                      key={item.id}
+                      style={{
+                        textAlign: "left",
+                        background: item.id === currentPick ? YELLOW : WARM_LIGHT,
+                        color: item.id === currentPick ? "#000" : "white",
+                        fontSize: 16,
+                        fontWeight: 700,
+                        padding: "16px 18px",
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {item.text}
+                    </div>
+                  ))}
+                </div>
+
+                <p style={{ fontSize: 13, fontWeight: 600, opacity: 0.65, marginTop: 16 }}>
+                  {readyCount} of {nonSubjectPlayers.length} ready
+                </p>
+              </div>
+            </div>
+              {pokeSystemNode()}
+            </>
+          )
+        }
+
+        return (
+          <>
+          <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
+            <StatusBar dark={DARK} label={roundLabel} right={scoreRight} />
+            <div style={{ flex: 1, overflowY: "auto", padding: "24px 24px", paddingBottom: BOTTOM_PAD }}>
+
+              <div style={{ fontSize: "clamp(26px, 8vw, 40px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 4 }}>
+                {subjectPlayer?.name}&rsquo;s Favorite
+              </div>
+              <p style={{ fontSize: 15, fontWeight: 600, opacity: 0.65, marginBottom: 20 }}>
+                Which one did {subjectPlayer?.name} pick?
+              </p>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+                {displayOrder.map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => onGroupPick(item.id)}
+                    disabled={imReady}
+                    style={{
+                      textAlign: "left",
+                      background: item.id === currentPick ? YELLOW : WARM_LIGHT,
+                      color: item.id === currentPick ? "#000" : "white",
+                      fontSize: 16,
+                      fontWeight: 700,
+                      padding: "16px 18px",
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {item.text}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <WaitingList
+                  players={nonSubjectPlayers.map(p => ({ name: p.name, done: p.guessing_ready, typing: typingPlayerIds.has(p.id), away: presenceReady && p.id !== myPlayerId && !onlinePlayerIds.has(p.id) }))}
+                  myName={me?.name}
+                  colors={{ mid: MID }}
+                  onPoke={sendInlinePoke}
+                  cooldownActive={pokeCooldownActive}
+                  pokeJustSent={pokeJustSent}
+                />
+              </div>
+            </div>
+          </div>
+            {pokeSystemNode(
+              imReady
+                ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.65)" }}>{readyCount} / {nonSubjectPlayers.length} ready…</div>
+                : <FooterButton onClick={handleReadyWYR} style={{ fontSize: 16 }}>Ready</FooterButton>
+            )}
+          </>
+        )
+      }
+
       async function onGroupMove(slot, dir) {
         if (!groupItems || imReady) return
         const j = slot + dir
@@ -1439,7 +1656,7 @@ export default function Play({ params }) {
         return { id, text: word?.text ?? "?", correct: null, author: author?.name ?? null }
       })
 
-      const displayItems = showGroupView ? groupItems2 : trueItems
+      const isWouldYouRather = game.mode === "would_you_rather"
       const isLastRound = currentRound >= totalRounds
 
       async function handleVoteAdvance() {
@@ -1449,6 +1666,100 @@ export default function Play({ params }) {
         await loadState()
       }
 
+      // Would-You-Rather results: show all 5 options at once (the other 4
+      // are unranked filler, only the favorite/guess matter), call out a
+      // match as "Correct!", and skip the running Right/Wrong scoreboard and
+      // hold-to-peek button — there's nothing left to peek at.
+      if (isWouldYouRather) {
+        const trueFavoriteId = trueRanking[0]
+        const groupPickId = groupGuess[0]
+        const correct = trueFavoriteId != null && trueFavoriteId === groupPickId
+        const options = trueRanking.map(id => {
+          const word = allWords.find(w => w.id === id)
+          return { id, text: word?.text ?? "?" }
+        })
+
+        return (
+          <>
+          <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
+            <StatusBar dark={DARK} label={roundLabel} />
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px 8px" }}>
+              <div style={{ fontSize: "clamp(26px, 8vw, 40px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 12 }}>
+                {correct ? "Correct!" : `${subjectPlayer?.name}'s Favorite`}
+              </div>
+              {!correct && (
+                <p style={{ fontSize: 15, fontWeight: 600, opacity: 0.65, marginBottom: 20 }}>
+                  The group guessed differently.
+                </p>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {options.map(item => {
+                  const isTrue = item.id === trueFavoriteId
+                  const isGroupPick = item.id === groupPickId
+                  const isWrongGroupPick = isGroupPick && !isTrue
+                  return (
+                    <div
+                      key={item.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        textAlign: "left",
+                        background: isTrue ? YELLOW : WARM_LIGHT,
+                        color: isTrue ? "#000" : "white",
+                        padding: "16px 18px",
+                      }}
+                    >
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1.4 }}>{item.text}</div>
+                        {isTrue && (
+                          <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.7, marginTop: 4 }}>
+                            {subjectPlayer?.name}&rsquo;s pick
+                          </div>
+                        )}
+                        {isWrongGroupPick && (
+                          <div style={{ fontSize: 12, fontWeight: 800, color: YELLOW, marginTop: 4 }}>
+                            Group&rsquo;s guess
+                          </div>
+                        )}
+                      </div>
+                      {isTrue && (
+                        <div style={{
+                          width: 36, height: 36, flexShrink: 0, borderRadius: "50%",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 20, fontWeight: 900,
+                          background: "rgba(18,186,170,0.3)", color: GREEN,
+                        }}>
+                          ✓
+                        </div>
+                      )}
+                      {isWrongGroupPick && (
+                        <div style={{
+                          width: 36, height: 36, flexShrink: 0, borderRadius: "50%",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 20, fontWeight: 900,
+                          background: "rgba(239,85,85,0.3)", color: "#EF5555",
+                        }}>
+                          ✗
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+            {pokeSystemNode(
+              hasVotedNextRound
+                ? <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.65)" }}>{voteCount} / {guessParticipants} ready…</div>
+                : <FooterButton onClick={handleVoteAdvance} style={{ fontSize: 16 }}>{isLastRound ? "See Final Score" : "Next Round"}</FooterButton>
+            )}
+          </>
+        )
+      }
+
+      const displayItems = showGroupView ? groupItems2 : trueItems
+
       return (
         <>
         <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
@@ -1456,7 +1767,7 @@ export default function Play({ params }) {
           <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px 8px" }}>
 
             <div style={{ fontSize: "clamp(26px, 8vw, 40px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 12 }}>
-              {showGroupView ? "Group's Guess" : `${subjectPlayer?.name}'s Ranking`}
+              {showGroupView ? "Group's Guess" : `${subjectPlayer?.name}'s ${isWouldYouRather ? "Favorite" : "Ranking"}`}
             </div>
 
             <div style={{ marginBottom: 12 }}>

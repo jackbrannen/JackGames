@@ -104,6 +104,15 @@ export default function Lobby({ params }) {
       .then(({ data }) => { if (data?.body) setInstructions(data.body) })
   }, [])
 
+  // Top up the shared phrase pool on lobby load, not just on the home page —
+  // secretphrase_claim_phrase() permanently deletes each phrase it hands out,
+  // so a lobby reached via a direct game-code link (skipping the home page
+  // entirely) would never trigger a refill otherwise. No-ops server-side
+  // unless the pool is actually low; fire-and-forget like the home page's call.
+  useEffect(() => {
+    fetch("/api/generate-phrases", { method: "POST" }).catch(() => {})
+  }, [])
+
   async function refreshPlayers() {
     const { data } = await supabase
       .from("secretphrase_players")

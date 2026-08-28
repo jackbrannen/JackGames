@@ -73,6 +73,8 @@ export default function Play({ params }) {
   const [actionError, setActionError] = useState("")
   const [confirmingReveal, setConfirmingReveal] = useState(false)
   const [instructions, setInstructions] = useState("")
+  const [draftAnswerDuration, setDraftAnswerDuration] = useState(DEFAULT_ANSWER_SECONDS)
+  const [savingSettings, setSavingSettings] = useState(false)
 
   useEffect(() => {
     supabase.from("game_instructions").select("body").eq("game_key", "secretphrase").single()
@@ -177,6 +179,24 @@ export default function Play({ params }) {
   const me = players.find(p => p.id === myPlayerId)
   const byId = useMemo(() => Object.fromEntries(players.map(p => [p.id, p])), [players])
 
+  // Prefer whatever's already staged (next_answer_duration_seconds) over the
+  // still-active live duration — reopening Settings should highlight what
+  // you're actually about to get, not the old value that's already queued to
+  // be replaced. Without this, a player who staged a change, then reopened
+  // the modal, would see the OLD duration highlighted while the "Starts next
+  // round" note below it named a completely different number — technically
+  // accurate (one reflects "now", the other "next"), but looked like a bug.
+  useEffect(() => {
+    const effective = game?.next_answer_duration_seconds ?? game?.answer_duration_seconds
+    if (effective != null) setDraftAnswerDuration(effective)
+  }, [game?.answer_duration_seconds, game?.next_answer_duration_seconds])
+
+  async function saveAnswerDurationSettings() {
+    setSavingSettings(true)
+    await supabase.rpc("secretphrase_stage_answer_duration_seconds", { p_code: code, p_answer_duration_seconds: draftAnswerDuration })
+    setSavingSettings(false)
+  }
+
   if (isIdle) {
     return (
       <div style={{ minHeight: "100dvh", background: BG }}>
@@ -256,6 +276,12 @@ export default function Play({ params }) {
   }
 
   const answerSeconds = game.answer_duration_seconds || DEFAULT_ANSWER_SECONDS
+  // Primary's Start button is the only one that actually applies a staged
+  // settings change (secretphrase_start_primary_timer consumes
+  // next_answer_duration_seconds) — preview that value here so the button
+  // copy matches what tapping it will actually produce, instead of the
+  // stale live duration that's about to be superseded.
+  const primaryStartSeconds = game.next_answer_duration_seconds ?? answerSeconds
   const phraseTeam = game.current_phrase_team
   const guessTeam = phraseTeam === 1 ? 2 : 1
   const isPhraseTeam = me.team === phraseTeam
@@ -320,6 +346,18 @@ export default function Play({ params }) {
     setActionError("")
     try {
       const { error } = await supabase.rpc("secretphrase_start_secondary_timer", { p_code: code, p_player_id: me.id })
+      if (error) throw error
+      nudge()
+    } catch (e) {
+      setActionError(e?.message || "Something went wrong — try again.")
+      throw e
+    }
+  }
+
+  async function endAnswerEarly() {
+    setActionError("")
+    try {
+      const { error } = await supabase.rpc("secretphrase_end_answer_early", { p_code: code, p_player_id: me.id })
       if (error) throw error
       nudge()
     } catch (e) {
@@ -516,15 +554,15 @@ export default function Play({ params }) {
             <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
               <button
                 onClick={() => voteOutcome("correct")}
-                style={{ flex: 1, background: iVotedCorrect ? "#12BAAA" : MID_DARK, color: "white", fontSize: 16, fontWeight: 800, padding: "18px" }}
+                style={{ flex: 1, background: iVotedCorrect ? YELLOW : "white", color: "#000", fontSize: 16, fontWeight: 800, padding: "18px" }}
               >
-                Yes
+                Yes{iVotedCorrect ? " ✓" : ""}
               </button>
               <button
                 onClick={() => voteOutcome("incorrect")}
-                style={{ flex: 1, background: iVotedIncorrect ? "#12BAAA" : MID_DARK, color: "white", fontSize: 16, fontWeight: 800, padding: "18px" }}
+                style={{ flex: 1, background: iVotedIncorrect ? YELLOW : "white", color: "#000", fontSize: 16, fontWeight: 800, padding: "18px" }}
               >
-                No
+                No{iVotedIncorrect ? " ✓" : ""}
               </button>
             </div>
 
@@ -589,7 +627,7 @@ export default function Play({ params }) {
 
       {game.turn_phase === "answering" && meIsPrimary && subPhase === "primary_wait" && (
         <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
-          <FooterButton onClick={startPrimaryTimer}>Start my answer ({answerSeconds} seconds)</FooterButton>
+          <FooterButton onClick={startPrimaryTimer}>Start my answer ({primaryStartSeconds} seconds)</FooterButton>
         </Footer>
       )}
 
@@ -610,10 +648,22 @@ export default function Play({ params }) {
         </Footer>
       )}
 
+      {game.turn_phase === "answering" && isPhraseTeam && (subPhase === "primary_timer" || subPhase === "secondary_timer") && (
+        <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
+          <button
+            onClick={endAnswerEarly}
+            style={{ flex: 1, height: "100%", background: WARM_LIGHT, color: "white", fontSize: 17, fontWeight: 800 }}
+          >
+            End early
+          </button>
+        </Footer>
+      )}
+
       {game.turn_phase === "answering" && !(
         (meIsPrimary && subPhase === "primary_wait") ||
         (meIsSecondary && subPhase === "primary_timeup" && secondaryUnlockable) ||
-        (meIsGuesser && subPhase === "secondary_timeup" && guesserUnlockable)
+        (meIsGuesser && subPhase === "secondary_timeup" && guesserUnlockable) ||
+        (isPhraseTeam && (subPhase === "primary_timer" || subPhase === "secondary_timer"))
       ) && (
         <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} />
       )}
@@ -682,6 +732,39 @@ export default function Play({ params }) {
         gamePhase={game.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
         onResetToLobby={async () => { await supabase.rpc("secretphrase_play_again", { p_code: code }) }}
+        settingsContent={<>
+          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.75)", marginBottom: 12 }}>How long each answerer gets to answer.</p>
+          <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.6)", marginBottom: 10 }}>
+            Answer duration
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
+            {[10, 15, 20, 25, 35, 40, 45].map(sec => (
+              <button
+                key={sec}
+                onClick={() => setDraftAnswerDuration(sec)}
+                style={{
+                  background: draftAnswerDuration === sec ? YELLOW : WARM_LIGHT,
+                  color: draftAnswerDuration === sec ? "#000" : "white",
+                  fontSize: 15, fontWeight: 900, padding: "12px 0",
+                }}
+              >
+                {sec}s
+              </button>
+            ))}
+          </div>
+          {game.next_answer_duration_seconds != null && game.next_answer_duration_seconds !== game.answer_duration_seconds && (
+            <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.65)", paddingTop: 10 }}>
+              Starts next round: {game.next_answer_duration_seconds}s
+            </div>
+          )}
+          <button
+            onClick={saveAnswerDurationSettings}
+            disabled={savingSettings}
+            style={{ background: WARM_LIGHT, color: "white", fontSize: 15, fontWeight: 900, padding: "14px", width: "100%", marginTop: 16 }}
+          >
+            {savingSettings ? "Saving…" : "Save"}
+          </button>
+        </>}
       />
     </div>
   )

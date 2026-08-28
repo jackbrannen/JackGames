@@ -85,13 +85,14 @@ export default function LobbyPage({ params }) {
   const [confirmingStart, setConfirmingStart] = useState(false)
   const [starting, setStarting] = useState(false)
   const [instructions, setInstructions] = useState("")
+  const [draftTimerSeconds, setDraftTimerSeconds] = useState(0)
 
   const me = players.find(p => p.id === myPlayerId)
 
   async function loadState() {
     const { data: gameData } = await supabase
       .from("gow_games")
-      .select("code,phase,round_index,replay_code")
+      .select("code,phase,round_index,timer_seconds,replay_code")
       .eq("code", code)
       .single()
 
@@ -106,6 +107,12 @@ export default function LobbyPage({ params }) {
 
     setGame(gameData)
     setPlayers(playerData ?? [])
+    setDraftTimerSeconds(gameData.timer_seconds || 0)
+  }
+
+  async function saveTimerSetting() {
+    await supabase.from("gow_games").update({ timer_seconds: draftTimerSeconds }).eq("code", code)
+    setGame(g => g ? { ...g, timer_seconds: draftTimerSeconds } : g)
   }
 
   useEffect(() => {
@@ -275,6 +282,29 @@ export default function LobbyPage({ params }) {
           howToPlayContent={instructions ? <span style={{ whiteSpace: "pre-wrap" }}>{instructions}</span> : <span>Loading…</span>}
           codeDisplay={<><span style={{ color: YELLOW }}>{word1}</span><span style={{ color: "rgba(255,255,255,0.75)" }}>{word2}</span></>}
           joinContent={joinForm}
+          settingsContent={closeModal => (
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
+                <span style={{ fontSize: 16, fontWeight: 700, color: "white" }}>Answer timer</span>
+                <select
+                  value={String(draftTimerSeconds)}
+                  onChange={e => setDraftTimerSeconds(Number(e.target.value))}
+                  style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 15, fontWeight: 700, padding: "8px 10px", border: "none" }}
+                >
+                  <option value="0">Off</option>
+                  {[30, 45, 60, 90, 120, 180, 240, 300].map(s => (
+                    <option key={s} value={String(s)}>{s < 60 ? `${s}s` : `${s / 60} min`}</option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={async () => { await saveTimerSetting(); closeModal() }}
+                style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 20px", width: "100%", marginTop: 16 }}
+              >
+                Save
+              </button>
+            </div>
+          )}
           colors={LOBBY_COLORS}
           minPlayers={4}
           notFound={notFound}

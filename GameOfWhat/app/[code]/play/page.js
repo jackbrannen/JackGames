@@ -21,6 +21,7 @@ import Results from "../../../components/Results"
 import EndGame from "../../../components/EndGame"
 import { playYourTurn } from "../../../lib/sounds"
 import IdleGateModal from "../../../components/IdleGateModal"
+import PauseModal from "../../../components/PauseModal"
 import { useIdleGate } from "../../../lib/useIdleGate"
 
 const BG = "#6B1A44"
@@ -76,6 +77,8 @@ export default function Play({ params }) {
   const [myPlayerId, setMyPlayerId] = useState(null)
   const isIdle = useIdleGate()
   const [game, setGame] = useState(null)
+  const [now, setNow] = useState(() => Date.now())
+  const [resuming, setResuming] = useState(false)
   const [players, setPlayers] = useState([])
   const [currentQuestion, setCurrentQuestion] = useState(null)
   const [answers, setAnswers] = useState([])
@@ -103,6 +106,8 @@ export default function Play({ params }) {
   const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
   const [pokeJustSent, setPokeJustSent] = useState(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [draftTimerSeconds, setDraftTimerSeconds] = useState(0)
+  const [savingTimer, setSavingTimer] = useState(false)
   const { onTypingChange, typingPlayerIds } = useTypingPresence("gow", code, myPlayerId)
   const { onlinePlayerIds, presenceReady } = useOnlinePresence("gow", code, myPlayerId)
   const isAway = (id) => presenceReady && id !== myPlayerId && !onlinePlayerIds.has(id)
@@ -144,7 +149,7 @@ export default function Play({ params }) {
     const seq = ++loadSeqRef.current
     const { data: gameData } = await supabase
       .from("gow_games")
-      .select("code,phase,round_index,rounds_total,current_question_id,question_phase,used_prompts,next_game,next_game_picker_name,next_game_code,last_completed_question_id,replay_code,is_dummy")
+      .select("code,phase,round_index,rounds_total,current_question_id,question_phase,used_prompts,next_game,next_game_picker_name,next_game_code,last_completed_question_id,replay_code,is_dummy,timer_seconds,next_timer_seconds,answering_started_at,paused,paused_at,paused_by_name,pause_elapsed_seconds")
       .eq("code", code)
       .single()
     if (seq !== loadSeqRef.current) return
@@ -402,6 +407,96 @@ export default function Play({ params }) {
       .then(({ data }) => { if (data) setInstructions(data.body) })
   }, [])
 
+  // Optional answer timer (off by default, timer_seconds = 0). Ticks locally
+  // for the bar; the auto-advance is server-enforced (any client can
+  // trigger it, the RPC re-checks the deadline), so it's not reliant on any
+  // one specific client staying connected.
+  // Stops ticking entirely while paused — that's what freezes the bar
+  // animation. gow_pause_game/_resume_game shift answering_started_at
+  // forward on resume to absorb the paused duration, so both the bar and
+  // the auto-advance deadline resume exactly where they left off.
+  // Stops entirely once idle-gated — same as the main realtime connection —
+  // so an AFK tab with a round timer still running can't keep silently
+  // driving auto-submits/force-advances in the background while the "Still
+  // there?" modal is blocking the screen.
+  useEffect(() => {
+    if (!game?.timer_seconds || game.question_phase !== "answering" || game.paused || isIdle) return
+    setNow(Date.now()) // correct immediately on resume instead of waiting for the first tick
+    const t = setInterval(() => setNow(Date.now()), 250)
+    return () => clearInterval(t)
+  }, [game?.timer_seconds, game?.question_phase, game?.answering_started_at, game?.paused, isIdle])
+
+  // Primary auto-advance mechanism: each eligible player's own device
+  // submits its own (possibly blank) answer the moment ITS local clock
+  // crosses the deadline, rather than depending on some other player's tab
+  // noticing everyone else is late — that dependency is what made the old
+  // "any client can trigger it" design fragile against backgrounded/closed
+  // tabs. The question's author never answers their own question, so they
+  // sit out this effect entirely, same as the normal submit flow.
+  // autoSubmittedKeyRef guards against firing more than once per question:
+  // this effect re-runs on every `now` tick (every 250ms) until `answers`'
+  // realtime/poll refresh confirms the submission locally, which can take a
+  // moment — without this guard, every intervening tick re-sends the RPC.
+  // Harmless here since gow_submit_answer upserts, but wasteful, and the
+  // same unguarded-repeat pattern caused a real bug in SoClover's
+  // board-advance counter (see BUGS.md) — guard it uniformly rather than
+  // relying on each RPC happening to be safe.
+  const autoSubmittedKeyRef = useRef(null)
+  useEffect(() => {
+    if (!game?.timer_seconds || game.question_phase !== "answering" || !game.answering_started_at || game.paused || isIdle) return
+    if (!currentQuestion || !myPlayerId || myPlayerId === currentQuestion.author_id) return
+    const deadline = new Date(game.answering_started_at).getTime() + game.timer_seconds * 1000
+    if (now < deadline) return
+    if (answers.some(a => a.player_id === myPlayerId)) return
+    // Don't auto-submit blank until at least 2 OTHER players have a real
+    // (non-skipped) answer in — if the round is mostly empty, waiting a beat
+    // longer for a real answer is better than everyone racing to skip each
+    // other out. Matches the same threshold enforced server-side in
+    // gow_force_advance_answering for the closed-tab fallback path.
+    const realOthersCount = answers.filter(a => a.player_id !== myPlayerId && !a.skipped && a.text?.trim()).length
+    if (realOthersCount < 2) return
+    if (autoSubmittedKeyRef.current === currentQuestion.id) return
+    autoSubmittedKeyRef.current = currentQuestion.id
+    // Discard whatever's in the field — a force-submit on timeout is always
+    // a skipped entry, never "whatever they'd typed so far."
+    //
+    // NOTE: .rpc() returns a lazy thenable, not a promise — the HTTP request
+    // is only sent once it's awaited or .then()'d. A bare `supabase.rpc(...)`
+    // statement silently never fires. Always consume the result.
+    supabase.rpc("gow_submit_answer", {
+      p_code: code,
+      p_question_id: currentQuestion.id,
+      p_player_id: myPlayerId,
+      p_text: "",
+      p_skipped: true,
+    }).then(({ error }) => { if (error) console.error("[gow] auto-submit failed", error) })
+  }, [now, game?.timer_seconds, game?.question_phase, game?.answering_started_at, game?.paused, code, currentQuestion, myPlayerId, answers, isIdle])
+
+  // Fallback safety net: if a player's own tab is fully closed (not just
+  // backgrounded), nobody submits on their behalf via the effect above, so
+  // once at least one real submission exists past the deadline, any other
+  // connected client force-fills the rest and advances. No-ops if zero
+  // players have submitted yet.
+  useEffect(() => {
+    if (!game?.timer_seconds || game.question_phase !== "answering" || !game.answering_started_at || game.paused || isIdle) return
+    const deadline = new Date(game.answering_started_at).getTime() + game.timer_seconds * 1000
+    if (now < deadline) return
+    supabase.rpc("gow_force_advance_answering", { p_code: code }).then(() => {})
+  }, [now, game?.timer_seconds, game?.question_phase, game?.answering_started_at, game?.paused, code, isIdle])
+
+  // Keep the settings-panel dropdown in sync with the actually-active timer
+  // length (not any staged next_timer_seconds — that only takes effect once
+  // the next question actually starts, per gow_stage_timer_seconds).
+  useEffect(() => {
+    if (game?.timer_seconds != null) setDraftTimerSeconds(game.timer_seconds)
+  }, [game?.timer_seconds])
+
+  async function saveTimerSettings() {
+    setSavingTimer(true)
+    await supabase.rpc("gow_stage_timer_seconds", { p_code: code, p_timer_seconds: draftTimerSeconds })
+    setSavingTimer(false)
+  }
+
   const allNextQuestionsIn = game?.phase === "between_rounds" && players.length > 0 && players.every(p => p.question)
 
   useEffect(() => {
@@ -600,8 +695,45 @@ export default function Play({ params }) {
         playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, score: p.score }))}
         gamePhase={game?.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
+        onPause={async () => { await supabase.rpc("gow_pause_game", { p_code: code, p_player_id: myPlayerId }) }}
         onResetToLobby={async () => { await rpc("gow_reset_game", { p_code: code }) }}
+        settingsContent={<>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
+            <span style={{ fontSize: 16, fontWeight: 700, color: "white" }}>Answer timer</span>
+            <select
+              value={String(draftTimerSeconds)}
+              onChange={e => setDraftTimerSeconds(Number(e.target.value))}
+              style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 15, fontWeight: 700, padding: "8px 10px", border: "none" }}
+            >
+              <option value="0">Off</option>
+              {[30, 45, 60, 90, 120, 180, 240, 300].map(s => (
+                <option key={s} value={String(s)}>{s < 60 ? `${s}s` : `${s / 60} min`}</option>
+              ))}
+            </select>
+          </div>
+          {game?.next_timer_seconds != null && game.next_timer_seconds !== game.timer_seconds && (
+            <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.6)", paddingBottom: 10 }}>
+              Starts next round: {game.next_timer_seconds === 0 ? "Off" : (game.next_timer_seconds < 60 ? `${game.next_timer_seconds}s` : `${game.next_timer_seconds / 60} min`)}
+            </div>
+          )}
+          <button onClick={saveTimerSettings} disabled={savingTimer}
+            style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 20px", width: "100%", marginTop: 6 }}>
+            Save
+          </button>
+        </>}
       />
+      {game?.paused && (
+        <PauseModal
+          colors={POKE_COLORS}
+          pausedByName={game.paused_by_name}
+          resuming={resuming}
+          onResume={async () => {
+            setResuming(true)
+            await supabase.rpc("gow_resume_game", { p_code: code })
+            setResuming(false)
+          }}
+        />
+      )}
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
         {footer}
       </Footer>
@@ -873,6 +1005,23 @@ export default function Play({ params }) {
     <div style={{ minHeight: "100dvh", background: BG, color: "white", display: "flex", flexDirection: "column" }}>
 
       <StatusBar label={`Round ${(game.round_index ?? 0) + 1} of ${game.rounds_total ?? 3}`} dark="#4A123B" />
+
+      {/* Optional answer timer — edge-to-edge depleting bar, same pattern as HearingVoices */}
+      {!!game.timer_seconds && phase === "answering" && game.answering_started_at && (() => {
+        const clockMs = game.paused && game.paused_at ? new Date(game.paused_at).getTime() : now
+        const elapsedSec = (clockMs - new Date(game.answering_started_at).getTime()) / 1000
+        const barFrac = Math.max(0, Math.min(1, 1 - elapsedSec / game.timer_seconds))
+        return (
+          <div style={{ flexShrink: 0, height: 10, background: barFrac > 0.3 ? "rgba(251, 223, 84, 0.15)" : "hsla(0, 80%, 55%, 0.15)" }}>
+            <div style={{
+              height: "100%",
+              width: `${barFrac * 100}%`,
+              background: barFrac > 0.3 ? "#FBDF54" : "hsl(0, 80%, 55%)",
+              transition: "width 0.2s linear, background 300ms ease",
+            }} />
+          </div>
+        )
+      })()}
 
       {/* Main content */}
       <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", padding: "28px 20px", paddingBottom: BOTTOM_PAD }}>

@@ -12,6 +12,8 @@
 //   My Word — shown if word prop is non-null (Mr. White)
 //   My Role — shown if roleContent prop is non-null (Avalon)
 //   Settings — shown if settingsContent prop is non-null (Fishbowl mid-game settings)
+//   Pause — shown if onPause prop is provided. Fires immediately on tap (no confirm —
+//     it's non-destructive and any player can resume), then closes the drawer.
 //   Lobby — shown if onResetToLobby prop is provided
 //
 // Closing the drawer resets the active panel to null.
@@ -41,6 +43,7 @@
 //     word={null}                 // string → shows "My Word" tile
 //     roleContent={null}          // JSX → shows "My Role" tile (Avalon)
 //     settingsContent={null}      // JSX → shows "Settings" tile; game owns settings state (Fishbowl)
+//     onPause={async () => supabase.rpc("game_pause_game", { p_code: code, p_player_id: myId })}
 //     onResetToLobby={async () => supabase.rpc("game_reset_to_lobby", { p_code: code })}
 //     rules={null}                // [[title, body], ...] → shows Rules tile
 //     peekBarHeight="0px"
@@ -62,9 +65,11 @@ export default function Menu({
   word = null,
   roleContent = null,
   onResetToLobby,
+  onPause,
   settingsContent = null,
   rules,
   peekBarHeight = "0px",
+  footerHeight = FOOTER_H,
 }) {
   const {
     dark    = "#1A1A2E",
@@ -77,6 +82,7 @@ export default function Menu({
   const [pokeSending, setPokeSending] = useState(false)
   const [pokeJustSent, setPokeJustSent] = useState(null)
   const [lobbyResetting, setLobbyResetting] = useState(false)
+  const [pausing, setPausing] = useState(false)
   const [cooldownSec, setCooldownSec] = useState(0)
   const prevPhaseRef    = useRef(gamePhase)
   const cooldownEndRef  = useRef(0)
@@ -114,6 +120,14 @@ export default function Menu({
     setTimeout(() => setPokeJustSent(null), 2000)
   }
 
+  async function handlePause() {
+    if (pausing || !onPause) return
+    setPausing(true)
+    try { await onPause() } catch {}
+    setPausing(false)
+    onClose()
+  }
+
   async function handleResetToLobby() {
     if (lobbyResetting || !onResetToLobby) return
     setLobbyResetting(true)
@@ -122,7 +136,7 @@ export default function Menu({
     setLobbyResetting(false)
   }
 
-  const drawerBottom = `calc(${peekBarHeight} + ${FOOTER_H}px)`
+  const drawerBottom = `calc(${peekBarHeight} + ${footerHeight}px)`
   const hasScores = playerDetails.some(p => p.score !== undefined && p.score !== null)
   const hasTeams  = playerDetails.some(p => p.teamColor)
 
@@ -142,6 +156,7 @@ export default function Menu({
     word !== null        ? { icon: "📖", label: "My Word",  action: () => setPanel("myWord") }  : null,
     roleContent !== null ? { icon: "🃏", label: "My Role",  action: () => setPanel("myRole") }  : null,
     settingsContent !== null ? { icon: "⚙️", label: "Settings", action: () => setPanel("settings") } : null,
+    onPause ? { icon: "⏸️", label: "Pause", action: handlePause } : null,
     onResetToLobby ? { icon: "🏠", label: "Lobby",  action: () => setPanel("lobbyWarn1") }      : null,
   ].filter(Boolean)
 

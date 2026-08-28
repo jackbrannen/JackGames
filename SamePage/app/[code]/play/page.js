@@ -49,6 +49,8 @@ export default function PlayPage({ params }) {
   const [timerRemaining, setTimerRemaining] = useState(null)
   const [pokeCooldown, setPokeCooldown] = useState(false)
   const [pokeJustSent, setPokeJustSent] = useState(null)
+  const [draftTimerSeconds, setDraftTimerSeconds] = useState(0)
+  const [savingTimer, setSavingTimer] = useState(false)
   const channelRef = useRef(null)
   const soundPhaseRef = useRef(null)
   const syncKeyRef = useRef(null)
@@ -71,7 +73,7 @@ export default function PlayPage({ params }) {
   async function loadState() {
     const seq = ++loadSeqRef.current
     const [{ data: g }, { data: ps }] = await Promise.all([
-      supabase.from("sp_games").select("*").eq("code", code).single(),
+      supabase.from("sp_games").select("*,next_timer_seconds").eq("code", code).single(),
       supabase.from("sp_players").select("*").eq("game_code", code).order("created_at"),
     ])
     if (seq !== loadSeqRef.current) return
@@ -231,6 +233,19 @@ export default function PlayPage({ params }) {
     if (prev !== game.phase && (game.phase === "answering" || game.phase === "reveal")) playYourTurn()
   }, [game?.phase])
 
+  // Keep the settings-panel button group in sync with the actually-active
+  // timer length (not any staged next_timer_seconds — that only takes effect
+  // once the next round actually starts, per sp_stage_timer_seconds).
+  useEffect(() => {
+    if (game?.timer_seconds != null) setDraftTimerSeconds(game.timer_seconds)
+  }, [game?.timer_seconds])
+
+  async function saveTimerSettings() {
+    setSavingTimer(true)
+    await supabase.rpc("sp_stage_timer_seconds", { p_code: code, p_timer_seconds: draftTimerSeconds })
+    setSavingTimer(false)
+  }
+
   // Answering timer
   useEffect(() => {
     if (game?.phase !== "answering" || timerDuration === 0 || !answeringStartedAt) {
@@ -365,6 +380,26 @@ export default function PlayPage({ params }) {
           gamePhase={game.phase}
           rules={RULES}
           onResetToLobby={async () => { await supabase.rpc("sp_reset_to_lobby", { p_code: code }); nudge() }}
+          settingsContent={<>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.6)", marginBottom: 10 }}>Answering timer (optional)</div>
+            <div style={{ display: "flex", gap: 6 }}>
+              {[0, 60, 90, 120].map(s => (
+                <button key={s} onClick={() => setDraftTimerSeconds(s)}
+                  style={{ flex: 1, padding: "12px 4px", background: draftTimerSeconds === s ? BTN : "rgba(255,255,255,0.15)", color: draftTimerSeconds === s ? BTN_TEXT : "white", fontSize: 13, fontWeight: 800, border: "none", cursor: "pointer" }}>
+                  {s === 0 ? "Off" : `${s}s`}
+                </button>
+              ))}
+            </div>
+            {game?.next_timer_seconds != null && game.next_timer_seconds !== game.timer_seconds && (
+              <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.6)", paddingTop: 10 }}>
+                Starts next round: {game.next_timer_seconds === 0 ? "Off" : `${game.next_timer_seconds}s`}
+              </div>
+            )}
+            <button onClick={saveTimerSettings} disabled={savingTimer}
+              style={{ background: BTN, color: BTN_TEXT, fontSize: 15, fontWeight: 900, padding: "12px 16px", width: "100%", marginTop: 16 }}>
+              Save
+            </button>
+          </>}
         />
         <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
           {footer}

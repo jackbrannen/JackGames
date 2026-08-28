@@ -59,6 +59,14 @@ export default function PlayPage({ params }) {
   const syncChRef = useRef(null)
   const syncKeyRef = useRef(null)
 
+  // Mid-game "change the round timer" settings control (mirrors Codenames'
+  // draftTimerSeconds/saveTimerSettings). Draft resyncs from the LIVE
+  // turn_duration_seconds, never from the staged next_turn_duration_seconds
+  // — that only takes effect once the next attempt actually starts, per
+  // woe_stage_turn_duration / woe_start_playing / woe_advance_attempt.
+  const [draftTurnDuration, setDraftTurnDuration] = useState(30)
+  const [savingTurnDuration, setSavingTurnDuration] = useState(false)
+
   const me = players.find(p => p.id === myPlayerId)
 
   // Calculate elapsed time for timer animation (stable - only recalculates when attempt starts)
@@ -138,6 +146,19 @@ export default function PlayPage({ params }) {
       .order("created_at", { ascending: false })
       .limit(10)
     if (data) setPokes(data)
+  }
+
+  // Keep the settings-panel button group in sync with the actually-active
+  // turn duration (not any staged next_turn_duration_seconds — that only
+  // takes effect once the next attempt actually starts).
+  useEffect(() => {
+    if (game?.turn_duration_seconds != null) setDraftTurnDuration(game.turn_duration_seconds)
+  }, [game?.turn_duration_seconds])
+
+  async function saveTurnDurationSettings() {
+    setSavingTurnDuration(true)
+    await supabase.rpc("woe_stage_turn_duration", { p_code: code, p_turn_duration_seconds: draftTurnDuration })
+    setSavingTurnDuration(false)
   }
 
   async function handleAdjustScore(playerId, delta) {
@@ -266,9 +287,12 @@ export default function PlayPage({ params }) {
     }
   }, [game?.paused, game?.awarding_points_by, myPlayerId, showPauseModal, showNewWordModal])
 
-  // Countdown timer (ready -> playing)
+  // Countdown timer (ready -> playing). Stops entirely once idle-gated —
+  // same as the main realtime connection — so an AFK tab can't keep
+  // silently auto-advancing the game in the background while the "Still
+  // there?" modal is up.
   useEffect(() => {
-    if (game?.phase !== "countdown") {
+    if (game?.phase !== "countdown" || isIdle) {
       setCountdownRemaining(null)
       return
     }
@@ -290,7 +314,7 @@ export default function PlayPage({ params }) {
     }, 100)
 
     return () => clearInterval(interval)
-  }, [game?.phase, game?.is_dummy, code])
+  }, [game?.phase, game?.is_dummy, code, isIdle])
 
   // Playing timer
   useEffect(() => {
@@ -358,9 +382,12 @@ export default function PlayPage({ params }) {
     }
   }, [game?.phase, game?.rotation, game?.current_round, game?.current_attempt, myPlayerId])
 
-  // Auto-advance from intermediate to playing after 3 seconds
+  // Auto-advance from intermediate to playing after 3 seconds. Stops
+  // entirely once idle-gated — same as the main realtime connection — so an
+  // AFK tab can't keep silently auto-advancing the game in the background
+  // while the "Still there?" modal is up.
   useEffect(() => {
-    if (game?.phase !== "intermediate") return
+    if (game?.phase !== "intermediate" || isIdle) return
 
     const timer = setTimeout(async () => {
       try {
@@ -371,7 +398,7 @@ export default function PlayPage({ params }) {
     }, 3000)
 
     return () => clearTimeout(timer)
-  }, [game?.phase, code])
+  }, [game?.phase, code, isIdle])
 
   // Handlers
   async function handleReady() {
@@ -637,6 +664,39 @@ export default function PlayPage({ params }) {
                   </button>
                 </div>
               ))}
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.12)", marginTop: 4, paddingTop: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "rgba(255,255,255,0.4)", marginBottom: 12 }}>
+                  Turn Timer
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {[30, 45, 60, 90, 120, 0].map(duration => (
+                    <button
+                      key={duration}
+                      onClick={() => setDraftTurnDuration(duration)}
+                      style={{
+                        background: draftTurnDuration === duration ? YELLOW : WL,
+                        color: draftTurnDuration === duration ? "#000" : "white",
+                        fontSize: 16,
+                        fontWeight: 700,
+                        padding: "12px 20px",
+                        border: "none",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {duration === 0 ? "Off" : `${duration}s`}
+                    </button>
+                  ))}
+                </div>
+                {game?.next_turn_duration_seconds != null && game.next_turn_duration_seconds !== game.turn_duration_seconds && (
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.6)", paddingTop: 10 }}>
+                    Starts next attempt: {game.next_turn_duration_seconds === 0 ? "Off" : `${game.next_turn_duration_seconds}s`}
+                  </div>
+                )}
+                <button onClick={saveTurnDurationSettings} disabled={savingTurnDuration}
+                  style={{ background: YELLOW, color: "#000", fontSize: 15, fontWeight: 900, padding: "12px 16px", width: "100%", marginTop: 12, border: "none", cursor: savingTurnDuration ? "default" : "pointer" }}>
+                  Save
+                </button>
+              </div>
             </div>
           }
         />
@@ -805,6 +865,39 @@ export default function PlayPage({ params }) {
                   </button>
                 </div>
               ))}
+              <div style={{ borderTop: "1px solid rgba(255,255,255,0.12)", marginTop: 4, paddingTop: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.18em", color: "rgba(255,255,255,0.4)", marginBottom: 12 }}>
+                  Turn Timer
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {[30, 45, 60, 90, 120, 0].map(duration => (
+                    <button
+                      key={duration}
+                      onClick={() => setDraftTurnDuration(duration)}
+                      style={{
+                        background: draftTurnDuration === duration ? YELLOW : WL,
+                        color: draftTurnDuration === duration ? "#000" : "white",
+                        fontSize: 16,
+                        fontWeight: 700,
+                        padding: "12px 20px",
+                        border: "none",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {duration === 0 ? "Off" : `${duration}s`}
+                    </button>
+                  ))}
+                </div>
+                {game?.next_turn_duration_seconds != null && game.next_turn_duration_seconds !== game.turn_duration_seconds && (
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.6)", paddingTop: 10 }}>
+                    Starts next attempt: {game.next_turn_duration_seconds === 0 ? "Off" : `${game.next_turn_duration_seconds}s`}
+                  </div>
+                )}
+                <button onClick={saveTurnDurationSettings} disabled={savingTurnDuration}
+                  style={{ background: YELLOW, color: "#000", fontSize: 15, fontWeight: 900, padding: "12px 16px", width: "100%", marginTop: 12, border: "none", cursor: savingTurnDuration ? "default" : "pointer" }}>
+                  Save
+                </button>
+              </div>
             </div>
           }
         />

@@ -90,6 +90,8 @@ export default function Lobby({ params }) {
   const [gameExists, setGameExists] = useState(null)
   const [gamePhase, setGamePhase] = useState("lobby")
   const [firstTurnTeam, setFirstTurnTeam] = useState("red")
+  const [timerSeconds, setTimerSeconds] = useState(0)
+  const [draftTimerSeconds, setDraftTimerSeconds] = useState(0)
   const [lastUsedWords, setLastUsedWords] = useState([])
   const [replayOf, setReplayOf] = useState(null)
   const [players, setPlayers] = useState([])
@@ -120,7 +122,7 @@ export default function Lobby({ params }) {
   async function loadGame() {
     const { data, error } = await supabase
       .from("codenames_games")
-      .select("code,phase,first_turn_team,last_used_words,replay_code,replay_of")
+      .select("code,phase,first_turn_team,timer_seconds,last_used_words,replay_code,replay_of")
       .eq("code", code)
       .single()
     if (error || !data) { setGameExists(false); return }
@@ -128,6 +130,7 @@ export default function Lobby({ params }) {
     setGameExists(true)
     setGamePhase(data.phase || "lobby")
     setFirstTurnTeam(data.first_turn_team || "red")
+    setTimerSeconds(data.timer_seconds || 0)
     setLastUsedWords(data.last_used_words || [])
     setReplayOf(data.replay_of || null)
   }
@@ -179,13 +182,14 @@ export default function Lobby({ params }) {
     await refreshPlayers()
     const { data } = await supabase
       .from("codenames_games")
-      .select("phase,first_turn_team,last_used_words,replay_code")
+      .select("phase,first_turn_team,timer_seconds,last_used_words,replay_code")
       .eq("code", code)
       .single()
     if (data?.replay_code) { router.replace(`/${data.replay_code}`); return }
     if (data) {
       setGamePhase(data.phase || "lobby")
       setFirstTurnTeam(data.first_turn_team || "red")
+      setTimerSeconds(data.timer_seconds || 0)
       setLastUsedWords(data.last_used_words || [])
     }
   }
@@ -303,9 +307,10 @@ export default function Lobby({ params }) {
   async function saveSettings() {
     await supabase
       .from("codenames_games")
-      .update({ first_turn_team: draftFirstTurn })
+      .update({ first_turn_team: draftFirstTurn, timer_seconds: draftTimerSeconds })
       .eq("code", code)
     setFirstTurnTeam(draftFirstTurn)
+    setTimerSeconds(draftTimerSeconds)
     setShowSettings(false)
   }
 
@@ -371,7 +376,7 @@ export default function Lobby({ params }) {
           <div style={{ display: "flex", gap: 8 }}>
             {!!me && (
               <button
-                onClick={() => { setDraftFirstTurn(firstTurnTeam); setShowSettings(s => !s) }}
+                onClick={() => { setDraftFirstTurn(firstTurnTeam); setDraftTimerSeconds(timerSeconds); setShowSettings(s => !s) }}
                 style={{ background: "rgba(0,0,0,0.1)", color: TEXT, padding: "8px 12px", display: "flex", alignItems: "center", justifyContent: "center" }}
               >
                 <CogIcon />
@@ -424,6 +429,19 @@ export default function Lobby({ params }) {
             >
               <option value="red">Red</option>
               <option value="blue">Blue</option>
+            </select>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
+            <span style={{ fontSize: 16, fontWeight: 600, color: "rgba(0,0,0,0.75)" }}>Clue timer</span>
+            <select
+              value={String(draftTimerSeconds)}
+              onChange={e => setDraftTimerSeconds(Number(e.target.value))}
+              style={selectStyle}
+            >
+              <option value="0">Off</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(m => (
+                <option key={m} value={String(m * 60)}>{m} min</option>
+              ))}
             </select>
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 12 }}>

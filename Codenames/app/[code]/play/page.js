@@ -15,6 +15,7 @@ import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import EndGame from "../../../components/EndGame"
 import IdleGateModal from "../../../components/IdleGateModal"
+import PauseModal from "../../../components/PauseModal"
 import { useIdleGate } from "../../../lib/useIdleGate"
 
 const BG = "#C0B298"
@@ -100,6 +101,10 @@ export default function Play({ params }) {
   const [showClueRules, setShowClueRules] = useState(false)
   const [showColors, setShowColors] = useState(true)
   const [instructions, setInstructions] = useState("")
+  const [now, setNow] = useState(() => Date.now())
+  const [resuming, setResuming] = useState(false)
+  const [draftTimerSeconds, setDraftTimerSeconds] = useState(0)
+  const [savingTimer, setSavingTimer] = useState(false)
   const loadEpochRef = useRef(0)
   const syncChRef = useRef(null)
   const syncKeyRef = useRef(null)
@@ -109,6 +114,45 @@ export default function Play({ params }) {
     setSubmittingClue(false)
     setSubmittingGuess(false)
   }, [game?.turn_team, game?.turn_phase])
+
+  // Optional clue timer (off by default, timer_seconds = 0). Ticks locally
+  // for the bar; the actual auto-advance is server-enforced (any client can
+  // trigger it, the RPC itself re-checks the deadline) so it's not reliant
+  // on any one specific client staying connected. Stops ticking entirely
+  // while paused — that's what actually freezes the bar animation, not just
+  // the deadline check below (see codenames_pause_game/_resume_game, which
+  // shift clue_started_at forward on resume to absorb the paused duration,
+  // so the bar and the auto-advance both resume exactly where they left off).
+  // Stops entirely once idle-gated — same as the main realtime connection —
+  // so an AFK tab with a round timer still running can't keep silently
+  // driving auto-advance in the background while the "Still there?" modal
+  // is blocking the screen.
+  useEffect(() => {
+    if (!game?.timer_seconds || game.turn_phase !== "clue" || game.paused || isIdle) return
+    setNow(Date.now()) // correct immediately on resume instead of waiting for the first tick
+    const t = setInterval(() => setNow(Date.now()), 250)
+    return () => clearInterval(t)
+  }, [game?.timer_seconds, game?.turn_phase, game?.clue_started_at, game?.paused, isIdle])
+
+  useEffect(() => {
+    if (!game?.timer_seconds || game.turn_phase !== "clue" || !game.clue_started_at || game.paused || isIdle) return
+    const deadline = new Date(game.clue_started_at).getTime() + game.timer_seconds * 1000
+    if (now < deadline) return
+    supabase.rpc("codenames_force_end_clue_phase", { p_code: code }).then(() => loadState())
+  }, [now, game?.timer_seconds, game?.turn_phase, game?.clue_started_at, game?.paused, code, isIdle])
+
+  // Keep the settings-panel dropdown in sync with the actually-active timer
+  // length (not any staged next_timer_seconds — that only takes effect once
+  // the next turn actually starts, per codenames_stage_timer_seconds).
+  useEffect(() => {
+    if (game?.timer_seconds != null) setDraftTimerSeconds(game.timer_seconds)
+  }, [game?.timer_seconds])
+
+  async function saveTimerSettings() {
+    setSavingTimer(true)
+    await supabase.rpc("codenames_stage_timer_seconds", { p_code: code, p_timer_seconds: draftTimerSeconds })
+    setSavingTimer(false)
+  }
 
   async function rpc(fn, args = {}) {
     const { error } = await supabase.rpc(fn, args)
@@ -124,7 +168,7 @@ export default function Play({ params }) {
 
     const [{ data: gameData }, { data: playerData }, { data: cardData }] = await Promise.all([
       supabase.from("codenames_games")
-        .select("code,phase,turn_team,turn_phase,current_clue_word,current_clue_number,guesses_used,first_turn_team,winning_team,turn_selected_card_id,next_game,next_game_picker_name,replay_code")
+        .select("code,phase,turn_team,turn_phase,current_clue_word,current_clue_number,guesses_used,first_turn_team,winning_team,turn_selected_card_id,timer_seconds,next_timer_seconds,clue_started_at,paused,paused_at,paused_by_name,pause_elapsed_seconds,next_game,next_game_picker_name,replay_code")
         .eq("code", code)
         .single(),
       supabase.from("codenames_players")
@@ -398,8 +442,45 @@ export default function Play({ params }) {
         playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name, teamColor: p.team === "red" ? RED_COLOR : p.team === "blue" ? BLUE_COLOR : undefined, teamLabel: p.team === "red" ? "Red" : p.team === "blue" ? "Blue" : undefined }))}
         gamePhase={game?.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
+        onPause={async () => { await supabase.rpc("codenames_pause_game", { p_code: code, p_player_id: myPlayerId }) }}
         onResetToLobby={async () => { await rpc("reset_codenames_game", { p_code: code }) }}
+        settingsContent={<>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
+            <span style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>Clue timer</span>
+            <select
+              value={String(draftTimerSeconds)}
+              onChange={e => setDraftTimerSeconds(Number(e.target.value))}
+              style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "8px 12px" }}
+            >
+              <option value="0">Off</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(m => (
+                <option key={m} value={String(m * 60)}>{m} min</option>
+              ))}
+            </select>
+          </div>
+          {game?.next_timer_seconds != null && game.next_timer_seconds !== game.timer_seconds && (
+            <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.6)", paddingBottom: 10 }}>
+              Starts next turn: {game.next_timer_seconds === 0 ? "Off" : `${game.next_timer_seconds / 60} min`}
+            </div>
+          )}
+          <button onClick={saveTimerSettings} disabled={savingTimer}
+            style={{ background: TAN, color: "#000", fontSize: 15, fontWeight: 900, padding: "12px 16px", width: "100%", marginTop: 6 }}>
+            Save
+          </button>
+        </>}
       />
+      {game?.paused && (
+        <PauseModal
+          colors={POKE_COLORS}
+          pausedByName={game.paused_by_name}
+          resuming={resuming}
+          onResume={async () => {
+            setResuming(true)
+            await supabase.rpc("codenames_resume_game", { p_code: code })
+            setResuming(false)
+          }}
+        />
+      )}
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
         {game?.phase === "play" && game.turn_phase === "clue" && isMyTurn && isCluegiver && (
           <FooterButton
@@ -592,6 +673,28 @@ export default function Play({ params }) {
           {myTeam === "red" ? "Red Team" : "Blue Team"}
         </div>
       )}
+
+      {/* Optional clue timer — edge-to-edge depleting bar, same pattern as HearingVoices */}
+      {!!game.timer_seconds && game.turn_phase === "clue" && game.clue_started_at && (() => {
+        // While paused, use paused_at (a fixed point) instead of the live
+        // `now` tick as the clock — the ticking effect above already stops
+        // updating `now` while paused, but anchoring on paused_at here too
+        // means the bar renders at the exact fraction it was at when paused
+        // hit, not whatever `now` happened to be mid-way through a 250ms tick.
+        const clockMs = game.paused && game.paused_at ? new Date(game.paused_at).getTime() : now
+        const elapsedSec = (clockMs - new Date(game.clue_started_at).getTime()) / 1000
+        const barFrac = Math.max(0, Math.min(1, 1 - elapsedSec / game.timer_seconds))
+        return (
+          <div style={{ flexShrink: 0, height: 10, background: barFrac > 0.3 ? "rgba(0, 0, 0, 0.15)" : "rgba(251, 223, 84, 0.15)" }}>
+            <div style={{
+              height: "100%",
+              width: `${barFrac * 100}%`,
+              background: barFrac > 0.3 ? "#000000" : "#FBDF54",
+              transition: "width 0.2s linear, background 300ms ease",
+            }} />
+          </div>
+        )
+      })()}
 
       {/* Header bar */}
       <div style={{ background: "rgba(0,0,0,0.18)", padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: GAP.result, flexShrink: 0 }}>

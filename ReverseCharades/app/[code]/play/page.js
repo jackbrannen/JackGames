@@ -196,7 +196,7 @@ export default function Play({ params }) {
   const router = useRouter()
   const code = useMemo(() => params.code.toUpperCase(), [params.code])
   const [myPlayerId, setMyPlayerId] = useState(null)
-  const isIdle = useIdleGate()
+  const isIdle = useIdleGate(2 * 60 * 1000)
   const [game, setGame] = useState(null)
   const [players, setPlayers] = useState([])
   const [currentClue, setCurrentClue] = useState(null)
@@ -212,6 +212,8 @@ export default function Play({ params }) {
   const [instructions, setInstructions] = useState("")
   const [manualScoreA, setManualScoreA] = useState("0")
   const [manualScoreB, setManualScoreB] = useState("0")
+  const [draftTurnDuration, setDraftTurnDuration] = useState(45)
+  const [savingTurnDuration, setSavingTurnDuration] = useState(false)
   const endingRef = useRef(false)
   const soundTriggerRef = useRef(null)
   const syncChRef = useRef(null)
@@ -253,7 +255,7 @@ export default function Play({ params }) {
     const seq = ++loadSeqRef.current
     const { data: gameData } = await supabase
       .from("reversecharades_games")
-      .select("code,phase,host_id,current_team,current_guesser_id,current_controller_id,current_clue_id,turn_started_at,turn_duration_seconds,skip_limit,skip_penalty,skips_this_turn,correct_this_turn,last_turn_correct,last_turn_skips,last_turn_team,team_a_score,team_b_score,team_a_turns,team_b_turns,next_game,next_game_picker_name,is_paused,paused_at,pause_elapsed_seconds,replay_code")
+      .select("code,phase,host_id,current_team,current_guesser_id,current_controller_id,current_clue_id,turn_started_at,turn_duration_seconds,next_turn_duration_seconds,skip_limit,skip_penalty,skips_this_turn,correct_this_turn,last_turn_correct,last_turn_skips,last_turn_team,team_a_score,team_b_score,team_a_turns,team_b_turns,next_game,next_game_picker_name,is_paused,paused_at,pause_elapsed_seconds,replay_code")
       .eq("code", code)
       .single()
     if (seq !== loadSeqRef.current) return
@@ -425,6 +427,19 @@ export default function Play({ params }) {
     if (game?.phase === "lobby") router.replace(`/${code}`)
   }, [game?.phase])
 
+  // Keep the settings-panel dropdown in sync with the actually-active turn
+  // length (not any staged next_turn_duration_seconds — that only takes
+  // effect once the next turn actually starts, per rc_stage_turn_duration).
+  useEffect(() => {
+    if (game?.turn_duration_seconds != null) setDraftTurnDuration(game.turn_duration_seconds)
+  }, [game?.turn_duration_seconds])
+
+  async function saveTurnDuration() {
+    setSavingTurnDuration(true)
+    await supabase.rpc("rc_stage_turn_duration", { p_code: code, p_turn_duration_seconds: draftTurnDuration })
+    setSavingTurnDuration(false)
+  }
+
 
   const me = players.find(p => p.id === myPlayerId)
 
@@ -482,21 +497,43 @@ export default function Play({ params }) {
     </div>
   ) : null
   const scoreSettingsContent = (
-    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-      <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
-        {teamLabel("A")}
-        <input value={manualScoreA} onChange={e => setManualScoreA(e.target.value)}
-          style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }} />
-      </label>
-      <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
-        {teamLabel("B")}
-        <input value={manualScoreB} onChange={e => setManualScoreB(e.target.value)}
-          style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }} />
-      </label>
-      <button onClick={saveTeamScores}
-        style={{ background: ACCENT, color: ACCENT_TEXT, fontSize: 14, fontWeight: 900, padding: "8px 16px" }}>
-        Save
-      </button>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+          {teamLabel("A")}
+          <input value={manualScoreA} onChange={e => setManualScoreA(e.target.value)}
+            style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }} />
+        </label>
+        <label style={{ color: "white", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+          {teamLabel("B")}
+          <input value={manualScoreB} onChange={e => setManualScoreB(e.target.value)}
+            style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "6px 10px", width: 64 }} />
+        </label>
+        <button onClick={saveTeamScores}
+          style={{ background: ACCENT, color: ACCENT_TEXT, fontSize: 14, fontWeight: 900, padding: "8px 16px" }}>
+          Save
+        </button>
+      </div>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.6)", marginBottom: 10 }}>Turn length</div>
+        <div style={{ display: "flex", gap: 6 }}>
+          {[30, 45, 60, 75, 90].map(s => (
+            <button key={s} onClick={() => setDraftTurnDuration(s)}
+              style={{ flex: 1, padding: "12px 4px", background: draftTurnDuration === s ? ACCENT : "rgba(255,255,255,0.15)", color: draftTurnDuration === s ? ACCENT_TEXT : "white", fontSize: 13, fontWeight: 800, border: "none", cursor: "pointer" }}>
+              {s}s
+            </button>
+          ))}
+        </div>
+        {game?.next_turn_duration_seconds != null && game.next_turn_duration_seconds !== game.turn_duration_seconds && (
+          <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.6)", paddingTop: 10 }}>
+            Starts next turn: {game.next_turn_duration_seconds}s
+          </div>
+        )}
+        <button onClick={saveTurnDuration} disabled={savingTurnDuration}
+          style={{ background: ACCENT, color: ACCENT_TEXT, fontSize: 15, fontWeight: 900, padding: "12px 16px", width: "100%", marginTop: 16 }}>
+          Save
+        </button>
+      </div>
     </div>
   )
   const pokeSystemNode = me ? (

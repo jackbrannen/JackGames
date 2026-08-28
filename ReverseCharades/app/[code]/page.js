@@ -188,7 +188,7 @@ export default function Lobby({ params }) {
   const [game, setGame] = useState(null)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
-  const isIdle = useIdleGate()
+  const isIdle = useIdleGate(2 * 60 * 1000)
   const [myClues, setMyClues] = useState([])
   const [savedProfile, setSavedProfile] = useState(null)
   const [firstName, setFirstName] = useState("")

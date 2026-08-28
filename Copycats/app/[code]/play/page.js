@@ -17,6 +17,7 @@ import StatusBar from "../../../components/StatusBar"
 import WaitingList from "../../../components/WaitingList"
 import { STYLE, FONT_SIZE, FONT_WEIGHT, OPACITY, SPACE, GAP, CARD as CARD_LAYOUT } from "../../../components/styles"
 import IdleGateModal from "../../../components/IdleGateModal"
+import PauseModal from "../../../components/PauseModal"
 import { useIdleGate } from "../../../lib/useIdleGate"
 
 const BG         = "#5C2D8C"
@@ -114,7 +115,11 @@ export default function PlayPage({ params }) {
   const [votes, setVotes] = useState([])
   const [likes, setLikes] = useState([])
   const [myId, setMyId] = useState(null)
+  const [resuming, setResuming] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
   const isIdle = useIdleGate()
+  const [draftTimerSeconds, setDraftTimerSeconds] = useState(0)
+  const [savingTimer, setSavingTimer] = useState(false)
 
   // question writing
   const [myQuestion, setMyQuestion] = useState("")
@@ -249,6 +254,135 @@ export default function PlayPage({ params }) {
     setAnswerError("")
     setSelectedVote(null)
   }, [game?.current_round])
+
+  // Optional writing timer (off by default, timer_seconds = 0), shared by
+  // both question_writing and answering. Stops ticking entirely while
+  // paused — that's what freezes the bar animation. cc_pause_game/
+  // _resume_game shift whichever started_at is active forward on resume to
+  // absorb the paused duration, so both the bar and the auto-advance
+  // deadline resume exactly where they left off.
+  const timedPhase = game?.phase === "question_writing" || game?.phase === "answering" ? game.phase : null
+  const timerStartedAt = timedPhase === "question_writing" ? game?.question_writing_started_at
+    : timedPhase === "answering" ? game?.answering_started_at
+    : null
+  // Stops entirely once idle-gated — same as the main realtime connection —
+  // so an AFK tab with a round timer still running can't keep silently
+  // driving auto-submits/force-advances in the background while the "Still
+  // there?" modal is blocking the screen. `now` freezing here is also what
+  // halts the self-submit and fallback effects below, since they only
+  // re-evaluate when `now` changes — but each is also explicitly gated on
+  // `isIdle` directly rather than relying on that alone.
+  useEffect(() => {
+    if (!game?.timer_seconds || !timedPhase || game.paused || isIdle) return
+    setNow(Date.now()) // correct immediately on resume instead of waiting for the first tick
+    const t = setInterval(() => setNow(Date.now()), 250)
+    return () => clearInterval(t)
+  }, [game?.timer_seconds, timedPhase, timerStartedAt, game?.paused, isIdle])
+
+  // Primary auto-advance mechanism: each player's own device submits its
+  // own (possibly blank) answer the moment ITS local clock crosses the
+  // deadline, rather than depending on some other player's tab noticing
+  // everyone else is late — that dependency is what made the old
+  // "any client can trigger it" design fragile against backgrounded/closed
+  // tabs. Once every player has a row (real or auto-blank), the normal
+  // cc_submit_question/cc_submit_answer "all submitted" check advances the
+  // phase on its own, no separate force-advance call needed for this path.
+  // autoSubmittedKeyRef guards against firing more than once per
+  // phase/round: this effect re-runs on every `now` tick (every 250ms)
+  // until `players`/`answers`' realtime/poll refresh confirms the
+  // submission locally, which can take a moment — without this guard, every
+  // intervening tick re-sends the RPC. Harmless here since cc_submit_*
+  // upserts, but wasteful, and the same unguarded-repeat pattern caused a
+  // real bug in SoClover's board-advance counter (see BUGS.md) — guard it
+  // uniformly rather than relying on each RPC happening to be safe.
+  const autoSubmittedKeyRef = useRef(null)
+  useEffect(() => {
+    if (!game?.timer_seconds || !timedPhase || !timerStartedAt || game.paused || !myId || isIdle) return
+    const deadline = new Date(timerStartedAt).getTime() + game.timer_seconds * 1000
+    if (now < deadline) return
+    // The round's target writes the one true answer — the round is
+    // meaningless without it, so they're exempt from the timer entirely and
+    // are never auto-submitted. Everyone else is only faking, so a blank
+    // from them costs nothing.
+    if (timedPhase === "answering" && myId === game.player_order?.[game.current_round]) return
+    const alreadySubmitted = timedPhase === "question_writing"
+      ? players.find(p => p.id === myId)?.questions_submitted
+      : answers.some(a => a.player_id === myId && a.round === game.current_round)
+    if (alreadySubmitted) return
+    // Don't auto-submit blank until at least 2 OTHER players have a real
+    // (non-blank) submission in — if the round is mostly empty, waiting a
+    // beat longer for a real answer is better than everyone racing to
+    // blank-fill each other out. Matches the same threshold enforced
+    // server-side in cc_force_advance_question_writing/_answering for the
+    // closed-tab fallback path — this is the client-side half of the same
+    // rule, needed because a self-submit doesn't otherwise know or care how
+    // many other players are real vs. auto-blank.
+    const realOthersCount = timedPhase === "question_writing"
+      ? players.filter(p => p.id !== myId && p.questions_submitted && p.question !== "(no question given)").length
+      : answers.filter(a => a.player_id !== myId && a.round === game.current_round && a.answer?.trim()).length
+    if (realOthersCount < 2) return
+    const key = `${timedPhase}:${timerStartedAt}`
+    if (autoSubmittedKeyRef.current === key) return
+    autoSubmittedKeyRef.current = key
+    // Discard whatever's in the field — a force-submit on timeout is always
+    // treated as a blank/skipped entry, never as "whatever they'd typed so
+    // far," even if they'd started writing something.
+    //
+    // NOTE: .rpc() returns a lazy thenable, not a promise — the HTTP request
+    // is only sent once it's awaited or .then()'d. A bare `supabase.rpc(...)`
+    // statement silently never fires. Always consume the result.
+    const submit = timedPhase === "question_writing"
+      ? supabase.rpc("cc_submit_question", { p_code: code, p_player_id: myId, p_question: "(no question given)" })
+      : supabase.rpc("cc_submit_answer", { p_code: code, p_player_id: myId, p_round: game.current_round, p_answer: "" })
+    submit.then(({ error }) => { if (error) console.error("[copycats] auto-submit failed", error) })
+  }, [now, game?.timer_seconds, timedPhase, timerStartedAt, game?.paused, game?.current_round, code, myId, players, answers, myQuestion, myAnswer, isIdle])
+
+  // Fallback safety net: if a player's own tab is fully closed (not just
+  // backgrounded), nobody submits on their behalf via the effect above, so
+  // once at least one real submission exists past the deadline, any other
+  // connected client force-fills the rest and advances. No-ops if zero
+  // players have submitted yet — see soclover/gow's identical guard.
+  useEffect(() => {
+    if (!game?.timer_seconds || !timedPhase || !timerStartedAt || game.paused || isIdle) return
+    const deadline = new Date(timerStartedAt).getTime() + game.timer_seconds * 1000
+    if (now < deadline) return
+    const rpcName = timedPhase === "question_writing" ? "cc_force_advance_question_writing" : "cc_force_advance_answering"
+    supabase.rpc(rpcName, { p_code: code }).then(() => {})
+  }, [now, game?.timer_seconds, timedPhase, timerStartedAt, game?.paused, code, isIdle])
+
+  // Edge-to-edge depleting bar, same pattern as HearingVoices. While paused,
+  // anchor on paused_at (a fixed point) rather than the live `now` tick —
+  // the ticking effect above already stops updating `now` while paused, but
+  // this makes the bar render at the exact frame it was at when paused hit.
+  function writingTimerBar() {
+    if (!game?.timer_seconds || !timedPhase || !timerStartedAt) return null
+    const clockMs = game.paused && game.paused_at ? new Date(game.paused_at).getTime() : now
+    const elapsedSec = (clockMs - new Date(timerStartedAt).getTime()) / 1000
+    const barFrac = Math.max(0, Math.min(1, 1 - elapsedSec / game.timer_seconds))
+    return (
+      <div style={{ flexShrink: 0, height: 10, background: barFrac > 0.3 ? "rgba(251, 223, 84, 0.15)" : "hsla(0, 80%, 55%, 0.15)" }}>
+        <div style={{
+          height: "100%",
+          width: `${barFrac * 100}%`,
+          background: barFrac > 0.3 ? "#FBDF54" : "hsl(0, 80%, 55%)",
+          transition: "width 0.2s linear, background 300ms ease",
+        }} />
+      </div>
+    )
+  }
+
+  // Keep the settings-panel dropdown in sync with the actually-active timer
+  // length (not any staged next_timer_seconds — that only takes effect once
+  // the next round actually starts, per cc_stage_timer_seconds).
+  useEffect(() => {
+    if (game?.timer_seconds != null) setDraftTimerSeconds(game.timer_seconds)
+  }, [game?.timer_seconds])
+
+  async function saveTimerSettings() {
+    setSavingTimer(true)
+    await supabase.rpc("cc_stage_timer_seconds", { p_code: code, p_timer_seconds: draftTimerSeconds })
+    setSavingTimer(false)
+  }
 
   async function rpc(fn, args = {}) {
     const { error } = await supabase.rpc(fn, args)
@@ -427,8 +561,45 @@ export default function PlayPage({ params }) {
         playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name }))}
         gamePhase={game?.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
+        onPause={async () => { await supabase.rpc("cc_pause_game", { p_code: code, p_player_id: myId }) }}
         onResetToLobby={async () => { await rpc("cc_reset_to_lobby", { p_code: code }) }}
+        settingsContent={<>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
+            <span style={{ fontSize: 16, fontWeight: 700, color: "white" }}>Writing timer</span>
+            <select
+              value={String(draftTimerSeconds)}
+              onChange={e => setDraftTimerSeconds(Number(e.target.value))}
+              style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 15, fontWeight: 700, padding: "8px 10px", border: "none" }}
+            >
+              <option value="0">Off</option>
+              {[30, 45, 60, 90, 120, 180, 240, 300].map(s => (
+                <option key={s} value={String(s)}>{s < 60 ? `${s}s` : `${s / 60} min`}</option>
+              ))}
+            </select>
+          </div>
+          {game?.next_timer_seconds != null && game.next_timer_seconds !== game.timer_seconds && (
+            <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.6)", paddingBottom: 10 }}>
+              Starts next round: {game.next_timer_seconds === 0 ? "Off" : (game.next_timer_seconds < 60 ? `${game.next_timer_seconds}s` : `${game.next_timer_seconds / 60} min`)}
+            </div>
+          )}
+          <button onClick={saveTimerSettings} disabled={savingTimer}
+            style={{ background: YELLOW, color: "#000", fontSize: 15, fontWeight: 900, padding: "12px 16px", width: "100%", marginTop: 6 }}>
+            Save
+          </button>
+        </>}
       />
+      {game?.paused && (
+        <PauseModal
+          colors={POKE_COLORS}
+          pausedByName={game.paused_by_name}
+          resuming={resuming}
+          onResume={async () => {
+            setResuming(true)
+            await supabase.rpc("cc_resume_game", { p_code: code })
+            setResuming(false)
+          }}
+        />
+      )}
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
         {footer}
       </Footer>
@@ -477,6 +648,7 @@ export default function PlayPage({ params }) {
       return (
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <StatusBar dark={DARK} label="Write Your Questions" />
+          {writingTimerBar()}
           <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div style={{ textAlign: "center", padding: "32px 0" }}>
               <p style={{ fontSize: 20, fontWeight: 700, color: "white", marginBottom: 8 }}>Question submitted!</p>
@@ -504,6 +676,7 @@ export default function PlayPage({ params }) {
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
         <StatusBar dark={DARK} label="Write Your Questions" />
+        {writingTimerBar()}
         <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
           <div>
             <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 6 }}>
@@ -604,6 +777,7 @@ export default function PlayPage({ params }) {
         <>
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <StatusBar dark={DARK} label={`Round ${current_round + 1} of ${players.length}`} />
+          {writingTimerBar()}
           <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div>
               <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
@@ -641,6 +815,7 @@ export default function PlayPage({ params }) {
         <>
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <StatusBar dark={DARK} label={`Round ${current_round + 1} of ${players.length}`} />
+          {writingTimerBar()}
           <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div>
               <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
@@ -670,6 +845,7 @@ export default function PlayPage({ params }) {
         <>
         <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
           <StatusBar dark={DARK} label={`Round ${current_round + 1} of ${players.length}`} />
+          {writingTimerBar()}
           <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
             <div>
               <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
@@ -715,6 +891,7 @@ export default function PlayPage({ params }) {
       <>
       <div style={{ minHeight: "100dvh", background: BG, display: "flex", flexDirection: "column" }}>
         <StatusBar dark={DARK} label={`Round ${current_round + 1} of ${players.length}`} />
+        {writingTimerBar()}
         <div style={{ flex: 1, padding: "24px 20px", display: "flex", flexDirection: "column", gap: SPACE.md, maxWidth: 480, width: "100%", margin: "0 auto", paddingBottom: BOTTOM_PAD }}>
           <div>
             <p style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 12 }}>
@@ -762,10 +939,14 @@ export default function PlayPage({ params }) {
     const myAnswerText = myAnswerRow?.answer?.trim().toLowerCase() ?? null
     // Own answer stays visible (marked isMine below, disabled in Selections) rather than
     // being hidden — same-text answers are also shown but disabled (same as GoW)
-    // De-dup: collapse identical answers into one entry (first in shuffled order = canonical)
+    // De-dup: collapse identical answers into one entry (first in shuffled order = canonical).
+    // Blank answers (auto-submitted when a player's timer ran out before they
+    // wrote anything) are excluded entirely — an empty row is an obvious
+    // giveaway, not a real decoy, so it shouldn't be a votable option.
     const seenVoteTexts = new Set()
     const dedupedVotable = shuffled.filter(a => {
       const key = a.answer.trim().toLowerCase()
+      if (!key) return false
       if (seenVoteTexts.has(key)) return false
       seenVoteTexts.add(key)
       return true
@@ -783,7 +964,7 @@ export default function PlayPage({ params }) {
             </div>
             <Section label="The answers">
               <div style={{ display: "flex", flexDirection: "column", gap: GAP.selection }}>
-                {[...shuffled].sort((a, b) => (a.player_id === myId ? 1 : 0) - (b.player_id === myId ? 1 : 0)).map(a => {
+                {[...shuffled].filter(a => a.answer.trim()).sort((a, b) => (a.player_id === myId ? 1 : 0) - (b.player_id === myId ? 1 : 0)).map(a => {
                   const voteCount = roundVotes.filter(v => v.voted_for_player_id === a.player_id).length
                   const isMine = a.player_id === myId
                   const answerLiked = iLiked(a.player_id)
@@ -970,7 +1151,7 @@ export default function PlayPage({ params }) {
           </p>
 
           {/* Real answer */}
-          {targetAnswer && (() => {
+          {targetAnswer?.answer?.trim() && (() => {
             const correctVoters = roundVotes
               .filter(v => {
                 const votedText = answerByPlayer[v.voted_for_player_id]
@@ -1029,6 +1210,7 @@ export default function PlayPage({ params }) {
               // Convert to Results format
               return groups
                 .filter(g => !g.playerIds.includes(roundTarget?.id)) // exclude real answer (shown separately)
+                .filter(g => g.key) // hide blank auto-submits (timed-out players) entirely
                 .map(group => {
                   const votersForGroup = roundVotes.filter(v => group.playerIds.includes(v.voted_for_player_id))
                   const isCorrect = group.key === targetText // matches real answer
@@ -1038,7 +1220,10 @@ export default function PlayPage({ params }) {
                   return {
                     id: group.key,
                     text: group.answer,
-                    authorNames: group.playerIds.map(id => players.find(p => p.id === id)?.name).filter(Boolean),
+                    // Anonymous mode: never reveal who wrote each answer, even here in
+                    // results — Results.js already hides the author line entirely when
+                    // this is an empty array, so no change needed there.
+                    authorNames: game.anonymous_mode ? [] : group.playerIds.map(id => players.find(p => p.id === id)?.name).filter(Boolean),
                     voterNames: votersForGroup.map(v => players.find(p => p.id === v.voter_id)?.name).filter(Boolean),
                     voteCount: voteCount,
                     isBonus: group.playerIds.length > 1,

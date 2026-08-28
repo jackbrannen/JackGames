@@ -85,6 +85,8 @@ export default function LobbyPage({ params }) {
   const [confirmingStart, setConfirmingStart] = useState(false)
   const [starting, setStarting] = useState(false)
   const [instructions, setInstructions] = useState("")
+  const [draftTimerSeconds, setDraftTimerSeconds] = useState(0)
+  const [draftAnonymous, setDraftAnonymous] = useState(false)
 
   const me = players.find(p => p.id === myPlayerId)
   const hasAutoJoinedRef = useRef(false)
@@ -92,7 +94,7 @@ export default function LobbyPage({ params }) {
   async function loadState() {
     const { data: gameData } = await supabase
       .from("cc_games")
-      .select("code,phase,current_round,replay_code,is_dummy")
+      .select("code,phase,current_round,replay_code,is_dummy,timer_seconds,anonymous_mode")
       .eq("code", code)
       .single()
 
@@ -107,6 +109,12 @@ export default function LobbyPage({ params }) {
 
     setGame(gameData)
     setPlayers(playerData ?? [])
+    setDraftTimerSeconds(gameData.timer_seconds || 0)
+    setDraftAnonymous(!!gameData.anonymous_mode)
+  }
+
+  async function saveGameSettings() {
+    await supabase.from("cc_games").update({ timer_seconds: draftTimerSeconds, anonymous_mode: draftAnonymous }).eq("code", code)
   }
 
   useEffect(() => {
@@ -285,6 +293,44 @@ export default function LobbyPage({ params }) {
           howToPlayContent={instructions ? <span style={{ whiteSpace: "pre-wrap" }}>{instructions}</span> : <span>Loading…</span>}
           codeDisplay={<><span style={{ color: YELLOW }}>{word1}</span><span style={{ color: "rgba(255,255,255,0.75)" }}>{word2}</span></>}
           joinContent={joinForm}
+          settingsContent={closeModal => (
+            <div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
+                <span style={{ fontSize: 16, fontWeight: 700, color: "white" }}>Writing timer</span>
+                <select
+                  value={String(draftTimerSeconds)}
+                  onChange={e => setDraftTimerSeconds(Number(e.target.value))}
+                  style={{ background: "rgba(255,255,255,0.15)", color: "white", fontSize: 15, fontWeight: 700, padding: "8px 10px", border: "none" }}
+                >
+                  <option value="0">Off</option>
+                  {[30, 45, 60, 90, 120, 180, 240, 300].map(s => (
+                    <option key={s} value={String(s)}>{s < 60 ? `${s}s` : `${s / 60} min`}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>
+                Applies to both writing your question and writing your fake answer.
+              </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
+                <span style={{ fontSize: 16, fontWeight: 700, color: "white" }}>Anonymous mode</span>
+                <button
+                  onClick={() => setDraftAnonymous(a => !a)}
+                  style={{ background: draftAnonymous ? YELLOW : "rgba(255,255,255,0.15)", color: draftAnonymous ? "#000" : "white", fontSize: 14, fontWeight: 800, padding: "8px 14px" }}
+                >
+                  {draftAnonymous ? "On" : "Off"}
+                </button>
+              </div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
+                Never reveals who wrote each answer, even in results.
+              </div>
+              <button
+                onClick={async () => { await saveGameSettings(); closeModal() }}
+                style={{ background: YELLOW, color: "#000", fontSize: 16, fontWeight: 900, padding: "14px 20px", width: "100%", marginTop: 16 }}
+              >
+                Save
+              </button>
+            </div>
+          )}
           colors={LOBBY_COLORS}
           minPlayers={4}
           notFound={notFound}

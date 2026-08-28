@@ -58,10 +58,13 @@ export default function Lobby({ params }) {
 
   const [gameExists, setGameExists] = useState(null)
   const [gamePhase, setGamePhase] = useState("lobby")
+  const [timerSeconds, setTimerSeconds] = useState(0)
+  const [draftTimerSeconds, setDraftTimerSeconds] = useState(0)
+  const [showSettings, setShowSettings] = useState(false)
   const [isDummy, setIsDummy] = useState(false)
   const [players, setPlayers] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
-  const isIdle = useIdleGate()
+  const isIdle = useIdleGate(3 * 60 * 1000)
   const [savedProfile, setSavedProfile] = useState(null)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -87,12 +90,19 @@ export default function Lobby({ params }) {
     setPlayers(data ?? [])
   }
   async function loadGame() {
-    const { data, error } = await supabase.from("dc_games").select("code,phase,is_dummy,replay_of").eq("code", code).single()
+    const { data, error } = await supabase.from("dc_games").select("code,phase,is_dummy,replay_of,timer_seconds").eq("code", code).single()
     if (error || !data) { setGameExists(false); return }
     setGameExists(true)
     setGamePhase(data.phase || "lobby")
     setIsDummy(!!data.is_dummy)
     setReplayOf(data.replay_of ?? null)
+    setTimerSeconds(data.timer_seconds || 0)
+  }
+
+  async function saveSettings() {
+    await supabase.from("dc_games").update({ timer_seconds: draftTimerSeconds }).eq("code", code)
+    setTimerSeconds(draftTimerSeconds)
+    setShowSettings(false)
   }
 
   useEffect(() => {
@@ -231,8 +241,32 @@ export default function Lobby({ params }) {
           <button onClick={async () => { const url = window.location.href; if (navigator.share) await navigator.share({ title: `Join Decrypto — ${code}`, url }); else { await navigator.clipboard.writeText(url); alert("Link copied!") } }}
             style={{ background: "rgba(255,255,255,0.45)", color: INK, fontSize: 13, fontWeight: 800, padding: "10px 16px" }}>Invite</button>
           <button onClick={() => setShowInstructions(true)} style={{ background: "rgba(255,255,255,0.45)", color: INK, fontSize: 13, fontWeight: 800, padding: "10px 14px" }}>How to Play</button>
+          <button onClick={() => { setDraftTimerSeconds(timerSeconds); setShowSettings(s => !s) }} style={{ background: "rgba(255,255,255,0.45)", color: INK, fontSize: 13, fontWeight: 800, padding: "10px 14px" }}>Settings</button>
         </div>
       </div>
+
+      {showSettings && (
+        <div style={{ padding: "20px 24px", background: "rgba(255,255,255,0.35)" }}>
+          <div style={{ fontSize: 16, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 16 }}>Settings</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
+            <span style={{ fontSize: 16, fontWeight: 600, opacity: 0.75 }}>Clue timer</span>
+            <select
+              value={String(draftTimerSeconds)}
+              onChange={e => setDraftTimerSeconds(Number(e.target.value))}
+              style={{ background: "rgba(255,255,255,0.7)", color: INK, fontSize: 15, fontWeight: 700, padding: "8px 10px", border: "none" }}
+            >
+              <option value="0">Off</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(m => (
+                <option key={m} value={String(m * 60)}>{m} min</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <button onClick={saveSettings} style={{ background: ACCENT, color: "#000", fontSize: 16, fontWeight: 900, padding: "12px 20px", flex: 1 }}>Save</button>
+            <button onClick={() => setShowSettings(false)} style={{ background: "rgba(21,49,74,0.1)", color: INK, fontSize: 16, fontWeight: 800, padding: "12px 20px" }}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {/* Teams */}
       <div style={{ padding: "28px 24px 0" }}>

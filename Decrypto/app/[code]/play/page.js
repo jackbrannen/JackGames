@@ -7,6 +7,7 @@ import Footer, { FOOTER_H } from "../../../components/Footer"
 import FooterButton from "../../../components/FooterButton"
 import Notifications from "../../../components/Notifications"
 import Menu from "../../../components/Menu"
+import PauseModal from "../../../components/PauseModal"
 import IdleGateModal from "../../../components/IdleGateModal"
 import { useIdleGate } from "../../../lib/useIdleGate"
 
@@ -65,7 +66,7 @@ export default function PlayPage({ params }) {
   const [rounds, setRounds] = useState([])
   const [guesses, setGuesses] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
-  const isIdle = useIdleGate()
+  const isIdle = useIdleGate(3 * 60 * 1000)
   const [pokes, setPokes] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -78,6 +79,10 @@ export default function PlayPage({ params }) {
   const [swapAnim, setSwapAnim] = useState(null)
   const [hidingSlots, setHidingSlots] = useState(() => new Set())
   const [hidingPool, setHidingPool] = useState(() => new Set())
+  const [now, setNow] = useState(() => Date.now())
+  const [resuming, setResuming] = useState(false)
+  const [draftTimerSeconds, setDraftTimerSeconds] = useState(0)
+  const [savingTimer, setSavingTimer] = useState(false)
   const channelRef = useRef(null)
   const syncKeyRef = useRef(null)
   const slotsRef = useRef(slots)
@@ -242,6 +247,48 @@ export default function PlayPage({ params }) {
   useEffect(() => {
     if (game?.phase === "lobby") router.replace(`/${code}`)
   }, [game?.phase, code, router])
+
+  // Optional clue timer (off by default, timer_seconds = 0). Ticks locally
+  // for the bar; the auto-advance itself is server-enforced (any client can
+  // trigger it, the RPC re-checks the deadline), so it doesn't depend on any
+  // one specific client (e.g. the encryptor) staying connected.
+  // Stops ticking entirely while paused — that's what freezes the bar
+  // animation. dc_pause_game/_resume_game shift clue_started_at forward on
+  // resume to absorb the paused duration, so both the bar and the
+  // auto-advance deadline resume exactly where they left off.
+  // Stops entirely once idle-gated — same as the main realtime connection —
+  // so an AFK tab with a round timer still running can't keep silently
+  // driving auto-advance in the background while the "Still there?" modal
+  // is blocking the screen.
+  useEffect(() => {
+    if (!game?.timer_seconds || game.round_phase !== "clue" || game.paused || isIdle) return
+    setNow(Date.now()) // correct immediately on resume instead of waiting for the first tick
+    const t = setInterval(() => setNow(Date.now()), 250)
+    return () => clearInterval(t)
+  }, [game?.timer_seconds, game?.round_phase, game?.clue_started_at, game?.paused, isIdle])
+
+  useEffect(() => {
+    if (!game?.timer_seconds || game.round_phase !== "clue" || !game.clue_started_at || game.paused || isIdle) return
+    const deadline = new Date(game.clue_started_at).getTime() + game.timer_seconds * 1000
+    if (now < deadline) return
+    // NOTE: .rpc() returns a lazy thenable, not a promise — the HTTP request
+    // is only sent once it's awaited or .then()'d. A bare `supabase.rpc(...)`
+    // statement silently never fires. Always consume the result.
+    supabase.rpc("dc_force_advance_clue", { p_code: code }).then(() => {})
+  }, [now, game?.timer_seconds, game?.round_phase, game?.clue_started_at, game?.paused, code, isIdle])
+
+  // Keep the settings-panel dropdown in sync with the actually-active timer
+  // length (not any staged next_timer_seconds — that only takes effect once
+  // the next round actually starts, per dc_stage_timer_seconds).
+  useEffect(() => {
+    if (game?.timer_seconds != null) setDraftTimerSeconds(game.timer_seconds)
+  }, [game?.timer_seconds])
+
+  async function saveTimerSettings() {
+    setSavingTimer(true)
+    await supabase.rpc("dc_stage_timer_seconds", { p_code: code, p_timer_seconds: draftTimerSeconds })
+    setSavingTimer(false)
+  }
 
   useEffect(() => {
     // In dummy games the encryptor's clue fields are pre-filled with the code
@@ -606,6 +653,21 @@ export default function PlayPage({ params }) {
       <Notifications supabase={supabase} pokes={pokes} roomCode={code} currentPlayer={me.name} colors={POKE_COLORS} />
       <div style={{ minHeight: "100dvh", background: BG, color: INK, paddingBottom: BOTTOM_PAD }}>
         {header()}
+        {!!g.timer_seconds && g.round_phase === "clue" && g.clue_started_at && (() => {
+          const clockMs = g.paused && g.paused_at ? new Date(g.paused_at).getTime() : now
+          const elapsedSec = (clockMs - new Date(g.clue_started_at).getTime()) / 1000
+          const barFrac = Math.max(0, Math.min(1, 1 - elapsedSec / g.timer_seconds))
+          return (
+            <div style={{ height: 10, background: barFrac > 0.3 ? "rgba(251, 223, 84, 0.15)" : "hsla(0, 80%, 45%, 0.15)" }}>
+              <div style={{
+                height: "100%",
+                width: `${barFrac * 100}%`,
+                background: barFrac > 0.3 ? "#FBDF54" : "hsl(0, 80%, 45%)",
+                transition: "width 0.2s linear, background 300ms ease",
+              }} />
+            </div>
+          )
+        })()}
         {tokenBar()}
         {keywordPanel()}
 
@@ -720,8 +782,45 @@ export default function PlayPage({ params }) {
         }))}
         gamePhase={g.phase}
         rules={RULES}
+        onPause={async () => { await supabase.rpc("dc_pause_game", { p_code: code, p_player_id: myPlayerId }) }}
         onResetToLobby={async () => { await supabase.rpc("dc_reset_to_lobby", { p_code: code }); nudge() }}
+        settingsContent={<>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
+            <span style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>Clue timer</span>
+            <select
+              value={String(draftTimerSeconds)}
+              onChange={e => setDraftTimerSeconds(Number(e.target.value))}
+              style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "8px 12px" }}
+            >
+              <option value="0">Off</option>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(m => (
+                <option key={m} value={String(m * 60)}>{m} min</option>
+              ))}
+            </select>
+          </div>
+          {g?.next_timer_seconds != null && g.next_timer_seconds !== g.timer_seconds && (
+            <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.6)", paddingBottom: 10 }}>
+              Starts next round: {g.next_timer_seconds === 0 ? "Off" : `${g.next_timer_seconds / 60} min`}
+            </div>
+          )}
+          <button onClick={saveTimerSettings} disabled={savingTimer}
+            style={{ background: ACCENT, color: "#000", fontSize: 15, fontWeight: 900, padding: "12px 16px", width: "100%", marginTop: 6 }}>
+            Save
+          </button>
+        </>}
       />
+      {g.paused && (
+        <PauseModal
+          colors={POKE_COLORS}
+          pausedByName={g.paused_by_name}
+          resuming={resuming}
+          onResume={async () => {
+            setResuming(true)
+            await supabase.rpc("dc_resume_game", { p_code: code })
+            setResuming(false)
+          }}
+        />
+      )}
 
       {dragValue != null && dragPos && (
         <div style={{ position: "fixed", left: dragPos.x - 28, top: dragPos.y - 28, width: 56, height: 56, zIndex: 300,

@@ -97,7 +97,7 @@ export default function Play({ params }) {
   const router = useRouter()
   const code = useMemo(() => params.code.toUpperCase(), [params.code])
   const [myPlayerId, setMyPlayerId] = useState(null)
-  const isIdle = useIdleGate()
+  const isIdle = useIdleGate(2 * 60 * 1000)
   const [game, setGame] = useState(null)
   const [playAgainError, setPlayAgainError] = useState(null)
   const [players, setPlayers] = useState([])
@@ -109,6 +109,7 @@ export default function Play({ params }) {
   const [manualT1, setManualT1] = useState("0")
   const [manualT2, setManualT2] = useState("0")
   const [roundsTotal, setRoundsTotal] = useState("3")
+  const [manualTurnDuration, setManualTurnDuration] = useState("45")
   const [menuOpen, setMenuOpen] = useState(false)
   const [instructions, setInstructions] = useState("")
   const endingRef = useRef(false)
@@ -141,6 +142,17 @@ export default function Play({ params }) {
     supabase.from("game_instructions").select("body").eq("game_key", "fishbowl").single()
       .then(({ data }) => { if (data) setInstructions(data.body) })
   }, [])
+
+  // Sync from the live (active) turn length only — never the staged
+  // next_turn_duration_seconds, which doesn't take effect until the next
+  // fresh turn actually starts (see fishbowl_stage_turn_duration/start_turn).
+  // Keyed on the DB value itself (not folded into loadState's unconditional
+  // per-poll updates) so a Save doesn't immediately snap the dropdown back
+  // to the old value via its own follow-up loadState() call before the
+  // staged change has had a chance to apply.
+  useEffect(() => {
+    setManualTurnDuration(String(game?.turn_duration_seconds ?? 45))
+  }, [game?.turn_duration_seconds])
 
   useEffect(() => {
     const existing = localStorage.getItem(`fishbowl:${code}:playerId`)
@@ -445,6 +457,11 @@ export default function Play({ params }) {
         rounds_total: Math.max(1, Number(roundsTotal) || 1),
       })
       .eq("code", code)
+    // Turn length can't be written directly to turn_duration_seconds — that
+    // would affect whatever turn is currently in progress. Stage it instead;
+    // start_turn() applies it (and clears the staged value) only when the
+    // next fresh turn actually begins.
+    await supabase.rpc("fishbowl_stage_turn_duration", { p_code: code, p_turn_duration_seconds: Number(manualTurnDuration) })
     await loadState()
   }
 
@@ -1073,14 +1090,14 @@ export default function Play({ params }) {
                 ["Boys", manualT1, setManualT1],
                 ["Girls", manualT2, setManualT2],
                 ["Rounds", roundsTotal, setRoundsTotal],
-              ].map(([label, value, setValue], i, arr) => (
+              ].map(([label, value, setValue]) => (
                 <label
                   key={label}
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "space-between",
                     fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.85)",
                     padding: "10px 0",
-                    borderBottom: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.1)" : "none",
+                    borderBottom: "1px solid rgba(255,255,255,0.1)",
                   }}
                 >
                   <span>{label}</span>
@@ -1091,7 +1108,31 @@ export default function Play({ params }) {
                   />
                 </label>
               ))}
+              <label
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.85)",
+                  padding: "10px 0",
+                  borderBottom: "none",
+                }}
+              >
+                <span>Turn length</span>
+                <select
+                  value={manualTurnDuration}
+                  onChange={e => setManualTurnDuration(e.target.value)}
+                  style={{ background: POKE_COLORS.wl, color: "white", fontSize: 16, padding: "8px 12px" }}
+                >
+                  {[30, 45, 60, 75, 90].map(s => (
+                    <option key={s} value={String(s)}>{s}s</option>
+                  ))}
+                </select>
+              </label>
             </div>
+            {game?.next_turn_duration_seconds != null && game.next_turn_duration_seconds !== game.turn_duration_seconds && (
+              <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.6)", paddingTop: 4 }}>
+                Starts next turn: {game.next_turn_duration_seconds}s
+              </div>
+            )}
             <button onClick={saveScoreAndSettings}
               style={{ background: YELLOW, color: "#000", fontSize: 15, fontWeight: 900, padding: "12px 16px", width: "100%", marginTop: 16 }}>
               Save

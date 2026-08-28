@@ -273,7 +273,7 @@ export default function Lobby({ params }) {
   const [joinError, setJoinError] = useState("")
   const [myPlayerId, setMyPlayerId] = useState(null)
   const [replayOf, setReplayOf] = useState(null)
-  const isIdle = useIdleGate()
+  const isIdle = useIdleGate(2 * 60 * 1000)
   const [myClues, setMyClues] = useState([])
   const [showSettingsPanel, setShowSettingsPanel] = useState(false)
   const [joining, setJoining] = useState(false)

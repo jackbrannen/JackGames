@@ -80,6 +80,9 @@ const COLLAB_COLOR = "hsl(160, 55%, 40%)"
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 const POP_MS = 500 // one-shot "pop" duration on the assigned card before it settles into the gentle pulse
 const POKE_COLORS = { dark: "hsl(220, 10%, 10%)", mid: "hsl(220, 10%, 16%)", wl: "hsl(220, 10%, 20%)", yellow: "hsl(48, 95%, 60%)", notifBg: "hsl(220, 10%, 8%)" }
+// Matches the lobby's turn-length dropdown exactly (see app/[code]/page.js) — length-only,
+// no Off option here: HearingVoices' lobby never lets the host turn the timer off.
+const TURN_LENGTH_OPTIONS = [15, 30, 45, 60]
 
 // Pass either { boys, girls } (Teams) or a single { score } (Collaborative) — the shape of
 // scores determines which is rendered, so every call site can just pass whichever the
@@ -122,6 +125,8 @@ export default function PlayPage({ params }) {
   const latestGameUpdatedAtRef = useRef(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [voteLoading, setVoteLoading] = useState(false)
+  const [draftTurnDuration, setDraftTurnDuration] = useState(45)
+  const [savingTurnDuration, setSavingTurnDuration] = useState(false)
 
   const boardWrapRef = useRef(null)
   const [cellSize, setCellSize] = useState({ w: 100, h: 100 })
@@ -559,6 +564,19 @@ export default function PlayPage({ params }) {
     channelRef.current?.send({ type: "broadcast", event: "sync", payload: {} })
   }
 
+  // Keep the settings-panel dropdown in sync with the actually-active turn length (not any
+  // staged next_turn_duration_seconds — that only takes effect once the next turn actually
+  // starts, per hv_stage_turn_duration/hv_begin_turn).
+  useEffect(() => {
+    if (game?.turn_duration_seconds != null) setDraftTurnDuration(game.turn_duration_seconds)
+  }, [game?.turn_duration_seconds])
+
+  async function saveTurnDuration() {
+    setSavingTurnDuration(true)
+    await supabase.rpc("hv_stage_turn_duration", { p_code: code, p_turn_duration_seconds: draftTurnDuration })
+    setSavingTurnDuration(false)
+  }
+
   async function togglePause() {
     if (!game || !myPlayerId) return
     if (game.paused) {
@@ -775,6 +793,29 @@ export default function PlayPage({ params }) {
       }))}
       gamePhase={game.phase}
       onResetToLobby={async () => { await supabase.rpc("hv_reset_to_lobby", { p_code: code }) }}
+      settingsContent={<>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0" }}>
+          <span style={{ fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold, color: "rgba(255,255,255,0.85)" }}>Turn length</span>
+          <select
+            value={draftTurnDuration}
+            onChange={(e) => setDraftTurnDuration(parseInt(e.target.value))}
+            style={{ background: POKE_COLORS.wl, color: "white", fontSize: FONT_SIZE.body, padding: "8px 12px", border: "none" }}
+          >
+            {TURN_LENGTH_OPTIONS.map((s) => (
+              <option key={s} value={s}>{s}s</option>
+            ))}
+          </select>
+        </div>
+        {game?.next_turn_duration_seconds != null && game.next_turn_duration_seconds !== game.turn_duration_seconds && (
+          <div style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.semibold, color: "rgba(255,255,255,0.6)", paddingBottom: 10 }}>
+            Starts next turn: {game.next_turn_duration_seconds}s
+          </div>
+        )}
+        <button onClick={saveTurnDuration} disabled={savingTurnDuration}
+          style={{ background: "hsl(48, 95%, 60%)", color: "#000", fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.black, padding: "12px 16px", width: "100%", marginTop: 6 }}>
+          Save
+        </button>
+      </>}
     />
     <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me?.name} />
     <div style={{ minHeight: "100dvh", width: "100%", display: "flex", flexDirection: "column", background: "#101014", paddingBottom: BOTTOM_PAD, overflowY: "auto" }}>

@@ -30,6 +30,19 @@ Then, one board at a time, the whole group works together to reconstruct someone
 You score a point for every word placed on the same person the caster chose. It's cooperative — add up your matches across everyone's boards and see how well you read the room.`,
   },
   {
+    name: "Nominations",
+    description: "Argue a superlative fits someone — one of you is secretly bluffing",
+    players: "6+ players", minPlayers: 6, group: "Easy Peasy", types: ["Voting/Judging", "Hidden roles", "Teams", "Acting", "Original"],
+    url: "https://nominations.jackbrannen.com", bg: "#a2d291", color: "#1A2418",
+    instructions: `Teams of boys vs. girls. Everyone writes a superlative — "Most likely to…", "Best…" — without picking anything too obvious for the group.
+
+Each round, one boy and one girl are paired and shown the same superlative. One of them is secretly the bluffer, assigned a random person to argue it's about. The other is the truth-teller, and picks whoever they genuinely think it fits best.
+
+Both argue their case out loud, live, in front of everyone. Nobody else knows who's bluffing.
+
+Once the room has heard enough, everyone votes on who they think the bluffer is. Guess correctly and you score a point for your own team.`,
+  },
+  {
     name: "So Clover",
     description: "Arrange keyword cards, write clues, guess each other's boards",
     players: "2+ players", minPlayers: 2, group: "Easy Peasy", types: ["Word games", "Cooperative"],
@@ -100,19 +113,6 @@ Every player writes an open-ended question that invites creative, funny answers.
 Answers are revealed anonymously, and the group votes for their favorite. The author of the winning answer earns points. Identical answers also earn bonus points.
 
 Highest score after all rounds wins.`,
-  },
-  {
-    name: "Nominations",
-    description: "Argue a superlative fits someone — one of you is secretly bluffing",
-    players: "6+ players", minPlayers: 6, group: "Easy Peasy", types: ["Voting/Judging", "Hidden roles", "Teams", "Acting", "Original"],
-    url: "https://nominations.jackbrannen.com", bg: "#a2d291", color: "#1A2418",
-    instructions: `Teams of boys vs. girls. Everyone writes a superlative — "Most likely to…", "Best…" — without picking anything too obvious for the group.
-
-Each round, one boy and one girl are paired and shown the same superlative. One of them is secretly the bluffer, assigned a random person to argue it's about. The other is the truth-teller, and picks whoever they genuinely think it fits best.
-
-Both argue their case out loud, live, in front of everyone. Nobody else knows who's bluffing.
-
-Once the room has heard enough, everyone votes on who they think the bluffer is. Guess correctly and you score a point for your own team.`,
   },
   // ── Medium Schmedium ──
   // Alpha Jam hidden from the catalog (still deployed at alphajam.jackbrannen.com, and still

@@ -1,8 +1,8 @@
 import "./globals.css"
 
 export const metadata = {
-  title: "Hearing Voices",
-  description: "Team voice/emoji party game",
+  title: "Nominations",
+  description: "Who does this fit best? A bluffing and voting party game.",
 }
 
 export const viewport = {

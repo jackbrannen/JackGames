@@ -4,8 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
+import FooterButton from "../../../components/FooterButton"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
+import EndGame from "../../../components/EndGame"
 import { WB_RULES } from "../../../components/rulesText"
 import IdleGateModal from "../../../components/IdleGateModal"
 import { useIdleGate } from "../../../lib/useIdleGate"
@@ -18,13 +20,15 @@ const PANEL = "#FFFFFF"
 const WARM = "#FFFFFF"
 const BTN = "#221A12"
 const BTN_TEXT = "#FFF8ED"
+const BOYS_COLOR = "#628ab3"
+const GIRLS_COLOR = "#b769aa"
 const CARD_GOOD_BG = "#FFFFFF"
 const CARD_GOOD_TEXT = "#000000"
 const CARD_BAD_BG = "#7D2B5B"
 const CARD_BAD_TEXT = "#FFFFFF"
 const POKE_COLORS = { dark: DARK, mid: "#3A2E1B", wl: "#5A4A32", yellow: "#FBDF54", notifBg: "#1C140B" }
 const FOOTER_ROWS_H = FOOTER_H * 2
-const SCROLL_H = `calc(100dvh - ${FOOTER_ROWS_H}px - env(safe-area-inset-bottom, 0px))`
+const scrollH = footerH => `calc(100dvh - ${footerH}px - env(safe-area-inset-bottom, 0px))`
 const CARD_W = 98
 const CARD_H = 124
 const cardBoxStyle = {
@@ -71,8 +75,7 @@ export default function PlayPage({ params }) {
   const [loading, setLoading] = useState(true)
   const [menuOpen, setMenuOpen] = useState(false)
 
-  const [roundDoneStep, setRoundDoneStep] = useState(null) // null | "pick" | { confirmId }
-  const [newLettersConfirming, setNewLettersConfirming] = useState(false)
+  const [roundDoneStep, setRoundDoneStep] = useState(null) // null | "pick"
   const [busy, setBusy] = useState(false)
   const [, forceCountdownTick] = useState(0)
 
@@ -92,7 +95,7 @@ export default function PlayPage({ params }) {
     if (g.phase === "lobby") { router.replace(`/${code}`); return }
     setGame(g); setPlayers(ps ?? []); setLoading(false)
 
-    const key = `${g.phase}:${g.round_number}:${g.paused}:${(ps ?? []).map(p => `${p.id}:${p.points}:${p.is_eliminated}`).join(",")}`
+    const key = `${g.phase}:${g.round_number}:${g.paused}:${g.boys_score}:${g.girls_score}:${g.cards_visible_at}:${(g.round_ready_ids ?? []).join(",")}:${g.redeal_pending_by}:${g.round_result_pending_by}:${g.round_result_pending_winner}:${(ps ?? []).map(p => `${p.id}:${p.team}`).join(",")}`
     if (syncKeyRef.current !== null && syncKeyRef.current !== key) nudge()
     syncKeyRef.current = key
   }
@@ -110,7 +113,7 @@ export default function PlayPage({ params }) {
     if (newRow.replay_code) { router.replace(`/${newRow.replay_code}`); return }
     if (newRow.phase === "lobby") { router.replace(`/${code}`); return }
     setGame(newRow); setLoading(false)
-    const key = `${newRow.phase}:${newRow.round_number}:${newRow.paused}`
+    const key = `${newRow.phase}:${newRow.round_number}:${newRow.paused}:${newRow.boys_score}:${newRow.girls_score}:${newRow.cards_visible_at}:${(newRow.round_ready_ids ?? []).join(",")}:${newRow.redeal_pending_by}:${newRow.round_result_pending_by}:${newRow.round_result_pending_winner}`
     if (gamesSyncKeyRef.current !== null && gamesSyncKeyRef.current !== key) nudge()
     gamesSyncKeyRef.current = key
   }
@@ -209,13 +212,36 @@ export default function PlayPage({ params }) {
   }, [game?.cards_visible_at])
 
   const me = players.find(p => p.id === myPlayerId)
-  const isEliminated = !!me?.is_eliminated
-  const activePlayers = players.filter(p => !p.is_eliminated)
   const msLeft = game?.cards_visible_at ? Math.max(0, new Date(game.cards_visible_at).getTime() - Date.now()) : 0
   const countingDown = msLeft > 0
   const secondsLeft = Math.ceil(msLeft / 1000)
 
-  function nameOf(id) { return players.find(p => p.id === id)?.name ?? "?" }
+  // Current matchup: round_number is 1-based and IS the schedule index.
+  const totalRounds = game?.matchup_boys?.length ?? 0
+  const idx = (game?.round_number ?? 1) - 1
+  const boyId = game?.matchup_boys?.[idx] ?? null
+  const girlId = game?.matchup_girls?.[idx] ?? null
+  const isCompeting = !!myPlayerId && (myPlayerId === boyId || myPlayerId === girlId)
+  const opponentId = myPlayerId === boyId ? girlId : myPlayerId === girlId ? boyId : null
+  const iAmReady = !!myPlayerId && (game?.round_ready_ids ?? []).includes(myPlayerId)
+  const opponentReady = !!opponentId && (game?.round_ready_ids ?? []).includes(opponentId)
+
+  // Mutual New-Letters confirmation
+  const redealPendingBy = game?.redeal_pending_by ?? null
+  const iRequestedRedeal = redealPendingBy && redealPendingBy === myPlayerId
+  const opponentRequestedRedeal = redealPendingBy && isCompeting && redealPendingBy !== myPlayerId
+  const redealCountdown = !!game?.redeal_countdown
+
+  // Mutual Round-Result confirmation
+  const roundResultPendingBy = game?.round_result_pending_by ?? null
+  const roundResultPendingWinner = game?.round_result_pending_winner ?? null
+  const iProposedRoundResult = roundResultPendingBy && roundResultPendingBy === myPlayerId
+  const othersToConfirmRoundResult = roundResultPendingBy && myPlayerId && roundResultPendingBy !== myPlayerId
+
+  function nameOf(id) {
+    if (id == null) return "?"
+    return players.find(p => p.id === id)?.name ?? "(left)"
+  }
 
   async function togglePause() {
     if (busy || !game) return
@@ -225,48 +251,64 @@ export default function PlayPage({ params }) {
     nudge()
   }
 
-  async function confirmNewLetters() {
-    if (busy) return
-    setBusy(true)
-    await supabase.rpc("wb_redeal_cards", { p_code: code })
-    setBusy(false)
-    setNewLettersConfirming(false)
+  async function markReady() {
+    if (!myPlayerId || iAmReady) return
+    await supabase.rpc("wb_mark_ready", { p_code: code, p_player_id: myPlayerId })
     nudge()
   }
 
-  async function confirmRoundResult(loserId) {
-    if (busy) return
+  async function requestNewLetters() {
+    if (!myPlayerId || redealPendingBy) return
+    await supabase.rpc("wb_request_redeal", { p_code: code, p_player_id: myPlayerId })
+    nudge()
+  }
+
+  async function respondNewLetters(accept) {
+    if (!myPlayerId) return
+    await supabase.rpc("wb_respond_redeal", { p_code: code, p_player_id: myPlayerId, p_accept: accept })
+    nudge()
+  }
+
+  async function proposeRoundResult(winnerId) {
+    if (busy || !game || !myPlayerId) return
     setBusy(true)
-    await supabase.rpc("wb_apply_round_result", { p_code: code, p_loser_id: loserId })
+    await supabase.rpc("wb_propose_round_result", { p_code: code, p_player_id: myPlayerId, p_winner_id: winnerId, p_round: game.round_number })
     setBusy(false)
     setRoundDoneStep(null)
     nudge()
   }
 
-  async function adjustPoints(playerId, delta) {
-    await supabase.rpc("wb_adjust_points", { p_code: code, p_player_id: playerId, p_delta: delta })
+  async function respondRoundResult(accept) {
+    if (!myPlayerId || !game) return
+    await supabase.rpc("wb_respond_round_result", { p_code: code, p_player_id: myPlayerId, p_accept: accept, p_round: game.round_number })
+    nudge()
+  }
+
+  async function adjustTeamScore(team, delta) {
+    await supabase.rpc("wb_adjust_team_score", { p_code: code, p_team: team, p_delta: delta })
     nudge()
   }
 
   function settingsNode() {
     return (
       <div>
-        <div style={{ fontSize: 13, fontWeight: 800, color: "white", marginBottom: 12 }}>Adjust points</div>
-        {players.map(p => (
-          <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-            <span style={{ flex: 1, color: "white", fontWeight: 700, fontSize: 14, opacity: p.is_eliminated ? 0.5 : 1 }}>
-              {p.name}{p.is_eliminated ? " (out)" : ""}
-            </span>
-            <button onClick={() => adjustPoints(p.id, -1)} style={{ width: 32, height: 32, background: "rgba(255,255,255,0.15)", color: "white", fontSize: 18, fontWeight: 900 }}>−</button>
-            <div style={{ fontSize: 18, fontWeight: 900, color: "white", minWidth: 24, textAlign: "center" }}>{p.points}</div>
-            <button onClick={() => adjustPoints(p.id, 1)} style={{ width: 32, height: 32, background: "rgba(255,255,255,0.15)", color: "white", fontSize: 18, fontWeight: 900 }}>+</button>
+        <div style={{ fontSize: 13, fontWeight: 800, color: "white", marginBottom: 12 }}>Adjust score</div>
+        {[
+          { team: "boys", label: "Boys", color: BOYS_COLOR, score: game?.boys_score ?? 0 },
+          { team: "girls", label: "Girls", color: GIRLS_COLOR, score: game?.girls_score ?? 0 },
+        ].map(t => (
+          <div key={t.team} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+            <span style={{ flex: 1, color: t.color, fontWeight: 800, fontSize: 14 }}>{t.label}</span>
+            <button onClick={() => adjustTeamScore(t.team, -1)} style={{ width: 32, height: 32, background: "rgba(255,255,255,0.15)", color: "white", fontSize: 18, fontWeight: 900 }}>−</button>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "white", minWidth: 24, textAlign: "center" }}>{t.score}</div>
+            <button onClick={() => adjustTeamScore(t.team, 1)} style={{ width: 32, height: 32, background: "rgba(255,255,255,0.15)", color: "white", fontSize: 18, fontWeight: 900 }}>+</button>
           </div>
         ))}
       </div>
     )
   }
 
-  function menuNode() {
+  function menuAndFooter(footerChildren, footerH = FOOTER_ROWS_H) {
     return (
       <>
         <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me?.name} />
@@ -277,13 +319,20 @@ export default function PlayPage({ params }) {
           onClose={() => setMenuOpen(false)}
           roomCode={code}
           currentPlayer={me?.name}
-          playerDetails={players.map(p => ({ name: p.name, score: p.points }))}
+          playerDetails={players.map(p => ({
+            name: p.name,
+            teamLabel: p.team === "boys" ? "Boys" : p.team === "girls" ? "Girls" : undefined,
+            teamColor: p.team === "boys" ? BOYS_COLOR : p.team === "girls" ? GIRLS_COLOR : undefined,
+          }))}
           gamePhase={game?.phase}
           rules={WB_RULES}
           settingsContent={settingsNode()}
           onResetToLobby={async () => { await supabase.rpc("wb_reset_to_lobby", { p_code: code }); nudge() }}
-          footerHeight={FOOTER_ROWS_H}
+          footerHeight={footerH}
         />
+        <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} height={footerH}>
+          {footerChildren}
+        </Footer>
       </>
     )
   }
@@ -304,44 +353,105 @@ export default function PlayPage({ params }) {
 
   // ── FINISHED ─────────────────────────────────────────────
   if (game.phase === "finished") {
+    const boysScore = game.boys_score ?? 0
+    const girlsScore = game.girls_score ?? 0
+    const isTie = boysScore === girlsScore
+    const boysWin = boysScore > girlsScore
+    const resultText = isTie ? "It's a tie!" : boysWin ? "Boys win!" : "Girls win!"
+    const teamAbove = (
+      <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 12 }}>
+        <div style={{ fontSize: 40, fontWeight: 900, marginBottom: 20, lineHeight: 1.1, color: INK }}>{resultText}</div>
+        {[
+          { label: "Boys", color: BOYS_COLOR, score: boysScore, isWinner: boysWin, names: players.filter(p => p.team === "boys").map(p => p.name) },
+          { label: "Girls", color: GIRLS_COLOR, score: girlsScore, isWinner: !isTie && !boysWin, names: players.filter(p => p.team === "girls").map(p => p.name) },
+        ].map(team => (
+          <div key={team.label} style={{ display: "flex" }}>
+            <div style={{ padding: "13px 0", minWidth: 48, flexShrink: 0, background: team.color, fontSize: 18, fontWeight: 900, color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {team.score}
+            </div>
+            <div style={{ padding: "13px 16px", flex: 1, background: PANEL, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 700, color: INK }}>{team.label}</div>
+                {team.names.length > 0 && <div style={{ fontSize: 13, color: INK_MUTED, marginTop: 2 }}>{team.names.join(", ")}</div>}
+              </div>
+              {team.isWinner && <span style={{ fontSize: 11, fontWeight: 800, color: team.color, textTransform: "uppercase", letterSpacing: "0.1em" }}>Winner</span>}
+            </div>
+          </div>
+        ))}
+      </div>
+    )
     return (
-      <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px", textAlign: "center", animation: "endGameIn 300ms ease-out both" }}>
-        <div style={{ fontSize: 13, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.5, marginBottom: 12 }}>Game over</div>
-        <div style={{ fontSize: 40, fontWeight: 900, marginBottom: 28, lineHeight: 1.1 }}>{nameOf(game.winner_id)} wins!</div>
-        <button onClick={async () => {
-          if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
-          const { data, error } = await supabase.rpc("wb_create_replay", { p_code: code })
-          if (error) { alert(error.message); return }
-          nudge()
-          router.replace(`/${data}`)
-        }} style={{ background: BTN, color: BTN_TEXT, fontSize: 16, fontWeight: 900, padding: "16px 24px", border: "none", marginTop: 8, maxWidth: 320, width: "100%" }}>Play Again</button>
-        <a href="https://games.jackbrannen.com" style={{ display: "block", background: PANEL, color: INK, fontSize: 16, fontWeight: 700, padding: "14px 24px", textDecoration: "none", maxWidth: 320, width: "100%", marginTop: 10 }}>Play Another Game</a>
+      <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column", animation: "endGameIn 300ms ease-out both" }}>
+        <EndGame
+          players={[]}
+          onPlayAgain={async () => {
+            if (game.replay_code) { router.replace(`/${game.replay_code}`); return }
+            const { data, error } = await supabase.rpc("wb_create_replay", { p_code: code })
+            if (error) { alert(error.message); return }
+            nudge()
+            router.replace(`/${data}`)
+          }}
+          onPlayAnotherGame={() => { window.location.href = "https://games.jackbrannen.com" }}
+          bottomPad="40px"
+          colors={{ yellow: BTN, wl: PANEL, primaryText: BTN_TEXT, secondaryText: INK }}
+          aboveScores={teamAbove}
+        />
       </div>
     )
   }
 
   // ── PLAYING ──────────────────────────────────────────────
+  const waitingForReady = !game.paused && !game.cards_visible_at
+
   return (
-    <div style={{ height: SCROLL_H, overflowY: "auto", WebkitOverflowScrolling: "touch", background: BG, color: INK }}>
+    <>
+    <div style={{ height: scrollH(waitingForReady ? FOOTER_H : FOOTER_ROWS_H), overflowY: "auto", WebkitOverflowScrolling: "touch", background: BG, color: INK }}>
       <div style={{ position: "sticky", top: 0, zIndex: 40, background: DARK, padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.9)" }}>Round {game.round_number}</div>
+        <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.9)" }}>Round {game.round_number} of {totalRounds}</div>
+        <div style={{ display: "flex", gap: 8, fontSize: 13, fontWeight: 900 }}>
+          <span style={{ color: BOYS_COLOR }}>Boys {game.boys_score ?? 0}</span>
+          <span style={{ color: "rgba(255,255,255,0.4)" }}>·</span>
+          <span style={{ color: GIRLS_COLOR }}>Girls {game.girls_score ?? 0}</span>
+        </div>
       </div>
 
-      {isEliminated && (
-        <div style={{ background: "rgba(34,26,18,0.12)", padding: "14px 16px" }}>
-          <div style={{ fontSize: 15, fontWeight: 900, marginBottom: 2 }}>You're out — spectating</div>
-          <div style={{ fontSize: 13, color: INK_MUTED, fontWeight: 600 }}>Watch the rest of the game play out.</div>
-        </div>
-      )}
+      <div style={{
+        background: isCompeting ? "white" : (boyId && girlId ? "black" : "transparent"),
+        color: isCompeting ? INK : (boyId && girlId ? "white" : INK),
+        padding: "14px 16px",
+      }}>
+        {isCompeting ? (
+          <>
+            <div style={{ fontSize: 15, fontWeight: 900, marginBottom: 2 }}>You&rsquo;re up — vs {nameOf(opponentId)}</div>
+            <div style={{ fontSize: 13, opacity: 0.65, fontWeight: 600 }}>Shout it out!</div>
+          </>
+        ) : boyId && girlId ? (
+          <>
+            <div style={{ fontSize: 15, fontWeight: 900, marginBottom: 2 }}>
+              <span style={{ color: BOYS_COLOR }}>{nameOf(boyId)}</span> vs <span style={{ color: GIRLS_COLOR }}>{nameOf(girlId)}</span>
+            </div>
+            <div style={{ fontSize: 13, opacity: 0.65, fontWeight: 600 }}>You&rsquo;re judging — call it when someone nails it.</div>
+          </>
+        ) : (
+          <div style={{ fontSize: 13, color: INK_MUTED, fontWeight: 600 }}>Waiting for the next matchup…</div>
+        )}
+      </div>
 
       <div style={{ padding: "24px 16px" }}>
         {game.paused ? (
           <div style={{ background: PANEL, color: INK, padding: "40px 16px", textAlign: "center", fontSize: 20, fontWeight: 900 }}>
             Paused
           </div>
+        ) : waitingForReady ? (
+          <div style={{ background: PANEL, color: INK, padding: "32px 16px", textAlign: "center" }}>
+            <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.65, marginBottom: 12 }}>Up next</div>
+            <div style={{ fontSize: 22, fontWeight: 900 }}>
+              <span style={{ color: BOYS_COLOR }}>{nameOf(boyId)}</span> vs <span style={{ color: GIRLS_COLOR }}>{nameOf(girlId)}</span>
+            </div>
+          </div>
         ) : countingDown ? (
           <div style={{ background: PANEL, color: INK, padding: "40px 16px", textAlign: "center" }}>
-            <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.65, marginBottom: 8 }}>Get ready…</div>
+            <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.65, marginBottom: 8 }}>{redealCountdown ? "New letters…" : "Get ready…"}</div>
             <div style={{ fontSize: 48, fontWeight: 900 }}>{secondsLeft}</div>
           </div>
         ) : (
@@ -354,92 +464,102 @@ export default function PlayPage({ params }) {
         )}
       </div>
 
-      <div style={{ padding: "0 16px 16px" }}>
-        <div style={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.12em", opacity: 0.55, marginBottom: 8 }}>Players</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          {players.map(p => (
-            <div key={p.id} style={{ display: "flex", opacity: p.is_eliminated ? 0.55 : 1 }}>
-              <div style={{
-                background: BTN, color: BTN_TEXT, fontSize: 20, fontWeight: 900,
-                minWidth: 52, textAlign: "center", padding: "10px 0", flexShrink: 0,
-              }}>
-                {p.points}
-              </div>
-              <div style={{ background: PANEL, padding: "10px 16px", flex: 1, display: "flex", alignItems: "center" }}>
-                <span style={{
-                  fontSize: 15, fontWeight: 700,
-                  textDecoration: p.is_eliminated ? "line-through" : "none",
-                }}>
-                  {p.name}{p.id === myPlayerId && <span style={{ fontSize: 12, opacity: 0.55, marginLeft: 6 }}>you</span>}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {roundDoneStep === "pick" && (
         <div onClick={() => setRoundDoneStep(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
           <div onClick={e => e.stopPropagation()} style={{ background: PANEL, color: INK, padding: "24px 20px", maxWidth: 360, width: "100%" }}>
-            <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 16 }}>Who lost the round?</div>
+            <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 16 }}>Who won the round?</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-              {activePlayers.map(p => (
-                <button key={p.id} onClick={() => setRoundDoneStep({ confirmId: p.id })}
-                  style={{ background: WARM, color: INK, fontSize: 16, fontWeight: 800, padding: "14px", textAlign: "left" }}>
-                  {p.name}
+              {boyId && (
+                <button onClick={() => proposeRoundResult(boyId)} disabled={busy}
+                  style={{ background: BOYS_COLOR, color: "white", fontSize: 16, fontWeight: 800, padding: "14px", textAlign: "left" }}>
+                  {nameOf(boyId)}
                 </button>
-              ))}
+              )}
+              {girlId && (
+                <button onClick={() => proposeRoundResult(girlId)} disabled={busy}
+                  style={{ background: GIRLS_COLOR, color: "white", fontSize: 16, fontWeight: 800, padding: "14px", textAlign: "left" }}>
+                  {nameOf(girlId)}
+                </button>
+              )}
             </div>
-            <button onClick={() => setRoundDoneStep({ confirmId: null })}
-              style={{ background: "rgba(34,26,18,0.12)", color: INK, fontSize: 15, fontWeight: 800, padding: "14px", width: "100%", marginBottom: 8 }}>
-              No one
-            </button>
             <button onClick={() => setRoundDoneStep(null)} style={{ background: "transparent", color: INK_MUTED, fontSize: 14, fontWeight: 700, padding: "10px", width: "100%" }}>Cancel</button>
           </div>
         </div>
       )}
 
-      {roundDoneStep && typeof roundDoneStep === "object" && (
-        <div onClick={() => setRoundDoneStep(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: PANEL, color: INK, padding: "24px 20px", maxWidth: 360, width: "100%" }}>
+      {/* New Letters: the OTHER competitor must agree before it happens */}
+      {opponentRequestedRedeal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: PANEL, color: INK, padding: "24px 20px", maxWidth: 360, width: "100%" }}>
             <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 20 }}>
-              {roundDoneStep.confirmId ? <>Confirm <b>{nameOf(roundDoneStep.confirmId)}</b> lost a point?</> : "Confirm no one lost a point?"}
+              {nameOf(redealPendingBy)} wants new letters. Agree?
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => confirmRoundResult(roundDoneStep.confirmId)} disabled={busy}
-                style={{ flex: 1, background: BTN, color: BTN_TEXT, fontSize: 15, fontWeight: 900, padding: "14px" }}>
-                {busy ? "Saving…" : "Confirm"}
-              </button>
-              <button onClick={() => setRoundDoneStep("pick")} style={{ flex: 1, background: "rgba(34,26,18,0.12)", color: INK, fontSize: 15, fontWeight: 900, padding: "14px" }}>Back</button>
+              <button onClick={() => respondNewLetters(true)} style={{ flex: 1, background: BTN, color: BTN_TEXT, fontSize: 15, fontWeight: 900, padding: "14px" }}>Yes</button>
+              <button onClick={() => respondNewLetters(false)} style={{ flex: 1, background: "rgba(34,26,18,0.12)", color: INK, fontSize: 15, fontWeight: 900, padding: "14px" }}>No</button>
             </div>
           </div>
         </div>
       )}
-
-      {newLettersConfirming && (
-        <div onClick={() => setNewLettersConfirming(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: PANEL, color: INK, padding: "24px 20px", maxWidth: 360, width: "100%" }}>
-            <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 20 }}>Deal a fresh set of cards for this round?</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={confirmNewLetters} disabled={busy} style={{ flex: 1, background: BTN, color: BTN_TEXT, fontSize: 15, fontWeight: 900, padding: "14px" }}>
-                {busy ? "Dealing…" : "Confirm"}
-              </button>
-              <button onClick={() => setNewLettersConfirming(false)} style={{ flex: 1, background: "rgba(34,26,18,0.12)", color: INK, fontSize: 15, fontWeight: 900, padding: "14px" }}>Cancel</button>
-            </div>
+      {iRequestedRedeal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: PANEL, color: INK, padding: "24px 20px", maxWidth: 360, width: "100%", textAlign: "center" }}>
+            <div style={{ fontSize: 16, fontWeight: 800 }}>Asking {nameOf(opponentId)} to agree to new letters…</div>
           </div>
         </div>
       )}
 
-      {menuNode()}
-      <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} height={FOOTER_ROWS_H}>
+      {/* Round result: any player proposes, everyone ELSE races to confirm/decline */}
+      {othersToConfirmRoundResult && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: PANEL, color: INK, padding: "24px 20px", maxWidth: 360, width: "100%" }}>
+            <div style={{ fontSize: 12, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, marginBottom: 6 }}>
+              {nameOf(roundResultPendingBy)}&rsquo;s proposal
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 800, marginBottom: 20 }}>
+              {nameOf(roundResultPendingWinner)} won the round for {roundResultPendingWinner === boyId ? "boys" : "girls"}. Agree?
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => respondRoundResult(true)} style={{ flex: 1, background: BTN, color: BTN_TEXT, fontSize: 15, fontWeight: 900, padding: "14px" }}>Yes</button>
+              <button onClick={() => respondRoundResult(false)} style={{ flex: 1, background: "rgba(34,26,18,0.12)", color: INK, fontSize: 15, fontWeight: 900, padding: "14px" }}>No</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {iProposedRoundResult && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 150, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div style={{ background: PANEL, color: INK, padding: "24px 20px", maxWidth: 360, width: "100%", textAlign: "center" }}>
+            <div style={{ fontSize: 16, fontWeight: 800 }}>Asking everyone to confirm {nameOf(roundResultPendingWinner)} won the round…</div>
+          </div>
+        </div>
+      )}
+    </div>
+    {menuAndFooter(
+      waitingForReady ? (
+        isCompeting ? (
+          iAmReady ? (
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 15, fontWeight: 700, opacity: 0.65 }}>
+              Waiting on {nameOf(opponentId)}…
+            </div>
+          ) : (
+            <FooterButton onClick={markReady} bg="#FFFFFF" textColor={INK}>Ready</FooterButton>
+          )
+        ) : (
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 15, fontWeight: 700, opacity: 0.65 }}>
+            Waiting on both {nameOf(boyId)} and {nameOf(girlId)}…
+          </div>
+        )
+      ) : (
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           <div style={{ flex: 1, display: "flex" }}>
-            <button onClick={() => setNewLettersConfirming(true)} disabled={busy}
-              style={{ flex: 1, height: "100%", background: "rgba(255,255,255,0.22)", color: "white", fontSize: 15, fontWeight: 700 }}>
-              New Letters
-            </button>
+            {isCompeting && (
+              <button onClick={requestNewLetters} disabled={busy || !!redealPendingBy}
+                style={{ flex: 1, height: "100%", background: "rgba(255,255,255,0.22)", color: "white", fontSize: 15, fontWeight: 700 }}>
+                New Letters
+              </button>
+            )}
             <button onClick={togglePause} disabled={busy}
-              style={{ flex: 1, height: "100%", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 15, fontWeight: 700, borderLeft: "1px solid rgba(255,255,255,0.09)" }}>
+              style={{ flex: 1, height: "100%", background: "rgba(255,255,255,0.15)", color: "white", fontSize: 15, fontWeight: 700, borderLeft: isCompeting ? "1px solid rgba(255,255,255,0.09)" : "none" }}>
               {game.paused ? "Resume" : "Pause"}
             </button>
           </div>
@@ -448,7 +568,9 @@ export default function PlayPage({ params }) {
             Round Done
           </button>
         </div>
-      </Footer>
-    </div>
+      ),
+      waitingForReady ? FOOTER_H : FOOTER_ROWS_H
+    )}
+    </>
   )
 }

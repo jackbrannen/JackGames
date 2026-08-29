@@ -8,7 +8,7 @@ const YELLOW = "#FBDF54"
 const WARM_LIGHT = "#21232E"
 const PANEL_BG = "#1A1B26"
 
-const TYPES = ["Word games", "Cooperative", "Drawing", "Voting/Judging", "Teams", "Hidden roles", "Acting"]
+const TYPES = ["Word games", "Cooperative", "Drawing", "Voting/Judging", "Teams", "Hidden roles", "Acting", "Original"]
 
 const GROUPS = [
   { name: "Easy Peasy", description: "Quick and low-energy" },
@@ -21,7 +21,7 @@ const GAMES = [
   {
     name: "Typecast",
     description: "Assign a word for each player, then guess how everyone else did",
-    players: "3+ players", minPlayers: 3, group: "Easy Peasy", types: ["Word games", "Cooperative"],
+    players: "3+ players", minPlayers: 3, group: "Easy Peasy", types: ["Word games", "Cooperative", "Original"],
     url: "https://typecast.jackbrannen.com", bg: "#E8553A", color: "white",
     instructions: `Everyone gets a handful of random words and, at the same time, drags one word onto each other player — whoever it fits best. There are a couple of spare words to leave out.
 
@@ -78,7 +78,7 @@ If the group is wrong, Mr. White survives to another round. Last player standing
   {
     name: "Copycats",
     description: "Answer questions as each other",
-    players: "3+ players", minPlayers: 3, group: "Easy Peasy", types: ["Voting/Judging"],
+    players: "3+ players", minPlayers: 3, group: "Easy Peasy", types: ["Voting/Judging", "Original"],
     url: "https://copycats.jackbrannen.com", bg: "#5C2D8C", color: "white",
     instructions: `Each round, one player is the target and another is the questioner. The questioner writes a personal question directed at the target.
 
@@ -100,6 +100,19 @@ Every player writes an open-ended question that invites creative, funny answers.
 Answers are revealed anonymously, and the group votes for their favorite. The author of the winning answer earns points. Identical answers also earn bonus points.
 
 Highest score after all rounds wins.`,
+  },
+  {
+    name: "Nominations",
+    description: "Argue a superlative fits someone — one of you is secretly bluffing",
+    players: "6+ players", minPlayers: 6, group: "Easy Peasy", types: ["Voting/Judging", "Hidden roles", "Teams", "Acting", "Original"],
+    url: "https://nominations.jackbrannen.com", bg: "#323340", color: "white",
+    instructions: `Teams of boys vs. girls. Everyone writes a superlative — "Most likely to…", "Best…" — without picking anything too obvious for the group.
+
+Each round, one boy and one girl are paired and shown the same superlative. One of them is secretly the bluffer, assigned a random person to argue it's about. The other is the truth-teller, and picks whoever they genuinely think it fits best.
+
+Both argue their case out loud, live, in front of everyone. Nobody else knows who's bluffing.
+
+Once the room has heard enough, everyone votes on who they think the bluffer is. Guess correctly and you score a point for your own team.`,
   },
   // ── Medium Schmedium ──
   // Alpha Jam hidden from the catalog (still deployed at alphajam.jackbrannen.com, and still
@@ -131,7 +144,7 @@ Tap any zone at any time to see what's already been placed there and gather clue
   {
     name: "Sound Board",
     description: "Make the sounds. Your team has to guess what you meant",
-    players: "4+ players", minPlayers: 4, group: "Medium Schmedium", types: ["Teams", "Word games", "Acting"],
+    players: "4+ players", minPlayers: 4, group: "Medium Schmedium", types: ["Teams", "Word games", "Acting", "Original"],
     url: "https://soundboard.jackbrannen.com", bg: "#249E64", color: "white",
     instructions: `Two teams — Boys and Girls. Everyone submits words at the start; those become the pool for the whole game.
 
@@ -172,7 +185,7 @@ With exactly 3 players the game is fully cooperative — chase one shared team s
   {
     name: "Secret Phrase",
     description: "Slip the secret phrase into your answer—the other team guesses it",
-    players: "4+ players", minPlayers: 4, group: "Medium Schmedium", types: ["Teams", "Acting"],
+    players: "4+ players", minPlayers: 4, group: "Medium Schmedium", types: ["Teams", "Acting", "Original"],
     url: "https://secretphrase.jackbrannen.com", bg: "#2434C4", color: "white",
     instructions: `Everyone splits into two teams. Each turn, one team secretly gets a phrase. One player from that team is "up" — the other team asks them any question out loud, and they have to answer using the secret phrase, without being too obvious about it.
 
@@ -185,7 +198,7 @@ Turns alternate between teams, and every player gets to be the one "up" at least
   {
     name: "Hearing Voices",
     description: "Do a voice, teammates guess who from an emoji clue",
-    players: "4+ players", minPlayers: 4, group: "Medium Schmedium", types: ["Teams", "Acting"],
+    players: "4+ players", minPlayers: 4, group: "Medium Schmedium", types: ["Teams", "Acting", "Original"],
     url: "https://hearingvoices.jackbrannen.com", bg: "#7A4FDB", color: "white",
     instructions: `Boys vs Girls. Each turn, one player on the active team secretly sees which of 9 characters they've been assigned — everyone else just sees an emoji in the center of the grid.
 
@@ -209,7 +222,7 @@ At the end, the original phrase and the final result are revealed side by side. 
   {
     name: "Same Page",
     description: "Try to come up with the same answer as everyone else",
-    players: "2+ players", minPlayers: 2, group: "Medium Schmedium", types: ["Word games", "Cooperative"],
+    players: "2+ players", minPlayers: 2, group: "Medium Schmedium", types: ["Word games", "Cooperative", "Original"],
     url: "https://samepage.jackbrannen.com", bg: "#FF85FD", color: "#3C3022",
     instructions: `Everyone sees the same three prompts each round, each with a letter. Privately write an answer for each one.
 

@@ -21,6 +21,7 @@ Each game is deployed to its own Vercel subdomain under `jackbrannen.com`.
 | Codenames | `codenames` | — | 4+ | Teams guess words from one-word clues |
 | Reverse Charades | `reversecharades` | — | 4+ | Group acts out clues, one person guesses |
 | Exquisite Corpse | `exquisite-corpse` | — | 4+ | Collaborative drawing/writing chain |
+| Nominations | `nominations` | Green `#a2d291` | 6+ | Teams argue who a superlative fits — one bluffs, the room votes |
 
 ### Team-Based Games
 Fishbowl, Codenames, and Reverse Charades use two teams:
@@ -168,6 +169,30 @@ Browser tabs share localStorage, so they all appear as the same player. Incognit
 ### Dummy Game Auto-Fill
 
 Dummy games automatically pre-fill text input fields with random ideas when a phase starts (only if `game.is_dummy === true`). This speeds up testing but shouldn't auto-submit — you still click buttons to advance.
+
+### Local Dev Server Ports
+
+Always start a game's dev server with an explicit, fixed `-p <port>` — never bare `npm run dev`. Left to auto-pick, `next dev` grabs whichever port is free, which changes every run; since the saved username/profile lives in `localStorage` (scoped per-origin, and the port is part of the origin on `localhost`), a random port silently "forgets" the tester's saved name on every restart.
+
+Assigned ports (reuse the same one for a game every time — add a new row here rather than letting a new game auto-pick):
+
+| Game | Port | Game | Port |
+|---|---|---|---|
+| Codenames | 3401 | AlphaJam | 3411 |
+| Copycats | 3402 | Avalon | 3412 |
+| Decrypto | 3403 | Drawful | 3413 |
+| GameOfWhat | 3404 | ExquisiteCorpse | 3414 |
+| SamePage | 3405 | FirstToWorst | 3415 |
+| WhatOnEarth | 3406 | JackGames (hub site) | 3416 |
+| Fishbowl | 3407 | MrWhite | 3417 |
+| ReverseCharades | 3408 | SoClover | 3418 |
+| HearingVoices | 3409 | SoundBoard | 3419 |
+| SecretPhrase | 3410 | Telestrations | 3420 |
+| Typecast | 3320 | ThingsInRings | 3421 |
+| StyleGuide | 3099 | WordBirds | 3422 |
+| Nominations | 3423 | | |
+
+**Don't restart a dev server that's already running for an ordinary edit.** `next dev`'s Fast Refresh picks up file changes on its own — a manual kill+restart (or worse, running `next build` against a game mid-iteration, even with the server killed first) can crash a browser tab that's still open on that game: the tab survives the restart, its connection drops and reconnects against a different build ID, and Fast Refresh can spin into a runaway reload loop. Only touch a running dev server if it's actually stuck, and warn before doing so if a tab might be open on it.
 
 ---
 

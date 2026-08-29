@@ -105,7 +105,7 @@ Highest score after all rounds wins.`,
     name: "Nominations",
     description: "Argue a superlative fits someone — one of you is secretly bluffing",
     players: "6+ players", minPlayers: 6, group: "Easy Peasy", types: ["Voting/Judging", "Hidden roles", "Teams", "Acting", "Original"],
-    url: "https://nominations.jackbrannen.com", bg: "#323340", color: "white",
+    url: "https://nominations.jackbrannen.com", bg: "#a2d291", color: "#1A2418",
     instructions: `Teams of boys vs. girls. Everyone writes a superlative — "Most likely to…", "Best…" — without picking anything too obvious for the group.
 
 Each round, one boy and one girl are paired and shown the same superlative. One of them is secretly the bluffer, assigned a random person to argue it's about. The other is the truth-teller, and picks whoever they genuinely think it fits best.

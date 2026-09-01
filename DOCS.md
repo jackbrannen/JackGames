@@ -21,7 +21,7 @@ Each game is deployed to its own Vercel subdomain under `jackbrannen.com`.
 | Codenames | `codenames` | — | 4+ | Teams guess words from one-word clues |
 | Reverse Charades | `reversecharades` | — | 4+ | Group acts out clues, one person guesses |
 | Exquisite Corpse | `exquisite-corpse` | — | 4+ | Collaborative drawing/writing chain |
-| Nominations | `nominations` | Green `#a2d291` | 6+ | Teams argue who a superlative fits — one bluffs, the room votes |
+| Nominations | `nominations` | Green `#a2d291` | 6+ | Two players argue who a superlative fits — one bluffs, the room votes |
 
 ### Team-Based Games
 Fishbowl, Codenames, and Reverse Charades use two teams:

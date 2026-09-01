@@ -32,15 +32,15 @@ You score a point for every word placed on the same person the caster chose. It'
   {
     name: "Nominations",
     description: "Argue a superlative fits someone — one of you is secretly bluffing",
-    players: "6+ players", minPlayers: 6, group: "Easy Peasy", types: ["Voting/Judging", "Hidden roles", "Teams", "Acting", "Original"],
+    players: "6+ players", minPlayers: 6, group: "Easy Peasy", types: ["Voting/Judging", "Hidden roles", "Acting", "Original"],
     url: "https://nominations.jackbrannen.com", bg: "#a2d291", color: "#1A2418",
-    instructions: `Teams of boys vs. girls. Everyone writes a superlative — "Most likely to…", "Best…" — without picking anything too obvious for the group.
+    instructions: `Everyone writes a superlative — "Most likely to…", "Best…" — without picking anything too obvious for the group.
 
-Each round, one boy and one girl are paired and shown the same superlative. One of them is secretly the bluffer, assigned a random person to argue it's about. The other is the truth-teller, and picks whoever they genuinely think it fits best.
+You're then dealt somebody else's superlative and choose how to play it: as the truth-teller, picking who it genuinely fits best, or as the bluffer, who gets handed a random person to argue for instead. Every superlative ends up with one of each.
 
-Both argue their case out loud, live, in front of everyone. Nobody else knows who's bluffing.
+Each round, two players argue the same superlative for two different people, out loud, in front of everyone. Nobody else knows which one is bluffing.
 
-Once the room has heard enough, everyone votes on who they think the bluffer is. Guess correctly and you score a point for your own team.`,
+Then the room votes on who the bluffer is. Spot the bluffer and you score. The truth-teller scores for everyone who saw through the bluff, and the bluffer scores double for everyone they fool — so bluffing is the risky, high-reward seat.`,
   },
   {
     name: "So Clover",

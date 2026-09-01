@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "../../../lib/supabase"
 import Footer, { FOOTER_H } from "../../../components/Footer"
@@ -20,11 +20,7 @@ const MID = "#7bc688"
 const WARM_LIGHT = "#c5dc93"
 const YELLOW = "#FBDF54"
 const BTN = "#323340"
-const BOYS_COLOR = "#359c94"
-const GIRLS_COLOR = "#df668e"
 const INK = "#1A2418"
-// Dark enough on the light green surfaces above to clear 4.5:1 contrast —
-// checked against WARM_LIGHT/BG (#cbe08c), the lightest surface they sit on.
 const WRONG_RED = "#991B1B"
 const CHECK_GREEN = "#357C4F"
 const WAIT_BG = "#C5DD94"
@@ -41,23 +37,62 @@ const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
 function Nm({ children }) { return <span style={{ fontWeight: 900 }}>{children}</span> }
 
-function ScoreBoxes({ boys, girls }) {
-  const boxStyle = (bg) => ({ background: bg, color: "white", fontSize: 13, fontWeight: 900, padding: "4px 8px" })
+function ScorePill({ score }) {
   return (
-    <div style={{ display: "flex", gap: 6 }}>
-      <span style={boxStyle(BOYS_COLOR)}>Boys {boys}</span>
-      <span style={boxStyle(GIRLS_COLOR)}>Girls {girls}</span>
+    <span style={{ background: BTN, color: "white", fontSize: 13, fontWeight: 900, padding: "4px 10px" }}>
+      You {score ?? 0}
+    </span>
+  )
+}
+
+function PointsBadge({ amount }) {
+  return (
+    <span style={{ background: BTN, color: "white", fontSize: 13, fontWeight: 900, padding: "4px 10px", flexShrink: 0 }}>
+      +{amount}
+    </span>
+  )
+}
+
+function Well({ children, size = 22 }) {
+  return (
+    <div style={{ background: BTN, color: "white", padding: 20, marginBottom: 20 }}>
+      <div style={{ fontSize: size, fontWeight: 900, lineHeight: 1.3 }}>{children}</div>
     </div>
   )
 }
 
-function TeamBadge({ team, amount }) {
-  const bg = team === "boys" ? BOYS_COLOR : GIRLS_COLOR
-  const label = team === "boys" ? "Boys" : "Girls"
+// Must stay at module scope. Defined inside the page component, this gets a new
+// function identity on every render, so React tears down and rebuilds the whole
+// subtree each time state changes — which blurs any focused input (the
+// superlative field lost focus after every keystroke).
+// footerKey identifies which screen the footer belongs to. Without it, two
+// different screens that both render a <FooterButton> in this same slot (e.g.
+// reveal's "Next round →" and the next round's "Lock it in") reconcile as the
+// same element type in the same position, so React reuses the instance and
+// carries its internal loading state across. FooterButton never resets loading
+// on success — it relies on unmounting — so it would sit disabled on "Loading…"
+// forever. Keying the slot forces a real remount whenever the screen changes.
+function Shell({ label, right, children, footer, footerKey, scroll, banner, menuNode, menuOpen, onToggleMenu }) {
   return (
-    <span style={{ background: bg, color: "white", fontSize: 13, fontWeight: 900, padding: "4px 10px", flexShrink: 0 }}>
-      +{amount} {label}
-    </span>
+    <>
+      <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column" }}>
+        <StatusBar label={label} dark={DARK} textColor={INK} right={right} />
+        {banner && (
+          <div style={{ background: "#FFFFFF", color: INK, padding: "14px 16px", fontSize: 15, fontWeight: 900, textAlign: "center", flexShrink: 0 }}>
+            {banner}
+          </div>
+        )}
+        <div style={scroll
+          ? { flex: 1, overflowY: "auto", padding: "24px 24px", paddingBottom: BOTTOM_PAD, display: "flex", flexDirection: "column" }
+          : { flex: 1, padding: "28px 24px", paddingBottom: BOTTOM_PAD, display: "flex", flexDirection: "column" }}>
+          {children}
+        </div>
+      </div>
+      {menuNode}
+      <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={onToggleMenu}>
+        <Fragment key={footerKey}>{footer}</Fragment>
+      </Footer>
+    </>
   )
 }
 
@@ -68,14 +103,15 @@ export default function PlayPage({ params }) {
   const [game, setGame] = useState(null)
   const [players, setPlayers] = useState([])
   const [superlatives, setSuperlatives] = useState([])
+  const [rounds, setRounds] = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
   const [draft, setDraft] = useState("")
   const [submitError, setSubmitError] = useState("")
   const [menuOpen, setMenuOpen] = useState(false)
   const [instructions, setInstructions] = useState("")
   const [voteSelection, setVoteSelection] = useState(null)
-  const [blufferRevealed, setBlufferRevealed] = useState(false)
-  const [truthtellerSelection, setTruthtellerSelection] = useState(null)
+  const [targetSelection, setTargetSelection] = useState(null)
+  const [revealedTarget, setRevealedTarget] = useState(false)
   const isIdle = useIdleGate()
   const loadSeqRef = useRef(0)
   const channelRef = useRef(null)
@@ -83,19 +119,16 @@ export default function PlayPage({ params }) {
 
   useEffect(() => {
     setVoteSelection(null)
-    setBlufferRevealed(false)
-    setTruthtellerSelection(null)
+    setRevealedTarget(false)
   }, [game?.round_index])
 
-  // Gossip (see REALTIME.md §4): if this client's own loadState() notices the game
-  // row changed since it last checked, re-broadcast a "sync" nudge so any peer whose
-  // own postgres_changes subscription silently dropped that update catches up
-  // immediately instead of waiting on the next 60s poll. None of these fields fire on
-  // every tap — the truth-teller's repeatable target-selection tap is deliberately
-  // excluded (see chooseTarget below), same rule as the drag-position exclusion in
-  // the FirstToWorst gossip bug.
+  // Gossip (see REALTIME.md §4): if this client's own loadState() notices the
+  // game row changed since it last checked, re-broadcast a "sync" nudge so any
+  // peer whose postgres_changes subscription silently dropped that update
+  // catches up immediately instead of waiting on the next 60s poll. None of
+  // these fields change on a repeated tap.
   function gossipSyncKey(g) {
-    return `${g.phase}:${g.round_index}:${g.current_boy_id}:${g.current_girl_id}:${g.bluffer_ready_speech}:${g.truthteller_ready_speech}:${Object.keys(g.votes || {}).length}:${(g.ready_next_round_ids || []).length}`
+    return `${g.phase}:${g.round_index}:${(g.ready_next_round_ids || []).length}`
   }
 
   useEffect(() => {
@@ -109,10 +142,11 @@ export default function PlayPage({ params }) {
 
   async function loadState() {
     const seq = ++loadSeqRef.current
-    const [{ data: gameData }, { data: playerData }, { data: superlativeData }] = await Promise.all([
+    const [{ data: gameData }, { data: playerData }, { data: superlativeData }, { data: roundData }] = await Promise.all([
       supabase.from("nom_games").select("*").eq("code", code).single(),
-      supabase.from("nom_players").select("id,name,first_name,last_name,team,created_at").eq("game_code", code).order("created_at", { ascending: true }),
+      supabase.from("nom_players").select("id,name,first_name,last_name,score,created_at").eq("game_code", code).order("created_at", { ascending: true }),
       supabase.from("nom_superlatives").select("id,player_id,text").eq("game_code", code),
+      supabase.from("nom_rounds").select("*").eq("game_code", code),
     ])
     if (seq !== loadSeqRef.current) return
     if (gameData?.replay_code) { router.replace(`/${gameData.replay_code}/play`); return }
@@ -126,19 +160,19 @@ export default function PlayPage({ params }) {
     }
     setPlayers(playerData ?? [])
     setSuperlatives(superlativeData ?? [])
+    setRounds(roundData ?? [])
   }
 
-  function applyPlayerRow(payload) {
-    const { eventType, new: newRow, old: oldRow } = payload
-    if (eventType === "DELETE") { setPlayers(prev => prev.filter(r => r.id !== oldRow?.id)); return }
-    if (!newRow) return
-    setPlayers(prev => { const i = prev.findIndex(r => r.id === newRow.id); return i === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r) })
-  }
-  function applySuperlativeRow(payload) {
-    const { eventType, new: newRow, old: oldRow } = payload
-    if (eventType === "DELETE") { setSuperlatives(prev => prev.filter(r => r.id !== oldRow?.id)); return }
-    if (!newRow) return
-    setSuperlatives(prev => { const i = prev.findIndex(r => r.id === newRow.id); return i === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r) })
+  function upsertRow(setter) {
+    return (payload) => {
+      const { eventType, new: newRow, old: oldRow } = payload
+      if (eventType === "DELETE") { setter(prev => prev.filter(r => r.id !== oldRow?.id)); return }
+      if (!newRow) return
+      setter(prev => {
+        const i = prev.findIndex(r => r.id === newRow.id)
+        return i === -1 ? [...prev, newRow] : prev.map(r => r.id === newRow.id ? newRow : r)
+      })
+    }
   }
 
   useEffect(() => {
@@ -160,8 +194,9 @@ export default function PlayPage({ params }) {
         .on("postgres_changes", { event: "*", schema: "public", table: "nom_games", filter: `code=eq.${code}` }, payload => {
           if (payload.new) setGame(payload.new)
         })
-        .on("postgres_changes", { event: "*", schema: "public", table: "nom_players", filter: `game_code=eq.${code}` }, applyPlayerRow)
-        .on("postgres_changes", { event: "*", schema: "public", table: "nom_superlatives", filter: `game_code=eq.${code}` }, applySuperlativeRow)
+        .on("postgres_changes", { event: "*", schema: "public", table: "nom_players", filter: `game_code=eq.${code}` }, upsertRow(setPlayers))
+        .on("postgres_changes", { event: "*", schema: "public", table: "nom_superlatives", filter: `game_code=eq.${code}` }, upsertRow(setSuperlatives))
+        .on("postgres_changes", { event: "*", schema: "public", table: "nom_rounds", filter: `game_code=eq.${code}` }, upsertRow(setRounds))
         .on("broadcast", { event: "sync" }, () => { loadState() })
         .subscribe(status => {
           if (cancelled) return
@@ -218,21 +253,15 @@ export default function PlayPage({ params }) {
     </div>
   }
 
-  const isBoy = me.id === game.current_boy_id
-  const isGirl = me.id === game.current_girl_id
-  const isUp = isBoy || isGirl
-  const isBluffer = me.id === game.current_bluffer_id
-  const isTruthteller = me.id === game.current_truthteller_id
-  const boy = byId[game.current_boy_id]
-  const girl = byId[game.current_girl_id]
-  const bluffer = byId[game.current_bluffer_id]
-  const truthteller = byId[game.current_truthteller_id]
-  const currentSuperlative = superlativeById[game.current_superlative_id]?.text
+  const roundLabel = `Round ${game.round_index + 1} of ${game.total_rounds}`
 
   async function rpc(fn, args) {
     const { error } = await supabase.rpc(fn, args)
     if (error) throw error
     await loadState()
+  }
+  function nudge() {
+    channelRef.current?.send({ type: "broadcast", event: "sync", payload: {} })
   }
 
   const menuNode = (
@@ -245,11 +274,8 @@ export default function PlayPage({ params }) {
         onClose={() => setMenuOpen(false)}
         roomCode={code}
         currentPlayer={me.name}
-        playerDetails={players.map(p => ({
-          name: p.name, firstName: p.first_name, lastName: p.last_name,
-          teamColor: p.team === "boys" ? BOYS_COLOR : p.team === "girls" ? GIRLS_COLOR : undefined,
-          teamLabel: p.team === "boys" ? "Boys" : p.team === "girls" ? "Girls" : undefined,
-          score: p.team === "boys" ? game.boys_score : game.girls_score,
+        playerDetails={[...players].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).map(p => ({
+          name: p.name, firstName: p.first_name, lastName: p.last_name, score: p.score ?? 0,
         }))}
         gamePhase={game.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
@@ -268,7 +294,7 @@ export default function PlayPage({ params }) {
       setSubmitError("")
       try {
         await rpc("nom_submit_superlative", { p_code: code, p_player_id: myPlayerId, p_text: trimmed })
-        channelRef.current?.send({ type: "broadcast", event: "sync", payload: {} })
+        nudge()
       } catch (e) {
         setSubmitError(e?.message || "Something went wrong.")
         throw e
@@ -277,440 +303,405 @@ export default function PlayPage({ params }) {
 
     if (mySuperlative) {
       return (
-        <>
-        <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column" }}>
-          <StatusBar label="Nominations" dark={DARK} textColor={INK} />
-          <div style={{ padding: "32px 24px", paddingBottom: BOTTOM_PAD }}>
-            <div style={{ fontSize: "clamp(28px, 8vw, 40px)", fontWeight: 900, lineHeight: 1, marginBottom: 24 }}>Waiting for<br />everyone…</div>
-            <WaitingList
-              players={players.map(p => ({ name: p.name, done: superlatives.some(s => s.player_id === p.id) }))}
-              myName={me.name}
-              colors={{ mid: WAIT_BG }}
-              doneColor={CHECK_GREEN}
-            />
-          </div>
-        </div>
-          {menuNode}
-          <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} />
-        </>
+        <Shell menuNode={menuNode} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen(o => !o)} footerKey="writing" label="Nominations">
+          <div style={{ fontSize: "clamp(28px, 8vw, 40px)", fontWeight: 900, lineHeight: 1, marginBottom: 24 }}>Waiting for<br />everyone…</div>
+          <WaitingList
+            players={players.map(p => ({ name: p.name, done: superlatives.some(s => s.player_id === p.id) }))}
+            myName={me.name}
+            colors={{ mid: WAIT_BG }}
+            doneColor={CHECK_GREEN}
+          />
+        </Shell>
       )
     }
 
     return (
-      <>
-      <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column" }}>
-        <StatusBar label="Nominations" dark={DARK} textColor={INK} />
-        <div style={{ padding: "28px 24px", paddingBottom: BOTTOM_PAD }}>
-          <div style={{ fontSize: "clamp(28px, 8vw, 40px)", fontWeight: 900, lineHeight: 1, marginBottom: 10 }}>Write your superlative</div>
-          <p style={{ fontSize: 15, fontWeight: 600, opacity: 0.75, marginBottom: 24, lineHeight: 1.4 }}>
-            Something like "Most likely to…" or "Best…". <b>Don't pick one with an obvious answer</b> for this group — the fun is in the surprise.
-          </p>
-          <TextEntry
-            value={draft}
-            onChange={setDraft}
-            multiline={false}
-            onSubmit={submit}
-            placeholder="Most likely to…"
-            maxLength={140}
-            bg={WARM_LIGHT}
-            fontSize={18}
-            style={{ fontWeight: 600, color: INK }}
-          />
-          {submitError && <p style={{ fontSize: 14, fontWeight: 700, color: "#B03030", marginTop: 12 }}>{submitError}</p>}
-        </div>
-      </div>
-        {menuNode}
-        <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
-          <FooterButton onClick={submit} disabled={!draft.trim()} bg={BTN} textColor="white">Submit</FooterButton>
-        </Footer>
-      </>
+      <Shell menuNode={menuNode} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen(o => !o)}
+        label="Nominations"
+        footerKey="write"
+        footer={<FooterButton onClick={submit} disabled={!draft.trim()} bg={BTN} textColor="white">Submit</FooterButton>}
+      >
+        <div style={{ fontSize: "clamp(28px, 8vw, 40px)", fontWeight: 900, lineHeight: 1, marginBottom: 10 }}>Write your superlative</div>
+        <p style={{ fontSize: 15, fontWeight: 600, opacity: 0.75, marginBottom: 24, lineHeight: 1.4 }}>
+          Something like &quot;Most likely to…&quot; or &quot;Best…&quot;. <b>Don&apos;t pick one with an obvious answer</b> for this group — the fun is in the surprise.
+        </p>
+        <TextEntry
+          value={draft}
+          onChange={setDraft}
+          multiline={false}
+          onSubmit={submit}
+          placeholder=""
+          maxLength={140}
+          bg={WARM_LIGHT}
+          fontSize={18}
+          style={{ fontWeight: 600, color: INK }}
+        />
+        {submitError && <p style={{ fontSize: 14, fontWeight: 700, color: WRONG_RED, marginTop: 12 }}>{submitError}</p>}
+      </Shell>
     )
   }
 
-  // ── CHOOSING PHASE ─────────────────────────────────────────────────────
-  if (game.phase === "choosing") {
-    if (!isUp) {
+  // ── ASSIGNMENT PHASE ───────────────────────────────────────────────────
+  if (game.phase === "assigning") {
+    // Every player answers all of this in one sitting, so nobody is ever called
+    // back mid-phase (being recalled would itself reveal you hold a
+    // truth-teller slot). Both superlatives you'll argue are known up front.
+    const myAssignment = rounds.find(r => r.assignee_id === myPlayerId)
+    const myPartnerRound = rounds.find(r => r.partner_id === myPlayerId)
+    const needsRole = myAssignment && !myAssignment.assignee_role
+    const needsOwnPick = myAssignment && myAssignment.assignee_role === "truthteller" && !myAssignment.assignee_pick
+    const needsPartnerPick = myPartnerRound && !myPartnerRound.partner_pick
+
+    const isDone = (p) => {
+      const own = rounds.find(r => r.assignee_id === p.id)
+      const partner = rounds.find(r => r.partner_id === p.id)
+      if (!own || !own.assignee_role) return false
+      if (own.assignee_role === "truthteller" && !own.assignee_pick) return false
+      return !!(partner && partner.partner_pick)
+    }
+
+    async function chooseRole(role) {
+      await rpc("nom_choose_role", { p_code: code, p_player_id: myPlayerId, p_role: role })
+      nudge()
+    }
+    async function chooseTarget(roundId, targetId) {
+      setTargetSelection(null)
+      await rpc("nom_choose_assignment_target", { p_code: code, p_player_id: myPlayerId, p_round_id: roundId, p_target_id: targetId })
+      nudge()
+    }
+
+    if (needsRole) {
+      const text = superlativeById[myAssignment.superlative_id]?.text
       return (
-        <>
-        <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column" }}>
-          <StatusBar label={`Round ${game.round_index + 1} of ${game.total_rounds}`} dark={DARK} textColor={INK} right={<ScoreBoxes boys={game.boys_score} girls={game.girls_score} />} />
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "40px 24px", textAlign: "center" }}>
-            <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.7, marginBottom: 16 }}>Nominators this round</div>
-            <div style={{ fontSize: "clamp(30px, 8vw, 46px)", fontWeight: 900, lineHeight: 1.15, marginBottom: 12 }}>{boy?.name} &amp; {girl?.name}</div>
-            <p style={{ fontSize: 16, fontWeight: 600, opacity: 0.75 }}>They&apos;re each getting their assignment.</p>
-          </div>
-        </div>
-          {menuNode}
-          <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} />
-        </>
-      )
-    }
-
-    if (isBluffer) {
-      const target = byId[game.bluffer_target_id]
-      async function readySpeech() {
-        await rpc("nom_ready_speech", { p_code: code, p_player_id: myPlayerId })
-        channelRef.current?.send({ type: "broadcast", event: "sync", payload: {} })
-      }
-
-      // Once readied, swap to a separate return (unmounting the FooterButton below)
-      // rather than just toggling its disabled/label props on the same instance —
-      // FooterButton deliberately never resets its own internal "loading" state on
-      // success, relying on the caller to unmount it once the click's effect lands.
-      // Leaving it mounted here left the button stuck reading "Loading…" forever
-      // instead of ever reaching "Waiting for your partner…".
-      if (game.bluffer_ready_speech) {
-        return (
-          <>
-          <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column" }}>
-            <StatusBar label={`Round ${game.round_index + 1} of ${game.total_rounds}`} dark={DARK} textColor={INK} />
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ fontSize: "clamp(26px, 7vw, 36px)", fontWeight: 900, opacity: 0.75 }}>Waiting for your partner…</div>
-            </div>
-          </div>
-            {menuNode}
-            <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} />
-          </>
-        )
-      }
-
-      return (
-        <>
-        <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column" }}>
-          <StatusBar label={`Round ${game.round_index + 1} of ${game.total_rounds}`} dark={DARK} textColor={INK} />
-          <div style={{ padding: "28px 24px", paddingBottom: BOTTOM_PAD }}>
-            <div style={{ background: BTN, color: "white", padding: 20, marginBottom: 20 }}>
-              <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.3 }}>{currentSuperlative}</div>
-            </div>
-            <div style={{ fontSize: "clamp(22px, 6vw, 28px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 8 }}>
-              You&apos;re the bluffer.
-            </div>
-            <p style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.5, marginBottom: 20 }}>
-              Convince everyone this is true of this person:
-            </p>
-            {!blufferRevealed ? (
-              <button
-                onClick={() => setBlufferRevealed(true)}
-                style={{ display: "block", width: "100%", background: WARM_LIGHT, color: INK, fontSize: 18, fontWeight: 900, padding: "22px", marginBottom: 20 }}
-              >
-                Tap to reveal
-              </button>
-            ) : (
-              <div
-                style={{
-                  textAlign: "center", background: WARM_LIGHT, padding: "22px", marginBottom: 20,
-                  animation: "nom-reveal 0.35s ease-out",
-                }}
-              >
-                <span style={{ fontSize: 24, fontWeight: 900, color: INK }}>{target?.name}</span>
-              </div>
-            )}
-            <style>{`@keyframes nom-reveal { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }`}</style>
-            <p style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.5, opacity: 0.75 }}>
-              Make them think you&apos;re NOT the bluffer by making it sound like you picked this person on your own.
-            </p>
-          </div>
-        </div>
-          {menuNode}
-          <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
-            <FooterButton onClick={readySpeech} disabled={!blufferRevealed} bg={BTN} textColor="white">
-              Ready to give my speech
-            </FooterButton>
-          </Footer>
-        </>
-      )
-    }
-
-    // truth-teller — can pick anyone in the game except themselves or the
-    // bluffer's (already-assigned) target, including the bluffer. Excluding the
-    // bluffer's target keeps the two speeches from coincidentally pointing at
-    // the same person. Selection stays changeable (tap another name) right up
-    // until "Ready to give my speech" is pressed.
-    const truthtellerChoices = players.filter(p => p.id !== myPlayerId && p.id !== game.bluffer_target_id)
-    const selectedTargetId = truthtellerSelection ?? game.truthteller_target_id
-    async function chooseTarget(id) {
-      setTruthtellerSelection(id)
-      await rpc("nom_choose_target", { p_code: code, p_player_id: myPlayerId, p_target_id: id })
-    }
-    async function readySpeech() {
-      await rpc("nom_ready_speech", { p_code: code, p_player_id: myPlayerId })
-      channelRef.current?.send({ type: "broadcast", event: "sync", payload: {} })
-    }
-
-    if (game.truthteller_ready_speech) {
-      return (
-        <>
-        <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column" }}>
-          <StatusBar label={`Round ${game.round_index + 1} of ${game.total_rounds}`} dark={DARK} textColor={INK} />
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ fontSize: "clamp(26px, 7vw, 36px)", fontWeight: 900, opacity: 0.75 }}>Waiting for your partner…</div>
-          </div>
-        </div>
-          {menuNode}
-          <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} />
-        </>
-      )
-    }
-
-    return (
-      <>
-      <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column" }}>
-        <StatusBar label={`Round ${game.round_index + 1} of ${game.total_rounds}`} dark={DARK} textColor={INK} />
-        <div style={{ padding: "28px 24px", paddingBottom: BOTTOM_PAD }}>
-          <div style={{ background: BTN, color: "white", padding: 20, marginBottom: 20 }}>
-            <div style={{ fontSize: 22, fontWeight: 900, lineHeight: 1.3 }}>{currentSuperlative}</div>
-          </div>
+        <Shell menuNode={menuNode} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen(o => !o)} footerKey="assign-role" label="Your assignment" scroll>
+          <Well>{text}</Well>
           <div style={{ fontSize: "clamp(22px, 6vw, 28px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 8 }}>
-            You&apos;re the truth teller.
+            How do you want to play it?
           </div>
-          <p style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.5, marginBottom: 20 }}>
-            Who does this fit best?
+          <p style={{ fontSize: 15, fontWeight: 600, opacity: 0.75, marginBottom: 20, lineHeight: 1.4 }}>
+            You&apos;ll argue two superlatives this game. This is the one you get to choose how to play — someone else will argue it against you.
           </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {truthtellerChoices.map(p => (
-              <button
-                key={p.id}
-                onClick={() => chooseTarget(p.id)}
-                style={{
-                  textAlign: "left", padding: "16px 18px", fontSize: 17, fontWeight: 700,
-                  background: selectedTargetId === p.id ? YELLOW : WARM_LIGHT,
-                  color: INK,
-                }}
-              >
-                {p.name}
-              </button>
-            ))}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <button
+              onClick={() => chooseRole("truthteller")}
+              style={{ textAlign: "left", background: WARM_LIGHT, color: INK, padding: "18px 20px", display: "block", width: "100%" }}
+            >
+              <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 4 }}>Truth-teller</div>
+              <div style={{ fontSize: 14, fontWeight: 600, opacity: 0.75 }}>You get to pick who you argue for.</div>
+            </button>
+            <button
+              onClick={() => chooseRole("bluffer")}
+              style={{ textAlign: "left", background: WARM_LIGHT, color: INK, padding: "18px 20px", display: "block", width: "100%" }}
+            >
+              <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 4 }}>Bluffer</div>
+              <div style={{ fontSize: 14, fontWeight: 600, opacity: 0.75 }}>The game picks who you argue for, but you get double points for each person you fool.</div>
+            </button>
           </div>
-        </div>
-      </div>
-        {menuNode}
-        <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
-          {selectedTargetId ? (
-            <FooterButton onClick={readySpeech} bg={BTN} textColor="white">
-              Ready to give my speech
-            </FooterButton>
+        </Shell>
+      )
+    }
+
+    if (needsOwnPick || needsPartnerPick) {
+      const task = needsOwnPick ? myAssignment : myPartnerRound
+      const isOwn = !!needsOwnPick
+      const text = superlativeById[task.superlative_id]?.text
+      const choices = players.filter(p => p.id !== myPlayerId)
+      return (
+        <Shell menuNode={menuNode} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen(o => !o)}
+          label="Your assignment"
+          footerKey={`assign-target-${task.id}`}
+          scroll
+          footer={targetSelection ? (
+            <FooterButton onClick={() => chooseTarget(task.id, targetSelection)} bg={BTN} textColor="white">Lock it in</FooterButton>
           ) : (
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "white" }}>
               Lock in your choice
             </div>
           )}
-        </Footer>
-      </>
-    )
-  }
-
-  // ── VOTING_WAIT PHASE (speeches + voting, combined) ────────────────────
-  if (game.phase === "voting_wait") {
-    if (isUp) {
-      return (
-        <>
-        <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column" }}>
-          <StatusBar label={`Round ${game.round_index + 1} of ${game.total_rounds}`} dark={DARK} textColor={INK} />
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ fontSize: "clamp(26px, 7vw, 36px)", fontWeight: 900, opacity: 0.75 }}>Giving your speech…</div>
+        >
+          <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
+            Superlative {isOwn ? 1 : 2} of 2
           </div>
-        </div>
-          {menuNode}
-          <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} />
-        </>
-      )
-    }
-
-    const eligible = players.filter(p => p.id !== game.current_boy_id && p.id !== game.current_girl_id)
-    const myVote = game.votes?.[myPlayerId]
-    async function vote(targetId) {
-      await rpc("nom_submit_vote", { p_code: code, p_player_id: myPlayerId, p_guessed_bluffer_id: targetId })
-      channelRef.current?.send({ type: "broadcast", event: "sync", payload: {} })
-    }
-
-    if (myVote) {
-      return (
-        <>
-        <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column" }}>
-          <StatusBar label={`Round ${game.round_index + 1} of ${game.total_rounds}`} dark={DARK} textColor={INK} />
-          <div style={{ padding: "28px 24px", paddingBottom: BOTTOM_PAD }}>
-            <div style={{ fontSize: "clamp(26px, 7vw, 34px)", fontWeight: 900, marginBottom: 20 }}>Vote locked in</div>
-            <WaitingList
-              players={eligible.map(p => ({ name: p.name, done: !!game.votes?.[p.id] }))}
-              myName={me.name}
-              colors={{ mid: WAIT_BG }}
-              doneColor={CHECK_GREEN}
-            />
+          <Well>{text}</Well>
+          <div style={{ fontSize: "clamp(22px, 6vw, 28px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 8 }}>
+            {isOwn ? "You're the truth teller." : "Your second superlative"}
           </div>
-        </div>
-          {menuNode}
-          <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)} />
-        </>
-      )
-    }
-
-    return (
-      <>
-      <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column" }}>
-        <StatusBar label={`Round ${game.round_index + 1} of ${game.total_rounds}`} dark={DARK} textColor={INK} />
-        <div style={{ padding: "28px 24px", paddingBottom: BOTTOM_PAD }}>
-          <div style={{ fontSize: "clamp(24px, 7vw, 32px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 20 }}>Listen to the speeches, then pick the bluffer.</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {[boy, girl].map(p => (
+          {isOwn ? (
+            <p style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.5, marginBottom: 20 }}>
+              Who does this fit best?
+            </p>
+          ) : (
+            <>
+              <p style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.5, marginBottom: 10 }}>
+                Who does this one fit best?
+              </p>
+              <p style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.5, opacity: 0.75, marginBottom: 20 }}>
+                You&apos;ll argue this one too, but the other player decides whether you tell the truth on it or bluff — so you might not get to use this pick. If you end up telling the truth, this is your answer. If you end up bluffing, the game hands you someone else instead.
+              </p>
+            </>
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {choices.map(p => (
               <button
                 key={p.id}
-                onClick={() => setVoteSelection(p.id)}
+                onClick={() => setTargetSelection(p.id)}
                 style={{
-                  padding: "20px 18px", fontSize: 19, fontWeight: 900, color: INK,
-                  background: voteSelection === p.id ? YELLOW : WARM_LIGHT,
+                  textAlign: "left", padding: "16px 18px", fontSize: 17, fontWeight: 700, color: INK,
+                  background: targetSelection === p.id ? YELLOW : WARM_LIGHT,
                 }}
               >
                 {p.name}
               </button>
             ))}
           </div>
+        </Shell>
+      )
+    }
+
+    return (
+      <Shell menuNode={menuNode} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen(o => !o)}
+        label="Your assignment"
+        footerKey="assign-done"
+        scroll
+      >
+        <div style={{ fontSize: "clamp(26px, 7vw, 34px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 10 }}>You&apos;re all set</div>
+        <p style={{ fontSize: 15, fontWeight: 600, opacity: 0.75, marginBottom: 24, lineHeight: 1.4 }}>
+          Waiting on everyone else to finish picking. Round 1 starts on its own.
+        </p>
+        <WaitingList
+          players={players.map(p => ({ name: p.name, done: isDone(p) }))}
+          myName={me.name}
+          colors={{ mid: WAIT_BG }}
+          doneColor={CHECK_GREEN}
+        />
+      </Shell>
+    )
+  }
+
+  const currentRound = rounds.find(r => r.round_order === game.round_index)
+  if (!currentRound && game.phase !== "finished") {
+    return <div style={{ minHeight: "100dvh", background: BG, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <p style={{ color: INK, fontSize: 18, fontWeight: 800 }}>Loading…</p>
+    </div>
+  }
+
+  // ── VOTING PHASE ───────────────────────────────────────────────────────
+  if (game.phase === "voting") {
+    const bluffer = byId[currentRound.bluffer_id]
+    const truthteller = byId[currentRound.truthteller_id]
+    const text = superlativeById[currentRound.superlative_id]?.text
+    const first = byId[currentRound.speak_first_id]
+    const second = currentRound.speak_first_id === currentRound.bluffer_id ? truthteller : bluffer
+    const isBluffer = myPlayerId === currentRound.bluffer_id
+    const isTruthteller = myPlayerId === currentRound.truthteller_id
+    const isUp = isBluffer || isTruthteller
+    const eligible = players.filter(p => p.id !== currentRound.bluffer_id && p.id !== currentRound.truthteller_id)
+    const myVote = currentRound.votes?.[myPlayerId]
+
+    async function vote(targetId) {
+      await rpc("nom_submit_vote", { p_code: code, p_player_id: myPlayerId, p_guessed_bluffer_id: targetId })
+      nudge()
+    }
+
+    const nominators = (
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: "clamp(22px, 6vw, 28px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 10 }}>
+          Giving speeches
         </div>
+        <div style={{ fontSize: 19, fontWeight: 900 }}>1. {first?.name}</div>
+        <div style={{ fontSize: 19, fontWeight: 900 }}>2. {second?.name}</div>
       </div>
-        {menuNode}
-        <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
+    )
+
+    // The two speakers get a private reminder of their own role and who they're
+    // arguing for — the assignment phase may have been many rounds ago.
+    if (isUp) {
+      const target = isBluffer ? byId[currentRound.bluffer_target_id] : byId[currentRound.truthteller_target_id]
+      return (
+        <Shell menuNode={menuNode} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen(o => !o)} label={roundLabel} right={<ScorePill score={me.score} />} footerKey={`speaker-${currentRound.id}`} scroll banner="You're up">
+          <Well>{text}</Well>
+          <div style={{ fontSize: "clamp(22px, 6vw, 28px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 8 }}>
+            {isBluffer ? "You're the bluffer." : "You're the truth teller."}
+          </div>
+          <p style={{ fontSize: 17, fontWeight: 700, lineHeight: 1.5, marginBottom: 20 }}>
+            {isBluffer ? "Convince everyone this is true of this person:" : "You said this fits:"}
+          </p>
+          {!revealedTarget ? (
+            <button
+              onClick={() => setRevealedTarget(true)}
+              style={{ display: "block", width: "100%", background: WARM_LIGHT, color: INK, fontSize: 18, fontWeight: 900, padding: "22px", marginBottom: 20 }}
+            >
+              Tap to reveal
+            </button>
+          ) : (
+            <div style={{ textAlign: "center", background: WARM_LIGHT, padding: "22px", marginBottom: 20, animation: "nom-reveal 0.35s ease-out" }}>
+              <span style={{ fontSize: 24, fontWeight: 900, color: INK }}>{target?.name}</span>
+            </div>
+          )}
+          <style>{`@keyframes nom-reveal { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }`}</style>
+          <p style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.5, opacity: 0.75, marginBottom: 24 }}>
+            {isBluffer
+              ? "Make them think you're NOT the bluffer by making it sound like you picked this person on your own."
+              : "Be convincing — you score for everyone who doesn't point the finger at you."}
+          </p>
+          {nominators}
+        </Shell>
+      )
+    }
+
+    if (myVote) {
+      return (
+        <Shell menuNode={menuNode} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen(o => !o)} label={roundLabel} right={<ScorePill score={me.score} />} footerKey={`voted-${currentRound.id}`} scroll>
+          <Well>{text}</Well>
+          <div style={{ fontSize: "clamp(26px, 7vw, 34px)", fontWeight: 900, marginBottom: 20 }}>Vote locked in</div>
+          <WaitingList
+            players={eligible.map(p => ({ name: p.name, done: !!currentRound.votes?.[p.id] }))}
+            myName={me.name}
+            colors={{ mid: WAIT_BG }}
+            doneColor={CHECK_GREEN}
+          />
+        </Shell>
+      )
+    }
+
+    return (
+      <Shell menuNode={menuNode} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen(o => !o)}
+        label={roundLabel}
+        right={<ScorePill score={me.score} />}
+        footerKey={`vote-${currentRound.id}`}
+        scroll
+        footer={
           <FooterButton onClick={() => vote(voteSelection)} disabled={!voteSelection} bg={BTN} textColor="white">
             Lock it in
           </FooterButton>
-        </Footer>
-      </>
+        }
+      >
+        <Well>{text}</Well>
+        {nominators}
+        <div style={{ flex: 1, minHeight: 24 }} />
+        <div style={{ fontSize: "clamp(24px, 7vw, 32px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 8 }}>Who&apos;s the bluffer?</div>
+        <p style={{ fontSize: 15, fontWeight: 600, opacity: 0.75, marginBottom: 20 }}>Vote after they&apos;ve given their speeches.</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {[first, second].map(p => (
+            <button
+              key={p.id}
+              onClick={() => setVoteSelection(p.id)}
+              style={{
+                padding: "20px 18px", fontSize: 19, fontWeight: 900, color: INK,
+                background: voteSelection === p.id ? YELLOW : WARM_LIGHT,
+              }}
+            >
+              {p.name}
+            </button>
+          ))}
+        </div>
+        <div style={{ height: 64, flexShrink: 0 }} />
+      </Shell>
     )
   }
 
   // ── REVEAL PHASE ───────────────────────────────────────────────────────
   if (game.phase === "reveal") {
-    const last = (game.round_history || [])[game.round_history.length - 1]
-    const blufferTarget = byId[last?.bluffer_target_id]
-    const truthtellerTarget = byId[last?.truthteller_target_id]
+    const bluffer = byId[currentRound.bluffer_id]
+    const truthteller = byId[currentRound.truthteller_id]
+    const blufferTarget = byId[currentRound.bluffer_target_id]
+    const truthtellerTarget = byId[currentRound.truthteller_target_id]
+    const text = superlativeById[currentRound.superlative_id]?.text
+    const votes = currentRound.votes || {}
+    const correctVoters = players.filter(p => votes[p.id] === currentRound.bluffer_id)
+    const wrongVoters = players.filter(p => votes[p.id] && votes[p.id] !== currentRound.bluffer_id)
     const isLastRound = game.round_index + 1 >= game.total_rounds
     const imReady = (game.ready_next_round_ids || []).includes(myPlayerId)
+
     async function readyNext() {
       await rpc("nom_ready_next_round", { p_code: code, p_player_id: myPlayerId })
-      channelRef.current?.send({ type: "broadcast", event: "sync", payload: {} })
+      nudge()
     }
 
-    const correctVoters = players.filter(p => last?.votes?.[p.id] === last?.bluffer_id)
-    const wrongVoters = players.filter(p => last?.votes?.[p.id] && last?.votes?.[p.id] !== last?.bluffer_id)
-    const boysPoints = correctVoters.filter(p => p.team === "boys").length
-    const girlsPoints = correctVoters.filter(p => p.team === "girls").length
+    const row = (p, mark, color) => (
+      <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", background: WARM_LIGHT }}>
+        <span style={{ fontWeight: 700 }}>{p.name}</span>
+        <span style={{ fontWeight: 900, color }}>{mark}</span>
+      </div>
+    )
 
     return (
-      <>
-      <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column" }}>
-        <StatusBar label={`Round ${game.round_index + 1} of ${game.total_rounds}`} dark={DARK} textColor={INK} right={<ScoreBoxes boys={game.boys_score} girls={game.girls_score} />} />
-        <div style={{ flex: 1, overflowY: "auto", padding: "24px 24px", paddingBottom: BOTTOM_PAD }}>
-          <div style={{ fontSize: "clamp(22px, 6vw, 28px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 16 }}>
-            <Nm>{bluffer?.name}</Nm> was the bluffer
+      <Shell menuNode={menuNode} menuOpen={menuOpen} onToggleMenu={() => setMenuOpen(o => !o)}
+        label={roundLabel}
+        right={<ScorePill score={me.score} />}
+        footerKey={`reveal-${currentRound.id}`}
+        scroll
+        footer={imReady ? (
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "white", opacity: 0.65 }}>
+            {(game.ready_next_round_ids || []).length} / {players.length} ready…
           </div>
-          <div style={{ background: BTN, color: "white", padding: 18, marginBottom: 24 }}>
-            <div style={{ fontSize: 18, fontWeight: 900, lineHeight: 1.3 }}>{currentSuperlative}</div>
+        ) : (
+          <FooterButton onClick={readyNext} bg={BTN} textColor="white">
+            {isLastRound ? "See final score →" : "Next round →"}
+          </FooterButton>
+        )}
+      >
+        <div style={{ fontSize: "clamp(22px, 6vw, 28px)", fontWeight: 900, lineHeight: 1.1, marginBottom: 16 }}>
+          <Nm>{bluffer?.name}</Nm> was the bluffer
+        </div>
+        <Well size={18}>{text}</Well>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", background: WARM_LIGHT }}>
+            <span style={{ fontSize: 14, fontWeight: 700 }}><Nm>{truthteller?.name}</Nm> truthfully picked <Nm>{truthtellerTarget?.name}</Nm></span>
+            <PointsBadge amount={correctVoters.length} />
           </div>
-
-          <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.4, marginBottom: 10 }}>
-            Got it right:
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 20 }}>
-            {correctVoters.length === 0 && <div style={{ fontSize: 14, fontStyle: "italic", opacity: 0.6, padding: "4px 12px" }}>Nobody</div>}
-            {correctVoters.map(p => (
-              <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: WARM_LIGHT }}>
-                <span style={{ fontWeight: 700 }}>{p.name}</span>
-                <span style={{ fontWeight: 900, color: CHECK_GREEN }}>✓</span>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ fontSize: 15, fontWeight: 700, lineHeight: 1.4, marginBottom: 10 }}>
-            Got it wrong:
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 20 }}>
-            {wrongVoters.length === 0 && <div style={{ fontSize: 14, fontStyle: "italic", opacity: 0.6, padding: "4px 12px" }}>Nobody</div>}
-            {wrongVoters.map(p => (
-              <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", background: WARM_LIGHT }}>
-                <span style={{ fontWeight: 700 }}>{p.name}</span>
-                <span style={{ fontWeight: 900, color: WRONG_RED }}>✗</span>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ display: "flex", gap: 8 }}>
-            <TeamBadge team="boys" amount={boysPoints} />
-            <TeamBadge team="girls" amount={girlsPoints} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", background: WARM_LIGHT }}>
+            <span style={{ fontSize: 14, fontWeight: 700 }}>
+              <Nm>{bluffer?.name}</Nm> bluffed with <Nm>{blufferTarget?.name}</Nm>
+              <span style={{ opacity: 0.65, fontWeight: 600 }}> · 2 pts each fooled</span>
+            </span>
+            <PointsBadge amount={wrongVoters.length * 2} />
           </div>
         </div>
-      </div>
-        {menuNode}
-        <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
-          {imReady ? (
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "white", opacity: 0.65 }}>
-              {(game.ready_next_round_ids || []).length} / {players.length} ready…
-            </div>
-          ) : (
-            <FooterButton onClick={readyNext} bg={BTN} textColor="white">
-              {isLastRound ? "See final score →" : "Next round →"}
-            </FooterButton>
-          )}
-        </Footer>
-      </>
+
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>Got it right <span style={{ opacity: 0.6, fontWeight: 600 }}>(+1 each)</span></div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 20 }}>
+          {correctVoters.length === 0 && <div style={{ fontSize: 14, fontStyle: "italic", opacity: 0.6, padding: "4px 12px" }}>Nobody</div>}
+          {correctVoters.map(p => row(p, "✓", CHECK_GREEN))}
+        </div>
+
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10 }}>Got it wrong</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {wrongVoters.length === 0 && <div style={{ fontSize: 14, fontStyle: "italic", opacity: 0.6, padding: "4px 12px" }}>Nobody</div>}
+          {wrongVoters.map(p => row(p, "✗", WRONG_RED))}
+        </div>
+      </Shell>
     )
   }
 
   // ── FINISHED ───────────────────────────────────────────────────────────
   if (game.phase === "finished") {
-    const boysWin = game.boys_score > game.girls_score
-    const girlsWin = game.girls_score > game.boys_score
-
-    const teamAbove = (
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 32 }}>
-        {[
-          { label: "Boys", color: BOYS_COLOR, score: game.boys_score, winner: boysWin },
-          { label: "Girls", color: GIRLS_COLOR, score: game.girls_score, winner: girlsWin },
-        ].map(team => (
-          <div key={team.label} style={{ display: "flex" }}>
-            <div style={{ padding: "13px 0", minWidth: 48, flexShrink: 0, background: team.color, fontSize: 18, fontWeight: 900, color: "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {team.score}
-            </div>
-            <div style={{ padding: "13px 16px", flex: 1, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <div style={{ fontSize: 17, fontWeight: 700 }}>{team.label}</div>
-              {team.winner && <span style={{ fontSize: 11, fontWeight: 800, color: team.color, textTransform: "uppercase", letterSpacing: "0.1em" }}>Winner</span>}
-            </div>
-          </div>
-        ))}
-        {!boysWin && !girlsWin && (
-          <div style={{ textAlign: "center", fontSize: 14, fontWeight: 800, opacity: 0.7, marginTop: 4 }}>It&apos;s a tie</div>
-        )}
-      </div>
-    )
+    const ranked = [...players].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      .map(p => ({ id: p.id, name: p.name, score: p.score ?? 0 }))
 
     const history = (
       <div style={{ marginTop: 8 }}>
         <div style={{ fontSize: 13, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.15em", opacity: 0.75, marginBottom: 16 }}>Round by Round</div>
-        {(game.round_history || []).map((r, i) => {
-          const rBluffer = byId[r.bluffer_id]
-          const rCorrectVoters = players.filter(p => r.votes?.[p.id] === r.bluffer_id)
-          const rWrongVoters = players.filter(p => r.votes?.[p.id] && r.votes?.[p.id] !== r.bluffer_id)
-          const rBoysPoints = r.boys_points ?? rCorrectVoters.filter(p => p.team === "boys").length
-          const rGirlsPoints = r.girls_points ?? rCorrectVoters.filter(p => p.team === "girls").length
+        {[...rounds].sort((a, b) => (a.round_order ?? 0) - (b.round_order ?? 0)).map((r, i) => {
+          const votes = r.votes || {}
+          const right = players.filter(p => votes[p.id] === r.bluffer_id)
+          const wrong = players.filter(p => votes[p.id] && votes[p.id] !== r.bluffer_id)
           return (
-            <div key={i} style={{ background: WARM_LIGHT, color: INK, padding: 16, marginBottom: 12 }}>
+            <div key={r.id} style={{ background: WARM_LIGHT, color: INK, padding: 16, marginBottom: 12 }}>
               <div style={{ fontSize: 11, fontWeight: 800, opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
                 Round {i + 1}
               </div>
               <div style={{ background: BTN, color: "white", padding: "10px 14px", marginBottom: 12, fontSize: 14, fontWeight: 800 }}>
                 {superlativeById[r.superlative_id]?.text}
               </div>
-              <div style={{ fontSize: 13, fontWeight: 700, opacity: 0.85, marginBottom: 12 }}>
-                <Nm>{rBluffer?.name}</Nm> was the bluffer
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
+                <Nm>{byId[r.bluffer_id]?.name}</Nm> bluffed with <Nm>{byId[r.bluffer_target_id]?.name}</Nm> · fooled {wrong.length}
               </div>
-              <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>Got it right</div>
-              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>
-                {rCorrectVoters.length ? rCorrectVoters.map(p => p.name).join(", ") : <span style={{ fontStyle: "italic", opacity: 0.6, fontWeight: 600 }}>Nobody</span>}
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
+                <Nm>{byId[r.truthteller_id]?.name}</Nm> truthfully picked <Nm>{byId[r.truthteller_target_id]?.name}</Nm> · believed by {right.length}
               </div>
-              <div style={{ fontSize: 12, fontWeight: 800, opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 3 }}>Got it wrong</div>
-              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>
-                {rWrongVoters.length ? rWrongVoters.map(p => p.name).join(", ") : <span style={{ fontStyle: "italic", opacity: 0.6, fontWeight: 600 }}>Nobody</span>}
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <TeamBadge team="boys" amount={rBoysPoints} />
-                <TeamBadge team="girls" amount={rGirlsPoints} />
+              <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.75 }}>
+                Spotted the bluffer: {right.length ? right.map(p => p.name).join(", ") : "nobody"}
               </div>
             </div>
           )
@@ -720,19 +711,19 @@ export default function PlayPage({ params }) {
 
     return (
       <>
-      <div style={{ minHeight: "100dvh", background: DARK, color: INK, display: "flex", flexDirection: "column" }}>
-        <EndGame
-          players={[]}
-          onPlayAgain={async () => { await supabase.rpc("nom_reset_to_lobby", { p_code: code }); router.push(`/${code}`) }}
-          bottomPad={BOTTOM_PAD}
-          colors={{ yellow: YELLOW, wl: WARM_LIGHT }}
-          scoreTextColor={INK}
-          linkBg={BTN}
-          linkTextColor="white"
-          aboveScores={teamAbove}
-          belowButtons={history}
-        />
-      </div>
+        <div style={{ minHeight: "100dvh", background: DARK, color: INK, display: "flex", flexDirection: "column" }}>
+          <EndGame
+            players={ranked}
+            myPlayerId={myPlayerId}
+            onPlayAgain={async () => { await supabase.rpc("nom_reset_to_lobby", { p_code: code }); router.push(`/${code}`) }}
+            bottomPad={BOTTOM_PAD}
+            colors={{ yellow: YELLOW, wl: WARM_LIGHT }}
+            scoreTextColor={INK}
+            linkBg={BTN}
+            linkTextColor="white"
+            belowButtons={history}
+          />
+        </div>
         {menuNode}
       </>
     )

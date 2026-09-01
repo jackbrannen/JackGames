@@ -15,8 +15,6 @@ const MID = "#7bc688"
 const WARM_LIGHT = "#c5dc93"
 const YELLOW = "#FBDF54"
 const BTN = "#323340"
-const BOYS_COLOR = "#359c94"
-const GIRLS_COLOR = "#df668e"
 const INK = "#1A2418"
 
 const LOBBY_COLORS = { dark: DARK, mid: MID, wl: WARM_LIGHT, yellow: YELLOW, bg: BG }
@@ -55,13 +53,13 @@ const howToPlayContent = (
       At the start, everyone writes a superlative — "Most likely to…", "Best…", or your own. <b style={{ color: "white" }}>Don't pick one with an obvious answer</b> among this group — the fun is in the surprise.
     </p>
     <p style={{ fontSize: 15, color: "rgba(255,255,255,0.85)", lineHeight: 1.6, marginBottom: 14 }}>
-      Each round, one boy and one girl are picked and shown the same superlative — never their own. One of them is secretly the <b style={{ color: "white" }}>bluffer</b>, assigned a random other player to argue it's about. The other is the <b style={{ color: "white" }}>truth-teller</b>, and picks whoever they genuinely think it fits best.
+      Then everyone is dealt somebody else's superlative and chooses how to play it: as the <b style={{ color: "white" }}>truth-teller</b>, picking who it genuinely fits best, or as the <b style={{ color: "white" }}>bluffer</b>, who gets handed a random person to argue for instead. Every superlative ends up with one of each.
     </p>
     <p style={{ fontSize: 15, color: "rgba(255,255,255,0.85)", lineHeight: 1.6, marginBottom: 14 }}>
-      Both argue their case out loud. Nobody else knows who's bluffing.
+      Each round, two people argue the same superlative for two different people. Nobody else knows which one is bluffing.
     </p>
     <p style={{ fontSize: 15, color: "rgba(255,255,255,0.85)", lineHeight: 1.6, marginBottom: 0 }}>
-      Once everyone's heard enough, the room votes on who they think the bluffer is. Fool people and your team scores; get caught and the other team scores instead.
+      Once everyone's heard enough, the room votes on who they think the bluffer is. Spot the bluffer and you score. The truth-teller scores for everyone who saw through the bluff — and the bluffer scores <b style={{ color: "white" }}>double</b> for everyone they fool.
     </p>
   </div>
 )
@@ -109,15 +107,13 @@ export default function LobbyPage({ params }) {
   }
 
   const me = players.find((p) => p.id === myPlayerId)
-  const boysTeam = players.filter((p) => p.team === "boys")
-  const girlsTeam = players.filter((p) => p.team === "girls")
   const totalRounds = players.length
 
   async function loadState() {
     const seq = ++loadSeqRef.current
     const [{ data: gameData }, { data: playerData }] = await Promise.all([
       supabase.from("nom_games").select("code,phase,is_dummy,replay_of,replay_code").eq("code", code).single(),
-      supabase.from("nom_players").select("id,name,first_name,last_name,team,created_at").eq("game_code", code).order("created_at", { ascending: true }),
+      supabase.from("nom_players").select("id,name,first_name,last_name,score,created_at").eq("game_code", code).order("created_at", { ascending: true }),
     ])
     if (seq !== loadSeqRef.current) return
     if (!gameData) { setNotFound(true); return }
@@ -230,7 +226,7 @@ export default function LobbyPage({ params }) {
     setMyPlayerId(null)
   }, [myPlayerId, game, players])
 
-  async function join(team) {
+  async function join() {
     const trimmedUsername = username.trim()
     const trimmedFirst = (savedProfile?.firstName || firstName).trim()
     const trimmedLast = (savedProfile?.lastName || lastName).trim()
@@ -256,8 +252,8 @@ export default function LobbyPage({ params }) {
 
     const { data, error } = await supabase
       .from("nom_players")
-      .insert({ game_code: code, name: trimmedUsername, first_name: trimmedFirst, last_name: trimmedLast, team })
-      .select("id,name,first_name,last_name,team,created_at")
+      .insert({ game_code: code, name: trimmedUsername, first_name: trimmedFirst, last_name: trimmedLast })
+      .select("id,name,first_name,last_name,created_at")
       .single()
     if (error) { alert("Failed to join: " + error.message); setJoining(false); return }
 
@@ -266,12 +262,6 @@ export default function LobbyPage({ params }) {
     setPlayers((prev) => (prev.some((p) => p.id === data.id) ? prev : [...prev, data]))
     setMyPlayerId(data.id)
     setJoining(false)
-  }
-
-  async function switchTeam() {
-    if (!me) return
-    const newTeam = me.team === "boys" ? "girls" : "boys"
-    await supabase.from("nom_players").update({ team: newTeam }).eq("id", me.id)
   }
 
   async function removePlayer(id) {
@@ -293,14 +283,9 @@ export default function LobbyPage({ params }) {
     else { await navigator.clipboard.writeText(url); alert("Link copied!") }
   }
 
-  const canStart = boysTeam.length >= 2 && girlsTeam.length >= 2 && players.length >= 6
+  const canStart = players.length >= 6
 
-  const lobbyPlayers = players.map((p) => ({
-    id: p.id,
-    name: p.name,
-    teamLabel: p.team === "boys" ? "Boys" : p.team === "girls" ? "Girls" : undefined,
-    teamColor: p.team === "boys" ? BOYS_COLOR : p.team === "girls" ? GIRLS_COLOR : undefined,
-  }))
+  const lobbyPlayers = players.map((p) => ({ id: p.id, name: p.name }))
 
   const canJoin = !!username.trim() && (savedProfile || (firstName.trim() && lastName.trim())) && !joining
 
@@ -320,33 +305,15 @@ export default function LobbyPage({ params }) {
         maxLength={40}
         style={inputStyle}
       />
-      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-        <button
-          onClick={() => join("boys")}
-          disabled={!canJoin}
-          style={{ background: BOYS_COLOR, color: "white", fontSize: 16, fontWeight: 900, padding: "16px", flex: 1, display: "block" }}
-        >
-          {joining ? "…" : "Join Boys"}
-        </button>
-        <button
-          onClick={() => join("girls")}
-          disabled={!canJoin}
-          style={{ background: GIRLS_COLOR, color: "white", fontSize: 16, fontWeight: 900, padding: "16px", flex: 1, display: "block" }}
-        >
-          {joining ? "…" : "Join Girls"}
-        </button>
-      </div>
+      <button
+        onClick={join}
+        disabled={!canJoin}
+        style={{ background: BTN, color: "white", fontSize: 16, fontWeight: 900, padding: "16px", width: "100%", display: "block", marginTop: 8 }}
+      >
+        {joining ? "…" : "Join"}
+      </button>
       {joinError && <div style={{ fontSize: 14, fontWeight: 700, color: "#F04F52", marginTop: 10 }}>{joinError}</div>}
     </>
-  )
-
-  const genderSwitchButton = me && (
-    <button
-      onClick={switchTeam}
-      style={{ background: WARM_LIGHT, color: INK, fontSize: 15, fontWeight: 800, padding: "14px 18px", width: "100%" }}
-    >
-      Change Genders
-    </button>
   )
 
   if (isIdle) {
@@ -360,13 +327,11 @@ export default function LobbyPage({ params }) {
           code={code}
           gameName="Nominations"
           players={lobbyPlayers}
-          teams={[{ label: "Boys", color: BOYS_COLOR }, { label: "Girls", color: GIRLS_COLOR }]}
           myPlayerId={myPlayerId}
           onInvite={handleInvite}
           howToPlayContent={howToPlayContent}
           joinContent={joinForm}
           onRemovePlayer={removePlayer}
-          extraContent={genderSwitchButton}
           colors={LOBBY_COLORS}
           textColor={INK}
           surfaceOverlay="black"
@@ -400,11 +365,11 @@ export default function LobbyPage({ params }) {
               {totalRounds} rounds — one per superlative. Are all players in?
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 3, marginBottom: 24 }}>
-              {[...players].sort((a, b) => (a.team === b.team ? 0 : a.team === "boys" ? -1 : 1)).map((p, i) => (
+              {players.map((p, i) => (
                 <div key={p.id} style={{ display: "flex" }}>
                   <div style={{
                     padding: "10px 0", minWidth: 40, flexShrink: 0,
-                    background: p.team === "boys" ? BOYS_COLOR : GIRLS_COLOR,
+                    background: BTN,
                     fontSize: 15, fontWeight: 900, color: "white",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>

@@ -1,83 +1,61 @@
 # Nominations — UI Text
 
+Every-man-for-himself: **no teams.** Individual scores only.
+
+## Scoring
+- **Voter:** +1 for correctly picking the bluffer. Wrong guesses score nothing.
+- **Truth-teller:** +1 for every voter who saw through the bluff (i.e. didn't point at them).
+- **Bluffer:** **+2** for every voter they fool. Bluffing is the harder seat, so it pays double — which is also what makes it worth choosing.
+
+This replaced an earlier team-based rule (correct → truth-teller's team, wrong → bluffer's team), which gave every voter a fixed incentive to vote against their own team's rep regardless of the speeches — team membership alone told you the score-maximising vote. An intermediate proposal (speakers score per vote *received*) was rejected for the opposite reason: it made getting caught the bluffer's best outcome.
+
 ## Lobby
-- Game name: **Nominations**
-- Join buttons: "Join Boys" / "Join Girls" (teal / pink)
-- "Change Genders" button (always visible once joined, matches HearingVoices)
-- Min players notice: needs 6 total, 2+ per team
-- How to Play:
-  > At the start, everyone writes a superlative — "Most likely to…", "Best…", or your own. Don't pick one with an obvious answer among this group.
-  >
-  > Each round, one boy and one girl are picked and shown the same superlative — never their own. One of them is secretly the **bluffer**, assigned a random other player to argue it's about. The other is the **truth-teller**, and picks whoever they genuinely think it fits best.
-  >
-  > Both argue their case out loud. Nobody else knows who's bluffing.
-  >
-  > Once everyone's heard enough, the room votes on who they think the bluffer is. Fool people and your team scores; get caught and the other team scores instead.
+- Game name: **Nominations**, single "Join" button, flat player list, no teams
+- Min players notice: needs 6
 - Start confirm modal: "Start the game?" / "{total_rounds} rounds — one per superlative. Are all players in?"
-  - Player list sorted boys-then-girls.
 
 ## Writing phase
 - Header: "Write your superlative"
-- Subtext: "Something like **Most likely to…** or **Best….** Any superlative **(coolest…, smallest…, weirdest…,** etc.) is valid.
+- Subtext: Something like "Most likely to…" or "Best…". **Don't pick one with an obvious answer** for this group — the fun is in the surprise.
+- Waiting screen after submit: "Waiting for everyone…" + WaitingList
 
-**Don't pick one with an obvious answer for this group**—the fun is in the surprise."
-- Placeholder: ""
-- Waiting screen (after submit): "Waiting for everyone…" + WaitingList (blue done-dots)
+## Assignment phase (all up front, before round 1)
+Everyone is dealt a superlative that isn't their own (a rotation guarantees no one draws their own), and the whole running order is built before play starts.
 
-## Choosing phase
-- Superlative is shown in a `#323340` well with white text, no quotation marks (the well already implies it's a quote).
-- Both instruction screens below follow the same order: **well → role heading → subtext.**
-- **Bluffer's screen** — redesigned so nothing on-screen gives away the role to someone glancing at their phone:
-  - Superlative well
-  - Heading: "You're the bluffer."
-  - "Convince everyone this is true of this person:"
-  - Single light-green **"Tap to reveal"** button, mid-screen
-  - Tapping it plays a minimalist fade/scale reveal and swaps the button for the target's name
-  - Below the button: "Make them think you're NOT the bluffer by making it sound like you picked this person on your own."
-  - Footer: "Ready to give my speech" — disabled until revealed
-  - Once readied, the screen swaps entirely to a plain "Waiting for your partner…" state (own separate return, so the footer button actually unmounts instead of getting stuck on "Loading…")
-- **Truth-teller's screen:**
-  - Superlative well
-  - Heading: "You're the truth teller."
-  - "Who does this fit best?"
-  - List of eligible players (tap to select) — excludes self and the bluffer's target (the two speeches can never coincidentally point at the same person); selection shown by color only (yellow = selected), no border, never grayed out; tapping a different name freely changes the pick any time before readying up
-  - Footer: while unpicked, plain white text "Lock in your choice"; once a target is picked, "Ready to give my speech" button appears
-  - Once ready, screen collapses to a plain "Waiting for your partner…" state (list hidden)
-- **Everyone else's screen:**
-  - Header: "Nominators this round"
-  - Shows the two current players' names (not roles)
-  - Subtext: "They're each getting their assignment."
-  - StatusBar score uses the HearingVoices-style Boys/Girls pill design
+**Every player answers everything in one uninterrupted sitting — nobody is ever called back.** That matters for secrecy as much as convenience: under the earlier design only players holding a truth-teller slot got recalled, so being pulled back to your phone was itself a tell.
 
-## Speech + voting phase (combined)
-- **The two paired players' screen:** "Giving your speech…" (unchanged)
-- **Everyone else's screen** — shown immediately once speeches start, no separate "ready to vote" gate:
-  - Header: "Listen to the speeches, then pick the bluffer."
-  - Two name buttons (boy/girl) — tap to select, color-only (yellow = selected), freely changeable
-  - Footer: "Lock it in" — disabled until a name is selected; submits the vote
-  - After locking in: "Vote locked in" + WaitingList (blue done-dots) showing who else has voted
-  - Once everyone eligible has voted, phase advances straight to reveal (no intermediate voting phase)
+Each player is asked, in order:
+1. **Role choice** — "How do you want to play it?" over their superlative well, with "You'll argue two superlatives this game. This is the one you get to choose how to play — someone else will argue it against you."
+   - **Truth-teller** — "You get to pick who you argue for."
+   - **Bluffer** — "The game picks who you argue for, but you get double points for each person you fool."
+2. **Own target** (only if they chose truth-teller) — "Superlative 1 of 2" / "You're the truth teller." / "Who does this fit best?"
+3. **Second superlative** (always) — "Superlative 2 of 2" / "Your second superlative" / "Who does this one fit best?" with the explanation: *"You'll argue this one too, but the other player decides whether you tell the truth on it or bluff — so you might not get to use this pick. If you end up telling the truth, this is your answer. If you end up bluffing, the game hands you someone else instead."*
 
-## Reveal phase
-- Heading: "{bluffer} was the bluffer" (above the well)
-- Well: superlative only (`#323340`, white text, no quotes)
-- "Got it right:" — list of correct guessers, green ✓ (`#357C4F`) — "Nobody" (italic) if empty
-- "Got it wrong:" — list of wrong guessers, red ✗ (`#991B1B`) — "Nobody" (italic) if empty
-- Below both: both team totals together — "+N Boys" and "+N Girls" pills (same style as the top-right score display)
-- StatusBar score uses the HearingVoices-style Boys/Girls pill design
-- Button: "Next round →" / "See final score →" with "{n}/{total} ready…" waiting state
-- **Scoring:** each voter who guesses correctly (names the real bluffer) scores a point for **their own team** — not for the truth-teller's team. This was changed from the original spec after realizing the original rule (correct → truth-teller's team, wrong → bluffer's team) gave every voter a fixed incentive to always vote against their own team's rep regardless of the actual speeches, since team membership alone told you the score-maximizing vote. Scoring the voter's own team removes that exploit — honest guessing is always good for your team no matter which side the bluffer landed on. Wrong guesses score nothing for anyone.
+That third pick is speculative: used if they turn out to be that round's truth-teller, replaced by a random target if they end up bluffing it. Bluffers never see their target until their round's reminder screen.
+
+- **Slots:** each round's second speaker is fixed at deal time by rotation, so every player gets exactly one own assignment + exactly one partner slot — 2 speaking slots each, always. Roles are *not* guaranteed one of each: you can be bluffer twice or truth-teller twice depending on how choices line up.
+- **No ready-up.** Finishing your last pick *is* the ready signal — round 1 starts automatically once every round has a role and a truth-teller target. Until then: "You're all set" / "Waiting on everyone else to finish picking. Round 1 starts on its own." + WaitingList.
+
+## Round (voting opens immediately — no "ready to speak" gate)
+- Superlative in a `#323340` well, shown to **everyone**
+- **"Giving speeches"** heading (same size/weight as "Who's the bluffer?") over the two speakers, listed 1/2 in a randomly decided speaking order. Round order is shuffled too.
+- **The two speakers** get a full-width white **"You're up"** bar under the status bar (matching ThingsInRings/SoundBoard), then their private reminder: "You're the bluffer." / "You're the truth teller.", a **Tap to reveal** for who they're arguing for, and the speaking order. No vote UI.
+- **Everyone else** votes right away, with the vote block pushed to the bottom of the screen: "Who's the bluffer?" / "Vote after they've given their speeches." → tap a name → "Lock it in". One button-height (64px) of breathing room below the last option.
+- After voting: "Vote locked in" + WaitingList of who's voted
+- Round advances to reveal once every eligible voter has voted
+
+## Reveal
+- "{bluffer} was the bluffer", superlative well
+- Two speaker rows with their points: "{truth-teller} truthfully picked {target} +N" / "{bluffer} bluffed with {target} · 2 pts each fooled +N" (the bluffer's badge shows the doubled total)
+- "Got it right (+1 each)" — green ✓ (`#357C4F`) · "Got it wrong" — red ✗ (`#991B1B`) · "Nobody" in italics if empty
+- Button: "Next round →" / "See final score →", 50% ready to advance
 
 ## Game over
-- "Boys Win" / "Girls Win" / "It's a Tie"
-- Team score boxes (teal / pink), matching Fishbowl's end-game team pattern
-- Round-by-round history: one card per round — "Round N" label, superlative in a `#323340` well, "{bluffer} was the bluffer", then "Got it right" / "Got it wrong" name lists (comma-separated, compact), then both team "+N" badges together. Cards on a `WARM_LIGHT` surface for visual separation from the page background.
-- Play Again / Play Another Game buttons
+- Individual ranked leaderboard via the shared EndGame component (winner highlighted)
+- Round-by-round cards: superlative in a well, who bluffed with whom and how many they fooled, who truthfully picked whom and how many believed them, and who spotted the bluffer
+- Play Again / Play Another Game
 
 ## Colors
-- Main: `#a2d291` (page background)
-- Dark: `#7bc688` (header bar, section surfaces)
-- Light: `#c5dc93` (buttons/light surfaces)
-- Superlative wells: always `#323340` with white text
-- Correct/green: `#357C4F` · Wrong/red: `#991B1B`
-- WaitingList row background: `#C5DD94` (its own surface, distinct from `Light`, so the done-dot doesn't collide with the row color)
+- Main: `#a2d291` · Dark: `#7bc688` · Light: `#c5dc93`
+- Superlative wells + footer buttons + score pills: `#323340`, white text
+- Correct/green `#357C4F` · Wrong/red `#991B1B` · WaitingList row `#C5DD94`

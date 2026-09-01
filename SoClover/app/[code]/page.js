@@ -17,7 +17,6 @@ const TEXT       = "white"
 const WARM_LIGHT = "#90A331"
 
 const MIN_PLAYERS = 2
-const MAX_PLAYERS = 6
 
 const WORDS_A = ["AMBER","CEDAR","CRIMSON","DAGGER","EMBER","FALCON","GLACIER","HARBOR","INDIGO","JASPER","KODIAK","LANTERN","MARBLE","NEBULA","ONYX","PHANTOM","QUARTZ","RAVEN","SILVER","TOPAZ"]
 
@@ -197,12 +196,6 @@ export default function LobbyPage({ params }) {
       return
     }
 
-    if (players.length >= MAX_PLAYERS) {
-      setJoinError("Game is full.")
-      setJoining(false)
-      return
-    }
-
     const newProfile = { firstName: trimmedFirst, lastName: trimmedLast, username: trimmed }
     saveProfile(newProfile)
     setSavedProfile(newProfile)
@@ -231,7 +224,7 @@ export default function LobbyPage({ params }) {
   }
 
   const count = players.length
-  const canStart = !!me && count >= MIN_PLAYERS && count <= MAX_PLAYERS
+  const canStart = !!me && count >= MIN_PLAYERS
   const [w1, w2] = splitCode(code)
 
   if (isIdle) {
@@ -285,7 +278,7 @@ export default function LobbyPage({ params }) {
               />
               <button
                 onClick={join}
-                disabled={!name.trim() || (!savedProfile && (!firstName.trim() || !lastName.trim())) || joining || count >= MAX_PLAYERS}
+                disabled={!name.trim() || (!savedProfile && (!firstName.trim() || !lastName.trim())) || joining}
                 style={{ background: GOLD, color: "#000", fontSize: 20, fontWeight: 900, padding: "18px", width: "100%", marginTop: 8, display: "block" }}
               >
                 {joining ? "Joining…" : "Join"}

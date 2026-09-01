@@ -77,6 +77,14 @@ function pickEmojiWithVariety(recentCategories) {
 const BOYS_COLOR = "hsl(210, 70%, 45%)"
 const GIRLS_COLOR = "hsl(280, 55%, 45%)"
 const COLLAB_COLOR = "hsl(160, 55%, 40%)"
+// Lighter tints of the same three, same hue/saturation with lightness raised — used for the
+// reveal screen's role badges. Deliberately NOT the per-player PLAYER_COLORS palette: eight
+// unrelated hues on those badges read as if they were designating separate teams, when
+// really they're all just "someone on the team that's up." A single light team-tint (or
+// yellow, for whichever badge is actually the viewer) reads as one coherent group instead.
+const BOYS_COLOR_LIGHT = "hsl(210, 70%, 68%)"
+const GIRLS_COLOR_LIGHT = "hsl(280, 55%, 68%)"
+const COLLAB_COLOR_LIGHT = "hsl(160, 55%, 58%)"
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 const POP_MS = 500 // one-shot "pop" duration on the assigned card before it settles into the gentle pulse
 const POKE_COLORS = { dark: "hsl(220, 10%, 10%)", mid: "hsl(220, 10%, 16%)", wl: "hsl(220, 10%, 20%)", yellow: "hsl(48, 95%, 60%)", notifBg: "hsl(220, 10%, 8%)" }
@@ -106,6 +114,93 @@ function ScoreBoxes({ scores }) {
     <div style={{ display: "flex", gap: 6 }}>
       <span style={boxStyle(BOYS_COLOR)}>Boys {scores.boys}</span>
       <span style={boxStyle(GIRLS_COLOR)}>Girls {scores.girls}</span>
+    </div>
+  )
+}
+
+// Shared row rendering for a list of guess results — used both by the mid-turn Time's Up
+// recap and by the Game Over screen's full-game history (see game.game_history).
+function RoundResultsList({ history, players }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      {history.map((h, i) => {
+        // Older entries recorded before correct_slug existed fall back to h.slug so
+        // they don't render blank — every entry going forward always has it.
+        const correctCard = CARD_BY_SLUG[h.correct_slug ?? h.slug]
+        const guessedCard = CARD_BY_SLUG[h.slug]
+        const submitter = players.find((p) => p.id === h.player_id)
+        const submitterName = submitter?.first_name || submitter?.name || "…"
+        return (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: SPACE.xs,
+              padding: "6px 10px",
+              background: "hsl(220, 10%, 16%)",
+            }}
+          >
+            <span style={{ fontSize: RESULTS_ROW_EMOJI_SIZE, flexShrink: 0 }}>{h.emoji}</span>
+            <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
+              <span style={{ fontSize: RESULTS_ROW_TEXT_SIZE, fontWeight: FONT_WEIGHT.semibold, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {correctCard?.name ?? h.correct_slug ?? h.slug}
+              </span>
+              {!h.correct && (
+                <span style={{ fontSize: RESULTS_ROW_SUBTEXT_SIZE, fontWeight: FONT_WEIGHT.semibold, color: `rgba(255,255,255,${OPACITY.muted})`, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  Guess: {guessedCard?.name ?? h.slug}
+                </span>
+              )}
+            </span>
+            <span style={{ fontSize: RESULTS_ROW_TEXT_SIZE, fontWeight: FONT_WEIGHT.semibold, color: `rgba(255,255,255,${OPACITY.muted})`, flexShrink: 0 }}>
+              {submitterName}
+            </span>
+            <span
+              style={{
+                flexShrink: 0,
+                fontSize: RESULTS_ROW_TEXT_SIZE,
+                fontWeight: FONT_WEIGHT.black,
+                color: h.points >= 0 ? "hsl(145, 80%, 55%)" : "hsl(0, 85%, 65%)",
+                minWidth: 26,
+                textAlign: "right",
+              }}
+            >
+              {h.points >= 0 ? `+${h.points}` : h.points}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// Game Over's full-game history, grouped by round — game.game_history is an array of
+// round-records ({round, team, clue_giver_id, entries}, see hv_end_turn), one per turn
+// that had at least one guess. Each group gets a "Round # · NAME's voices" header, with
+// the round number boxed in that round's team color (matching ScoreBoxes' own boxes) so
+// it's immediately scannable which round belonged to which team, same as the live score
+// display already does.
+function GameHistoryList({ rounds, players }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: SPACE.md }}>
+      {rounds.map((round, i) => {
+        const giver = players.find((p) => p.id === round.clue_giver_id)
+        const giverName = giver?.first_name || giver?.name || "…"
+        const boxColor = round.team === "boys" ? BOYS_COLOR : round.team === "girls" ? GIRLS_COLOR : COLLAB_COLOR
+        return (
+          <div key={i}>
+            <div style={{ display: "flex", alignItems: "center", gap: SPACE.xs, marginBottom: 4 }}>
+              <span style={{ flexShrink: 0, background: boxColor, color: "#fff", fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.black, padding: `4px ${SPACE.xs}px` }}>
+                Round {round.round}
+              </span>
+              <span style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.semibold, color: `rgba(255,255,255,${OPACITY.normal})` }}>
+                {giverName}'s voices
+              </span>
+            </div>
+            <RoundResultsList history={round.entries ?? []} players={players} />
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -372,9 +467,17 @@ export default function PlayPage({ params }) {
   const me = players.find((p) => p.id === myPlayerId)
   const myTeam = me?.team ?? null
   const isClueGiver = !!game && myPlayerId === game.clue_giver_id
+  const isSubmitter = !!game && myPlayerId === game.submitter_id
   const isOnActiveTeam = !!game && myTeam === game.active_team
   const isCollab = game?.mode === "collaborative"
   const canSelect = !isClueGiver && (isCollab ? !!game : isOnActiveTeam)
+  // Only the designated submitter's Submit tap is honored server-side (see
+  // hv_submit_guess) — everyone else on the team can still select/help via
+  // hv_select_card, they just don't get the Submit button.
+  const canSubmit = canSelect && isSubmitter
+  // On the active team (or, in Collaborative, anyone) but neither of the two named roles —
+  // used to highlight the "Rest of the team helping NAME2" line on the reveal screen.
+  const amHelper = !isClueGiver && !isSubmitter && (isCollab ? !!game : isOnActiveTeam)
 
   const turnStartedMs = game?.turn_started_at ? new Date(game.turn_started_at).getTime() : null
   const pausedAtMs = game?.paused_at ? new Date(game.paused_at).getTime() : null
@@ -553,7 +656,7 @@ export default function PlayPage({ params }) {
   }
 
   async function submitGuess() {
-    if (!canSelect || !myPlayerId || !display.selectedSlug || feedbackActive) return
+    if (!canSubmit || !myPlayerId || !display.selectedSlug || feedbackActive) return
     const next = pickEmojiWithVariety(recentCategories.current)
     recentCategories.current.push(next.category)
     const { error } = await supabase.rpc("hv_submit_guess", { p_code: code, p_player_id: myPlayerId, p_next_emoji: next.emoji })
@@ -698,7 +801,36 @@ export default function PlayPage({ params }) {
     )
   }
 
+  const clueGiverPlayer = players.find((p) => p.id === game.clue_giver_id)
+  const clueGiverName = clueGiverPlayer?.first_name || clueGiverPlayer?.name || null
+  const submitterPlayer = players.find((p) => p.id === game.submitter_id)
+  const submitterName = submitterPlayer?.first_name || submitterPlayer?.name || null
+  // Every round played this game, across every turn — accumulated by hv_end_turn (folded in
+  // from round_history, which itself resets every turn) so it survives all the way to the
+  // Game Over screen below, including the very last turn's guesses even for whoever cast
+  // the tipping "End Round" vote and so never saw the mid-game Time's Up recap for it.
+  // Each entry is a round-record ({round, team, clue_giver_id, entries}) — EXCEPT for any
+  // game that was already in progress when that shape shipped, whose game_history was
+  // built as a flat stream of guesses instead (the old shape, same as round_history's own
+  // entries). Rendering the new shape's grouped view against that old data just shows
+  // blank "Round …'s voices" headers with nothing under them, so fall back to the old
+  // flat, ungrouped list whenever the first entry doesn't look like a round-record.
+  const gameHistory = game.game_history ?? []
+  const gameHistoryIsLegacyFlat = gameHistory.length > 0 && gameHistory[0].entries === undefined
+
   if (game.phase === "finished") {
+    const resultsSection = gameHistory.length > 0 && (
+      <div style={{ marginTop: SPACE.xl }}>
+        <div style={{ fontSize: FONT_SIZE.sectionHeader, fontWeight: FONT_WEIGHT.heavy, color: "rgba(255,255,255,0.85)", marginBottom: SPACE.xs }}>
+          Round results
+        </div>
+        {gameHistoryIsLegacyFlat ? (
+          <RoundResultsList history={gameHistory} players={players} />
+        ) : (
+          <GameHistoryList rounds={gameHistory} players={players} />
+        )}
+      </div>
+    )
     // Collaborative is fully cooperative — no team comparison, no winner/tie language,
     // just the shared final score plus the persistent cross-game leaderboard below it.
     if (isCollab) {
@@ -717,7 +849,7 @@ export default function PlayPage({ params }) {
                 </div>
               </div>
             }
-            belowButtons={<HighScores colors={{ wl: "hsl(220, 10%, 20%)" }} />}
+            belowButtons={<>{resultsSection}<HighScores colors={{ wl: "hsl(220, 10%, 20%)" }} /></>}
           />
         </div>
       )
@@ -744,23 +876,19 @@ export default function PlayPage({ params }) {
               </div>
             </div>
           }
+          belowButtons={resultsSection}
         />
       </div>
     )
   }
 
-  // Collaborative has no "other team to sit out" — everyone but the clue-giver can always
-  // guess, so there's no third "Don't guess" state to show.
-  const bannerText = isClueGiver ? "You're doing voices" : "You're guessing"
-  const bannerColor = isClueGiver ? "hsl(48, 95%, 60%)" : canSelect ? "#fff" : "hsl(0, 85%, 65%)"
-  const clueGiverPlayer = players.find((p) => p.id === game.clue_giver_id)
-  const clueGiverName = clueGiverPlayer?.first_name || clueGiverPlayer?.name || null
   const scoresProp = isCollab ? { score: game.score } : { boys: game.score_boys, girls: game.score_girls }
 
   // The board (and this bar) now stay up through "Time's Up!" instead of swapping to a
   // predicted interstitial, so game.active_team is always the real, current team — no more
   // need to guess what's coming next before the vote-triggered transition actually happens.
   const activeColor = isCollab ? COLLAB_COLOR : game.active_team === "boys" ? BOYS_COLOR : GIRLS_COLOR
+  const activeColorLight = isCollab ? COLLAB_COLOR_LIGHT : game.active_team === "boys" ? BOYS_COLOR_LIGHT : GIRLS_COLOR_LIGHT
   const roundHistory = game.round_history ?? []
   const roundPoints = roundHistory.reduce((sum, h) => sum + h.points, 0)
   // Server-side "round_index"/"rounds_total" count boys+girls turns together as one round
@@ -819,6 +947,15 @@ export default function PlayPage({ params }) {
     />
     <Notifications supabase={supabase} colors={POKE_COLORS} roomCode={code} currentPlayer={me?.name} />
     <div style={{ minHeight: "100dvh", width: "100%", display: "flex", flexDirection: "column", background: "#101014", paddingBottom: BOTTOM_PAD, overflowY: "auto" }}>
+      {/* On the interstitial (next round's reveal screen), the score is pinned to the very
+          top of the page instead of sitting inline in the centered card below it — it's the
+          one piece of "current state" info worth seeing before anything else on that screen. */}
+      {showInterstitial && (
+        <div style={{ flexShrink: 0, padding: `${SPACE.sm}px ${SPACE.lg}px`, display: "flex", justifyContent: "center" }}>
+          <ScoreBoxes scores={scoresProp} />
+        </div>
+      )}
+
       {/* Turn indicator — colored bar naming whose turn it is. Neither this nor the timer
           bar below makes sense on the interstitial: there's no live turn to name or time
           while the recap/reveal screen is up. */}
@@ -860,11 +997,10 @@ export default function PlayPage({ params }) {
         )
       })()}
 
-      {/* Header — the "Don't guess"/"You're guessing" role instruction and the round/score
-          recap both describe the CURRENT turn, which is exactly what the interstitial
-          below replaces with the NEXT turn's info; showing both together contradicted each
-          other (e.g. "Round 1 of 2" here next to "Round 2 of 2" in the recap), so this is
-          hidden entirely while the interstitial is up. */}
+      {/* Round/score recap describes the CURRENT turn, which is exactly what the
+          interstitial below replaces with the NEXT turn's info; showing both together
+          contradicted each other (e.g. "Round 1 of 2" here next to "Round 2 of 2" in the
+          recap), so this is hidden entirely while the interstitial is up. */}
       {!showInterstitial && (
         <div style={{ flexShrink: 0, padding: `${SPACE.sm}px ${SPACE.lg}px`, borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
@@ -873,9 +1009,48 @@ export default function PlayPage({ params }) {
             </span>
             <ScoreBoxes scores={scoresProp} />
           </div>
-          <div style={{ marginTop: 6, fontSize: FONT_SIZE.heading, fontWeight: FONT_WEIGHT.black, color: bannerColor }}>
-            {bannerText}
-          </div>
+        </div>
+      )}
+
+      {/* Role instruction — large and centered like "Time's Up!" below it, not small
+          corner text, and gone entirely once time's up (the recap takes over from there,
+          so there's no live role left to instruct anyone about).
+          One line each: the clue-giver and the submitter each get their own direct "You're
+          ___" callout in yellow; a helper (on the active team, or anyone in Collaborative,
+          but neither of those two) gets "Help NAME decide answers" instead; a player on
+          the team that's NOT up (teams mode only) gets "Don't guess" in red — replacing
+          the old (incorrect) "You're guessing" in red. The clue-giver's name repeats as a
+          smaller sub-line for the submitter/helper cases, since it's the one fact that's
+          still relevant to them but isn't already the headline. */}
+      {!showInterstitial && !timeUp && (
+        <div style={{ flexShrink: 0, padding: `${SPACE.md}px ${SPACE.lg}px`, textAlign: "center" }}>
+          {isClueGiver ? (
+            <div style={{ fontSize: FONT_SIZE.headingLg, fontWeight: FONT_WEIGHT.black, color: "hsl(48, 95%, 60%)" }}>
+              You're doing voices
+            </div>
+          ) : isSubmitter ? (
+            <>
+              <div style={{ fontSize: FONT_SIZE.headingLg, fontWeight: FONT_WEIGHT.black, color: "hsl(48, 95%, 60%)" }}>
+                You're submitting answers
+              </div>
+              <div style={{ marginTop: 4, fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold, color: `rgba(255,255,255,${OPACITY.muted})` }}>
+                {clueGiverName ?? "…"} is doing voices
+              </div>
+            </>
+          ) : !isCollab && !isOnActiveTeam ? (
+            <div style={{ fontSize: FONT_SIZE.headingLg, fontWeight: FONT_WEIGHT.black, color: "hsl(0, 85%, 65%)" }}>
+              Don't guess
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize: FONT_SIZE.headingLg, fontWeight: FONT_WEIGHT.black, color: "#fff" }}>
+                Help {submitterName ?? "…"} decide answers
+              </div>
+              <div style={{ marginTop: 4, fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold, color: `rgba(255,255,255,${OPACITY.muted})` }}>
+                {clueGiverName ?? "…"} is doing voices
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -921,53 +1096,7 @@ export default function PlayPage({ params }) {
               above (animation-delay) so the two don't land in the same frame. */}
           {(roundHistory.length > 0 || finalPendingSlug) && (
             <div style={{ marginTop: SPACE.sm, display: "flex", flexDirection: "column", gap: 4, textAlign: "left", animation: "hvTimeUpIn 300ms ease-out 150ms both" }}>
-              {roundHistory.map((h, i) => {
-                // Older entries recorded before correct_slug existed fall back to h.slug so
-                // they don't render blank — every entry going forward always has it.
-                const correctCard = CARD_BY_SLUG[h.correct_slug ?? h.slug]
-                const guessedCard = CARD_BY_SLUG[h.slug]
-                const submitter = players.find((p) => p.id === h.player_id)
-                const submitterName = submitter?.first_name || submitter?.name || "…"
-                return (
-                  <div
-                    key={i}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: SPACE.xs,
-                      padding: "6px 10px",
-                      background: "hsl(220, 10%, 16%)",
-                    }}
-                  >
-                    <span style={{ fontSize: RESULTS_ROW_EMOJI_SIZE, flexShrink: 0 }}>{h.emoji}</span>
-                    <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
-                      <span style={{ fontSize: RESULTS_ROW_TEXT_SIZE, fontWeight: FONT_WEIGHT.semibold, color: "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {correctCard?.name ?? h.correct_slug ?? h.slug}
-                      </span>
-                      {!h.correct && (
-                        <span style={{ fontSize: RESULTS_ROW_SUBTEXT_SIZE, fontWeight: FONT_WEIGHT.semibold, color: `rgba(255,255,255,${OPACITY.muted})`, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          Guess: {guessedCard?.name ?? h.slug}
-                        </span>
-                      )}
-                    </span>
-                    <span style={{ fontSize: RESULTS_ROW_TEXT_SIZE, fontWeight: FONT_WEIGHT.semibold, color: `rgba(255,255,255,${OPACITY.muted})`, flexShrink: 0 }}>
-                      {submitterName}
-                    </span>
-                    <span
-                      style={{
-                        flexShrink: 0,
-                        fontSize: RESULTS_ROW_TEXT_SIZE,
-                        fontWeight: FONT_WEIGHT.black,
-                        color: h.points >= 0 ? "hsl(145, 80%, 55%)" : "hsl(0, 85%, 65%)",
-                        minWidth: 26,
-                        textAlign: "right",
-                      }}
-                    >
-                      {h.points >= 0 ? `+${h.points}` : h.points}
-                    </span>
-                  </div>
-                )
-              })}
+              <RoundResultsList history={roundHistory} players={players} />
               {/* The card that was still assigned when the buzzer went — nobody got to
                   guess it, so no submitter name and no point swing to show. */}
               {finalPendingSlug && (() => {
@@ -1023,23 +1152,53 @@ export default function PlayPage({ params }) {
         }}>
         {showInterstitial ? (
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: FONT_SIZE.heading, fontWeight: FONT_WEIGHT.black, color: "#fff" }}>
+            <div style={{ fontSize: FONT_SIZE.headingLg, fontWeight: FONT_WEIGHT.black, color: "#fff" }}>
               Get ready for Round {displayRound} of {displayRoundsTotal}
             </div>
-            <div style={{ marginTop: SPACE.md, display: "flex", justifyContent: "center" }}>
-              <ScoreBoxes scores={scoresProp} />
-            </div>
-            <div style={{ marginTop: SPACE.md, background: "hsl(220, 10%, 16%)", padding: CARD.wellPadding, display: "inline-block", minWidth: 220 }}>
+            {/* Well is the upcoming team's own color (was a fixed dark card) and lists every
+                role for the round, not just the clue-giver, so nobody has to guess who's
+                submitting or wonder why they can't. Each role is its own avatar+name+role
+                chip (same colored-initials badge language as the card-selection badges
+                below) rather than plain stacked lines — the badge is what makes each row
+                scannable as "a person" at a glance instead of a wall of text. Of the four
+                information units here (clue-giver row, submitter row, "rest of team"
+                line, "waiting on" line), whichever one actually applies to the viewer
+                turns fully yellow — badge, name, and label together — so each player's
+                own eye is drawn straight to the one line that's about them, instead of
+                every unit reading with equal visual weight. */}
+            <div style={{ marginTop: SPACE.lg, background: activeColor, padding: CARD.wellPadding, display: "inline-block", minWidth: 280 }}>
               {!isCollab && (
-                <div style={{ fontSize: FONT_SIZE.bodyLg, fontWeight: FONT_WEIGHT.black, color: game.active_team === "boys" ? "hsl(210, 90%, 65%)" : "hsl(280, 75%, 72%)" }}>
+                <div style={{ fontSize: FONT_SIZE.heading, fontWeight: FONT_WEIGHT.black, color: "#fff", textAlign: "center", marginBottom: SPACE.sm }}>
                   {game.active_team === "boys" ? "Boys" : "Girls"} up next
                 </div>
               )}
-              <div style={{ marginTop: isCollab ? 0 : 4, fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold, color: `rgba(255,255,255,${OPACITY.normal})` }}>
-                {clueGiverName ?? "…"} doing voices
+              <div style={{ display: "flex", flexDirection: "column", gap: SPACE.sm }}>
+                <div style={{ display: "flex", alignItems: "center", gap: SPACE.xs }}>
+                  <div style={{ width: 36, height: 36, flexShrink: 0, borderRadius: "50%", background: isClueGiver ? POKE_COLORS.yellow : activeColorLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.black, color: "#000" }}>
+                    {initialsForPlayer(game.clue_giver_id)}
+                  </div>
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontSize: FONT_SIZE.bodyLg, fontWeight: FONT_WEIGHT.black, color: isClueGiver ? POKE_COLORS.yellow : "#fff" }}>{clueGiverName ?? "…"}</div>
+                    <div style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.bold, color: isClueGiver ? POKE_COLORS.yellow : `rgba(255,255,255,${OPACITY.normal})` }}>Doing voices</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: SPACE.xs }}>
+                  <div style={{ width: 36, height: 36, flexShrink: 0, borderRadius: "50%", background: isSubmitter ? POKE_COLORS.yellow : activeColorLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.black, color: "#000" }}>
+                    {initialsForPlayer(game.submitter_id)}
+                  </div>
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontSize: FONT_SIZE.bodyLg, fontWeight: FONT_WEIGHT.black, color: isSubmitter ? POKE_COLORS.yellow : "#fff" }}>{submitterName ?? "…"}</div>
+                    <div style={{ fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.bold, color: isSubmitter ? POKE_COLORS.yellow : `rgba(255,255,255,${OPACITY.normal})` }}>Submitting answers</div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ marginTop: SPACE.sm, textAlign: "center", fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.semibold, color: amHelper ? POKE_COLORS.yellow : `rgba(255,255,255,${OPACITY.muted})` }}>
+                {isCollab
+                  ? `Rest of the group helping ${submitterName ?? "…"}`
+                  : `Rest of ${game.active_team === "boys" ? "Boys" : "Girls"} team helping ${submitterName ?? "…"}`}
               </div>
             </div>
-            <div style={{ marginTop: SPACE.md, fontSize: FONT_SIZE.small, fontWeight: FONT_WEIGHT.semibold, color: `rgba(255,255,255,${OPACITY.muted})` }}>
+            <div style={{ marginTop: SPACE.lg, fontSize: FONT_SIZE.body, fontWeight: FONT_WEIGHT.semibold, color: isClueGiver ? POKE_COLORS.yellow : `rgba(255,255,255,${OPACITY.muted})` }}>
               Waiting on {isClueGiver ? "you" : clueGiverName ?? "…"} to start
             </div>
           </div>
@@ -1346,7 +1505,7 @@ export default function PlayPage({ params }) {
             <button
               onClick={togglePause}
               style={{
-                width: canSelect && !game.paused ? 90 : "100%",
+                width: canSubmit && !game.paused ? 90 : "100%",
                 flexShrink: 0,
                 background: "transparent",
                 color: "#fff",
@@ -1356,7 +1515,10 @@ export default function PlayPage({ params }) {
             >
               {game.paused ? "Resume" : "Pause"}
             </button>
-            {canSelect && !game.paused && (
+            {/* Only the designated submitter gets the Submit button — everyone else on the
+                team can still tap cards to help (see hv_select_card, unchanged), but only
+                this player's tap actually locks in the team's answer (see hv_submit_guess). */}
+            {canSubmit && !game.paused && (
               <button
                 onClick={submitGuess}
                 disabled={!display.selectedSlug || feedbackActive}

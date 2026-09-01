@@ -11,14 +11,26 @@ create table public.hv_games (
   rounds_total          int not null default 4,
   round_index           int not null default 0,
   turn_duration_seconds int not null default 45,
+  next_turn_duration_seconds int,                        -- staged turn-length change (see
+                                                            -- hv_stage_turn_duration) — never applied to the
+                                                            -- turn already in progress, picked up and cleared
+                                                            -- only when the next turn actually starts
+                                                            -- (hv_begin_turn)
   wrong_points          int not null default -1,        -- points lost on an incorrect guess (host-configurable
                                                            -- for teams, -3..0; fixed at -1 for collaborative)
   correct_points        int not null default 2,          -- points gained on a correct guess (host-configurable
                                                            -- for teams, 1..3; fixed at 2 for collaborative)
   active_team           text,                             -- 'boys' | 'girls' — unused (null) in collaborative mode
   clue_giver_id         uuid,                              -- FK added below, after hv_players exists
+  submitter_id          uuid,                              -- FK added below — the ONE player (besides the
+                                                             -- clue-giver) whose hv_submit_guess call is honored
+                                                             -- this turn; everyone else on the team can still
+                                                             -- select/help via hv_select_card. Randomly assigned
+                                                             -- each turn by hv_pick_submitter, balanced via
+                                                             -- hv_players.submitter_turns so every eligible player
+                                                             -- gets one turn before anyone gets a second.
   boys_order            uuid[] not null default '{}',      -- team roster snapshot, ordered by join time at start
-  girls_order           uuid[] not null default '{}',
+  girls_order            uuid[] not null default '{}',
   player_order          uuid[] not null default '{}',      -- collaborative-mode turn order (all players, random),
                                                              -- parallel to boys_order/girls_order
   score                 int not null default 0,            -- shared collaborative-mode score
@@ -36,16 +48,31 @@ create table public.hv_games (
   last_result           boolean,                            -- correct/incorrect flash for the guess just submitted
   last_result_at        timestamptz,
   score_boys            int not null default 0,
-  score_girls           int not null default 0,
+  score_girls            int not null default 0,
   replay_code           text,                               -- set once someone taps "Play Again"; every
                                                               -- other client redirects here on the next patch
-  replay_of             text,                                -- the game this replay was created from (unused by
+  replay_of             text,                               -- the game this replay was created from (unused by
                                                               -- the client today, kept for traceability)
   end_round_votes       uuid[] not null default '{}',        -- players who've tapped "End Round" this turn;
                                                               -- reset to '{}' whenever hv_end_turn actually runs
-  round_history         jsonb not null default '[]',         -- this turn's guesses so far: [{emoji, slug, correct,
-                                                              -- player_id, points}, ...] — shown on the Time's Up
-                                                              -- screen, reset to '[]' whenever hv_end_turn runs
+  round_history         jsonb not null default '[]',         -- THIS TURN's guesses so far: [{emoji, slug,
+                                                              -- correct_slug, correct, player_id, points}, ...] —
+                                                              -- shown on the Time's Up screen, reset to '[]'
+                                                              -- whenever hv_end_turn actually runs (its entries
+                                                              -- are folded into game_history first — see below)
+  game_history           jsonb not null default '[]',        -- EVERY round played this whole game, one
+                                                              -- round-record object per turn that had at least
+                                                              -- one guess: {round, team, clue_giver_id, entries:
+                                                              -- [...same shape as round_history...]}. Appended to
+                                                              -- (never reset mid-game) by hv_end_turn just before
+                                                              -- it resets round_history. Shown on the Game Over
+                                                              -- screen's full round-by-round list, grouped by
+                                                              -- round with a "Round # · NAME's voices" header;
+                                                              -- also what makes sure whoever casts the tipping
+                                                              -- "End Round" vote on the final round doesn't lose
+                                                              -- that turn's results, since they never see the
+                                                              -- Time's Up recap. Reset to '[]' by
+                                                              -- hv_start_game/hv_reset_to_lobby.
   created_at            timestamptz not null default now(),
   updated_at            timestamptz not null default now()  -- touched by trigger below on
                                                               -- every update; the client uses
@@ -60,19 +87,30 @@ create table public.hv_games (
 );
 
 create table public.hv_players (
-  id          uuid primary key default gen_random_uuid(),
-  game_code   text not null references public.hv_games(code) on delete cascade,
-  name        text not null,
-  first_name  text,
-  last_name   text,
-  team        text,                                        -- 'boys' | 'girls' | null (unchosen, or
+  id               uuid primary key default gen_random_uuid(),
+  game_code        text not null references public.hv_games(code) on delete cascade,
+  name             text not null,
+  first_name       text,
+  last_name        text,
+  team             text,                                   -- 'boys' | 'girls' | null (unchosen, or
                                                               -- always-null in collaborative mode)
-  created_at  timestamptz not null default now()
+  submitter_turns  int not null default 0,                  -- how many times this player has been picked as
+                                                              -- submitter this game — hv_pick_submitter orders
+                                                              -- candidates by this ascending (ties broken by
+                                                              -- random()) so every eligible player gets one turn
+                                                              -- before anyone gets a second. Reset to 0 by
+                                                              -- hv_reset_to_lobby; starts fresh (default 0) for
+                                                              -- every new hv_players row, including replays.
+  created_at       timestamptz not null default now()
 );
 
 alter table public.hv_games
   add constraint hv_games_clue_giver_id_fkey
   foreign key (clue_giver_id) references public.hv_players(id);
+
+alter table public.hv_games
+  add constraint hv_games_submitter_id_fkey
+  foreign key (submitter_id) references public.hv_players(id);
 
 alter table public.hv_games
   add constraint hv_games_mode_check check (mode in ('teams', 'collaborative'));
@@ -161,6 +199,31 @@ revoke all on public.hv_secrets from anon, authenticated;
 create policy "anon select" on public.hv_high_scores for select using (true);
 
 -- ============================================================
+-- RPC: hv_pick_submitter — balanced random pick of the non-clue-giver player who will
+-- be the one to actually tap Submit this turn (everyone else on the team can still help
+-- by tapping cards, but only this player's hv_submit_guess call is honored). Ordered by
+-- submitter_turns ascending (so whoever has had the fewest turns is always eligible
+-- first) with random() as the tiebreaker among that minimum group — gives every eligible
+-- player one turn before anyone gets a second, then repeats fairly. p_team is null for
+-- Collaborative (pool = every non-clue-giver player in the game), or 'boys'/'girls' for
+-- Teams (pool = that team only).
+-- ============================================================
+create or replace function public.hv_pick_submitter(p_code text, p_team text, p_clue_giver uuid)
+returns uuid language plpgsql security definer as $$
+declare v_submitter uuid;
+begin
+  select id into v_submitter
+  from public.hv_players
+  where game_code = p_code
+    and id is distinct from p_clue_giver
+    and (p_team is null or team = p_team)
+  order by submitter_turns asc, random()
+  limit 1;
+  return v_submitter;
+end;
+$$;
+
+-- ============================================================
 -- RPC: hv_start_game
 -- ============================================================
 create or replace function public.hv_start_game(
@@ -179,6 +242,7 @@ declare
   v_girls_order uuid[];
   v_player_order uuid[];
   v_clue_giver uuid;
+  v_submitter uuid;
   v_correct text;
   v_rounds_total int;
   v_wrong_points int;
@@ -195,6 +259,7 @@ begin
     if v_player_order is null or array_length(v_player_order, 1) < 3 then return; end if;
 
     v_clue_giver := v_player_order[1];
+    v_submitter := public.hv_pick_submitter(p_code, null, v_clue_giver);
     v_rounds_total := array_length(v_player_order, 1); -- exactly one pass, not host-configurable
     -- Fixed scoring for Collaborative — not host-configurable, ignores p_wrong_points/
     -- p_correct_points entirely.
@@ -212,6 +277,7 @@ begin
       active_team = null,
       player_order = v_player_order,
       clue_giver_id = v_clue_giver,
+      submitter_id = v_submitter,
       card_pool = p_card_pool,
       current_emoji = p_first_emoji,
       guess_nonce = 1,
@@ -225,8 +291,13 @@ begin
       paused = false,
       paused_by = null,
       paused_at = null,
-      round_history = '[]'
+      round_history = '[]',
+      game_history = '[]'
     where code = p_code;
+
+    if v_submitter is not null then
+      update public.hv_players set submitter_turns = submitter_turns + 1 where id = v_submitter;
+    end if;
 
     insert into public.hv_secrets (game_code, correct_card_slug)
     values (p_code, v_correct)
@@ -247,6 +318,7 @@ begin
   if v_girls_order is null or array_length(v_girls_order, 1) < 2 then return; end if;
 
   v_clue_giver := v_boys_order[1];
+  v_submitter := public.hv_pick_submitter(p_code, 'boys', v_clue_giver);
   v_correct := p_card_pool[1 + floor(random() * 8)::int];
 
   update public.hv_games set
@@ -260,6 +332,7 @@ begin
     boys_order = v_boys_order,
     girls_order = v_girls_order,
     clue_giver_id = v_clue_giver,
+    submitter_id = v_submitter,
     card_pool = p_card_pool,
     current_emoji = p_first_emoji,
     guess_nonce = 1,
@@ -277,8 +350,13 @@ begin
     paused = false,
     paused_by = null,
     paused_at = null,
-    round_history = '[]'
+    round_history = '[]',
+    game_history = '[]'
   where code = p_code;
+
+  if v_submitter is not null then
+    update public.hv_players set submitter_turns = submitter_turns + 1 where id = v_submitter;
+  end if;
 
   insert into public.hv_secrets (game_code, correct_card_slug)
   values (p_code, v_correct)
@@ -287,7 +365,8 @@ end;
 $$;
 
 -- ============================================================
--- RPC: hv_select_card
+-- RPC: hv_select_card — any non-clue-giver player on the active team (Teams) or any
+-- non-clue-giver player at all (Collaborative) can select/help, not just the submitter.
 -- ============================================================
 create or replace function public.hv_select_card(
   p_code text,
@@ -319,7 +398,8 @@ end;
 $$;
 
 -- ============================================================
--- RPC: hv_submit_guess
+-- RPC: hv_submit_guess — only the designated submitter's call is honored (everyone else
+-- on the team can still select/help via hv_select_card above)
 -- ============================================================
 create or replace function public.hv_submit_guess(
   p_code text,
@@ -329,7 +409,6 @@ create or replace function public.hv_submit_guess(
 returns void language plpgsql security definer as $$
 declare
   g record;
-  v_team text;
   v_correct_slug text;
   v_is_correct boolean;
   v_next_correct text;
@@ -338,14 +417,8 @@ declare
 begin
   select * into g from public.hv_games where code = p_code for update;
   if not found or g.phase <> 'playing' or g.paused then return; end if;
-  if g.clue_giver_id = p_player_id then return; end if;
+  if g.submitter_id is distinct from p_player_id then return; end if;
   if g.selected_card_slug is null then return; end if;
-
-  if g.mode = 'teams' then
-    select team into v_team from public.hv_players where id = p_player_id and game_code = p_code;
-    if v_team is distinct from g.active_team then return; end if;
-  end if;
-  -- Collaborative: any non-clue-giver player may submit — already guarded above.
 
   select correct_card_slug into v_correct_slug from public.hv_secrets where game_code = p_code;
   v_is_correct := (g.selected_card_slug = v_correct_slug);
@@ -362,11 +435,13 @@ begin
 
   update public.hv_secrets set correct_card_slug = v_next_correct where game_code = p_code;
 
-  -- Recorded for the Time's Up recap — which emoji/card, right or wrong, who submitted,
-  -- how many points it was worth, and the actual correct card (round_history is a public
-  -- column; revealing which card was right AFTER a guess already resolved and its
-  -- Correct/Incorrect flash already showed to everyone doesn't expose anything new).
-  -- Reset to '[]' whenever hv_end_turn actually runs.
+  -- Recorded for the Time's Up recap and the persistent full-game history — which
+  -- emoji/card, right or wrong, who submitted, how many points it was worth, and the
+  -- actual correct card (round_history/game_history are public columns; revealing which
+  -- card was right AFTER a guess already resolved and its Correct/Incorrect flash already
+  -- showed to everyone doesn't expose anything new). round_history is reset to '[]'
+  -- whenever hv_end_turn actually runs; game_history accumulates it first and is never
+  -- reset mid-game (see hv_end_turn).
   v_history_entry := jsonb_build_object(
     'emoji', g.current_emoji,
     'slug', g.selected_card_slug,
@@ -424,7 +499,13 @@ end;
 $$;
 
 -- ============================================================
--- RPC: hv_end_turn
+-- RPC: hv_end_turn — also assigns the next turn's submitter, and folds this turn's
+-- round_history into the persistent game_history before resetting it (including on the
+-- final turn, right before the game finishes — see the two "finishing" branches below).
+-- game_history accumulates one ROUND-RECORD object per turn that had at least one guess
+-- ({round, team, clue_giver_id, entries: [...same shape as round_history...]}), not a flat
+-- stream of guesses — so the Game Over screen can group results by round with a
+-- "Round # · NAME's voices" header, boxed in that round's team color.
 -- ============================================================
 create or replace function public.hv_end_turn(
   p_code text,
@@ -438,9 +519,13 @@ declare
   v_new_round int;
   v_order uuid[];
   v_clue_giver uuid;
+  v_submitter uuid;
   v_correct text;
   v_player_count int;
   v_player_names text[];
+  v_display_round int;
+  v_round_record jsonb;
+  v_game_history jsonb;
 begin
   select * into g from public.hv_games where code = p_code for update;
   if not found or g.phase <> 'playing' or g.paused then return; end if;
@@ -452,6 +537,12 @@ begin
   if now() < g.turn_started_at + (g.turn_duration_seconds || ' seconds')::interval - interval '2 seconds' then return; end if;
 
   if g.mode = 'collaborative' then
+    -- Matches the client's own displayRound for Collaborative (see play/page.js) — round_index
+    -- already counts individual turns directly, no doubling.
+    v_display_round := g.round_index;
+    v_round_record := jsonb_build_object('round', v_display_round, 'team', null, 'clue_giver_id', g.clue_giver_id, 'entries', g.round_history);
+    v_game_history := case when jsonb_array_length(g.round_history) > 0 then g.game_history || v_round_record else g.game_history end;
+
     v_new_round := g.round_index + 1;
 
     if v_new_round > g.rounds_total then
@@ -459,7 +550,17 @@ begin
       select array_agg(first_name order by created_at) into v_player_names
         from public.hv_players where game_code = p_code;
 
-      update public.hv_games set phase = 'finished', end_round_votes = '{}' where code = p_code;
+      -- Fold this final turn's round_history into the persistent game_history too, so the
+      -- Game Over screen's full round-by-round list includes every turn, including the
+      -- one that just ended — this is also what fixes the tipping voter (whoever's own
+      -- "End Round" call was the one that crossed the threshold) skipping straight past
+      -- the recap: they land on Game Over having never seen the Time's Up screen, but the
+      -- data is now waiting for them there instead of just discarded.
+      update public.hv_games set
+        phase = 'finished',
+        end_round_votes = '{}',
+        game_history = v_game_history
+      where code = p_code;
 
       insert into public.hv_high_scores (game_code, score, player_count, player_names)
       values (p_code, g.score, v_player_count, coalesce(v_player_names, '{}'));
@@ -481,11 +582,13 @@ begin
     if array_length(p_next_card_pool, 1) <> 8 then return; end if;
 
     v_clue_giver := g.player_order[1 + ((v_new_round - 1) % array_length(g.player_order, 1))];
+    v_submitter := public.hv_pick_submitter(p_code, null, v_clue_giver);
     v_correct := p_next_card_pool[1 + floor(random() * 8)::int];
 
     update public.hv_games set
       round_index = v_new_round,
       clue_giver_id = v_clue_giver,
+      submitter_id = v_submitter,
       card_pool = p_next_card_pool,
       current_emoji = p_next_emoji,
       selected_card_slug = null,
@@ -494,8 +597,13 @@ begin
       turn_started_at = null,
       guess_nonce = guess_nonce + 1,
       end_round_votes = '{}',
+      game_history = v_game_history,
       round_history = '[]'
     where code = p_code;
+
+    if v_submitter is not null then
+      update public.hv_players set submitter_turns = submitter_turns + 1 where id = v_submitter;
+    end if;
 
     insert into public.hv_secrets (game_code, correct_card_slug)
     values (p_code, v_correct)
@@ -503,12 +611,25 @@ begin
     return;
   end if;
 
+  -- Matches the client's own displayRound for Teams (see play/page.js) — one round per
+  -- individual turn, doubling the server's own round_index (which counts a boys+girls
+  -- pair as a single round).
+  v_display_round := (g.round_index - 1) * 2 + (case when g.active_team = 'boys' then 1 else 2 end);
+  v_round_record := jsonb_build_object('round', v_display_round, 'team', g.active_team, 'clue_giver_id', g.clue_giver_id, 'entries', g.round_history);
+  v_game_history := case when jsonb_array_length(g.round_history) > 0 then g.game_history || v_round_record else g.game_history end;
+
   if g.active_team = 'boys' then
     v_new_team := 'girls';
     v_new_round := g.round_index;
   else
     if g.round_index >= g.rounds_total then
-      update public.hv_games set phase = 'finished', end_round_votes = '{}' where code = p_code;
+      -- See the collaborative branch's matching comment above — same fold-into-game_history
+      -- fix applies here for Teams mode.
+      update public.hv_games set
+        phase = 'finished',
+        end_round_votes = '{}',
+        game_history = v_game_history
+      where code = p_code;
       return;
     end if;
     v_new_team := 'boys';
@@ -519,12 +640,14 @@ begin
 
   v_order := case when v_new_team = 'boys' then g.boys_order else g.girls_order end;
   v_clue_giver := v_order[1 + ((v_new_round - 1) % array_length(v_order, 1))];
+  v_submitter := public.hv_pick_submitter(p_code, v_new_team, v_clue_giver);
   v_correct := p_next_card_pool[1 + floor(random() * 8)::int];
 
   update public.hv_games set
     active_team = v_new_team,
     round_index = v_new_round,
     clue_giver_id = v_clue_giver,
+    submitter_id = v_submitter,
     card_pool = p_next_card_pool,
     current_emoji = p_next_emoji,
     selected_card_slug = null,
@@ -537,8 +660,13 @@ begin
     turn_started_at = null,
     guess_nonce = guess_nonce + 1,
     end_round_votes = '{}',
+    game_history = v_game_history,
     round_history = '[]'
   where code = p_code;
+
+  if v_submitter is not null then
+    update public.hv_players set submitter_turns = submitter_turns + 1 where id = v_submitter;
+  end if;
 
   insert into public.hv_secrets (game_code, correct_card_slug)
   values (p_code, v_correct)
@@ -587,9 +715,11 @@ $$;
 -- ============================================================
 -- RPC: hv_begin_turn
 -- ============================================================
--- Round 1's card_pool/emoji/clue_giver_id are already fixed by hv_start_game — this just
--- lifts the "waiting for the clue-giver" gate by setting turn_started_at, so it doesn't
--- need any of hv_end_turn's rotation/next-card-pool logic.
+-- Round 1's card_pool/emoji/clue_giver_id/submitter_id are already fixed by
+-- hv_start_game — this just lifts the "waiting for the clue-giver" gate by setting
+-- turn_started_at, so it doesn't need any of hv_end_turn's rotation/next-card-pool logic.
+-- Also picks up a staged turn-length change (next_turn_duration_seconds) for the turn
+-- that's about to start — see hv_stage_turn_duration.
 create or replace function public.hv_begin_turn(p_code text)
 returns void language plpgsql security definer as $$
 declare g record;
@@ -597,7 +727,25 @@ begin
   select * into g from public.hv_games where code = p_code for update;
   if not found or g.phase <> 'playing' or g.paused then return; end if;
   if g.turn_started_at is not null then return; end if;
-  update public.hv_games set turn_started_at = now() where code = p_code;
+  update public.hv_games set
+    turn_started_at = now(),
+    turn_duration_seconds = coalesce(g.next_turn_duration_seconds, g.turn_duration_seconds),
+    next_turn_duration_seconds = null
+  where code = p_code;
+end;
+$$;
+
+-- ============================================================
+-- RPC: hv_stage_turn_duration
+-- ============================================================
+-- A mid-game turn-length change from the settings panel is staged, never applied to the
+-- turn already in progress — hv_begin_turn picks it up (and clears it) only when the
+-- next turn actually starts.
+create or replace function public.hv_stage_turn_duration(p_code text, p_turn_duration_seconds int)
+returns void language plpgsql security definer as $$
+begin
+  if p_turn_duration_seconds is null or p_turn_duration_seconds not in (15, 30, 45, 60) then return; end if;
+  update public.hv_games set next_turn_duration_seconds = p_turn_duration_seconds where code = p_code;
 end;
 $$;
 
@@ -610,6 +758,9 @@ $$;
 -- everyone converges on the same new lobby. Also carries every player's team choice into
 -- the fresh lobby (every HV player always has one, so no conditional needed) — the cascade
 -- delete on hv_players.game_code cleans these up automatically if this call loses the race.
+-- Note: the new hv_players rows default submitter_turns to 0 and the new hv_games row
+-- defaults submitter_id/game_history to null/'[]' — a replay always re-balances from
+-- scratch, same as a fresh game.
 create or replace function public.hv_create_replay(p_code text)
 returns text language plpgsql security definer as $$
 declare
@@ -649,7 +800,8 @@ $$;
 -- RPC: hv_reset_to_lobby
 -- ============================================================
 -- For Menu's "Back to Lobby" tile. Keeps players/teams/settings intact — just resets the
--- game row back to a fresh lobby state.
+-- game row back to a fresh lobby state, and zeroes every player's submitter_turns so a
+-- fresh game in the same lobby re-balances submitter assignment from scratch.
 create or replace function public.hv_reset_to_lobby(p_code text)
 returns void language plpgsql security definer as $$
 begin
@@ -658,6 +810,7 @@ begin
     round_index = 0,
     active_team = null,
     clue_giver_id = null,
+    submitter_id = null,
     card_pool = '{}',
     current_emoji = null,
     guess_nonce = 0,
@@ -674,8 +827,11 @@ begin
     paused_by = null,
     paused_at = null,
     end_round_votes = '{}',
-    round_history = '[]'
+    round_history = '[]',
+    game_history = '[]'
   where code = p_code;
+
+  update public.hv_players set submitter_turns = 0 where game_code = p_code;
 end;
 $$;
 
@@ -683,6 +839,7 @@ $$;
 -- Pin search_path on every SECURITY DEFINER function (closes the
 -- "Function Search Path Mutable" advisor warning / search_path hijacking class of bug)
 -- ============================================================
+alter function public.hv_pick_submitter(text, text, uuid) set search_path = public;
 alter function public.hv_start_game(text, int, int, text[], text, int, int) set search_path = public;
 alter function public.hv_select_card(text, uuid, text) set search_path = public;
 alter function public.hv_submit_guess(text, uuid, text) set search_path = public;
@@ -691,5 +848,6 @@ alter function public.hv_resume_game(text) set search_path = public;
 alter function public.hv_end_turn(text, text[], text) set search_path = public;
 alter function public.hv_vote_end_round(text, uuid, text[], text) set search_path = public;
 alter function public.hv_begin_turn(text) set search_path = public;
+alter function public.hv_stage_turn_duration(text, int) set search_path = public;
 alter function public.hv_create_replay(text) set search_path = public;
 alter function public.hv_reset_to_lobby(text) set search_path = public;

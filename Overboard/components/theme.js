@@ -34,13 +34,18 @@ export const COLORS = { dark: DARK, mid: MID, wl: WL, yellow: ACCENT, notifBg: B
 // `text` on `bg`, and for `onDark` on the MID card surface. The white/dark crossover sits
 // between tiers 3 and 4: white on tier 3's mid-blue only manages 2.6:1, which is why
 // Diving team takes dark text despite looking like it belongs with the deep end.
+// `placeholder` matches each tier's own `text` color at the suite's usual 0.35 placeholder
+// opacity (see globals.css's default ::placeholder rule) — that default assumes a dark
+// background and white text, which goes low-contrast-on-low-contrast for Splash pad/Shallow
+// end's near-white backgrounds. Applied via the --ob-placeholder custom property (a
+// pseudo-element can't be reached with an inline style), see the .ob-question rule.
 export const DEPTH_TIERS = [
   null,
-  { label: "Splash pad",   bg: "hsl(205, 100%, 97%)", text: "hsl(205, 85%, 30%)", border: "hsl(205, 60%, 80%)", onDark: "hsl(205, 100%, 90%)" }, // 7.07:1 · 11.71:1
-  { label: "Shallow end",  bg: "hsl(205, 90%, 88%)",  text: "hsl(205, 80%, 30%)", border: "hsl(205, 70%, 72%)", onDark: "hsl(205, 90%, 80%)" },  // 5.83:1 ·  9.24:1
-  { label: "Diving team",  bg: "hsl(207, 75%, 62%)",  text: "hsl(207, 90%, 18%)", border: "hsl(207, 75%, 74%)", onDark: "hsl(207, 85%, 70%)" },  // 4.97:1 ·  6.96:1
-  { label: "Fishing trip", bg: "hsl(210, 80%, 42%)",  text: "#fff",               border: "hsl(210, 80%, 56%)", onDark: "hsl(210, 90%, 64%)" },  // 5.37:1 ·  5.54:1
-  { label: "Ocean floor",  bg: "hsl(214, 85%, 22%)",  text: "#fff",               border: "hsl(214, 80%, 40%)", onDark: "hsl(214, 90%, 66%)" },  // 12.64:1 · 5.35:1
+  { label: "Splash pad",   bg: "hsl(205, 100%, 97%)", text: "hsl(205, 85%, 30%)", border: "hsl(205, 60%, 80%)", onDark: "hsl(205, 100%, 90%)", placeholder: "hsla(205, 85%, 30%, 0.4)" }, // 7.07:1 · 11.71:1
+  { label: "Shallow end",  bg: "hsl(205, 90%, 88%)",  text: "hsl(205, 80%, 30%)", border: "hsl(205, 70%, 72%)", onDark: "hsl(205, 90%, 80%)",  placeholder: "hsla(205, 80%, 30%, 0.4)" }, //  5.83:1 ·  9.24:1
+  { label: "Diving team",  bg: "hsl(207, 75%, 62%)",  text: "hsl(207, 90%, 18%)", border: "hsl(207, 75%, 74%)", onDark: "hsl(207, 85%, 70%)",  placeholder: "hsla(207, 90%, 18%, 0.45)" }, //  4.97:1 ·  6.96:1
+  { label: "Fishing trip", bg: "hsl(210, 80%, 42%)",  text: "#fff",               border: "hsl(210, 80%, 56%)", onDark: "hsl(210, 90%, 64%)",  placeholder: "rgba(255,255,255,0.45)" },   //  5.37:1 ·  5.54:1
+  { label: "Ocean floor",  bg: "hsl(214, 85%, 22%)",  text: "#fff",               border: "hsl(214, 80%, 40%)", onDark: "hsl(214, 90%, 66%)",  placeholder: "rgba(255,255,255,0.45)" },   // 12.64:1 · 5.35:1
 ]
 
 export const DEPTH_MIN = 1

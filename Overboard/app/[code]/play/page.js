@@ -656,13 +656,23 @@ export default function PlayPage({ params }) {
           <h1 style={{ fontSize: 30, fontWeight: 900, color: "#fff", marginBottom: 22 }}>Write your question</h1>
 
           <label style={{ display: "block", fontSize: 15, fontWeight: 800, color: "rgba(255,255,255,0.75)", marginBottom: 8 }}>Your question</label>
+          {/* Recolors to the current depth tier as the slider moves, same as everything
+              else on this screen — so the question you're writing visibly gets "deeper"
+              along with the rating you're giving it, instead of that only showing up in the
+              slider/legend below. */}
           <textarea
+            className="ob-question"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="What's something you've changed your mind about?"
             maxLength={280}
             rows={3}
-            style={{ background: WL, color: "#fff", fontSize: 18, fontWeight: 600, padding: "14px 16px", width: "100%", boxSizing: "border-box", resize: "none", lineHeight: 1.4 }}
+            style={{
+              background: t.bg, color: t.text, border: `1.5px solid ${t.border}`,
+              fontSize: 18, fontWeight: 600, padding: "14px 16px", width: "100%", boxSizing: "border-box",
+              resize: "none", lineHeight: 1.4, transition: "background 200ms ease, color 200ms ease, border-color 200ms ease",
+              "--ob-q-placeholder": t.placeholder,
+            }}
           />
           <div style={{ marginTop: 8 }}>
             <RandomIdeas

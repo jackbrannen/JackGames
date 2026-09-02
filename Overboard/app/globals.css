@@ -74,6 +74,13 @@ input::placeholder, textarea::placeholder {
   color: rgba(255, 255, 255, 0.35);
 }
 
+/* The question box recolors to the depth tier as the slider moves (see the write-phase
+   textarea) — its placeholder needs to follow along too, via a custom property, since a
+   pseudo-element can't be reached by that element's own inline style. */
+.ob-question::placeholder {
+  color: var(--ob-q-placeholder, rgba(255, 255, 255, 0.35));
+}
+
 /* Reaction press — the emoji floats up out of the button and fades. Purely local
    decoration driven by a broadcast, never a database write. */
 @keyframes obFloatUp {

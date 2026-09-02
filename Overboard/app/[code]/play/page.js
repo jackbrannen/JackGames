@@ -33,7 +33,7 @@ function reactionKey(targetId, emoji) {
 // animated via a ref rather than React state, since the animation must start from an
 // exact pixel position captured at drop time and CSS can't express "animate from an
 // arbitrary starting point."
-function SwapCard({ hint, bg, text, fromX, fromY, toX, toY }) {
+function SwapCard({ hint, bg, text, width, fromX, fromY, toX, toY }) {
   const ref = useRef(null)
   useEffect(() => {
     const el = ref.current
@@ -53,7 +53,12 @@ function SwapCard({ hint, bg, text, fromX, fromY, toX, toY }) {
     <div ref={ref} style={{
       position: "fixed", top: 0, left: 0, zIndex: 320, pointerEvents: "none",
       background: bg, color: text, padding: "10px 14px", borderRadius: 10, fontSize: 15, fontWeight: 800,
-      width: 160, textAlign: "center", lineHeight: 1.25, wordBreak: "break-word",
+      // width is the chip's own measured width from wherever it started (see
+      // animateSwap/animateSwapSlots) — not a made-up constant. A definite width is still
+      // required (an auto-width fixed box has no flex/grid parent to size it against, so
+      // it shrink-to-fits unpredictably), it just doesn't have to be the SAME width for
+      // every chip regardless of content.
+      width: width ?? 160, textAlign: "center", lineHeight: 1.25, wordBreak: "break-word",
       boxShadow: "0 8px 24px rgba(0,0,0,0.4)", willChange: "transform",
     }}>
       {hint}
@@ -80,6 +85,7 @@ export default function PlayPage({ params }) {
   // ── Assign phase ──
   const [slots, setSlots] = useState([])
   const [dragValue, setDragValue] = useState(null)
+  const [dragWidth, setDragWidth] = useState(null)
   const [dragPos, setDragPos] = useState(null)
   const [toast, setToast] = useState(null)
   const [showChangedBanner, setShowChangedBanner] = useState(false)
@@ -403,7 +409,15 @@ export default function PlayPage({ params }) {
     setSlots(next)
   }, [JSON.stringify(boardFromDb), phase])
 
-  function animateSwap(draggedAuthorId, srcIndex, displacedAuthorId, targetIndex, dropX, dropY) {
+  // Reads the actual rendered chip width sitting in a slot right now — the real content
+  // width, bounded by chip()'s own maxWidth/wordBreak, not an arbitrary constant. Must be
+  // called before that slot's chip is hidden/replaced.
+  function chipWidthInSlot(slotIndex) {
+    return document.querySelector(`[data-ob-slot="${slotIndex}"]`)?.firstElementChild?.getBoundingClientRect().width
+  }
+
+  function animateSwap(draggedAuthorId, draggedWidth, srcIndex, displacedAuthorId, targetIndex, dropX, dropY) {
+    const displacedWidth = chipWidthInSlot(targetIndex)
     const srcRect = document.querySelector(`[data-ob-slot="${srcIndex}"]`)?.getBoundingClientRect()
     const tgtRect = document.querySelector(`[data-ob-slot="${targetIndex}"]`)?.getBoundingClientRect()
     if (!srcRect || !tgtRect) return
@@ -411,13 +425,15 @@ export default function PlayPage({ params }) {
     const srcX = srcRect.left + srcRect.width / 2, srcY = srcRect.top + srcRect.height / 2
     const tgtX = tgtRect.left + tgtRect.width / 2, tgtY = tgtRect.top + tgtRect.height / 2
     setSwapAnim([
-      { authorId: draggedAuthorId, fromX: dropX, fromY: dropY, toX: tgtX, toY: tgtY },
-      { authorId: displacedAuthorId, fromX: tgtX, fromY: tgtY, toX: srcX, toY: srcY },
+      { authorId: draggedAuthorId, width: draggedWidth, fromX: dropX, fromY: dropY, toX: tgtX, toY: tgtY },
+      { authorId: displacedAuthorId, width: displacedWidth, fromX: tgtX, fromY: tgtY, toX: srcX, toY: srcY },
     ])
     setTimeout(() => { setSwapAnim(null); setHidingSlots(new Set()) }, 320)
   }
 
   function animateSwapSlots(indexA, indexB, authorIdA, authorIdB) {
+    const widthA = chipWidthInSlot(indexA)
+    const widthB = chipWidthInSlot(indexB)
     const rectA = document.querySelector(`[data-ob-slot="${indexA}"]`)?.getBoundingClientRect()
     const rectB = document.querySelector(`[data-ob-slot="${indexB}"]`)?.getBoundingClientRect()
     if (!rectA || !rectB) return
@@ -425,8 +441,8 @@ export default function PlayPage({ params }) {
     const aX = rectA.left + rectA.width / 2, aY = rectA.top + rectA.height / 2
     const bX = rectB.left + rectB.width / 2, bY = rectB.top + rectB.height / 2
     setSwapAnim([
-      { authorId: authorIdA, fromX: aX, fromY: aY, toX: bX, toY: bY },
-      { authorId: authorIdB, fromX: bX, fromY: bY, toX: aX, toY: aY },
+      { authorId: authorIdA, width: widthA, fromX: aX, fromY: aY, toX: bX, toY: bY },
+      { authorId: authorIdB, width: widthB, fromX: bX, fromY: bY, toX: aX, toY: aY },
     ])
     setTimeout(() => { setSwapAnim(null); setHidingSlots(new Set()) }, 320)
   }
@@ -443,6 +459,7 @@ export default function PlayPage({ params }) {
       dropFnRef.current?.(pt.clientX, pt.clientY)
       dragRef.current = null
       setDragValue(null)
+      setDragWidth(null)
       setDragPos(null)
     }
     document.addEventListener("pointermove", onMove)
@@ -485,8 +502,14 @@ export default function PlayPage({ params }) {
     if (phase !== "assign") return
     e.preventDefault()
     const pt = e.touches?.[0] ?? e
-    dragRef.current = { authorId, source, slotIndex }
+    // The chip's own rendered width, captured now while it's still sitting in its flex/grid
+    // parent (tray or slot) — that's the real content-appropriate width, not a guess. It has
+    // to be captured here: once the drag starts, the origin slot goes empty (below) and
+    // there's nothing left to measure it from.
+    const width = e.currentTarget.getBoundingClientRect().width
+    dragRef.current = { authorId, source, slotIndex, width }
     setDragValue(authorId)
+    setDragWidth(width)
     setDragPos({ x: pt.clientX, y: pt.clientY })
     if (source === "slot") {
       const next = [...slotsRef.current]
@@ -531,7 +554,7 @@ export default function PlayPage({ params }) {
     const isSwap = drag.source === "slot" && existing != null && targetIndex !== drag.slotIndex
     if (drag.source === "slot") cur[drag.slotIndex] = existing ?? null
     cur[targetIndex] = drag.authorId
-    if (isSwap) animateSwap(drag.authorId, drag.slotIndex, existing, targetIndex, x, y)
+    if (isSwap) animateSwap(drag.authorId, drag.width, drag.slotIndex, existing, targetIndex, x, y)
     persistBoard(cur)
   }
   dropFnRef.current = handleDrop
@@ -830,19 +853,19 @@ export default function PlayPage({ params }) {
           return <SwapCard key={i} hint={author?.hint ?? "…"} bg={t.bg} text={t.text} {...s} />
         })}
 
-        {/* Drag ghost — definite `width` (not `maxWidth`) is load-bearing, same as SwapCard
-            above: this box has no flex/grid parent to size it (it's position:fixed, out of
-            flow), so an auto-width box with wordBreak shrink-to-fits unpredictably —
-            which is exactly what "the pill changes size while dragging" looked like: the
-            same chip rendering at a different width here than it does sitting in the tray
-            or a slot, because those ARE inside a flex/grid parent that constrains it. */}
+        {/* Drag ghost — definite `width` (not `maxWidth`) is load-bearing: this box has no
+            flex/grid parent to size it (it's position:fixed, out of flow), so an auto-width
+            box with wordBreak shrink-to-fits unpredictably, which is exactly what "the pill
+            changes size while dragging" looked like. The width itself is `dragWidth`,
+            measured off the real chip in startDrag — a stable width, but the chip's OWN
+            content-appropriate one, not an arbitrary constant that makes short hints balloon. */}
         {dragValue && dragPos && (
           <div style={{ position: "fixed", left: dragPos.x, top: dragPos.y, transform: "translate(-50%, -50%)", pointerEvents: "none", zIndex: 200, opacity: 0.95 }}>
             {(() => {
               const author = playerById(dragValue)
               const t = tier(author?.depth)
               return (
-                <div style={{ background: t.bg, color: t.text, borderRadius: 10, padding: "10px 14px", fontSize: 15, fontWeight: 800, width: 160, textAlign: "center", lineHeight: 1.25, wordBreak: "break-word", boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+                <div style={{ background: t.bg, color: t.text, borderRadius: 10, padding: "10px 14px", fontSize: 15, fontWeight: 800, width: dragWidth ?? 160, textAlign: "center", lineHeight: 1.25, wordBreak: "break-word", boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
                   {author?.hint ?? "…"}
                 </div>
               )

@@ -830,14 +830,19 @@ export default function PlayPage({ params }) {
           return <SwapCard key={i} hint={author?.hint ?? "…"} bg={t.bg} text={t.text} {...s} />
         })}
 
-        {/* Drag ghost */}
+        {/* Drag ghost — definite `width` (not `maxWidth`) is load-bearing, same as SwapCard
+            above: this box has no flex/grid parent to size it (it's position:fixed, out of
+            flow), so an auto-width box with wordBreak shrink-to-fits unpredictably —
+            which is exactly what "the pill changes size while dragging" looked like: the
+            same chip rendering at a different width here than it does sitting in the tray
+            or a slot, because those ARE inside a flex/grid parent that constrains it. */}
         {dragValue && dragPos && (
           <div style={{ position: "fixed", left: dragPos.x, top: dragPos.y, transform: "translate(-50%, -50%)", pointerEvents: "none", zIndex: 200, opacity: 0.95 }}>
             {(() => {
               const author = playerById(dragValue)
               const t = tier(author?.depth)
               return (
-                <div style={{ background: t.bg, color: t.text, borderRadius: 10, padding: "10px 14px", fontSize: 15, fontWeight: 800, maxWidth: 160, textAlign: "center", boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
+                <div style={{ background: t.bg, color: t.text, borderRadius: 10, padding: "10px 14px", fontSize: 15, fontWeight: 800, width: 160, textAlign: "center", lineHeight: 1.25, wordBreak: "break-word", boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
                   {author?.hint ?? "…"}
                 </div>
               )

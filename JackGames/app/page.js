@@ -30,6 +30,17 @@ Then, one board at a time, the whole group works together to reconstruct someone
 You score a point for every word placed on the same person the caster chose. It's cooperative — add up your matches across everyone's boards and see how well you read the room.`,
   },
   {
+    name: "So Clover",
+    description: "Arrange keyword cards, write clues, guess each other's boards",
+    players: "2+ players", minPlayers: 2, group: "Easy Peasy", types: ["Word games", "Cooperative"],
+    url: "https://soclover.jackbrannen.com", bg: "#6B8C2A", color: "white",
+    instructions: `A cooperative word game. Each player gets a board with 4 keyword cards. Where two words from a card touch an edge, you write a single clue word that connects both keywords.
+
+Once everyone has written their clues, the boards are passed. The next player sees only the clue words (not which keywords they connect) and must figure out the correct arrangement of the 4 cards.
+
+Points are earned for correct placements. Perfect guesses earn a bonus point. Everyone's scores are summed — it's a cooperative total at the end.`,
+  },
+  {
     name: "Nominations",
     description: "Argue a superlative fits someone — one of you is secretly bluffing",
     players: "6+ players", minPlayers: 6, group: "Easy Peasy", types: ["Voting/Judging", "Hidden roles", "Acting", "Original"],
@@ -43,17 +54,6 @@ Each round, two players argue the same superlative for two different people, out
 Then the room votes on who the bluffer is. Spot the bluffer and you score. The truth-teller scores for everyone who saw through the bluff, and the bluffer scores double for everyone they fool — so bluffing is the risky, high-reward seat.`,
   },
   {
-    name: "So Clover",
-    description: "Arrange keyword cards, write clues, guess each other's boards",
-    players: "2+ players", minPlayers: 2, group: "Easy Peasy", types: ["Word games", "Cooperative"],
-    url: "https://soclover.jackbrannen.com", bg: "#6B8C2A", color: "white",
-    instructions: `A cooperative word game. Each player gets a board with 4 keyword cards. Where two words from a card touch an edge, you write a single clue word that connects both keywords.
-
-Once everyone has written their clues, the boards are passed. The next player sees only the clue words (not which keywords they connect) and must figure out the correct arrangement of the 4 cards.
-
-Points are earned for correct placements. Perfect guesses earn a bonus point. Everyone's scores are summed — it's a cooperative total at the end.`,
-  },
-  {
     name: "First to Worst",
     description: "Rank 5 things, then the group guesses your order",
     players: "3+ players", minPlayers: 3, group: "Easy Peasy", types: ["Word games", "Voting/Judging", "Cooperative"],
@@ -63,6 +63,19 @@ Points are earned for correct placements. Perfect guesses earn a bonus point. Ev
 Once everyone has ranked their words, the whole group tries to guess the exact ranking together — dragging words into what they think is the right order. The ranker watches and can't say anything.
 
 After the group locks in their guess, the real ranking is revealed. Everyone scores points for every word in the correct position.`,
+  },
+  {
+    name: "Overboard",
+    description: "Everyone writes a question. Nobody answers their own.",
+    players: "4+ players", minPlayers: 4, group: "Easy Peasy", types: ["Cooperative", "Original"],
+    url: "https://overboard.jackbrannen.com", bg: "hsl(205, 80%, 45%)", color: "white",
+    instructions: `Everyone writes one question, plus a one or two word hint about the topic, and rates how deep it goes — from Splash pad to Ocean floor.
+
+Then the whole room shares one board. All anyone can see are the hints, never who wrote them. Together you drag a hint onto each player to decide who gets stuck with what. Nobody can be given their own question.
+
+Everyone hits Ready when the board looks right — changing anything after people have readied puts them back to unready, so agree before you commit.
+
+Then you go around the room answering out loud, shallowest questions first, while everyone else piles on emoji reactions. No points and no winner: at the end you just see every question and the reactions it earned. Who wrote what stays secret forever.`,
   },
   {
     name: "Exquisite Corpse",
@@ -196,6 +209,17 @@ Once both have answered, the guessing team says the phrase out loud. The phrase 
 Turns alternate between teams, and every player gets to be the one "up" at least once. Most points wins.`,
   },
   {
+    name: "Telestrations",
+    description: "Write a sentence, draw it, then write a sentence, then a drawing…",
+    players: "5+ players", minPlayers: 5, group: "Medium Schmedium", types: ["Drawing"],
+    url: "https://telestrations.jackbrannen.com", bg: "#2B0F6B", color: "white",
+    instructions: `A telephone-style game alternating between drawing and guessing.
+
+Each player starts by writing a phrase. They pass it to the next player, who draws it. That drawing passes to the next player, who guesses what it is. Their guess passes on to be drawn again, and so on down the chain.
+
+At the end, the original phrase and the final result are revealed side by side. The further it drifts from the original, the funnier it gets.`,
+  },
+  {
     name: "Hearing Voices",
     description: "Do a voice, teammates guess who from an emoji clue",
     players: "4+ players", minPlayers: 4, group: "Medium Schmedium", types: ["Teams", "Acting", "Original"],
@@ -207,17 +231,6 @@ That player does the assigned character's voice, reacting to the emoji however t
 Correct guesses score points, wrong guesses lose points (host sets how many of each in the lobby). The emoji changes and a new character is assigned after every guess, so a single turn can run through several guesses before time runs out.
 
 Turns alternate between teams. Most points when the rounds run out wins.`,
-  },
-  {
-    name: "Telestrations",
-    description: "Write a sentence, draw it, then write a sentence, then a drawing…",
-    players: "5+ players", minPlayers: 5, group: "Medium Schmedium", types: ["Drawing"],
-    url: "https://telestrations.jackbrannen.com", bg: "#2B0F6B", color: "white",
-    instructions: `A telephone-style game alternating between drawing and guessing.
-
-Each player starts by writing a phrase. They pass it to the next player, who draws it. That drawing passes to the next player, who guesses what it is. Their guess passes on to be drawn again, and so on down the chain.
-
-At the end, the original phrase and the final result are revealed side by side. The further it drifts from the original, the funnier it gets.`,
   },
   {
     name: "Same Page",

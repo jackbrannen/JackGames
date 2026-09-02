@@ -1,0 +1,136 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  min-height: 100%;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+body {
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  /* Matches theme.js's BG. This is what shows on overscroll/rubber-band and behind any
+     translucent overlay (e.g. IdleGateModal's backdrop) — left over from Typecast's
+     coral (#E8553A), it made both of those show reddish-brown instead of navy. */
+  background: hsl(214, 45%, 9%);
+  color: #fff;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transform: scale(1);
+  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1), filter 200ms ease;
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.91);
+  filter: brightness(1.3);
+  transition: transform 60ms ease, filter 60ms ease;
+}
+
+button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+input, select, textarea {
+  font-family: inherit;
+  outline: none;
+  border: none;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+::placeholder {
+  color: rgba(42, 45, 52, 0.45);
+  opacity: 1;
+}
+
+@keyframes nudgePulse {
+  0%, 100% { filter: brightness(1); transform: scale(1); }
+  50% { filter: brightness(2.2); transform: scale(1.04); }
+}
+
+/* Game Over screen fade+scale-in — softens the abrupt cut from gameplay to the
+   final screen, same idea as Hearing Voices' "Time's Up!" beat. */
+@keyframes endGameIn {
+  0%   { opacity: 0; transform: scale(0.92); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ── Overboard ──────────────────────────────────────────────────────────── */
+
+/* Placeholder override: Overboard's inputs sit on dark navy, not the light surfaces
+   the shared default assumes. */
+input::placeholder, textarea::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* Reaction press — the emoji floats up out of the button and fades. Purely local
+   decoration driven by a broadcast, never a database write. */
+@keyframes obFloatUp {
+  0%   { opacity: 1; transform: translate(-50%, 0) scale(0.8); }
+  20%  { opacity: 1; transform: translate(-50%, -14px) scale(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -62px) scale(1); }
+}
+
+/* The un-ready banner sliding in when someone else changes the board out from under you. */
+@keyframes obBannerIn {
+  0%   { opacity: 0; transform: translateY(-8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Rejected drop (your own question) — a quick horizontal shake on the toast. */
+@keyframes obShake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-5px); }
+  75%      { transform: translateX(5px); }
+}
+
+/* Depth slider. Range inputs can't be styled inline (thumb needs a pseudo-element),
+   so the track/thumb live here and take their color from --ob-depth, set per-render. */
+input[type="range"].ob-depth {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 44px;
+  background: transparent;
+  touch-action: none;
+}
+input[type="range"].ob-depth::-webkit-slider-runnable-track {
+  height: 10px;
+  background: var(--ob-track, hsl(214, 32%, 24%));
+  border-radius: 5px;
+}
+input[type="range"].ob-depth::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 34px;
+  height: 34px;
+  margin-top: -12px;
+  border-radius: 50%;
+  background: var(--ob-depth, hsl(190, 90%, 55%));
+  border: 3px solid hsl(214, 45%, 9%);
+  cursor: grab;
+}
+input[type="range"].ob-depth::-moz-range-track {
+  height: 10px;
+  background: var(--ob-track, hsl(214, 32%, 24%));
+  border-radius: 5px;
+}
+input[type="range"].ob-depth::-moz-range-thumb {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--ob-depth, hsl(190, 90%, 55%));
+  border: 3px solid hsl(214, 45%, 9%);
+  cursor: grab;
+}

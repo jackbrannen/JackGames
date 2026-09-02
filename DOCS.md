@@ -190,7 +190,7 @@ Assigned ports (reuse the same one for a game every time — add a new row here 
 | SecretPhrase | 3410 | Telestrations | 3420 |
 | Typecast | 3320 | ThingsInRings | 3421 |
 | StyleGuide | 3099 | WordBirds | 3422 |
-| Nominations | 3423 | | |
+| Nominations | 3423 | Overboard | 3424 |
 
 **Don't restart a dev server that's already running for an ordinary edit.** `next dev`'s Fast Refresh picks up file changes on its own — a manual kill+restart (or worse, running `next build` against a game mid-iteration, even with the server killed first) can crash a browser tab that's still open on that game: the tab survives the restart, its connection drops and reconnects against a different build ID, and Fast Refresh can spin into a runaway reload loop. Only touch a running dev server if it's actually stuck, and warn before doing so if a tab might be open on it.
 

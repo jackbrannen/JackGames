@@ -66,7 +66,7 @@ After the group locks in their guess, the real ranking is revealed. Everyone sco
   },
   {
     name: "Overboard",
-    description: "Everyone writes a question. Nobody answers their own.",
+    description: "Ask questions, then decide who answers each one",
     players: "4+ players", minPlayers: 4, group: "Easy Peasy", types: ["Cooperative", "Original"],
     url: "https://overboard.jackbrannen.com", bg: "hsl(205, 80%, 45%)", color: "white",
     instructions: `Everyone writes one question, plus a one or two word hint about the topic, and rates how deep it goes — from Splash pad to Ocean floor.

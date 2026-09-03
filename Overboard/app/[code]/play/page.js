@@ -17,6 +17,16 @@ import { BG, DARK, MID, WL, ACCENT, ACCENT_TEXT, DANGER, COLORS, DEPTH_TIERS, DE
 
 const BOTTOM_PAD = `calc(${FOOTER_H + 8}px + env(safe-area-inset-bottom))`
 
+// Must match .ob-depth's thumb width in globals.css. A native range thumb's travel is
+// inset by its own radius on each side — it never reaches the track's literal 0%/100%
+// edges — so tick/label positions need this same inset baked in, not a plain percentage
+// (which only happens to agree with the thumb at the exact midpoint and drifts further off
+// toward each end, which is exactly the misalignment this constant fixes).
+const DEPTH_THUMB_PX = 34
+function depthStopLeft(i, count) {
+  return `calc(${DEPTH_THUMB_PX / 2}px + (100% - ${DEPTH_THUMB_PX}px) * ${i / (count - 1)})`
+}
+
 // Reaction plumbing. The animation and the tally are deliberately two different
 // mechanisms — see REALTIME.md's logged toggleLike incident, and ui-text.md.
 const REACT_BROADCAST_MS = 250   // coalesce this client's presses into one broadcast
@@ -706,23 +716,21 @@ export default function PlayPage({ params }) {
             style={{ "--ob-depth": t.bg, "--ob-track": WL }}
           />
           {/* Real tick marks, not a native <datalist> — WebKit doesn't render datalist ticks
-              on range inputs at all, which is why they were invisible. A 5-stop range input
-              (min=1, max=5, step=1) always rests its thumb at exactly 0/25/50/75/100% of the
-              track width, so these ticks — and the labels below them — are positioned at
-              those same four points rather than 5 equal flex columns (which would center each
-              label under its OWN 20%-wide slice instead of the slider's actual stop). The
-              first/last stops sit right at the track's edges, so those two labels are
-              left/right-aligned instead of centered, or they'd run off the side. */}
+              on range inputs at all, which is why they were invisible. Positions come from
+              depthStopLeft, which bakes in the thumb's own radius inset (see its comment) —
+              a plain 0/25/50/75/100% would put every tick except the dead center slightly
+              outboard of where the thumb can actually sit, worse the further from center.
+              The first/last stops still sit close to the track's edges, so those two labels
+              stay left/right-aligned rather than centered, or they'd run off the side. */}
           <div style={{ position: "relative", height: 10, marginTop: 2 }}>
             {DEPTH_TIERS.slice(1).map((dt, i) => {
-              const pct = (i / (DEPTH_TIERS.length - 2)) * 100
               const selected = depth === i + 1
               return (
                 <div
                   key={dt.label}
                   style={{
-                    position: "absolute", left: `${pct}%`,
-                    transform: i === 0 ? "translateX(0)" : i === DEPTH_TIERS.length - 2 ? "translateX(-100%)" : "translateX(-50%)",
+                    position: "absolute", left: depthStopLeft(i, DEPTH_TIERS.length - 1),
+                    transform: "translateX(-50%)",
                     width: 3, height: 10, borderRadius: 2,
                     background: selected ? dt.onDark : "rgba(255,255,255,0.35)",
                   }}
@@ -732,7 +740,6 @@ export default function PlayPage({ params }) {
           </div>
           <div style={{ position: "relative", height: 32, marginTop: 6 }}>
             {DEPTH_TIERS.slice(1).map((dt, i) => {
-              const pct = (i / (DEPTH_TIERS.length - 2)) * 100
               const selected = depth === i + 1
               const align = i === 0 ? "left" : i === DEPTH_TIERS.length - 2 ? "right" : "center"
               return (
@@ -740,7 +747,7 @@ export default function PlayPage({ params }) {
                   key={dt.label}
                   onClick={() => setDepth(i + 1)}
                   style={{
-                    position: "absolute", left: `${pct}%`,
+                    position: "absolute", left: depthStopLeft(i, DEPTH_TIERS.length - 1),
                     transform: align === "left" ? "translateX(0)" : align === "right" ? "translateX(-100%)" : "translateX(-50%)",
                     textAlign: align, cursor: "pointer", whiteSpace: "nowrap",
                     fontSize: 12, lineHeight: 1.3, fontWeight: selected ? 900 : 700,

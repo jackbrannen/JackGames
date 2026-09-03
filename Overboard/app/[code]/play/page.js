@@ -738,18 +738,23 @@ export default function PlayPage({ params }) {
               )
             })}
           </div>
+          {/* All five centered directly under their notch — including the two end ones,
+              which means their text can spill past the slider's own left/right edge into
+              the page's outer padding. There's room for it (the page has its own gutter,
+              and nothing here clips overflow), and it reads better than the previous
+              left/right-aligned edge labels, which kept the text on-screen but broke the
+              "centered under the notch" rule those two were the exception to. */}
           <div style={{ position: "relative", height: 32, marginTop: 6 }}>
             {DEPTH_TIERS.slice(1).map((dt, i) => {
               const selected = depth === i + 1
-              const align = i === 0 ? "left" : i === DEPTH_TIERS.length - 2 ? "right" : "center"
               return (
                 <div
                   key={dt.label}
                   onClick={() => setDepth(i + 1)}
                   style={{
                     position: "absolute", left: depthStopLeft(i, DEPTH_TIERS.length - 1),
-                    transform: align === "left" ? "translateX(0)" : align === "right" ? "translateX(-100%)" : "translateX(-50%)",
-                    textAlign: align, cursor: "pointer", whiteSpace: "nowrap",
+                    transform: "translateX(-50%)",
+                    textAlign: "center", cursor: "pointer", whiteSpace: "nowrap",
                     fontSize: 12, lineHeight: 1.3, fontWeight: selected ? 900 : 700,
                     color: selected ? dt.onDark : "rgba(255,255,255,0.6)",
                   }}

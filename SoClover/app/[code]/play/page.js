@@ -17,6 +17,7 @@ import CARDS from "../../../lib/cards_data.json"
 import { useSubmitNudge } from "../../../lib/useSubmitNudge"
 import { SLOT_NAMES, LEAF_NAMES, rotateCW } from "../../../lib/clover.js"
 import IdleGateModal from "../../../components/IdleGateModal"
+import PauseModal from "../../../components/PauseModal"
 import { useIdleGate } from "../../../lib/useIdleGate"
 
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1)
@@ -406,8 +407,10 @@ export default function PlayPage({ params }) {
   const [players, setPlayers]       = useState([])
   const [boards, setBoards]         = useState([])
   const [myPlayerId, setMyPlayerId] = useState(null)
-  const isIdle = useIdleGate()
+  const isIdle = useIdleGate(3 * 60 * 1000)
   const [loading, setLoading]       = useState(true)
+  const [now, setNow] = useState(() => Date.now())
+  const [resuming, setResuming] = useState(false)
 
   const [localSlots, setLocalSlots] = useState({ top: null, right: null, bottom: null, left: null })
   const [localPool, setLocalPool]   = useState([])
@@ -472,8 +475,21 @@ export default function PlayPage({ params }) {
         playerDetails={players.map(p => ({ name: p.name, firstName: p.first_name, lastName: p.last_name }))}
         gamePhase={game?.phase}
         rules={instructions ? [["How to Play", instructions]] : null}
+        onPause={async () => { await supabase.rpc("soclover_pause_game", { p_code: code, p_player_id: myPlayerId }) }}
         onResetToLobby={async () => { await rpc("soclover_reset_to_lobby", { p_code: code }) }}
       />
+      {game?.paused && (
+        <PauseModal
+          colors={POKE_COLORS}
+          pausedByName={game.paused_by_name}
+          resuming={resuming}
+          onResume={async () => {
+            setResuming(true)
+            await supabase.rpc("soclover_resume_game", { p_code: code })
+            setResuming(false)
+          }}
+        />
+      )}
       <Footer colors={POKE_COLORS} isOpen={menuOpen} onToggle={() => setMenuOpen(o => !o)}>
         {footer}
       </Footer>
@@ -518,13 +534,20 @@ export default function PlayPage({ params }) {
     // from the most recently *initiated* call is ever allowed to apply.
     const seq = ++loadSeqRef.current
     try {
-      const [{ data: gameData }, { data: playerData }, { data: boardData }] = await Promise.all([
+      const [{ data: gameData, error: gameError }, { data: playerData }, { data: boardData }] = await Promise.all([
         supabase.from("soclover_games").select("*").eq("code", code).single(),
         supabase.from("soclover_players").select("*").eq("game_code", code).order("created_at"),
         supabase.from("soclover_boards").select("*").eq("game_code", code),
       ])
       if (seq !== loadSeqRef.current) return
-      if (!gameData) { router.push(`/${code}`); return }
+      if (!gameData) {
+        // Only "no rows" (PGRST116) means the game is genuinely gone — bail out
+        // and retry on the next poll/reconnect otherwise, so a transient
+        // network blip doesn't bounce a mid-turn player to the lobby (which
+        // immediately redirects back into /play with fresh, blank state).
+        if (gameError?.code !== "PGRST116") return
+        router.push(`/${code}`); return
+      }
       if (gameData.replay_code) { router.push(`/${gameData.replay_code}`); return }
       if (gameData.phase === "lobby") { router.push(`/${code}`); return }
       // Removed noisy polling log
@@ -605,6 +628,88 @@ export default function PlayPage({ params }) {
       clueInitRef.current = true
     }
   }, [myBoard])
+
+  // Optional clue-writing timer (off by default, timer_seconds = 0). Ticks
+  // locally for the bar; the auto-advance is server-enforced (any client can
+  // trigger it, the RPC re-checks the deadline), so it's not reliant on any
+  // one specific client staying connected.
+  // Stops ticking entirely while paused — that's what freezes the bar
+  // animation. soclover_pause_game/_resume_game shift clue_writing_started_at
+  // forward on resume to absorb the paused duration, so both the bar and the
+  // auto-advance deadline resume exactly where they left off.
+  // Stops entirely once idle-gated — same as the main realtime connection —
+  // so an AFK tab with a round timer still running can't keep silently
+  // driving auto-submits/force-advances in the background while the "Still
+  // there?" modal is blocking the screen.
+  useEffect(() => {
+    if (!game?.timer_seconds || game.phase !== "clue_writing" || game.paused || isIdle) return
+    setNow(Date.now()) // correct immediately on resume instead of waiting for the first tick
+    const t = setInterval(() => setNow(Date.now()), 250)
+    return () => clearInterval(t)
+  }, [game?.timer_seconds, game?.phase, game?.clue_writing_started_at, game?.paused, isIdle])
+
+  // Primary auto-advance mechanism: each player's own device submits its
+  // own board the moment ITS local clock crosses the deadline, rather than
+  // depending on some other player's tab noticing everyone else is late —
+  // that dependency is what made the old "any client can trigger it" design
+  // fragile against backgrounded/closed tabs.
+  //
+  // autoSubmittedRoundRef guards against firing more than once per board:
+  // this effect re-runs on every `now` tick (every 250ms) until `myBoard`'s
+  // realtime/poll refresh confirms status === "submitted" locally, which can
+  // take a moment — without this guard, every intervening tick re-sends the
+  // RPC. That's wasteful on its own, but here it was actively harmful:
+  // soclover_next_board() advances the board index unconditionally whenever
+  // phase === "guessing", so a redundant submit_clues call landing after the
+  // real one raced the game through several boards with nobody ever
+  // actually guessing (see BUGS.md).
+  const autoSubmittedRoundRef = useRef(null)
+  useEffect(() => {
+    if (!game?.timer_seconds || game.phase !== "clue_writing" || !game.clue_writing_started_at || game.paused || !myPlayerId || !myBoard || isIdle) return
+    const deadline = new Date(game.clue_writing_started_at).getTime() + game.timer_seconds * 1000
+    if (now < deadline) return
+    if (myBoard.status === "submitted") return
+    // Don't auto-submit blank until at least 1 OTHER player has a real
+    // (non-blank) board in — if literally nobody has written real clues
+    // yet, everyone timing out simultaneously would blank-fill the whole
+    // game with nothing real in it. Matches the same threshold enforced
+    // server-side in soclover_force_advance_clues for the closed-tab
+    // fallback path.
+    const blankClues = { topLeft: "(no clue)", topRight: "(no clue)", bottomLeft: "(no clue)", bottomRight: "(no clue)" }
+    const isBlank = b => LEAF_NAMES.every(l => b.clues?.[l] === blankClues[l])
+    const realOthersCount = boards.filter(b => b.player_id !== myPlayerId && b.status !== "writing" && !isBlank(b)).length
+    if (realOthersCount < 1) return
+    if (autoSubmittedRoundRef.current === game.clue_writing_started_at) return
+    autoSubmittedRoundRef.current = game.clue_writing_started_at
+    const dealt = myBoard.dealt_card_indices
+    const fallbackSlots = {
+      top:    { cardIndex: dealt[0], rotation: 0 },
+      right:  { cardIndex: dealt[1], rotation: 0 },
+      bottom: { cardIndex: dealt[2], rotation: 0 },
+      left:   { cardIndex: dealt[3], rotation: 0 },
+    }
+    // Discard any partially-written clues — a force-submit on timeout is
+    // always a blank entry, never "whatever they'd typed so far."
+    //
+    // NOTE: .rpc() returns a lazy thenable, not a promise — the HTTP request
+    // is only sent once it's awaited or .then()'d. A bare `supabase.rpc(...)`
+    // statement silently never fires. Always consume the result.
+    const cluesToSubmit = Object.fromEntries(LEAF_NAMES.map(l => [l, "(no clue)"]))
+    supabase.rpc("soclover_submit_clues", { p_code: code, p_player_id: myPlayerId, p_slots: fallbackSlots, p_clues: cluesToSubmit })
+      .then(({ error }) => { if (error) console.error("[soclover] auto-submit failed", error) })
+  }, [now, game?.timer_seconds, game?.phase, game?.clue_writing_started_at, game?.paused, code, myPlayerId, myBoard, boards, localSlots, localClues, isIdle])
+
+  // Fallback safety net: if a player's own tab is fully closed (not just
+  // backgrounded), nobody submits on their behalf via the effect above, so
+  // once at least one real submission exists past the deadline, any other
+  // connected client force-fills the rest and advances. No-ops if zero
+  // players have submitted yet.
+  useEffect(() => {
+    if (!game?.timer_seconds || game.phase !== "clue_writing" || !game.clue_writing_started_at || game.paused || isIdle) return
+    const deadline = new Date(game.clue_writing_started_at).getTime() + game.timer_seconds * 1000
+    if (now < deadline) return
+    supabase.rpc("soclover_force_advance_clues", { p_code: code }).then(() => {})
+  }, [now, game?.timer_seconds, game?.phase, game?.clue_writing_started_at, game?.paused, code, isIdle])
 
   const guessInitRef = useRef(null)
   useEffect(() => {
@@ -807,11 +912,44 @@ export default function PlayPage({ params }) {
       setDragCard(null)
       setDragPos(null)
     }
+    // A drag can be interrupted without ever firing pointerup — a system
+    // gesture taking over, losing pointer capture, a touchmove the browser
+    // decided was a scroll instead. startDrag() already optimistically
+    // removed the card from its origin (slot or pool) the moment the drag
+    // began; if only pointerup restores it, a cancelled drag makes that
+    // card disappear from the board permanently (or, if some other write
+    // races in during the same gap, the origin can end up filled by a
+    // *different* card while this one is stranded nowhere — the "wrong
+    // count" symptom). Treat cancel as "drop it right back where it came
+    // from" so the card is never left unaccounted for.
+    function onCancel() {
+      const drag = dragRef.current
+      dragRef.current = null
+      setDragCard(null)
+      setDragPos(null)
+      if (!drag) return
+      const { cardIndex, sourceType, slotName } = drag
+      if (game?.phase === "clue_writing") {
+        if (sourceType === "pool") setLocalPool(p => [...p, cardIndex])
+        else if (sourceType === "slot") setLocalSlots(p => ({ ...p, [slotName]: { cardIndex, rotation: drag.rotation ?? 0 } }))
+      } else if (game?.phase === "guessing") {
+        if (sourceType === "pool") setGuessPool(p => [...p, cardIndex])
+        else if (sourceType === "slot") {
+          setGuessSlots(prev => {
+            const next = { ...prev, [slotName]: { cardIndex, rotation: drag.rotation ?? 0 } }
+            persistBoard({ guess_slots: next })
+            return next
+          })
+        }
+      }
+    }
     document.addEventListener("pointermove", onMove)
     document.addEventListener("pointerup", onUp)
+    document.addEventListener("pointercancel", onCancel)
     return () => {
       document.removeEventListener("pointermove", onMove)
       document.removeEventListener("pointerup", onUp)
+      document.removeEventListener("pointercancel", onCancel)
     }
   }, [localSlots, localPool, guessSlots, guessPool, game])
 
@@ -1183,6 +1321,24 @@ export default function PlayPage({ params }) {
     )
   }
 
+  // Optional clue-writing timer — edge-to-edge depleting bar, same pattern as HearingVoices
+  function clueTimerBar() {
+    if (!game.timer_seconds || game.phase !== "clue_writing" || !game.clue_writing_started_at) return null
+    const clockMs = game.paused && game.paused_at ? new Date(game.paused_at).getTime() : now
+    const elapsedSec = (clockMs - new Date(game.clue_writing_started_at).getTime()) / 1000
+    const barFrac = Math.max(0, Math.min(1, 1 - elapsedSec / game.timer_seconds))
+    return (
+      <div style={{ flexShrink: 0, height: 10, background: barFrac > 0.3 ? "rgba(251, 223, 84, 0.15)" : "hsla(0, 80%, 55%, 0.15)" }}>
+        <div style={{
+          height: "100%",
+          width: `${barFrac * 100}%`,
+          background: barFrac > 0.3 ? "#FBDF54" : "hsl(0, 80%, 55%)",
+          transition: "width 0.2s linear, background 300ms ease",
+        }} />
+      </div>
+    )
+  }
+
   // ── PHASE: clue_writing ──────────────────────────────────────────────────
   if (game.phase === "clue_writing") {
     const submitted = myBoard?.status === "submitted"
@@ -1193,6 +1349,7 @@ export default function PlayPage({ params }) {
       return (
         <div style={{ height: "100dvh", overflow: "hidden", background: BG, display: "flex", flexDirection: "column" }}>
           <StatusBar dark={COOL_DARK} label="WRITING CLUES" />
+          {clueTimerBar()}
           <div style={{ flex: 1, minHeight: 0, overflow: "auto", WebkitOverflowScrolling: "touch", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: `24px 24px ${BOTTOM_PAD}`, gap: SPACE.md, color: WHITE }}>
             <div style={{ fontSize: 40 }}>⏳</div>
             <div style={{ fontSize: 22, fontWeight: 900 }}>
@@ -1227,6 +1384,7 @@ export default function PlayPage({ params }) {
       <>
       <div style={{ height: "100dvh", overflow: "hidden", background: BG, display: "flex", flexDirection: "column" }}>
         <StatusBar dark={COOL_DARK} label="ARRANGE YOUR BOARD" />
+        {clueTimerBar()}
 
         <div style={{ flex: 1, minHeight: 0, overflow: "auto", WebkitOverflowScrolling: "touch", padding: `0 0 ${BOTTOM_PAD}`, display: "flex", flexDirection: "column", alignItems: "center", gap: GAP.result }}>
           <CloverBoard

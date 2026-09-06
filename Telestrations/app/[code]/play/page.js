@@ -503,11 +503,18 @@ export default function Play({ params }) {
     // older call could otherwise overwrite fresher state with stale data.
     // Only the response from the most recently initiated call is applied.
     const seq = ++loadSeqRef.current
-    const { data: gameData } = await supabase
+    const { data: gameData, error: gameError } = await supabase
       .from("tel_games").select("phase,is_dummy,current_step,total_steps,reveal_order,current_reveal_chain,current_reveal_step,timer_seconds,step_started_at,next_game,next_game_picker_name,replay_code").eq("code", code).single()
 
     if (seq !== loadSeqRef.current) return
-    if (!gameData) { router.replace(`/${code}`); return }
+    if (!gameData) {
+      // Only "no rows" (PGRST116) means the game is genuinely gone — bail out
+      // and retry on the next poll/reconnect otherwise, so a transient
+      // network blip doesn't bounce a mid-drawing player to the lobby (which
+      // immediately redirects back into /play with a fresh, blank canvas).
+      if (gameError?.code !== "PGRST116") return
+      router.replace(`/${code}`); return
+    }
     if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
     // Reset to lobby ("Play Again") returns everyone to the lobby together.
     if (gameData.phase === "lobby") { router.replace(`/${code}`); return }
@@ -859,8 +866,11 @@ export default function Play({ params }) {
 
   // ── Timer countdown ───────────────────────────────────────────────────────
 
+  // Stops entirely once idle-gated — same as the main realtime connection —
+  // so an AFK tab can't keep silently auto-submitting in the background
+  // while the "Still there?" modal is up.
   useEffect(() => {
-    if (!game?.timer_seconds || !game?.step_started_at || game?.phase !== "play") {
+    if (!game?.timer_seconds || !game?.step_started_at || game?.phase !== "play" || isIdle) {
       setTimeLeft(null)
       return
     }
@@ -879,7 +889,7 @@ export default function Play({ params }) {
     tick()
     const id = setInterval(tick, 500)
     return () => clearInterval(id)
-  }, [game?.timer_seconds, game?.step_started_at, game?.phase, game?.current_step])
+  }, [game?.timer_seconds, game?.step_started_at, game?.phase, game?.current_step, isIdle])
 
   // ── Image strip export ────────────────────────────────────────────────────
 

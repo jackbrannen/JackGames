@@ -606,11 +606,18 @@ export default function Play({ params }) {
   const loadSeqRef = useRef(0)
   async function loadState() {
     const seq = ++loadSeqRef.current
-    const { data: gameData } = await supabase
+    const { data: gameData, error: gameError } = await supabase
       .from("ec_games").select("*").eq("code", code).single()
 
     if (seq !== loadSeqRef.current) return
-    if (!gameData) { router.replace(`/${code}`); return }
+    if (!gameData) {
+      // Only "no rows" (PGRST116) means the game is genuinely gone — bail out
+      // and retry on the next poll/reconnect otherwise, so a transient
+      // network blip doesn't bounce a mid-turn player to the lobby (which
+      // immediately redirects back into /play with fresh, blank state).
+      if (gameError?.code !== "PGRST116") return
+      router.replace(`/${code}`); return
+    }
     if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
     // Reset to lobby ("Play Again") returns everyone to the lobby together.
     if (gameData.phase === "lobby") { router.replace(`/${code}`); return }

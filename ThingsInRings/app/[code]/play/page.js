@@ -775,7 +775,7 @@ export default function PlayPage({ params }) {
         {!(flashResolution && !resolutionDismissed) && showKnowerPickBar && (
           <div style={{ background: "#F4C542", color: "#000", padding: "14px 16px", fontSize: 15, fontWeight: 900, textAlign: "center" }}>
             <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.6, marginBottom: 2 }}>Round {game.round_number}</div>
-            Pick the correct zone for <span style={{ background: "rgba(0,0,0,0.15)", color: "#000", padding: "3px 8px", borderRadius: 8, fontWeight: 900 }}>{pendingCard?.text}</span>
+            Pick the correct zone for <span style={{ background: "rgba(0,0,0,0.15)", color: "#000", padding: "3px 8px", borderRadius: 8, fontWeight: 900 }}>{pendingCard?.text}</span> — guessed <ZoneChip zone={game.pending_zone} />
           </div>
         )}
 
@@ -877,7 +877,7 @@ export default function PlayPage({ params }) {
             <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.5, marginBottom: 20 }}>
               {nameOf(game.pending_player_id)} ({teamLabel(activeTeam)}) guessed{" "}
               <span style={{ background: "#D9E2D5", color: INK, padding: "2px 8px", fontSize: 16, fontWeight: 900, borderRadius: 6, display: "inline-block" }}>{pendingCard?.text}</span>
-              . Place it in the right zone.
+              {" "}belongs in the <ZoneChip zone={game.pending_zone} />. Place it in the right zone.
             </div>
             <button onClick={() => setKnowerActAlertDismissed(true)} style={{ background: BTN, color: BTN_TEXT, fontWeight: 900, padding: "12px 24px", width: "100%" }}>
               Place it →

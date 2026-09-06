@@ -6,6 +6,14 @@
 //   Hidden entirely when timerRunning is true (e.g. during an active Fishbowl turn) —
 //   the footer bar remains visible with action buttons filling the full width.
 // Right slot: children — action button(s) passed by the game page.
+// The right slot is a flex row. FooterButton fills it automatically
+// (display:block, width:100%, height:100%) — but ANY other child (a plain
+// status div, a "waiting for everyone" line, a "X / Y ready…" count) needs
+// `flex: 1, display: "flex", alignItems: "center", justifyContent: "center"`
+// on itself to do the same, or it renders as a narrow blob instead of
+// spanning the bar. See CODE_PATTERNS.md > "Non-Button Children Inside
+// <Footer>" for a copyable snippet — grep other games for an existing
+// instance of the same status-line state before hand-rolling a new one.
 // Exports FOOTER_H so pages can offset their scroll areas and fixed-bottom elements.
 //
 // Usage:
@@ -44,13 +52,11 @@ export default function Footer({
       alignItems: "stretch",
       borderTop: "1px solid rgba(255,255,255,0.09)",
       zIndex: 80,
-      // iOS Safari has a long-documented bug where fixed-position elements
-      // occasionally fail to repaint (going blank until the next paint
-      // trigger) after scroll/toolbar-resize events. Forcing this element
-      // onto its own GPU compositing layer is the standard mitigation.
+      // Forces its own compositing layer so iOS Safari repaints reliably when
+      // only the button inside changes (text/bg/disabled) — without this,
+      // a fixed-position bar can occasionally leave stale (blank) pixels on
+      // screen even though the new content is already correctly hit-testable.
       transform: "translateZ(0)",
-      WebkitTransform: "translateZ(0)",
-      backfaceVisibility: "hidden",
       WebkitBackfaceVisibility: "hidden",
     }}>
       {!timerRunning && (

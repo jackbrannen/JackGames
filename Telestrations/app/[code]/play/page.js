@@ -451,6 +451,33 @@ export default function Play({ params }) {
   // Finished screen
   const [selectedChainOwner, setSelectedChainOwner] = useState(null)
 
+  // The chain-detail modal is a fixed-position overlay on top of the (often
+  // taller-than-viewport) finished-screen thumbnail grid. Without locking
+  // the background, a touch that starts on the modal's non-scrolling header
+  // or footer scroll-chains straight through to that background page instead
+  // of doing nothing — on iOS this can leave the fixed overlay and the
+  // background page scrolled to different offsets, so the "Download as
+  // image" button in the modal footer ends up stuck out of reach no matter
+  // how far you scroll the (wrong) thing. Locking body scroll while the
+  // modal is open removes that second scrollable surface entirely.
+  useEffect(() => {
+    if (!selectedChainOwner) return
+    const scrollY = window.scrollY
+    const { body } = document
+    const prev = { position: body.style.position, top: body.style.top, width: body.style.width, overflow: body.style.overflow }
+    body.style.position = "fixed"
+    body.style.top = `-${scrollY}px`
+    body.style.width = "100%"
+    body.style.overflow = "hidden"
+    return () => {
+      body.style.position = prev.position
+      body.style.top = prev.top
+      body.style.width = prev.width
+      body.style.overflow = prev.overflow
+      window.scrollTo(0, scrollY)
+    }
+  }, [selectedChainOwner])
+
   // Timer
   const [timeLeft, setTimeLeft] = useState(null)
   const [pokeCooldownActive, setPokeCooldownActive] = useState(false)
@@ -998,11 +1025,28 @@ export default function Play({ params }) {
       }
     }
 
-    canvas.toBlob(blob => {
+    canvas.toBlob(async blob => {
+      const filename = `${chain.owner.name.replace(/\s+/g, "-")}-telestration.png`
+      // iOS Safari's <a download> saves into the Files app's "Downloads"
+      // folder, not Photos — most players expect "download an image" to mean
+      // the camera roll. Routing through the native share sheet (which has a
+      // "Save Image" action that does save to Photos) is the only way to get
+      // there. Falls back to the plain download link wherever share-with-
+      // files isn't supported (desktop browsers, older iOS/Android).
+      const file = new File([blob], filename, { type: "image/png" })
+      if (navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file] })
+          return
+        } catch (e) {
+          if (e?.name === "AbortError") return // user dismissed the share sheet
+          // fall through to the download-link fallback below
+        }
+      }
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `${chain.owner.name.replace(/\s+/g, "-")}-telestration.png`
+      a.download = filename
       a.click()
       URL.revokeObjectURL(url)
     }, "image/png")
@@ -1137,7 +1181,7 @@ export default function Play({ params }) {
                 style={{ background: "rgba(255,255,255,0.15)", color: "white", width: 36, height: 36, borderRadius: "50%", fontSize: 20, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
               >×</button>
             </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px 0" }}>
+            <div style={{ flex: 1, overflowY: "auto", overscrollBehavior: "contain", padding: "20px 24px 0" }}>
               <div style={{ maxWidth: 480, margin: "0 auto" }}>
                 {modalChain.steps.map(s => {
                   const author = players.find(p => p.id === s.author_id)

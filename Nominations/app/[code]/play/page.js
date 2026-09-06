@@ -11,6 +11,7 @@ import WaitingList from "../../../components/WaitingList"
 import Menu from "../../../components/Menu"
 import Notifications from "../../../components/Notifications"
 import EndGame from "../../../components/EndGame"
+import RandomIdeas from "../../../components/RandomIdeas"
 import IdleGateModal from "../../../components/IdleGateModal"
 import { useIdleGate } from "../../../lib/useIdleGate"
 
@@ -75,7 +76,7 @@ function Well({ children, size = 22 }) {
 function Shell({ label, right, children, footer, footerKey, scroll, banner, menuNode, menuOpen, onToggleMenu }) {
   return (
     <>
-      <div style={{ minHeight: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column" }}>
+      <div style={{ height: "100dvh", background: BG, color: INK, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <StatusBar label={label} dark={DARK} textColor={INK} right={right} />
         {banner && (
           <div style={{ background: "#FFFFFF", color: INK, padding: "14px 16px", fontSize: 15, fontWeight: 900, textAlign: "center", flexShrink: 0 }}>
@@ -83,8 +84,8 @@ function Shell({ label, right, children, footer, footerKey, scroll, banner, menu
           </div>
         )}
         <div style={scroll
-          ? { flex: 1, overflowY: "auto", padding: "24px 24px", paddingBottom: BOTTOM_PAD, display: "flex", flexDirection: "column" }
-          : { flex: 1, padding: "28px 24px", paddingBottom: BOTTOM_PAD, display: "flex", flexDirection: "column" }}>
+          ? { flex: 1, minHeight: 0, overflowY: "auto", padding: "24px 24px", paddingBottom: BOTTOM_PAD, display: "flex", flexDirection: "column" }
+          : { flex: 1, minHeight: 0, overflowY: "auto", padding: "28px 24px", paddingBottom: BOTTOM_PAD, display: "flex", flexDirection: "column" }}>
           {children}
         </div>
       </div>
@@ -336,6 +337,17 @@ export default function PlayPage({ params }) {
           fontSize={18}
           style={{ fontWeight: 600, color: INK }}
         />
+        <div style={{ marginTop: 8 }}>
+          <RandomIdeas
+            bg={BTN}
+            iconColor={YELLOW}
+            fetchIdeas={(n, ex) => supabase.rpc("get_random_ideas", { p_count: n, p_exclude: ex }).then(({ data }) => data ?? [])}
+            excludeIdeas={game.used_prompts ?? []}
+            onIdea={idea => supabase.from("nom_games")
+              .update({ used_prompts: [...(game.used_prompts ?? []), idea] })
+              .eq("code", code)}
+          />
+        </div>
         {submitError && <p style={{ fontSize: 14, fontWeight: 700, color: WRONG_RED, marginTop: 12 }}>{submitError}</p>}
       </Shell>
     )
@@ -691,8 +703,11 @@ export default function PlayPage({ params }) {
               <div style={{ fontSize: 11, fontWeight: 800, opacity: 0.6, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
                 Round {i + 1}
               </div>
-              <div style={{ background: BTN, color: "white", padding: "10px 14px", marginBottom: 12, fontSize: 14, fontWeight: 800 }}>
+              <div style={{ background: BTN, color: "white", padding: "10px 14px", marginBottom: 4, fontSize: 14, fontWeight: 800 }}>
                 {superlativeById[r.superlative_id]?.text}
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.65, marginBottom: 12 }}>
+                Written by <Nm>{byId[superlativeById[r.superlative_id]?.player_id]?.name}</Nm>
               </div>
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
                 <Nm>{byId[r.bluffer_id]?.name}</Nm> bluffed with <Nm>{byId[r.bluffer_target_id]?.name}</Nm> · fooled {wrong.length}
@@ -711,7 +726,7 @@ export default function PlayPage({ params }) {
 
     return (
       <>
-        <div style={{ minHeight: "100dvh", background: DARK, color: INK, display: "flex", flexDirection: "column" }}>
+        <div style={{ height: "100dvh", background: DARK, color: INK, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           <EndGame
             players={ranked}
             myPlayerId={myPlayerId}

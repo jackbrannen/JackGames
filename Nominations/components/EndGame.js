@@ -64,7 +64,7 @@ export default function EndGame({
   const isTie = players.filter(p => p.score === topScore).length > 1
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "40px 24px", paddingBottom: bottomPad, animation: "endGameIn 300ms ease-out both" }}>
+    <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "40px 24px", paddingBottom: bottomPad, animation: "endGameIn 300ms ease-out both" }}>
       <div style={{ fontSize: "clamp(56px, 16vw, 88px)", fontWeight: 900, lineHeight: 0.9, marginBottom: 32 }}>
         Game<br />Over
       </div>

@@ -520,9 +520,22 @@ export default function Play({ params }) {
   const teamColor   = me ? (me.team === "good" ? GOOD : EVIL) : GOLD
   const teamLabel   = me?.team === "good" ? "Good" : "Evil — Minions of Mordred"
 
+  // Every connected player calls these two RPCs independently as a ready-up
+  // gate (see CODE_PATTERNS.md) — the phase can legitimately flip out from
+  // under a still-in-flight call from a player who lost the race, which
+  // raises "not in ... phase". That's expected, not a bug.
+  const READY_GATE_RPCS = new Set(["mark_avalon_ready", "advance_avalon_quest"])
+
   async function rpc(fn, args = {}) {
     const { error } = await supabase.rpc(fn, args)
-    if (error) { alert(error.message); throw error }
+    if (error) {
+      if (READY_GATE_RPCS.has(fn) && /not in .* phase/i.test(error.message)) {
+        await refresh()
+        return
+      }
+      alert(error.message)
+      throw error
+    }
     // Refresh immediately so the acting client's own button resolves right
     // away instead of waiting on its own realtime round-trip or another
     // peer's gossip nudge (both of which can take a few seconds).

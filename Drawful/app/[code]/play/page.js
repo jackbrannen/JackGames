@@ -485,7 +485,14 @@ export default function Play({ params }) {
         .from("drawful_games").select("phase,drawing_started_at,current_drawing_index,is_dummy,ready_player_ids,next_game,next_game_picker_name,replay_code").eq("code", code).single()
       console.log("loadState game:", { gameData, gameError })
       if (seq !== loadSeqRef.current) return
-      if (!gameData) { router.replace(`/${code}`); return }
+      if (!gameData) {
+        // Only "no rows" (PGRST116) means the game is genuinely gone — bail out
+        // and retry on the next poll/reconnect otherwise, so a transient
+        // network blip doesn't bounce a mid-turn player to the lobby (which
+        // immediately redirects back into /play with fresh, blank state).
+        if (gameError?.code !== "PGRST116") return
+        router.replace(`/${code}`); return
+      }
       if (gameData.replay_code) { router.replace(`/${gameData.replay_code}`); return }
       if (gameData.phase === "lobby") { router.replace(`/${code}`); return }
       prevPhaseRef.current = gameData.phase
@@ -665,9 +672,11 @@ export default function Play({ params }) {
     }
   }, [game?.current_drawing_index])
 
-  // Drawing timer
+  // Drawing timer. Stops entirely once idle-gated — same as the main
+  // realtime connection — so an AFK tab can't keep silently auto-submitting
+  // in the background while the "Still there?" modal is up.
   useEffect(() => {
-    if (game?.phase !== "drawing" || !game.drawing_started_at) return
+    if (game?.phase !== "drawing" || !game.drawing_started_at || isIdle) return
     const tick = () => {
       const elapsed = (Date.now() - new Date(game.drawing_started_at).getTime()) / 1000
       const remaining = Math.max(0, DRAW_SECONDS - elapsed)
@@ -677,14 +686,14 @@ export default function Play({ params }) {
     tick()
     const interval = setInterval(tick, 500)
     return () => clearInterval(interval)
-  }, [game?.phase, game?.drawing_started_at])
+  }, [game?.phase, game?.drawing_started_at, isIdle])
 
   // Auto-submit when timer expires
   useEffect(() => {
-    if (!timerExpired || submittingDrawing || !me || game?.phase !== "drawing") return
+    if (!timerExpired || submittingDrawing || !me || game?.phase !== "drawing" || isIdle) return
     if (me.drawing_url) return // already submitted
     submitDrawing(true)
-  }, [timerExpired, submittingDrawing, me?.drawing_url, game?.phase])
+  }, [timerExpired, submittingDrawing, me?.drawing_url, game?.phase, isIdle])
 
   // Dummy game auto-submit removed — users should draw manually per spec
 
